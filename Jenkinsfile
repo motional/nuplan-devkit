@@ -17,7 +17,6 @@ pipeline{
   options {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr:'10'))
-    skipDefaultCheckout()
   }
 
   environment {
@@ -26,17 +25,6 @@ pipeline{
   }
 
   stages{
-    stage('Checkout') {
-      steps {
-        checkout([$class: 'GitSCM',
-          branches: [[name: "refs/heads/ci_test"]],
-          doGenerateSubmoduleConfigurations: false,
-          extensions: [[$class: 'CloneOption', shallow: true]],
-          submoduleCfg: [],
-          userRemoteConfigs: [[credentialsId: 'github-nuplan-devkit-deploy-key', url: 'git@github.com:motional/nuplan-devkit.git']]
-        ])
-      }
-    }
     stage('Build') {
       steps {
         container('builder') {
