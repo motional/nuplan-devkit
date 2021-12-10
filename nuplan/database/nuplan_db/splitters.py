@@ -1,14 +1,13 @@
 import abc
 import random
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Optional, Set, Union
-
-from cachetools import LRUCache, cached
+from typing import Any, DefaultDict, Dict, List, Optional, Set, Union
 
 from nuplan.database.common.db import DBSplitterInterface
-from nuplan.database.nuplan_db.log_splits import nuplan_36logs_log_splits
-from nuplan.database.nuplan_db.models import Log, Sample  # type: ignore
+from nuplan.database.nuplan_db.models import Log
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
+
+Sample = Any  # TODO: replace with lidar_pc
 
 
 def _get_logs(db: NuPlanDB, split2log: Dict[str, List[str]], split_name: str) -> List[Log]:
@@ -262,41 +261,3 @@ class BaseNuPlanDBSplitter(DBSplitterInterface):
         :return: A dictionary that maps from split name to list of NuPlanDB tokens.
         """
         pass
-
-
-class NuPlan36logsSplitter(BaseNuPlanDBSplitter):
-    """ These splits are the default used for the autolabeled data. """
-
-    def __init__(self, db: NuPlanDB):
-        """ Inherited, see superclass. """
-        super().__init__(db)
-
-    @property  # type: ignore
-    @cached(cache=LRUCache(maxsize=3))
-    def _splits(self) -> DefaultDict[str, List[str]]:
-        """
-        Returns a dictionary that maps from split name to list of NuPlanDB tokens.
-        :return: A dictionary that maps from split name to list of NuPlanDB tokens.
-        """
-        core_splits_names = ['test', 'val', 'valtest', 'train']
-
-        # Setup main splits.
-        split2samples: DefaultDict[str, List[Sample]] = defaultdict(list)
-        _set_splits_samples(split2samples=split2samples,
-                            db=self._db,
-                            split2log=nuplan_36logs_log_splits(),
-                            broken_extractions=None)
-
-        # Split by region and country.
-        _set_location_splits(split2samples=split2samples,
-                             db=self._db,
-                             core_splits_names=core_splits_names)
-
-        # Make mini-splits.
-        _set_mini_splits(split2samples=split2samples, db=self._db, core_splits_names=core_splits_names)
-
-        # Make smaller evaluation splits to use in dev. experiments.
-        _set_dev_splits(split2samples=split2samples, db=self._db, core_splits_names=['val', 'test', 'valtest'])
-
-        # Convert to tokens before returning.
-        return _convert_to_tokens(split2samples)

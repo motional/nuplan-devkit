@@ -6,6 +6,7 @@ descartes  # Used in map_explorer.py
 Fiona  # Used in GpkgMapsDB.py
 geopandas  # Used to read maps
 hydra-core  # Used for configs
+jupyter  # Used to show the notebook
 matplotlib  # Used for rendering
 numpy>=1.21.1  # Used widely, only from this version numpy.typing.NDArray is supported
 opencv_python  # Used widely

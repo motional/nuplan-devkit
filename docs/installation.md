@@ -10,9 +10,9 @@ For a high-level overview, please read the [general readme](https://github.com/m
 - [Setup environment variables](#setup-environment-variables)
 
 ## Download the devkit
-Download the devkit:
+Download the devkit and move inside the folder:
 ```
-cd && git clone https://github.com/motional/nuplan-devkit.git
+cd && git clone https://github.com/motional/nuplan-devkit.git && cd nuplan-devkit
 ```
 The above will download the files to your home directory. While you can change this to an arbitrary directory, the rest of our tutorials assumes that you are using the home directory. 
 
@@ -69,7 +69,7 @@ This installs the devkit and all of its dependencies.
 ### Option B: Install PIP package from local
 **We recommend** that you install the local devkit as a PIP package:
 ```
-pip install -e ~/nuplan-devkit
+pip install -e .
 ```
 This installs the devkit and all of its dependencies.
 Note that the editable mode (`-e`) is optional and means that the code is used in-place, rather than being copied elsewhere, and can be modified for easy development.

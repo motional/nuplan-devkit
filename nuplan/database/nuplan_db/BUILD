@@ -12,11 +12,6 @@ py_library(
     srcs = ["frame.py"],
 )
 
-py_library(
-    name = "log_splits",
-    srcs = ["log_splits.py"],
-)
-
 py_binary(
     name = "make_readme",
     srcs = ["make_readme.py"],
@@ -67,7 +62,6 @@ py_library(
     srcs = ["splitters.py"],
     deps = [
         "//nuplan/database/common:db",
-        "//nuplan/database/nuplan_db:log_splits",
         "//nuplan/database/nuplan_db:models",
         "//nuplan/database/nuplan_db:nuplandb",
     ],
