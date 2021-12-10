@@ -31,9 +31,9 @@ class TestDataloader(unittest.TestCase):
         # Create splitter
         splitter = LogSplitter(
             log_splits={
-                'train': ["2021.05.12.19.36.12_g1p-veh-2035"],
-                'val': ["2021.05.25.17.38.43_g1p-veh-2027"],
-                'test': ["2021.05.27.14.27.08_g1p-veh-2035"],
+                'train': ["2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5"],
+                'val': ["2021.07.21.02.32.00_26_1626834838399916.8_1626835894396760.2"],
+                'test': ["2021.07.24.03.01.39_47_1627095776569187.0_1627097334568320.0"],
             })
 
         # Create feature builder
@@ -120,9 +120,9 @@ class TestDataloader(unittest.TestCase):
         Test dataloader using nuPlan DB.
         """
         scenario_builder = NuPlanScenarioBuilder(
-            version='nuplan_v0.3.0_mini',
+            version='nuplan_v0.1_mini',
             data_root=os.getenv('NUPLAN_DATA_ROOT'))
-        scenario_builder = NuPlanScenarioBuilder(version='nuplan_v0.3.0_mini', data_root='/data/sets/nuplan')
+        scenario_builder = NuPlanScenarioBuilder(version='nuplan_v0.1_mini', data_root='/data/sets/nuplan')
         self._test_dataloader(scenario_builder, RayDistributed())
 
     def test_dataloader_nuplan_sequential(self) -> None:
@@ -130,9 +130,9 @@ class TestDataloader(unittest.TestCase):
         Test dataloader using nuPlan DB using a sequential worker.
         """
         scenario_builder = NuPlanScenarioBuilder(
-            version='nuplan_v0.3.0_mini',
+            version='nuplan_v0.1_mini',
             data_root=os.getenv('NUPLAN_DATA_ROOT'))
-        scenario_builder = NuPlanScenarioBuilder(version='nuplan_v0.3.0_mini', data_root='/data/sets/nuplan')
+        scenario_builder = NuPlanScenarioBuilder(version='nuplan_v0.1_mini', data_root='/data/sets/nuplan')
         self._test_dataloader(scenario_builder, Sequential())
 
 

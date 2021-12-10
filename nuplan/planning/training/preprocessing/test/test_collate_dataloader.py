@@ -28,7 +28,7 @@ class TestCollateDataLoader(unittest.TestCase):
         """
         self.batch_size = 4
 
-        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.3.0_mini", data_root="/data/sets/nuplan")
+        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.1_mini", data_root="/data/sets/nuplan")
 
         features = FeatureCachingPreprocessor(cache_dir=None,
                                               feature_builders=[

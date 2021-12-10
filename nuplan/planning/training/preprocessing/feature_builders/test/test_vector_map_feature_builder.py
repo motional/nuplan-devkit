@@ -15,7 +15,7 @@ class TestVectorMapFeatureBuilder(unittest.TestCase):
         """
         Initializes DB
         """
-        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.3.0_mini", data_root="/data/sets/nuplan")
+        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.1_mini", data_root="/data/sets/nuplan")
         self.scenario = _create_scenario(self.scenario_builder._db,
                                          ("unknown", self.scenario_builder._db.lidar_pc[10000].token),
                                          ScenarioMapping({}),

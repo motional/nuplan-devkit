@@ -66,16 +66,6 @@ class TestMapApi(unittest.TestCase):
         expected_polygon_coords = Polygon([[5, 10], [-5, 10], [-5, -10], [5, -10], [5, 10]])
         self.assertEqual(polygon_coords, expected_polygon_coords)
 
-    def test_raster_dimensions(self) -> None:
-        """
-        Checks dimensions of Raster maps. It must be equal to size of map.
-        """
-        for location in self.locations:
-            raster_layer = self.nuplan_maps[location].load_raster_layer_as_numpy('intensity')
-
-            map_shape = self.nuplan_maps[location].get_map_dimension()
-            self.assertEqual(raster_layer.shape, map_shape)
-
     def test_vector_dimensions(self) -> None:
         """
         Checks dimensions of vector layer. It must be less than or equal to size of map.
@@ -94,10 +84,11 @@ class TestMapApi(unittest.TestCase):
         """
         line_coords = LineString([(1., 1.), (10., 10.)])
         box_coords = [0., 0., 11., 11.]
-        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords))
+        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords))
 
         box_coords = [0., 0., 8., 8.]
-        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords))
+        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(
+            np.array(line_coords), box_coords))
 
     def test_line_intersects_patch(self) -> None:
         """
@@ -105,11 +96,11 @@ class TestMapApi(unittest.TestCase):
         """
         line_coords = LineString([(0., 0.), (10., 10.)])
         box_coords = [0., 0., 11., 11.]
-        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords,
+        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords,
                                                                                      'intersect'))
 
         box_coords = [11., 11., 16., 16.]
-        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords,
+        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords,
                                                                                       'intersect'))
 
     def test_polygon_in_patch(self) -> None:

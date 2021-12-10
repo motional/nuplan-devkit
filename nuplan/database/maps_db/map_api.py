@@ -22,8 +22,8 @@ class NuPlanMapWrapper(NuPlanMap):
     def __init__(self, maps_db: GPKGMapsDB, map_name: str) -> None:
         """
         Loads the layers, create reverse indices and shortcuts, initializes the explorer class.
-        :param maps_db: MapsDB instance
-        :param map_name: Name of map location, e.g. "sg-one-north". See `self.get_locations()`.
+        :param maps_db: MapsDB instance.
+        :param map_name: Name of map location, e.g. "sg-one-north". See `maps_db.get_locations()`.
         """
         map_name = map_name.replace(".gpkg", "")
         super().__init__(maps_db, map_name)
@@ -35,10 +35,9 @@ class NuPlanMapWrapper(NuPlanMap):
 
         self.vector_polygon_layers = ['lanes_polygons', 'intersections', 'generic_drivable_areas', 'walkways',
                                       'carpark_areas', 'crosswalks', 'lane_group_connectors',
-                                      'lane_groups_polygons', 'road_segments', 'speed_bumps',
-                                      'speed_limit_zones', 'stop_polygons', 'box_junctions']
-        self.vector_line_layers = ['lane_connectors', 'boundary_segments', 'boundaries']
-        self.vector_point_layers = ['traffic_lights', 'traffic_light_bulbs']
+                                      'lane_groups_polygons', 'road_segments', 'stop_polygons']
+        self.vector_line_layers = ['lane_connectors', 'boundaries']
+        self.vector_point_layers = ['traffic_lights']
         self.vector_layers = self.vector_polygon_layers + self.vector_line_layers + self.vector_point_layers
 
     def load_vector_layer(self, layer_name: str) -> gpd.geodataframe:
@@ -61,15 +60,13 @@ class NuPlanMapWrapper(NuPlanMap):
 
     def get_map_dimension(self) -> Tuple[int, int]:
         """
-        Gets the dimension of the map. Here 'drivable_area' layer is used for dimension query.
+        Gets the dimension of the map.
         :return: The dimension of the map.
         """
-        layer = self._maps_db.load_layer(self._map_name, "intensity")
-        drivable_area_mask = layer.mask()
 
-        map_dims = (drivable_area_mask.shape[0], drivable_area_mask.shape[1])
+        map_dims = self._maps_db.maps_dimension[self._map_name]
 
-        return map_dims
+        return int(map_dims[0]), int(map_dims[1])
 
     def get_map_aspect_ratio(self) -> float:
         """

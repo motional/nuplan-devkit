@@ -27,6 +27,9 @@ class TestTrackedObjects(unittest.TestCase):
         }
 
         for agent_type in AgentType:
+            if agent_type not in expected_type_and_set_of_tokens:
+                continue
+
             self.assertEqual(expected_type_and_set_of_tokens[agent_type],
                              {agent.token for agent in tracked_objects.get_agents_of_type(agent_type)})
 

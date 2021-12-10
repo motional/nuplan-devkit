@@ -18,7 +18,7 @@ class TestRemoveInvalidGoalsFilter(unittest.TestCase):
             data_root=os.getenv('NUPLAN_DATA_ROOT'))
 
         filter_with_invalid_goals_args = {
-            'log_names': ["2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5"],
+            'log_names': ["2021.07.21.02.32.00_26_1626834838399916.8_1626835894396760.2"],
             'log_labels': None,
             'max_scenarios_per_log': 50,
             'scenario_types': None,

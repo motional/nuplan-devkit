@@ -10,7 +10,7 @@ from nuplan.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.maps.test_utils import add_map_objects_to_scene, add_marker_to_scene
 from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
-map_factory = NuPlanMapFactory(GPKGMapsDB('nuplan-maps-v0.2',
+map_factory = NuPlanMapFactory(GPKGMapsDB('nuplan-maps-v0.1',
                                           map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"),
                                                                 'maps')))
 

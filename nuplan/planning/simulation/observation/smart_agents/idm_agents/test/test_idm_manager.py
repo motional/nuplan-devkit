@@ -20,7 +20,7 @@ from nuplan.planning.utils.serialization.from_scene import from_scene_to_agents,
 from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
 map_factory = NuPlanMapFactory(
-    GPKGMapsDB('nuplan-maps-v0.2', map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"), 'maps')))
+    GPKGMapsDB('nuplan-maps-v0.1', map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"), 'maps')))
 
 policy = IDMPolicy(target_velocity=10, min_gap_to_lead_agent=3,
                    headway_time=2, accel_max=1.0, decel_max=2.0)

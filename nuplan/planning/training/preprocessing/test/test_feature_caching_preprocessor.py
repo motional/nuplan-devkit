@@ -20,7 +20,7 @@ class TestFeatureCachingPreprocessor(unittest.TestCase):
         """
         Initializes DB
         """
-        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.3.0_mini", data_root="/data/sets/nuplan")
+        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.1_mini", data_root="/data/sets/nuplan")
         self.cache_dir = pathlib.Path("/tmp/test")
 
     def test_sample(self) -> None:

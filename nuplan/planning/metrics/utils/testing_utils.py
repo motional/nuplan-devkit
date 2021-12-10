@@ -12,7 +12,7 @@ from nuplan.planning.simulation.simulation_manager.simulation_iteration import S
 from nuplan.planning.simulation.trajectory.interpolated import InterpolatedTrajectory
 from nuplan.planning.utils.serialization.from_scene import from_scene_to_agents
 
-NUPLAN_DB_VERSION = 'nuplan-maps-v0.2'
+NUPLAN_DB_VERSION = 'nuplan-maps-v0.1'
 
 
 def _get_simple_agent_state(pose: List[float], time_point: TimePoint) -> EgoState:

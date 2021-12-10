@@ -7,8 +7,8 @@ from nuplan.database.utils.boxes.box3d import Box3D, BoxVisibility, box_in_image
 from nuplan.database.utils.geometry import quaternion_yaw
 from pyquaternion import Quaternion
 
-# A very small number.
-EPS = 1e-6
+# A constant number.
+CONST_NUM = 1
 
 
 class TestBox3DEncoding(unittest.TestCase):
@@ -446,10 +446,10 @@ class TestBox3D(unittest.TestCase):
         # Negative translation case
         box = Box3D.make_random()
         corners = box.corners()
-        # box.center[n] can be 0, so we subtract a very small number to avoid errors.
-        translation = np.array([np.random.randint(-box.center[0] - EPS, 0),
-                                np.random.randint(-box.center[1] - EPS, 0),
-                                np.random.randint(-box.center[2] - EPS, 0)])
+        # box.center[n] can be 0, so we subtract a const number to avoid errors.
+        translation = np.array([np.random.randint(-box.center[0] - CONST_NUM, 0),
+                                np.random.randint(-box.center[1] - CONST_NUM, 0),
+                                np.random.randint(-box.center[2] - CONST_NUM, 0)])
         box.translate(translation)
         corners_translated = corners + translation.reshape(-1, 1)
         self.assertTrue(np.allclose(box.corners(), corners_translated))

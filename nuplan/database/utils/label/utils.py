@@ -52,30 +52,13 @@ def parse_labelmap_dataclass(labelmap: Dict[int, Label]) -> Tuple:  # type: igno
 
 
 global2local = {
+    "generic_object": "generic_object",
     "vehicle": "car",
-    "vehicle.bus": "car",
-    "vehicle.car": "car",
-    "vehicle.construction": "car",
-    "vehicle.other": "car",
-    "vehicle.pickup_lorry": "car",
-    "vehicle.shuttle": "car",
-    "vehicle.trailer": "car",
-    "vehicle.truck": "car",
-    "vehicle.emergency.ambulance": "car",
-    "vehicle.emergency.firetruck": "car",
-    "vehicle.emergency.police.car": "car",
-    "bicycle": "bike",
-    "vehicle.bicycle": "bike",
-    "vehicle.motorcycle": "bike",
-    "vehicle.emergency.police.motorcycle": "bike",
-    "vehicle.emergency.police.bicycle": "bike",
-    "vehicle.personal_mobility": "bike",
     "pedestrian": "ped",
-    "human.pedestrian": "ped",
+    "bicycle": "bike",
     "traffic_cone": "traffic_cone",
     "barrier": "barrier",
     "czone_sign": "czone_sign",
-    "generic_object": "generic_object"
 }
 
 raw_mapping: Dict[str, Dict[Any, Any]] = {
@@ -88,15 +71,19 @@ raw_mapping: Dict[str, Dict[Any, Any]] = {
         2: (0, 0, 250, 0),  # blue
         3: (255, 61, 99, 0),  # red
         4: (0, 0, 0, 0),  # black
-        5: (244, 255, 0, 0),
-        6: (213, 0, 249, 0),
+        5: (244, 255, 0, 0),  # yellow
+        6: (213, 0, 249, 0),  # electric violet
     },
 }
 
 PBVTB_LABELMAPPING = LabelMapping(local2id=raw_mapping['local2id'])
 
 local2agent_type = {
+    "generic_object": "GENERIC_OBJECT",
     "car": "VEHICLE",
-    "bike": "BICYCLE",
     "ped": "PEDESTRIAN",
+    "bike": "BICYCLE",
+    "traffic_cone": "TRAFFIC_CONE",
+    "barrier": "BARRIER",
+    "czone_sign": "CZONE_SIGN",
 }

@@ -1,7 +1,7 @@
 _target_: nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.NuPlanScenarioBuilder
 _convert_: 'all'
 
-version: nuplan_v0.3.0
+version: nuplan_v0.1
 data_root: ${oc.env:NUPLAN_DATA_ROOT}
 
 defaults:

@@ -13,7 +13,7 @@ from pyinstrument import Profiler
 logger = logging.getLogger(__name__)
 
 
-db = NuPlanDB('nuplan_v0.3.0_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
+db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
 
 scenario = NuPlanScenario(
     db=db,

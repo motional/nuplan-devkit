@@ -33,7 +33,7 @@ class NuPlanDB(DB):
     def __init__(self,
                  version: str,
                  data_root: str,
-                 map_version: str = 'nuplan-maps-v0.2',
+                 map_version: str = 'nuplan-maps-v0.1',
                  map_root: Optional[str] = None,
                  verbose: bool = False):
         """

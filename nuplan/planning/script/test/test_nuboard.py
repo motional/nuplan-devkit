@@ -84,8 +84,9 @@ class TestNuBoard(unittest.TestCase):
             simulation_main(cfg)
 
         results_dir = list(list(Path(self.tmp_dir.name).iterdir())[0].iterdir())[0]  # get the child dir 2 levels in
-        simulation_dir = results_dir / 'simulation/SimplePlanner/unknown/65e561014c6f52cbac57cb1c7d871d7a'
-        scene_files = list(simulation_dir.iterdir())
+        simulation_dir = results_dir / 'simulation/SimplePlanner/unknown'
+        scenario_dir = list(simulation_dir.iterdir())[0]
+        scene_files = list(scenario_dir.iterdir())
         nuboard_file = [file for file in results_dir.iterdir() if file.is_file() and file.suffix == '.nuboard'][0]
         self.assertEqual(len(scene_files), 1)
         self.assertTrue(scene_files[0].is_file())

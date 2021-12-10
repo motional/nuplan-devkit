@@ -11,7 +11,7 @@ from nuplan.maps.test_utils import add_map_objects_to_scene
 from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
 map_factory = NuPlanMapFactory(
-    GPKGMapsDB('nuplan-maps-v0.2', map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"), 'maps')))
+    GPKGMapsDB('nuplan-maps-v0.1', map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"), 'maps')))
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
@@ -24,7 +24,6 @@ def test_is_in_layer_lane(scene: Dict[str, Any]) -> None:
     for marker in scene["markers"]:
         pose = marker["pose"]
         assert nuplan_map.is_in_layer(Point2D(pose[0], pose[1]), SemanticMapLayer.LANE)
-        assert nuplan_map.is_in_layer(Point2D(pose[0], pose[1]), SemanticMapLayer.DRIVABLE_AREA)
 
 
 @nuplan_test(path='json/baseline/baseline_in_intersection.json')
@@ -37,7 +36,6 @@ def test_is_in_layer_intersection(scene: Dict[str, Any]) -> None:
     for marker in scene["markers"]:
         pose = marker["pose"]
         assert nuplan_map.is_in_layer(Point2D(pose[0], pose[1]), SemanticMapLayer.INTERSECTION)
-        assert nuplan_map.is_in_layer(Point2D(pose[0], pose[1]), SemanticMapLayer.DRIVABLE_AREA)
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
@@ -167,25 +165,6 @@ def test_get_proximal_map_objects(scene: Dict[str, Any]) -> None:
 
     for layer, map_objects in map_objects.items():
         add_map_objects_to_scene(scene, map_objects, layer)
-
-
-@nuplan_test()
-def test_get_raster_map() -> None:
-    """
-    Test get_raster_map.
-    """
-    nuplan_map = map_factory.build_map_from_name("us-nv-las-vegas-strip")
-
-    layers = [
-        SemanticMapLayer.DRIVABLE_AREA
-    ]
-
-    raster_map = nuplan_map.get_raster_map(layers)
-
-    assert len(raster_map.layers) == len(layers)
-
-    with pytest.raises(ValueError):
-        nuplan_map.get_raster_map([SemanticMapLayer.YIELD])
 
 
 @nuplan_test()

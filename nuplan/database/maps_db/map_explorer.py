@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cv2
@@ -37,9 +38,15 @@ class NuPlanMapExplorer:
                                   ped_crossings='#fb9a99',
                                   walkways='#e31a1c',
                                   carpark_areas='#ff7f00',
-                                  traffic_lights='#703642',
-                                  traffic_light_bulbs='#703642',
-                                  boundary_segments='#cab2d6')
+                                  traffic_lights='#7e772e',
+                                  intersections='#703642',
+                                  lane_group_connectors='#cab2d6',
+                                  stop_polygons='#800080',
+                                  speed_bumps='#DC7633',
+                                  lane_connectors='#6a3d9a',
+                                  lane_groups_polygons='#85929E',
+                                  boundaries='#839192',
+                                  crosswalks='#F6DDCC')
         else:
             self.color_map = color_map
 
@@ -98,32 +105,34 @@ class NuPlanMapExplorer:
         fig = plt.figure()
         ax = fig.add_axes([0, 0, 1, 1 / self.map_api.get_map_aspect_ratio()])
 
-        xmin, ymin = float('inf'), float('inf')
-        xmax, ymax = float('-inf'), float('-inf')
-        for layer_name in layer_names:
-            if tokens is None:
-                bounds = self.map_api.get_bounds(layer_name)
-            else:
-                bounds = self.map_api.get_bounds(layer_name, tokens[layer_name])
-            xmin = min(xmin, bounds[0])
-            ymin = min(ymin, bounds[1])
-            xmax = max(xmax, bounds[2])
-            ymax = max(ymax, bounds[3])
+        with warnings.catch_warnings():
+            # Suppress ShapelyDeprecationWarning.
+            warnings.filterwarnings("ignore")
 
-        width = xmax - xmin
-        height = ymax - ymin
-        ax.set_xlim(xmin - width / 2.0, xmax + width / 2.0)
-        ax.set_ylim(ymin - height / 2.0, ymax + height / 2.0)
+            xmin, ymin = float('inf'), float('inf')
+            xmax, ymax = float('-inf'), float('-inf')
+            for layer_name in layer_names:
+                if tokens is None:
+                    bounds = self.map_api.get_bounds(layer_name)
+                else:
+                    bounds = self.map_api.get_bounds(layer_name, tokens[layer_name])
+                xmin = min(xmin, bounds[0])
+                ymin = min(ymin, bounds[1])
+                xmax = max(xmax, bounds[2])
+                ymax = max(ymax, bounds[3])
 
-        layer_names = list(set(layer_names))
-        for layer_name in layer_names:
-            if tokens is None:
-                self._render_layer(ax, layer_name, alpha)
-            else:
-                self._render_layer(ax, layer_name, alpha, tokens[layer_name])
-        ax.legend()
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
 
-        return fig, ax
+            layer_names = list(set(layer_names))
+            for layer_name in layer_names:
+                if tokens is None:
+                    self._render_layer(ax, layer_name, alpha)
+                else:
+                    self._render_layer(ax, layer_name, alpha, tokens[layer_name])
+            ax.legend()
+
+            return fig, ax
 
     def _render_layer(self, ax: Axes, layer_name: str, alpha: float, tokens: Optional[List[str]] = None) -> None:
         """
@@ -173,8 +182,8 @@ class NuPlanMapExplorer:
                 first_time = False
             else:
                 label = None  # type: ignore
-            ax.add_patch(descartes.PolygonPatch(polygons, fc=self.color_map[layer_name], alpha=alpha,
-                                                label=label))
+            ax.add_patch(descartes.PolygonPatch(polygons, fc=self.color_map[layer_name], ec=self.color_map[layer_name],
+                                                alpha=alpha, label=label))
 
     def _render_line_layer(self, ax: Axes, layer_name: str, alpha: float, tokens: Optional[List[str]] = None) -> None:
         """
@@ -208,8 +217,7 @@ class NuPlanMapExplorer:
             xs, ys = line.xy
             if layer_name in self.map_api.vector_point_layers:
                 # Draws an circle at the position of physical traffic light.
-                ax.add_patch(Circle((xs[0], ys[0]), color=self.color_map[layer_name],
-                                    label=label))
+                ax.add_patch(Circle((xs[0], ys[0]), color=self.color_map[layer_name], label=label))
             else:
                 ax.plot(xs, ys, color=self.color_map[layer_name], alpha=alpha, label=label)
 
@@ -460,11 +468,11 @@ class NuPlanMapExplorer:
         """
         if lines.geom_type == 'MultiLineString':
             for line in lines:
-                coords = np.asarray(list(line.coords), np.int32)
+                coords = np.array(line.coords, np.int32)
                 coords = coords.reshape((-1, 2))
                 cv2.polylines(mask, [coords], False, 1, 2)
         else:
-            coords = np.asarray(list(lines.coords), np.int32)
+            coords = np.array(lines.coords, np.int32)
             coords = coords.reshape((-1, 2))
             cv2.polylines(mask, [coords], False, 1, 2)
 
@@ -489,8 +497,8 @@ class NuPlanMapExplorer:
             """
             return np.array(x).round().astype(np.int32)
 
-        exteriors = [int_coords(poly.exterior.coords) for poly in polygons]
-        interiors = [int_coords(pi.coords) for poly in polygons for pi in poly.interiors]
+        exteriors = [int_coords(poly.exterior.coords) for poly in polygons.geoms]
+        interiors = [int_coords(pi.coords) for poly in polygons.geoms for pi in poly.interiors]
         cv2.fillPoly(mask, exteriors, 1)
         cv2.fillPoly(mask, interiors, 0)
 

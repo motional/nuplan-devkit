@@ -13,6 +13,10 @@ class AgentType(Enum):
     VEHICLE = 'vehicle'
     PEDESTRIAN = 'pedestrian'
     BICYCLE = 'bicycle'
+    GENERIC_OBJECT = 'generic_object'
+    TRAFFIC_CONE = 'traffic_cone'
+    BARRIER = 'barrier'
+    CZONE_SIGN = 'czone_sign'
     EGO = 'ego'
 
     @classmethod

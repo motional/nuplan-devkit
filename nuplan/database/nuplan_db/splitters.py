@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import DefaultDict, Dict, List, Optional, Set, Union
 
 from cachetools import LRUCache, cached
+
 from nuplan.database.common.db import DBSplitterInterface
 from nuplan.database.nuplan_db.log_splits import nuplan_36logs_log_splits
 from nuplan.database.nuplan_db.models import Log, Sample  # type: ignore
@@ -15,7 +16,7 @@ def _get_logs(db: NuPlanDB, split2log: Dict[str, List[str]], split_name: str) ->
     For all the given split `split_name`, convert its corresponding log names into Log objects.
     :param db: NuPlanDB.
     :param split2log: Mapping from a split name to its corresponding data. The data is given as a list of log names
-        (example of log name: '2021.05.12.23.36.44-veh-2035').
+        (example of log name: '2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5').
     :param split_name: The split in which we want to get the Log objects. (example of split_name: "val").
     :return: List of logs.
     """

@@ -202,7 +202,7 @@ class Table(Sequence[T]):
         given filters, use select_many for searching multiple records.
             cat = nuplandb.category.select_one(name='vehicle')
         :param filters: Query using keyword expression. For example, query log by log file name:
-            log = nuplandb.log.select_one(logfile='2021.05.12.23.36.44-veh-2035')
+            log = nuplandb.log.select_one(logfile='2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5')
         :return: Record object matching the given filters.
         """
         record: Optional[T] = self._session.query(self._table).filter_by(**filters).one_or_none()
@@ -213,7 +213,7 @@ class Table(Sequence[T]):
         Query table using filters.
             boston_logs = nuplandb.log.select_many(location='boston').
         :param filters: Query using keyword expression. For example, query log by vehicle:
-            logs = nuplandb.log.select_many(vehicle_name='veh-2035')
+            logs = nuplandb.log.select_many(vehicle_name='35')
         :return: A list of records mathing the given filters.
         """
         return self._session.query(self._table).filter_by(**filters).all()  # type: ignore

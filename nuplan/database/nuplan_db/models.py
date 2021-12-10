@@ -127,14 +127,6 @@ class Log(Base):  # type: ignore
     lidars = relationship("Lidar", foreign_keys="Lidar.log_token", back_populates="log")  # type: List[Lidar]
     scenes = relationship("Scene", foreign_keys="Scene.log_token", back_populates="log")  # type: List[Scene]
 
-    @property
-    def drivable_area(self) -> MapLayer:
-        """
-        Get drivable area.
-        :return: The drivable area.
-        """
-        return self.map_layer(layer='drivable_area')
-
     def map_layer(self, layer: str) -> MapLayer:
         """
         Get map layer by name.

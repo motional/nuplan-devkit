@@ -75,7 +75,7 @@ class TestMlPlanner(unittest.TestCase):
 
     def setUp(self) -> None:
         # Extract a scenario
-        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.3.0_mini", data_root="/data/sets/nuplan")
+        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.1_mini", data_root="/data/sets/nuplan")
         self.scenario = _create_scenario(db=self.scenario_builder._db,
                                          scenario_tuple=("unknown", self.scenario_builder._db.lidar_pc[10000].token),
                                          scenario_mapping=ScenarioMapping({}),

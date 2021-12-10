@@ -28,3 +28,14 @@ py_test(
         "//nuplan/database/maps_db:map_explorer",
     ],
 )
+
+py_test(
+    name = "test_map_explorer",
+    size = "small",
+    srcs = ["test_map_explorer.py"],
+    deps = [
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/maps_db:map_api",
+        "//nuplan/database/maps_db:map_explorer",
+    ],
+)

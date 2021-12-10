@@ -14,7 +14,7 @@ class TestRasterUtils(unittest.TestCase):
         Initializes DB
         """
         self.scenario_builder = NuPlanScenarioBuilder(
-            version='nuplan_v0.3.0_mini',
+            version='nuplan_v0.1_mini',
             data_root='/data/sets/nuplan')
 
         scenario_filter = ScenarioFilters(

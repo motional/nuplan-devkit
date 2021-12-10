@@ -24,6 +24,9 @@ from nuplan.database.maps_db.metadata import MapLayerMeta
 
 logger = logging.getLogger(__name__)
 
+# To silence NotGeoreferencedWarning
+warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
+
 
 class GPKGMapsDBException(Exception):
     def __init__(self, message: str) -> None:
@@ -49,6 +52,11 @@ class GPKGMapsDB(IMapsDB):
         self._blob_store = BlobStoreCreator.create_mapsdb(map_root=self._map_root)
         version_file = self._blob_store.get(f"{self._map_version}.json")
         self._metadata = json.load(version_file)
+        # The dimensions of the maps are hard-coded for the 4 locations.
+        self.maps_dimension = {'sg-one-north': (21070, 28060),
+                               'us-ma-boston': (20380, 28730),
+                               'us-nv-las-vegas-strip': (69820, 30120),
+                               'us-pa-pittsburgh-hazelwood': (22760, 23090)}
 
     # Metadata accessors ######################################################
 
@@ -74,8 +82,11 @@ class GPKGMapsDB(IMapsDB):
         :param location: Name of map location, e.g. "sg-one-north". See `self.get_locations()`.
         :param layer_name: Name of layer, e.g. `drivable_area`. Use self.layer_names(location) for complete list.
         """
-
-        return self._metadata[location]["layers"][layer_name]["shape"]  # type: ignore
+        if layer_name == 'intensity':
+            return self._metadata[location]["layers"][layer_name]["shape"]  # type: ignore
+        else:
+            # The dimensions of other map layers are using the hard-coded values.
+            return list(self.maps_dimension[location])
 
     def _get_transform_matrix(self, location: str, layer_name: str) -> npt.NDArray[np.float64]:
         """

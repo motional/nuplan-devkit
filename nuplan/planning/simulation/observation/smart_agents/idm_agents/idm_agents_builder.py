@@ -114,8 +114,10 @@ def build_idm_agents_on_map_rails(target_velocity: float,
             # Project velocity into local frame
             if np.isnan(agent_box.velocity).any():
                 ego_state = scenario.get_ego_state_at_iteration(0)
-                logger.debug(f"Agents has nan velocity. Setting velocity to ego's velocity of {ego_state.velocity}")
-                agent_box.velocity = np.array([ego_state.velocity, 0.0, 0.0])
+                logger.debug(
+                    f"Agents has nan velocity. Setting velocity to ego's velocity of "
+                    f"{ego_state.dynamic_car_state.speed}")
+                agent_box.velocity = np.array([ego_state.dynamic_car_state.speed, 0.0, 0.0])
             else:
                 agent_box.velocity = (np.hypot(agent_box.velocity[0], agent_box.velocity[1]), 0, 0)
 

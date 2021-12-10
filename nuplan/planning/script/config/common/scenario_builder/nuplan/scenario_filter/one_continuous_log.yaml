@@ -3,8 +3,8 @@ _convert_: 'all'
 
 # Scenarios
 log_names:                                     # List of logs from which scenarios should be included
-  - 2021.05.12.19.36.12_g1p-veh-2035
-log_labels: null                               # Labels used to filter logs
+  - 2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5
+log_labels: [machine_labeled]                  # Labels used to filter logs
 max_scenarios_per_log: null                    # Maximum number of scenarios extracted per log
 scenario_types: null                           # A list of scenario types to be used
 scenario_tokens: null                          # A list of scenario tokens to be used
