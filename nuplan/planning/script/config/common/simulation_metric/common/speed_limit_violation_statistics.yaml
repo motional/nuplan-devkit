@@ -1,0 +1,5 @@
+time_gap_to_rear_agent:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.speed_limit_violation.SpeedLimitViolationStatistics
+  _convert_: 'all'
+  name: 'speed_limit_violation_statistics'
+  category: 'Violations'

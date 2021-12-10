@@ -1,0 +1,3 @@
+_target_: nuplan.planning.simulation.planner.log_future.LogFuturePlanner
+_convert_: 'all'
+number_of_next_samples: 10

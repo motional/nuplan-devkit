@@ -1,0 +1,2 @@
+_target_: nuplan.planning.utils.multithreading.worker_parallel.SingleMachineParallelExecutor
+_convert_: 'all'

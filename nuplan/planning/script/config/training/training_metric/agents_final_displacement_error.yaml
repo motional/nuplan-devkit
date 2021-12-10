@@ -1,0 +1,3 @@
+agents_final_displacement_error:
+  _target_: nuplan.planning.training.modeling.metrics.agents_imitation_metrics.AgentsFinalDisplacementError
+  _convert_: 'all'

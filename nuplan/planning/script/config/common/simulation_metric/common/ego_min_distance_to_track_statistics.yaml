@@ -1,0 +1,5 @@
+ego_min_distance_to_track_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_min_distance_to_track.EgoMinDistanceToTrackStatistics
+  _convert_: 'all'
+  name: 'ego_min_distance_to_track_statistics'
+  category: 'Dynamics'

@@ -1,0 +1,3 @@
+final_heading_error:
+  _target_: nuplan.planning.training.modeling.metrics.planning_metrics.FinalHeadingError
+  _convert_: 'all'

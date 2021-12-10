@@ -1,0 +1,19 @@
+build --remote_cache=http://bazel-cache.ci.motional.com:80
+build --remote_upload_local_results=false
+
+test --test_output=errors
+test --test_timeout=2400
+test --test_output=all
+test --test_env=WORKSPACE
+test --test_env=CACHE=/tmp/pyxbld
+test --test_env=PYTHONPATH
+test --test_env=AWS_ACCESS_KEY_ID
+test --test_env=AWS_SECRET_ACCESS_KEY
+
+test --test_env=NUPLAN_DATA_ROOT
+test --test_env=NUPLAN_EXP_ROOT
+test --test_env=NUPLAN_DATA_STORE
+test --test_env=NUPLAN_S3_PROFILE
+test --test_env=NUPLAN_S3_ROOT_URL
+test --test_env=NUPLAN_MAPS_S3_ROOT_URL
+test --test_env=NUPLAN_HYDRA_CONFIG_PATH

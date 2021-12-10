@@ -1,0 +1,15 @@
+# @package _global_
+experiment_name: training_vector_model
+py_func: train
+
+defaults:
+  - override /objective:
+      - imitation_objective
+  - override /splitter: nuplan
+  - override /model: vector_model
+  - override /scenario_builder/nuplan/scenario_filter: training_scenarios
+  - override /training_metric:
+      - avg_displacement_error
+      - avg_heading_error
+      - final_displacement_error
+      - final_heading_error

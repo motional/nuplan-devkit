@@ -1,0 +1,8 @@
+# @package _global_
+experiment_name: simulation_challenge_3_closed_loop_nonreactive_agents
+
+defaults:
+  - override /observation: box_observation
+  - override /ego_controller: perfect_tracking_controller
+  - override /planner: simple_planner
+  - override /scenario_builder/nuplan/scenario_filter: one_continuous_log

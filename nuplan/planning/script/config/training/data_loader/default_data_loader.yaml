@@ -1,0 +1,10 @@
+datamodule:
+  train_fraction: 1.0  # [%] fraction of training samples to use
+  val_fraction: 1.0  # [%] fraction of validation samples to use
+  test_fraction: 1.0  # [%] fraction of test samples to use
+
+params:
+  batch_size: 2  # batch size per GPU
+  num_workers: 8  # number of dataloader workers
+  pin_memory: ${gpu}  # allocate dataloader examples in a page-locked memory for faster host-to-device transfer
+  drop_last: true  # drop the last examples if the batch is not complete

@@ -1,0 +1,5 @@
+ego_collisions_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_collisions.EgoCollisionStatistics
+  _convert_: 'all'
+  name: 'ego_collisions_statistics'
+  category: 'Dynamics'
