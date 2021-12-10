@@ -1,0 +1,18 @@
+# Common experiment configs
+
+group: ${oc.env:NUPLAN_EXP_ROOT}/exp              # This is where results, logs, config, etc. are saved
+experiment_name: ???                              # Experiment name.
+
+# Directory structure
+date_format: '%Y.%m.%d.%H.%M.%S'
+experiment_time: ${now:${date_format}}            # Current time of an experiment
+experiment: ${experiment_name}/${experiment_time} # Unique name of the experiment
+output_dir: ${group}/${experiment}                # Output directory to save all training artifacts
+metric_dir: metrics                               # Metric dir name to save metric results.
+log_config: false                                 # Whether to log the final config after all overrides and interpolations
+
+# Execution
+max_number_of_workers: null   # Set null to disable threading for simulation execution
+seed: 0                # Random seed value.
+enable_profiling: false        # Whether to enable profiler which will be dumped to "profiling" folder
+gpu: true

@@ -1,0 +1,44 @@
+_target_: nuplan.planning.training.modeling.models.raster_model.RasterModel
+_convert_: 'all'
+model_name: resnet50  # model name to load from TIMM (e.g. tf_mobilenetv3_small_minimal_100, efficientnet_b3)
+pretrained: true  # whether to use pretrained weights
+num_input_channels : 4 # number of input channel of the raster model.
+
+# Dimension on a state in a trajectory
+num_features_per_pose: 3
+
+# Parameters for predicted trajectory
+future_trajectory_sampling:
+  _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+  _convert_: 'all'
+  num_poses: 12      # number of poses in a trajectory
+  time_horizon: 6.0  # [s] time horizon of all poses
+
+# All feature builders
+feature_builders:
+  - _target_: nuplan.planning.training.preprocessing.feature_builders.raster_feature_builder.RasterFeatureBuilder
+    _convert_: 'all'
+
+    map_features: # name of map features to be drawn and its color for encoding.
+      LANE : 255
+      INTERSECTION : 255
+      STOP_LINE : 128
+      CROSSWALK : 128
+
+    num_input_channels : ${model.num_input_channels} # number of input channel of the raster model.
+
+    target_width: 224  # width of raster passed to the model
+    target_height: 224  # height of raster passed to the model
+    target_pixel_size: 0.5  # [m] pixel size of raster
+
+    ego_width: 2.297  # [m] width of ego vehicle
+    ego_front_length: 4.049  # [m] rear axle to front bumper distance of ego vehicle
+    ego_rear_length: 1.127  # [m] rear axle to rear bumper distance of ego vehicle
+    ego_longitudinal_offset: 0.0  # [%] offset percentage to move the ego vehicle inside the raster
+
+    baseline_path_thickness: 1 # [pixel] the thickness of baseline paths in the baseline_paths_raster.
+
+target_builders:
+  - _target_: nuplan.planning.training.preprocessing.target_builders.ego_trajectory_target_builder.EgoTrajectoryTargetBuilder
+    _convert_: 'all'
+    future_trajectory_sampling: ${model.future_trajectory_sampling}

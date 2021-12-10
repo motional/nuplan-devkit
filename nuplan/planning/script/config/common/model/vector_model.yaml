@@ -1,0 +1,28 @@
+_target_: nuplan.planning.training.modeling.models.lanegcn_model.LaneGCN
+_convert_: 'all'
+
+# Model setup
+map_net_scales: 4
+num_res_blocks: 3
+num_attention_layers: 4
+a2a_dist_threshold: 20.0
+l2a_dist_threshold: 50.0
+num_output_features: 36
+feature_dim: 128
+
+# VectorMapFeatureBuilder
+vector_map_feature_radius: 20    # [m] The query radius scope relative to the current ego-pose.
+
+# Parameters for past trajectory
+past_trajectory_sampling:
+  _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+  _convert_: 'all'
+  num_poses: 4      # target future poses
+  time_horizon: 1.5  # [s] time horizon of future poses
+
+# Parameters for predicted trajectory
+future_trajectory_sampling:
+  _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+  _convert_: 'all'
+  num_poses: 12      # target future poses
+  time_horizon: 6.0  # [s] time horizon of future poses

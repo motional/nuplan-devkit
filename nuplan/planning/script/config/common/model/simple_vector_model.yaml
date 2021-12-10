@@ -1,0 +1,23 @@
+_target_: nuplan.planning.training.modeling.models.simple_vector_map_model.VectorMapSimpleMLP
+_convert_: 'all'
+
+# Model Setup
+hidden_size: 128
+num_output_features: 36
+
+# VectorMapFeatureBuilder
+vector_map_feature_radius: 20    # [m] The query radius scope relative to the current ego-pose.
+
+# Parameters for past trajectory
+past_trajectory_sampling:
+  _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+  _convert_: 'all'
+  num_poses: 4      # target future poses
+  time_horizon: 1.5  # [s] time horizon of future poses
+
+# Parameters for predicted trajectory
+future_trajectory_sampling:
+  _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+  _convert_: 'all'
+  num_poses: 12      # target future poses
+  time_horizon: 6.0  # [s] time horizon of future poses

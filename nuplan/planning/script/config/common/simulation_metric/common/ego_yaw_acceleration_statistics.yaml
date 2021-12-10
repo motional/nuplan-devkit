@@ -1,0 +1,5 @@
+ego_yaw_acceleration_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_yaw_acceleration.EgoYawAccelerationStatistics
+  _convert_: 'all'
+  name: 'ego_yaw_acceleration_statistics'
+  category: 'Dynamics'

@@ -1,0 +1,7 @@
+ego_stop_at_stop_line_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.scenario_dependent.ego_stop_at_stop_line.EgoStopAtStopLineStatistics
+  _convert_: 'all'
+  name: 'ego_stop_at_stop_line_statistics'
+  category: 'Scenario dependent'
+  distance_threshold: 5.0   # m
+  velocity_threshold: 0.1   # m/s^2

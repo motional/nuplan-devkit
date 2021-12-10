@@ -1,0 +1,53 @@
+{
+    "camera": {
+        "bearing": 0.5170000000000017,
+        "lookat": [
+            664400.8257764026,
+            3999296.479685711,
+            3.0241221527768505
+        ],
+        "pitch": 5.400000000000003,
+        "scale": 1252246.0380856364
+    },
+    "ego": {
+        "acceleration": 0.0,
+        "pose": [
+            664397.2090025875,
+            3999331.8831242165,
+            -1.5096381168474242
+        ],
+        "speed": 0.0
+    },
+    "map": {
+        "area": "us-nv-las-vegas-strip"
+    },
+    "markers": [
+        {
+            "id": 0,
+            "name": "",
+            "pose": [
+                664402.2621412177,
+                3999303.0156090353,
+                0.0
+            ],
+            "shape": "circle"
+        }
+    ],
+    "meta": {
+        "version": "3.0.0"
+    },
+
+    "path_info": [],
+    "world": {
+        "bicycles": [],
+        "pedestrians": [],
+        "vehicles": []
+    },
+    "xtr": {
+        "expected_num_lanes": 19,
+        "expected_num_lane_connectors": 16,
+        "expected_num_stop_lines": 4,
+        "expected_num_cross_walks": 1,
+        "expected_num_intersections": 3
+    }
+}

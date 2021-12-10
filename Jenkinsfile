@@ -7,9 +7,9 @@ if (env.BRANCH_NAME != null && ! env.BRANCH_NAME.matches("^(master).*")) {
 pipeline{
   agent {
     kubernetes(
-      jnlp.builder(
+      jnlp.nuplan_devkit(
         name: 'nuplan-devkit-tests',
-        builder_image: "233885420847.dkr.ecr.us-east-1.amazonaws.com/nuplan-devkit:v1.0.1",
+        tag: "v1.0.2",
         cpu: 1, maxcpu: 2,
         memory: "1G", maxmemory: "5G"))
   }

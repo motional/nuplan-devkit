@@ -1,0 +1,5 @@
+agents_imitation_objective:
+  _target_: nuplan.planning.training.modeling.objectives.agents_imitation_objective.AgentsImitationObjective
+  _convert_: 'all'
+
+  weight: 1.0                  # weight contribution to the overall loss

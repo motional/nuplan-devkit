@@ -1,0 +1,48 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "mock_abstract_scenario",
+    srcs = ["mock_abstract_scenario.py"],
+    deps = [
+        "//nuplan/actor_state:ego_state",
+        "//nuplan/actor_state:state_representation",
+        "//nuplan/actor_state:tracked_objects",
+        "//nuplan/actor_state/test:test_utils",
+        "//nuplan/database/utils/boxes:box3d",
+        "//nuplan/maps:abstract_map",
+        "//nuplan/maps:abstract_map_factory",
+        "//nuplan/maps:abstract_map_objects",
+        "//nuplan/maps:maps_datatypes",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/scenario_builder:scenario_utils",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
+        "//nuplan/planning/simulation/history:simulation_history_buffer",
+        "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/planner:simple_planner",
+        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
+    ],
+)
+
+py_library(
+    name = "mock_abstract_scenario_builder",
+    srcs = ["mock_abstract_scenario_builder.py"],
+    deps = [
+        "//nuplan/maps:abstract_map",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/scenario_builder:abstract_scenario_builder",
+        "//nuplan/planning/scenario_builder:scenario_filter",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
+        "//nuplan/planning/utils/multithreading:worker_pool",
+    ],
+)
+
+py_test(
+    name = "test_scenario_utils",
+    size = "medium",
+    srcs = ["test_scenario_utils.py"],
+    deps = [
+        "//nuplan/planning/scenario_builder:scenario_utils",
+    ],
+)

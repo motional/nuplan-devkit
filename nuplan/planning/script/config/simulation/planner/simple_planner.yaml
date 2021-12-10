@@ -1,0 +1,6 @@
+_target_: nuplan.planning.simulation.planner.simple_planner.SimplePlanner
+_convert_: 'all'
+horizon_seconds: 10.0
+sampling_time: 0.25
+acceleration: [0.0, 0.0] # x (longitudinal), y (lateral)
+max_velocity: 5.0

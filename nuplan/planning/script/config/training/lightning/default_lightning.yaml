@@ -1,0 +1,56 @@
+hparams: # passed directly to the lightning module
+  learning_rate: ${lightning.optimization.optimizer.learning_rate}  # learning rate of the optimizer
+  batch_size: ${data_loader.params.batch_size}  # batch size per GPU (not total)
+optimization:
+  optimizer:
+    learning_rate: 1e-5  # learning rate of the optimizer
+
+trainer:
+  checkpoint:
+    save_top_k: 1  # save the top K models in terms of performance
+    monitor: loss/val_loss  # metric to monitor for performance
+    mode: min  # minimize/maximize metric
+
+  params:
+    max_time: 00:16:00:00  # training time before the process is terminated
+
+    max_epochs: 20  # maximum number of training epochs
+    check_val_every_n_epoch: 1  # run validation set every n training epochs
+    val_check_interval: 1.0  # [%] run validation set every X% of training set
+
+    limit_train_batches: 1.0  # how much of training dataset to check (float = fraction, int = num_batches)
+    limit_val_batches: 1.0  # how much of validation dataset to check (float = fraction, int = num_batches)
+    limit_test_batches: 1.0  # how much of test dataset to check (float = fraction, int = num_batches)
+
+    gpus: -1  # number of GPUs to utilize (-1 means all available GPUs)
+    accelerator: ddp  # distribution method
+    precision: 16  # floating point precision
+    amp_level: O2  # AMP optimization level
+
+    auto_scale_batch_size: false
+    auto_lr_find: false  # tunes LR before beginning training
+    terminate_on_nan: true  # terminates training if a nan is encountered in loss/weights
+
+    num_sanity_val_steps: 0  # number of validation steps to run before training begins
+    fast_dev_run: false  # runs 1 batch of train/val/test for sanity
+
+    accumulate_grad_batches: 1  # accumulates gradients every n batches
+    track_grad_norm: -1  # logs the p-norm for inspection
+    gradient_clip_val: 0.0  # value to clip gradients
+    gradient_clip_algorithm: norm  # [value, norm] method to clip gradients
+
+    checkpoint_callback: true  # enable default checkpoint
+
+  overfitting:
+    enable: false  # run an overfitting test instead of training
+
+    params:
+      max_epochs: 150  # number of epochs to overfit the same batches
+      overfit_batches: 1  # number of batches to overfit
+
+callbacks:
+  raster_visualization:
+    images_per_tile: 8  # number of images per row
+    num_train_tiles: 5  # number of rows of training images
+    num_val_tiles: 5  # number of rows of validation images
+    pixel_size: 0.5  # [m] pixel size of raster
