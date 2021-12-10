@@ -10,8 +10,24 @@ pipeline{
       jnlp.nuplan_devkit(
         name: 'nuplan-devkit-tests',
         tag: "v1.0.2",
-        cpu: 1, maxcpu: 2,
-        memory: "1G", maxmemory: "5G"))
+        cpu: 8, maxcpu: 8,
+        memory: "32G", maxmemory: "64G", yaml: """spec:
+  containers:
+  - name: builder
+    volumeMounts:
+      - mountPath: /data
+        name: nudeep-ci
+        subPath: data
+      - mountPath: /dev/shm
+        name: dshm
+  volumes:
+  - name: nudeep-ci
+    persistentVolumeClaim:
+      claimName: nudeep-ci
+  - name: dshm
+    emptyDir:
+      medium: Memory
+"""))
   }
 
   options {
@@ -20,11 +36,12 @@ pipeline{
   }
 
   environment {
-    BAZEL_CMD = "bazel --batch"
-    BAZEL_OPTS = "--remote_upload_local_results=true"
+    BAZEL_CMD        = "bazel --batch"
+    BAZEL_OPTS       = "--local_cpu_resources=8 --jobs=8 --remote_cache=http://bazel-cache.ci.motional.com:80 --remote_upload_local_results=true"
+    NUPLAN_DATA_ROOT = "/data/sets/nuplan"
   }
 
-  stages{
+  stages {
     stage('Build') {
       steps {
         container('builder') {
@@ -36,12 +53,24 @@ pipeline{
         }
       }
     }
-    stage('Test') {
+    stage('Requirements') {
       steps {
         container('builder') {
           sh """#!/bin/bash -eu
+            pip3 install -r requirements.txt \
+              --index-url=${env.PIP_INDEX_URL_INTERNAL}
+          """
+        }
+      }
+    }
+    stage('Test') {
+      steps {
+        container('builder') {
+          sh """#!/bin/bash -eux
             ${env.BAZEL_CMD} test \
               ${env.BAZEL_OPTS} \
+              --action_env=REQUIREMENTS_SHA="\$(sha256sum requirements.txt)" \
+              --test_tag_filters=-gpu \
               //...
           """
         }
@@ -55,12 +84,7 @@ pipeline{
               env
               rm -rf bazel-* # remove tree with symlinks, as it may cause sonar-scanner to slow down ot stuck
             """
-            env.TESTS = sh (
-              script: "find . -name 'tests' -not -path './.bazel/*' -type d -printf %p,",
-              returnStdout: true
-            ).trim()
             sonarQube.scanner('builder', """ \
-              -Dsonar.tests=${env.TESTS} \
             """, true)
           }
         }
