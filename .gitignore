@@ -12,7 +12,6 @@ _ext
 *.gz
 .idea
 .ijwb
-*ipynb
 *ipynb_*
 .isort.cfg
 *.jpg

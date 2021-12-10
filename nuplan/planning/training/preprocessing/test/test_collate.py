@@ -1,11 +1,9 @@
 import unittest
 
 import torch
-
 from nuplan.planning.training.modeling.types import FeaturesType
 from nuplan.planning.training.preprocessing.feature_collate import FeatureCollate
 from nuplan.planning.training.preprocessing.features.raster import Raster
-from nuplan_internal.training.preprocessing.features.scenario_feature import ScenarioFeature
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 from nuplan.planning.training.preprocessing.test.dummy_vectormap_builder import DummyVectorMapFeature
 
@@ -44,7 +42,6 @@ class TestCollate(unittest.TestCase):
         single_feature1: FeaturesType = {
             "Trajectory": Trajectory(data=torch.zeros((12, 3))),
             "Raster": Raster(data=torch.zeros((244, 244, 3))),
-            "ScenarioFeature": ScenarioFeature(data=torch.zeros((10, 10, 8))),
             "DummyVectorMapFeature": DummyVectorMapFeature(data1=[torch.zeros((13, 3))], data2=[torch.zeros((13, 3))],
                                                            data3=[{"test": torch.zeros((13, 3))}]),
         }
@@ -56,7 +53,6 @@ class TestCollate(unittest.TestCase):
         single_feature2: FeaturesType = {
             "Trajectory": Trajectory(data=torch.zeros((12, 3))),
             "Raster": Raster(data=torch.zeros((244, 244, 3))),
-            "ScenarioFeature": ScenarioFeature(data=torch.zeros((10, 10, 8))),
             "DummyVectorMapFeature": DummyVectorMapFeature(data1=[torch.zeros((13, 3))], data2=[torch.zeros((13, 3))],
                                                            data3=[{"test": torch.zeros((13, 3))}]),
         }
@@ -68,7 +64,6 @@ class TestCollate(unittest.TestCase):
         single_feature3: FeaturesType = {
             "Trajectory": Trajectory(data=torch.zeros((12, 3))),
             "Raster": Raster(data=torch.zeros((244, 244, 3))),
-            "ScenarioFeature": ScenarioFeature(data=torch.zeros((10, 10, 8))),
             "DummyVectorMapFeature": DummyVectorMapFeature(data1=[torch.zeros((13, 3))], data2=[torch.zeros((13, 3))],
                                                            data3=[{"test": torch.zeros((13, 3))}]),
         }
@@ -85,7 +80,6 @@ class TestCollate(unittest.TestCase):
 
         self.assertEqual(features["Trajectory"].data.shape, (3, 12, 3))
         self.assertEqual(features["Raster"].data.shape, (3, 244, 244, 3))
-        self.assertEqual(features["ScenarioFeature"].data.shape, (3, 10, 10, 8))
         self.assertEqual(features["DummyVectorMapFeature"].num_of_batches, 3)
         self.assertEqual(targets["Trajectory"].data.shape, (3, 12, 3))
 

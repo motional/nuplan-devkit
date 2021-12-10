@@ -1,7 +1,5 @@
 {
  "timestamp_us": 1620858579551087,
- "scene_token": "3c1d6a70bf3757ea8f75469b17141795",
- "log_name": "2021.05.12.22.28.35_g1p-veh-2035",
  "goal": {
   "acceleration": 0.0,
   "pose": [

@@ -1,8 +1,6 @@
 # Advanced Installation
 We provide step-by-step instructions to install the nuPlan devkit. 
 For a high-level overview, please read the [general readme](https://github.com/motional/nuplan-devkit/blob/master/README.md) first.
-If you just want to install the PIP package, you may skip all steps until **Option A** below.
-The rest of this document describes how to use the source code directly.
 
 - [Download](#download-the-devkit)
 - [Install Python](#install-python)
@@ -60,6 +58,8 @@ conda deactivate
 -----
 ## Install the devkit
 ### Option A: Install PIP package from remote
+**Note:** This option is not yet supported. It will be added soon.
+
 **For beginners**, the easiest option is to install the PIP package:
 ```
 pip install nuplan-devkit

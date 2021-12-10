@@ -14,11 +14,11 @@ class TestRemoveInvalidGoalsFilter(unittest.TestCase):
         Tests that invalid mission goals are correctly filtered out during the database creation.
         """
         scenario_builder = NuPlanScenarioBuilder(
-            version="nuplan_v0.3.0_mini",
+            version="nuplan_v0.1_mini",
             data_root=os.getenv('NUPLAN_DATA_ROOT'))
 
         filter_with_invalid_goals_args = {
-            'log_names': ["2021.05.12.19.36.12_g1p-veh-2035"],
+            'log_names': ["2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5"],
             'log_labels': None,
             'max_scenarios_per_log': 50,
             'scenario_types': None,

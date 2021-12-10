@@ -65,7 +65,7 @@ def run_planner_through_scenarios(simulations: List[Simulation],
 
     # Start simulations
     number_of_sims = len(simulations)
-    logger.info(f"Starting {number_of_sims} simulations with using {worker.__class__.__name__}!")
+    logger.info(f"Starting {number_of_sims} simulations using {worker.__class__.__name__}!")
     results: List[SimulationReport] = worker.map(Task(fn=run_simulation, num_gpus=num_gpus, num_cpus=num_cpus),
                                                  simulations, exit_on_failure)
 

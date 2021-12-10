@@ -4,10 +4,9 @@ import logging
 import math
 import random
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Type
 
-from cachetools import LRUCache, cached
-from cachetools.keys import hashkey
 from nuplan.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.database.nuplan_db.models import ScenarioTag
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
@@ -91,7 +90,7 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         """
         return self.__class__, (self._db.version, self._db.data_root, self._scenario_mapping, self._vehicle_parameters)
 
-    @cached(LRUCache(maxsize=8), key=lambda map_name: hashkey(map_name))  # type: ignore
+    @lru_cache(maxsize=8)  # type: ignore
     def get_map_api(self, map_name: str) -> AbstractMap:
         """ Inherited. See superclass. """
         return NuPlanMapFactory(self._db.maps_db).build_map_from_name(map_name)

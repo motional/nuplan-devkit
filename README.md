@@ -29,7 +29,7 @@ Below is a list of upcoming features for the full release:
 - The teaser dataset includes 200h of data from Las Vegas, we will be releasing the full 1500h dataset that also includes data from Singapore, Boston or Pittsburgh in early 2022.
 - The full release will also include the sensor data for 150h (10% of the total dataset).
 - Localization, perception scenario tags and traffic lights will be improved in future releases.
-- Improved dashboard, closed-loop training, advanced planning baselines, end-to-end planners, ML smart agents, RL environment, as well as more metrics and scenarios
+- The full release will have an improved dashboard, closed-loop training, advanced planning baselines, end-to-end planners, ML smart agents, RL environment, as well as more metrics and scenarios.
 
 ## Devkit structure
 Our code is organized in these directories:
@@ -37,17 +37,14 @@ Our code is organized in these directories:
 ci            - Continuous integration code. Not relevant for average users.
 docs          - Readmes and other documentation of the repo and dataset.
 nuplan        - The main source folder.
+    common    - Code shared by `database` and `planning`.
     database  - The core devkit used to load and render nuPlan dataset and maps.
     planning  - The stand-alone planning framework for simulation, training and evaluation.
-tutorials     - Interactive tutorials, see [Getting started](#getting-started).
+tutorials     - Interactive tutorials, see `Getting started`.
 ```
 
 ## Devkit setup
-The devkit is tested for Python 3.9 on Ubuntu. If you have Python installed, you can install our devkit via PIP:
-```
-pip install nuplan-devkit
-```
-For an advanced installation, see [installation](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) for detailed instructions.
+Please refer to the [installation page](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) for detailed instructions on how to setup the devkit.
 
 ## Dataset setup
 To download nuPlan you need to go to the [Download page](https://nuplan.org/nuplan#download), 
@@ -63,7 +60,7 @@ Eventually you should have the following folder structure:
     <missing>       -   Sensor data will be added in the future
 ~/nuplan/exp        -   The experiment and cache folder. Must have read and write access.
 ```
-If you want to use another folder, specify the `data_root` parameter of the NuPlanDB class (see tutorial).
+If you want to use another folder, you can set the corresponding [environment variable](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) or specify the `data_root` parameter of the NuPlanDB class (see tutorial).
 
 ## Getting started
 Please follow these steps to make yourself familiar with the nuScenes dataset:
