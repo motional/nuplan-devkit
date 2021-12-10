@@ -1,0 +1,18 @@
+defaults:
+  - common:
+      - clearance_from_static_agents_statistics
+      - ego_acceleration_statistics
+      - ego_collisions_statistics
+      - ego_distance_to_goal_statistics
+      - ego_is_comfortable_statistics
+      - ego_jerk_statistics
+      - ego_lat_acceleration_statistics
+      - ego_lat_jerk_statistics
+      - ego_lon_acceleration_statistics
+      - ego_lon_jerk_statistics
+      - ego_min_distance_to_track_statistics
+      - ego_yaw_acceleration_statistics
+      - ego_yaw_rate_statistics
+      - time_to_collision_statistics
+  - ego_in_stop_line:
+      - ego_stop_at_stop_line_statistics

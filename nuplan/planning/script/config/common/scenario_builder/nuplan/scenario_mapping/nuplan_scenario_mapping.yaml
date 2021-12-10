@@ -1,0 +1,20 @@
+_target_: nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils.ScenarioMapping
+_convert_: 'all'
+
+# List of scenarios and their extraction instructions
+scenario_map:
+  # scenario_name: [scenario_duration, extraction_offset]
+  nearby_pedestrian_at_pudo: [20.0, -3.0]
+  nearby_dense_vehicle_traffic: [20.0, -3.0]
+  ego_high_jerk: [20.0, -3.0]
+  ego_high_curvature: [20.0, -3.0]
+  ego_following_vehicle: [20.0, -3.0]
+  ego_lane_change: [20.0, -3.0]
+  ego_accelerating_at_traffic_light: [20.0, -3.0]
+  ego_stopping_at_traffic_light: [20.0, -3.0]
+  ego_starts_left_turn: [20.0, -3.0]
+  ego_starts_right_turn: [20.0, -3.0]
+  ego_starts_high_speed_turn: [20.0, -3.0]
+  ego_starts_unprotected_cross_turn: [20.0, -3.0]
+  ego_starts_protected_cross_turn: [20.0, -3.0]
+  ego_at_pudo: [20.0, -3.0]

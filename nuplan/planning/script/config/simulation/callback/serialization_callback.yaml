@@ -1,0 +1,6 @@
+serialization_callback:
+  _target_: nuplan.planning.simulation.callback.serialization_callback.SerializationCallback
+  _convert_: 'all'
+
+  folder_name: simulation           # Name of a folder in which the serialization will take place
+  serialization_type: "msgpack"     # A way to serialize output, options: ["json", "pickle", "msgpack"]

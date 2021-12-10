@@ -1,0 +1,10 @@
+# Default common configs
+
+defaults:
+  # Add common items
+  - scenario_builder: nuplan_mini
+  - model: null
+  # Worker that is used to run simulations
+  - worker: ray_distributed
+    
+selected_simulation_metrics: null

@@ -1,0 +1,27 @@
+hydra:
+  run:
+    dir: .
+  output_subdir: '${output_dir}/code/hydra'            # Store hydra's config breakdown here for debugging
+  searchpath: # Only <exp_dir> in these paths are discoverable
+    - pkg://nuplan.planning.script.config.common
+    - pkg://nuplan.planning.script.experiments                  # Put experiments configs in script/experiments/<exp_dir>
+
+defaults:
+  - default_experiment
+  - default_common
+  - lightning: default_lightning
+
+  # Data Loading
+  - data_loader: default_data_loader
+
+  # ML Models need to be specified
+  - objective: ???
+  - splitter: ???
+  - training_metric: ???
+
+# Mandatory parameters
+py_func: ???                      # function that will be run inside main (can be "train", "test", "cache_data")
+cache_dir: ${oc.env:NUPLAN_EXP_ROOT}/cache        # directory to store all preprocessed dataloader artifacts
+force_feature_computation: false                  # Even if cache exists, recompute features
+resume_training: false   # load the model from the last epoch and resume training
+cleanup_cache: false    # cleanup cached data in the cache_dir, this ensures that new data are generated if the same cache_dir is passed

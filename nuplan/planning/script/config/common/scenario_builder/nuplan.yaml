@@ -1,0 +1,10 @@
+_target_: nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.NuPlanScenarioBuilder
+_convert_: 'all'
+
+version: nuplan_v0.1
+data_root: ${oc.env:NUPLAN_DATA_ROOT}
+
+defaults:
+  - nuplan/scenario_filter: one_continuous_log
+  - nuplan/vehicle_parameters: nuplan_vehicle_parameters
+  - nuplan/scenario_mapping: nuplan_scenario_mapping

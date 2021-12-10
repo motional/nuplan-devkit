@@ -1,0 +1,18 @@
+_target_: nuplan.planning.scenario_builder.scenario_filter.ScenarioFilters
+_convert_: 'all'
+
+# Scenarios
+log_names: null                                # List of logs from which scenarios should be included
+log_labels: null                               # Labels used to filter logs
+max_scenarios_per_log: null                    # Maximum number of scenarios extracted per log
+scenario_types: null                           # A list of scenario types to be used
+scenario_tokens: null                          # A list of scenario tokens to be used
+map_name: null                                 # Filter out scenarios on a specific map
+
+# Filters
+shuffle: false                                 # 1. Shuffle selected scenarios
+limit_scenarios_per_type: null                 # 2. How many scenarios per type to keep (float = fraction, int = num)
+subsample_ratio: null                          # 3. Subsample a scenario relative to the database frequency (e.g. nominal freq @ 20Hz means 400 examples for 20s -> 2.5% subsample_ratio means 10 examples for 20s)
+flatten_scenarios: false                       # 4. Flatten scenarios (e.g. 10x 20-samples scenarios to 200x 1-sample scenarios)
+remove_invalid_goals: false                    # 5. Remove scenarios with invalid goals (e.g on an intersection, exceeded max dist)
+limit_total_scenarios: null                    # 6. How many total scenarios to keep (float = fraction, int = num)

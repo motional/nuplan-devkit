@@ -1,0 +1,37 @@
+bokeh  # Used in the nuBoard dashboard
+boto3  # Used in s3_store.py to download data from S3.
+cachetools  # Used widely
+coverage
+descartes  # Used in map_explorer.py
+Fiona  # Used in GpkgMapsDB.py
+geopandas  # Used to read maps
+hydra-core  # Used for configs
+jupyter  # Used to show the notebook
+matplotlib  # Used for rendering
+numpy>=1.21.1  # Used widely, only from this version numpy.typing.NDArray is supported
+opencv_python  # Used widely
+pandas    # Used widely
+Pillow    # Used widely to render images
+pre-commit
+psutil  # Used widely to get the number of CPUs
+pyinstrument    # Used widely as profiler
+pyquaternion>=0.9.5  # Used widely, avoid known bug with quaternion slerp
+pytest    # Used widely
+pytorch-lightning==1.3.8    # Used widely
+rasterio  # Used in GpkgMapsDB.py
+ray[default]  # Used widely
+requests  # Used in BlobStore clsases
+scipy  # Used widely
+setuptools  # Used in setup.py
+Shapely  # Used widely
+SQLAlchemy<=1.3.19  # Newer version may break current database queries
+testbook
+timm  # Used in model_raster
+torch==1.9.0+cu111; platform_system == "Linux" or platform_system == "Windows"  # Used widely
+torch==1.9.0; platform_system == "Darwin"  # Used widely
+torchvision==0.10.0+cu111; platform_system == "Linux" or platform_system == "Windows"  # Used widely
+torchvision==0.10.0; platform_system == "Darwin"  # Used widely
+tornado  # Used in nuboard.py
+tqdm  # Used widely
+ujson  # Used in serialiation_callback.py
+urllib3  # Used in s3_store.py

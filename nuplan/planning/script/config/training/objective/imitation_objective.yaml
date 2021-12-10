@@ -1,0 +1,5 @@
+imitation_objective:
+  _target_: nuplan.planning.training.modeling.objectives.imitation_objective.ImitationObjective
+  _convert_: 'all'
+
+  weight: 1.0                  # weight contribution to the overall loss

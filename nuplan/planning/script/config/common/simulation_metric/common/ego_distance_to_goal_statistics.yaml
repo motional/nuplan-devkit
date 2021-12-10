@@ -1,0 +1,5 @@
+ego_distance_to_goal_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_distance_to_goal.EgoDistanceToGoalStatistics
+  _convert_: 'all'
+  name: 'ego_distance_to_goal_statistics'
+  category: 'Planning'

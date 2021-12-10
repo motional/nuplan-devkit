@@ -1,0 +1,7 @@
+_target_: nuplan.planning.simulation.observation.idm_agents_observation.IDMAgentsObservation
+_convert_: 'all'
+target_velocity: 10         # Desired velocity in free traffic [m/s]
+min_gap_to_lead_agent: 1.0  # Minimum relative distance to lead vehicle [m]
+headway_time: 1.5           # Desired time headway. The minimum possible time to the vehicle in front [s]
+accel_max: 1.0              # maximum acceleration [m/s^2]
+decel_max: 2.0              # maximum deceleration (positive value) [m/s^2]

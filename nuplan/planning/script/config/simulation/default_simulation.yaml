@@ -1,0 +1,45 @@
+hydra:
+  run:
+    dir: .
+  output_subdir: '${group}/${experiment}/code/hydra'            # Store hydra's config breakdown here for debugging
+  searchpath:                                                   # Only <exp_dir> in these paths are discoverable
+    - pkg://nuplan.planning.script.config.common
+    - pkg://nuplan.planning.script.experiments                  # Put experiments configs in script/experiments/<exp_dir>
+
+defaults:
+  # Add ungrouped items
+  - default_experiment
+  - default_common
+
+  - simulation_metric:
+      - default_metric
+  - callback:
+      - serialization_callback
+
+  # Hyperparameters need to be specified
+  - observation: ???
+  - ego_controller: ???
+  - planner: null
+  - simulation_manager: step_simulation_manager
+
+  - override hydra/job_logging: none                            # Disable hydra's logging
+  - override hydra/hydra_logging: none                          # Disable hydra's logging
+
+# Progress Visualization
+enable_simulation_progress_bar: False # Show for every simulation its progress
+
+# Simulation Setup
+simulation_history_buffer_duration: 2.0  # [s] The look back duration to initialize the simulation history buffer with
+
+# Number (or fractional, e.g., 0.25) of GPUs available for single simulation (per scenario and planner).
+# This number can also be < 1 because we allow multiple models to be loaded into a single GPU.
+# In case this number is null, no GPU is used for simulation and all cpu cores are leveraged
+# Note, that the user have to make sure that if a number < 1 is chosen, the model will fit 1 / num_gpus into GPU memory
+number_of_gpus_used_for_one_simulation: null
+
+# This number specifies number of CPU threads that are used for simulation
+# In case this is null, all CPU available threads are utilized
+number_of_cpus_used_for_one_simulation: null
+
+# If false, continue running the simulation even it a scenario has failed
+exit_on_failure: false

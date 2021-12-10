@@ -1,0 +1,21 @@
+hydra:
+  run:
+    dir: .
+  output_subdir: null            # Store hydra's config breakdown here for debugging
+  searchpath:                                                   # Only <exp_dir> in these paths are discoverable
+    - pkg://nuplan.planning.script.config.common
+    - pkg://nuplan.planning.script.experiments                  # Put experiments configs in script/experiments/<exp_dir>
+
+
+defaults:
+  - default_common
+  - simulation_metric:
+      - default_metric
+  - override hydra/job_logging: none                            # Disable hydra's logging
+  - override hydra/hydra_logging: none                          # Disable hydra's logging
+
+log_config: False                                  # Whether to log the final config after all overrides and interpolations
+port_number: 5006
+simulation_path: null
+resource_prefix: null
+profiler_path: null

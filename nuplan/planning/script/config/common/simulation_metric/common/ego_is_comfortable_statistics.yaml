@@ -1,0 +1,13 @@
+ego_is_comfortable_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_is_comfortable.EgoIsComfortableStatistics
+  _convert_: 'all'
+  name: 'ego_is_comfortable_statistics'
+  category: 'Violations'
+
+  min_lon_accel: -4.05
+  max_lon_accel: 2.40
+  max_abs_lat_accel: 4.89
+  max_abs_yaw_rate: 0.95
+  max_abs_yaw_accel: 1.93
+  max_abs_lon_jerk: 4.13
+  max_abs_mag_jerk: 8.37

@@ -1,0 +1,6 @@
+clearance_from_static_agents_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.clearance_from_static_agents.ClearanceFromStaticAgentsStatistics
+  _convert_: 'all'
+  name: 'clearance_from_static_agents'
+  category: 'Planning'
+  lateral_distance_threshold: 8.0

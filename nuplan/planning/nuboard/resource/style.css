@@ -1,0 +1,128 @@
+/* Tab style */
+.bk.configuration {
+    font-size: 20px;
+    border-style: solid;
+    border-width: 1px;
+    width: 90% !important;
+    margin-top: 50px;
+}
+
+.bk.folder-path-input {
+    font-size: 20px;
+}
+
+.bk.folder-path-input input[type=file] {
+    font-size: 20px;
+}
+
+.bk.folder-path-add-button {
+    margin-top: 10px;
+    margin-left: 30px;
+    width: 10% !important;
+}
+
+.bk-root .bk-btn {
+    font-size: 20px;
+}
+
+.bk.experiment-path-select {
+    font-size: 20px;
+    width: 30% !important;
+}
+
+.bk.folder-path-remove-button {
+    margin-top: 20px;
+    margin-left: 30px;
+    width: 10% !important;
+}
+
+.bk-root .bk-tabs-header.bk-above {
+    height: 60px !important;
+}
+
+.bk-root .bk-tabs-header.bk-above .bk-tab {
+    border-width: 1px 1px 1px 1px;
+    border-radius: 1px 1px 1px 1px;
+    border-color: black;
+}
+
+.bk-root .bk-tabs-header .bk-tab {
+    width: 24%;
+    font-size: 25px;
+    background-color: white;
+    color: black;
+    margin-right: 12px;
+    border-style: solid;
+}
+
+.bk-root .bk-tabs-header .bk-tab.bk-active{
+    background-color: #5C48F6;
+    color: white;
+    font-style: normal;
+    font-weight: bold;
+}
+
+.bk.histogram-tab {
+    width: 100% !important;
+}
+
+.bk.overview-tab {
+    width: 100% !important;
+}
+
+.bk.overview-table {
+    width: 80% !important;
+}
+
+.bk-root .bk-data-table {
+    font-size: 16px;
+}
+.bk.scenario-tab {
+    width: 100% !important;
+}
+
+.bk.search-criteria-panel {
+    font-size: 20px;
+    border-style: solid;
+    border-width: 1px;
+    width: 25% !important;
+    margin-top: 50px;
+}
+
+.bk.histogram-panel {
+    font-size: 20px;
+    border-style: solid;
+    border-width: 1px;
+    width: 70% !important;
+    margin-left: 12%;
+    margin-top: 50px;
+}
+
+.bk.time-series-figure {
+    margin-left: 20px;
+}
+
+.bk.overview-panel {
+    font-size: 20px;
+    border-style: solid;
+    border-width: 1px;
+    width: 70% !important;
+    margin-left: 12%;
+    margin-top: 50px;
+}
+
+.bk.scenario-time-series-panel {
+    font-size: 20px;
+    border-style: solid;
+    border-width: 1px;
+    width: 70% !important;
+    margin-left: 12%;
+    margin-top: 50px;
+}
+
+.bk.scenario-col-panel {
+    font-size: 20px;
+    width: 70% !important;
+    margin-left: 12%;
+    margin-top: 50px;
+}

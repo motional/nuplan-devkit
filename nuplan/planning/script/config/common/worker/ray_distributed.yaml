@@ -1,0 +1,5 @@
+_target_: nuplan.planning.utils.multithreading.worker_ray.RayDistributed
+_convert_: 'all'
+master_node_ip: null    # Set to a master node IP if you desire to connect to cluster remotely
+threads_per_node: null  # Number of CPU threads to use per node, "null" means all threads available
+local_mode: false       # If true all tasks will be executed serially, mainly for testing

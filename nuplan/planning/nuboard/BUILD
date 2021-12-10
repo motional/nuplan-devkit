@@ -1,0 +1,31 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "__init__",
+    srcs = ["__init__.py"],
+)
+
+py_library(
+    name = "nuboard",
+    srcs = ["nuboard.py"],
+    deps = [
+        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/planning/nuboard/tabs:configuration_tab",
+        "//nuplan/planning/nuboard/tabs:histogram_tab",
+        "//nuplan/planning/nuboard/tabs:overview_tab",
+        "//nuplan/planning/nuboard/tabs:scenario_tab",
+        "//nuplan/planning/nuboard/utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario_builder",
+        "//nuplan/planning/training/callbacks:profile_callback",
+    ],
+)
+
+py_library(
+    name = "style",
+    srcs = ["style.py"],
+    deps = [
+        "//nuplan/maps:abstract_map",
+    ],
+)

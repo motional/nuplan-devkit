@@ -1,4 +1,4 @@
-FROM 233885420847.dkr.ecr.us-east-1.amazonaws.com/python:3.9.7-slim-buster
+FROM python:3.9.7-slim-buster
 
 RUN apt-get update \
     && apt-get install -y curl gnupg2 software-properties-common default-jdk
