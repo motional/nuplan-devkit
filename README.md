@@ -17,7 +17,6 @@ ______________________________________________________________________
 
 [![python](https://img.shields.io/badge/python-3.8%20%7C%203.9-blue.svg)]()
 [![license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/motional/nuplan-devkit/blob/master/LICENSE.txt)
-[![build](https://jenkins.ci.motional.com/buildStatus/icon?job=nuplan-devkit%2Fmaster)](https://jenkins.ci.motional.com/job/nuplan-devkit/job/master/)
 
 ______________________________________________________________________
 
