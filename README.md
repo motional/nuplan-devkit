@@ -1,8 +1,7 @@
 <div align="center">
 
-<font size="6">**nuPlan**</font>
-<br>
-<font size="4">**The world's first benchmark for autonomous vehicle planning.**</font>
+# nuPlan
+**The world's first benchmark for autonomous vehicle planning.**
 
 ______________________________________________________________________
 
