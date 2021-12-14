@@ -3,3 +3,4 @@ test --test_timeout=2400
 test --test_output=all
 test --test_env=CACHE=/tmp/pyxbld
 test --test_env=NUPLAN_DATA_ROOT
+test --test_env=NUPLAN_EXP_ROOT

@@ -39,6 +39,7 @@ pipeline{
     BAZEL_CMD        = "bazel --batch"
     BAZEL_OPTS       = "--local_cpu_resources=8 --jobs=8 --remote_cache=http://bazel-cache.ci.motional.com:80 --remote_upload_local_results=true"
     NUPLAN_DATA_ROOT = "/data/sets/nuplan"
+    NUPLAN_EXP_ROOT  = "/tmp/exp/nuplan"
   }
 
   stages {
