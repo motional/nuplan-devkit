@@ -5,6 +5,7 @@ coverage
 descartes  # Used in map_explorer.py
 Fiona  # Used in GpkgMapsDB.py
 geopandas  # Used to read maps
+rtree
 hydra-core  # Used for configs
 jupyter  # Used to show the notebook
 matplotlib  # Used for rendering
@@ -27,6 +28,7 @@ Shapely  # Used widely
 SQLAlchemy<=1.3.19  # Newer version may break current database queries
 testbook
 timm  # Used in model_raster
+-f https://download.pytorch.org/whl/torch_stable.html
 torch==1.9.0+cu111; platform_system == "Linux" or platform_system == "Windows"  # Used widely
 torch==1.9.0; platform_system == "Darwin"  # Used widely
 torchvision==0.10.0+cu111; platform_system == "Linux" or platform_system == "Windows"  # Used widely
