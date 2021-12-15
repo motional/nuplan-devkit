@@ -25,9 +25,9 @@ py_library(
     name = "models",
     srcs = ["models.py"],
     deps = [
-        "//nuplan/actor_state:agent",
-        "//nuplan/actor_state:oriented_box",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:agent",
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/database/common:data_types",
         "//nuplan/database/common:db",
         "//nuplan/database/common:sql_types",

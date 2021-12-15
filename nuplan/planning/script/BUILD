@@ -25,7 +25,7 @@ py_binary(
         "//nuplan/planning/script:yaml",
     ],
     deps = [
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard",
         "//nuplan/planning/script:default_path",
         "//nuplan/planning/script/builders:folder_builder",

@@ -7,7 +7,7 @@ from bokeh.document.document import Document
 from bokeh.layouts import column, gridplot, row
 from bokeh.models import Div, Panel, Select
 from bokeh.plotting import figure
-from nuplan.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile

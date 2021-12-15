@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set
 
 import numpy as np
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic
 from nuplan.planning.metrics.utils.geometry import signed_lateral_distance, signed_longitudinal_distance

@@ -7,7 +7,7 @@ py_test(
     size = "medium",
     srcs = ["test_agents_feature_builder.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/features:agents",

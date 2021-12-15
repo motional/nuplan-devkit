@@ -1,8 +1,8 @@
 import unittest
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lat_acceleration import EgoLatAccelerationStatistics
 from nuplan.planning.metrics.metric_result import MetricStatisticsType, TimeSeries

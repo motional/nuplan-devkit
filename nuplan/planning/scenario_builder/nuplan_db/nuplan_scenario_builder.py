@@ -7,11 +7,11 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Type
 
-from nuplan.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.nuplan_db.models import ScenarioTag
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario

@@ -2,9 +2,9 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import List
 
-from nuplan.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.maps.maps_datatypes import PointCloud
 from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.maps.maps_datatypes import PointCloud
 
 
 @dataclass

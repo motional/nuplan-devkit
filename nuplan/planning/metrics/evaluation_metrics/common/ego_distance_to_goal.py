@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from nuplan.actor_state.state_representation import Point2D
+from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
 from nuplan.planning.metrics.utils.state_extractors import extract_ego_time_point, get_ego_distance_to_goal

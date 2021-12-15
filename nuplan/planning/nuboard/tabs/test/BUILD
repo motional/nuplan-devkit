@@ -49,7 +49,7 @@ py_test(
     size = "medium",
     srcs = ["test_scenario_tab.py"],
     deps = [
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/metrics:metric_file",
         "//nuplan/planning/metrics:metric_result",

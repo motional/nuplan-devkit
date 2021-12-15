@@ -29,9 +29,9 @@ py_library(
     name = "serialization_callback",
     srcs = ["serialization_callback.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/database/utils/label:utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation:simulation_setup",

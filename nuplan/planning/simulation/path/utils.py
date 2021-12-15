@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from nuplan.actor_state.state_representation import ProgressStateSE2, StateSE2
+from nuplan.common.actor_state.state_representation import ProgressStateSE2, StateSE2
 from nuplan.planning.simulation.path.path import AbstractPath
 
 

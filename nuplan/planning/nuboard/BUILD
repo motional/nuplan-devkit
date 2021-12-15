@@ -11,7 +11,7 @@ py_library(
     name = "nuboard",
     srcs = ["nuboard.py"],
     deps = [
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard/tabs:configuration_tab",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
         "//nuplan/planning/nuboard/tabs:overview_tab",
@@ -26,6 +26,6 @@ py_library(
     name = "style",
     srcs = ["style.py"],
     deps = [
-        "//nuplan/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map",
     ],
 )

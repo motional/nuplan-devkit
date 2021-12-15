@@ -6,7 +6,7 @@ py_library(
     name = "abstract_scenario_builder",
     srcs = ["abstract_scenario_builder.py"],
     deps = [
-        "//nuplan/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/utils/multithreading:worker_pool",
@@ -17,11 +17,11 @@ py_library(
     name = "abstract_scenario",
     srcs = ["abstract_scenario.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/actor_state:vehicle_parameters",
-        "//nuplan/maps:abstract_map",
-        "//nuplan/maps:maps_datatypes",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:vehicle_parameters",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/simulation/observation:observation_type",
     ],
 )

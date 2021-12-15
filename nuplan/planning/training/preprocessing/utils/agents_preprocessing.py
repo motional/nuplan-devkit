@@ -2,8 +2,8 @@ from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.metrics.utils.state_extractors import approximate_derivatives
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import FeatureDataType

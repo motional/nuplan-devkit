@@ -11,7 +11,7 @@ py_library(
 py_library(
     name = "simulation_iteration",
     srcs = ["simulation_iteration.py"],
-    deps = ["//nuplan/actor_state:state_representation"],
+    deps = ["//nuplan/common/actor_state:state_representation"],
 )
 
 py_library(

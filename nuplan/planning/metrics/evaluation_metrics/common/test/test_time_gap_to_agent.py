@@ -1,13 +1,13 @@
 from typing import Any, Dict, cast
 
 import pytest
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.evaluation_metrics.common.time_gap_to_agent import TimeGapToLeadAgent, TimeGapToRearAgent
 from nuplan.planning.metrics.metric_result import MetricStatisticsType
 from nuplan.planning.metrics.utils.testing_utils import setup_history
 from nuplan.planning.simulation.observation.observation_type import Detections
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.utils import get_closest_agent_in_position, \
     is_agent_ahead, is_agent_behind
-from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from pytest import approx
 
 

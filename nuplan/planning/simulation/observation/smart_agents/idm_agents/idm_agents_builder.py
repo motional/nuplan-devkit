@@ -2,10 +2,10 @@ import logging
 from typing import List, Optional, Tuple
 
 import numpy as np
+from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
+from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.geometry import yaw_to_quaternion
-from nuplan.maps.abstract_map import AbstractMap, SemanticMapLayer
-from nuplan.maps.abstract_map_objects import GraphEdgeMapObject
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_agent import IDMAgent
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_agent_manager import UniqueIDMAgents

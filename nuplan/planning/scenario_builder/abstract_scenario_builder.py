@@ -1,7 +1,7 @@
 import abc
 from typing import List
 
-from nuplan.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilters
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool

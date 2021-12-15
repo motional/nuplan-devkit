@@ -2,7 +2,7 @@ import math
 import unittest
 
 import nuplan.planning.metrics.utils.geometry as g
-from nuplan.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from shapely.affinity import rotate, translate
 from shapely.geometry import Polygon
 

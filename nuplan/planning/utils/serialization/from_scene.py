@@ -1,9 +1,9 @@
 from typing import Any, Dict, List
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.actor_state.transform_state import translate_longitudinally_se2
-from nuplan.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.transform_state import translate_longitudinally_se2
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.database.utils.boxes.box3d import Box3D
 from pyquaternion import Quaternion
 

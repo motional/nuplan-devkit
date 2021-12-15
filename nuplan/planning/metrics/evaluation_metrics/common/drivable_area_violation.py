@@ -2,9 +2,9 @@ import statistics
 from dataclasses import dataclass
 from typing import List, Optional
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import Point2D
-from nuplan.maps.maps_datatypes import SemanticMapLayer
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import Point2D
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricViolation
 from nuplan.planning.metrics.utils.metric_violation_aggregator import aggregate_metric_violations

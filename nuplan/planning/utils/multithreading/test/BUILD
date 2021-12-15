@@ -5,8 +5,8 @@ package(default_visibility = ["//visibility:public"])
 py_test(
     name = "test_ray_worker",
     size = "medium",
-    tags = ["gpu"],
     srcs = ["test_ray_worker.py"],
+    tags = ["gpu"],
     deps = [
         "//nuplan/planning/training/modeling/models:raster_model",
         "//nuplan/planning/utils/multithreading:worker_pool",

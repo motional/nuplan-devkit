@@ -1,7 +1,7 @@
 from typing import Dict
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.simulation.observation.observation_type import Detections
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_agent import IDMAgent
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_states import IDMLeadAgentState

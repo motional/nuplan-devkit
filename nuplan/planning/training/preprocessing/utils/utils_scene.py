@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 

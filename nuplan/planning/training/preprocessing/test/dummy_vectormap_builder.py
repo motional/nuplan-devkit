@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Type
 
 import numpy as np
 import torch
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.observation_type import Observation
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractFeatureBuilder, \

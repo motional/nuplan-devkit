@@ -2,8 +2,8 @@ import unittest
 from typing import List
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.training.preprocessing.utils.agents_preprocessing import build_ego_features, \
     compute_yaw_rate_from_states, extract_and_pad_agent_poses, extract_and_pad_agent_sizes, \

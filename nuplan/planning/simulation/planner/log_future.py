@@ -1,7 +1,7 @@
 from typing import Type
 
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.maps.abstract_map import AbstractMap
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.observation.observation_type import Detections, Observation

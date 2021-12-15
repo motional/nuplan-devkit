@@ -4,9 +4,9 @@ from typing import Dict, List, Optional, Set, Type, cast
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import Point2D, StateSE2
-from nuplan.maps.maps_datatypes import LaneSegmentConnections, LaneSegmentCoords
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.maps.maps_datatypes import LaneSegmentConnections, LaneSegmentCoords
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.observation_type import Observation
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractFeatureBuilder, \

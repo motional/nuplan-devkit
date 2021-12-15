@@ -1,16 +1,15 @@
 from typing import Any, Dict, Optional
 
 import pytest
-from shapely.geometry import LineString
-
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.maps.abstract_map import AbstractMap
 from nuplan.planning.metrics.evaluation_metrics.scenario_dependent.ego_stop_at_stop_line import \
     EgoStopAtStopLineStatistics
 from nuplan.planning.metrics.metric_result import MetricStatisticsType, TimeSeries
 from nuplan.planning.metrics.utils.testing_utils import setup_history
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.utils import ego_state_to_box_3d
-from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from shapely.geometry import LineString
 
 
 @nuplan_test(path='json/ego_stop_at_stop_line/ego_stop_at_stop_line.json')

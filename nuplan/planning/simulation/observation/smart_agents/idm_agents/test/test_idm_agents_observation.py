@@ -2,14 +2,14 @@ import os
 from typing import Any, Dict, List
 
 import pytest
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioExtractionInfo
 from nuplan.planning.simulation.observation.idm_agents_observation import IDMAgentsObservation
 from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
-from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
 db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
 

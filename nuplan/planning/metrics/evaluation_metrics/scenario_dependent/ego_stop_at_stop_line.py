@@ -3,12 +3,12 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map_objects import Lane, StopLine
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.geometry import quaternion_yaw
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.abstract_map_objects import Lane, StopLine
-from nuplan.maps.maps_datatypes import SemanticMapLayer
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample

@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder import NuPlanScenarioBuilder, _create_scenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping
 from nuplan.planning.training.preprocessing.feature_builders.vector_map_feature_builder import FeatureBuilderMetaData, \

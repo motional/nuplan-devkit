@@ -6,14 +6,14 @@ from typing import Dict, List, Optional, Tuple, cast
 
 from cachetools import LRUCache, cached
 from cachetools.keys import hashkey
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.nuplan_db.models import Lidar, LidarPc
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 
 logger = logging.getLogger(__name__)

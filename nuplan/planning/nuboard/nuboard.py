@@ -10,7 +10,7 @@ from bokeh.document.document import Document
 from bokeh.layouts import layout
 from bokeh.models import Div, Tabs
 from bokeh.server.server import Server
-from nuplan.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.tabs.configuration_tab import ConfigurationTab
 from nuplan.planning.nuboard.tabs.histogram_tab import HistogramTab
 from nuplan.planning.nuboard.tabs.overview_tab import OverviewTab

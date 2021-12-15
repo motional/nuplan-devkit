@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from bokeh.document.document import Document
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.nuboard.base.data_class import SimulationScenarioKey
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario_builder import MockAbstractScenarioBuilder

@@ -2,8 +2,8 @@ import os
 import unittest
 
 import hydra
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.metrics.metric_result import MetricStatisticsType
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario

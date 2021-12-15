@@ -1,9 +1,9 @@
 from typing import Callable, List, Optional, Tuple, cast
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.geometry import quaternion_yaw, yaw_to_quaternion
 from nuplan.planning.simulation.observation.observation_type import Detections

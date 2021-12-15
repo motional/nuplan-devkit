@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 import numpy as np
-from nuplan.actor_state.state_representation import ProgressStateSE2, StateSE2
+from nuplan.common.actor_state.state_representation import ProgressStateSE2, StateSE2
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.geometry import yaw_to_quaternion
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_policy import IDMPolicy

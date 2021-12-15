@@ -2,9 +2,9 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.actor_state.transform_state import convert_relative_to_absolute_poses
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.transform_state import convert_relative_to_absolute_poses
 
 
 def _state_se2_to_ego_state(state: StateSE2, timestamp: float) -> EgoState:

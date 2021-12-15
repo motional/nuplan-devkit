@@ -7,10 +7,10 @@ py_test(
     size = "medium",
     srcs = ["test_nuplan_scenario.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_factory",
         "//nuplan/database/nuplan_db:nuplandb",
-        "//nuplan/maps:abstract_map",
-        "//nuplan/maps:abstract_map_factory",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
     ],
 )

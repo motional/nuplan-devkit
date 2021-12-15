@@ -2,8 +2,8 @@ from typing import List
 
 import numpy as np
 import scipy.interpolate as sp_interp
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import TimePoint
 from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory
 
 

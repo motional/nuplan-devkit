@@ -18,8 +18,8 @@ py_test(
     size = "medium",
     srcs = ["test_serialization_callback.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation:simulation_setup",
         "//nuplan/planning/simulation/callback:serialization_callback",

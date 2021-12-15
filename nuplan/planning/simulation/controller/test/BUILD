@@ -7,7 +7,7 @@ py_test(
     size = "small",
     srcs = ["test_log_playback.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/controller:log_playback",
         "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
@@ -20,7 +20,7 @@ py_test(
     size = "medium",
     srcs = ["test_perfect_tracking.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/controller:perfect_tracking",
         "//nuplan/planning/simulation/simulation_manager:simulation_iteration",

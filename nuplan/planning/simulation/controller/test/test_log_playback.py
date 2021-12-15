@@ -2,7 +2,7 @@ import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.controller.log_playback import LogPlaybackController
 from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration

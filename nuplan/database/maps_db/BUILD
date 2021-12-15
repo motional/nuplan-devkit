@@ -57,10 +57,10 @@ py_library(
     name = "map_api",
     srcs = ["map_api.py"],
     deps = [
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/maps/nuplan_map",
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:layer_dataset_ops",
-        "//nuplan/maps:maps_datatypes",
-        "//nuplan/maps/nuplan_map",
     ],
 )
 

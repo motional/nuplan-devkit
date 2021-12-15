@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, List
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
 
