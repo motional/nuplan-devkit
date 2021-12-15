@@ -7,8 +7,8 @@ py_test(
     size = "small",
     srcs = ["test_simulation_history.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/maps:abstract_map",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/simulation/history:simulation_history",
     ],
 )

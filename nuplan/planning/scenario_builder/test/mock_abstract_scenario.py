@@ -2,17 +2,17 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import Point2D, StateSE2, StateVector2D, TimePoint
-from nuplan.actor_state.test.test_utils import get_sample_agent
-from nuplan.actor_state.tracked_objects import TrackedObjects
-from nuplan.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.test.test_utils import get_sample_agent
+from nuplan.common.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
+from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
+from nuplan.common.maps.abstract_map_objects import AbstractMapObject
+from nuplan.common.maps.maps_datatypes import LaneSegmentConnections, LaneSegmentCoords, LaneSegmentMetaData, \
+    RasterLayer, RasterMap, TrafficLightStatusData, Transform
 from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.maps.abstract_map import AbstractMap, SemanticMapLayer
-from nuplan.maps.abstract_map_factory import AbstractMapFactory
-from nuplan.maps.abstract_map_objects import AbstractMapObject
-from nuplan.maps.maps_datatypes import LaneSegmentConnections, LaneSegmentCoords, LaneSegmentMetaData, RasterLayer, \
-    RasterMap, TrafficLightStatusData, Transform
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer

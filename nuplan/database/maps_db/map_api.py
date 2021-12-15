@@ -3,9 +3,9 @@ from typing import Dict, List, Optional, Tuple, Union
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
+from nuplan.common.maps.maps_datatypes import RasterLayer
+from nuplan.common.maps.nuplan_map.nuplan_map import NuPlanMap
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
-from nuplan.maps.maps_datatypes import RasterLayer
-from nuplan.maps.nuplan_map.nuplan_map import NuPlanMap
 from shapely import affinity
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 

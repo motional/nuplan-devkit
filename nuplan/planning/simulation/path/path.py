@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import List
 
-from nuplan.actor_state.state_representation import ProgressStateSE2
+from nuplan.common.actor_state.state_representation import ProgressStateSE2
 
 
 class AbstractPath(metaclass=ABCMeta):

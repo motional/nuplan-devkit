@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_agent_manager import UniqueIDMAgents
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.utils import ego_state_to_box_3d, path_to_linestring
 

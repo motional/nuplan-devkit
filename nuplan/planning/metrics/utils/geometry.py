@@ -1,7 +1,7 @@
 import numpy as np
-from nuplan.actor_state.state_representation import Point2D, StateSE2
-from nuplan.actor_state.transform_state import translate_position
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.actor_state.transform_state import translate_position
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from shapely.geometry import Polygon
 
 

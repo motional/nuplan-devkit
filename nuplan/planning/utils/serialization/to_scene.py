@@ -2,11 +2,11 @@ import pathlib
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from nuplan.actor_state.agent import AgentType
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.actor_state.transform_state import translate_longitudinally
-from nuplan.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.actor_state.agent import AgentType
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.transform_state import translate_longitudinally
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.label.utils import LabelMapping, local2agent_type
 from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory

@@ -2,8 +2,8 @@ import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.maps.abstract_map import AbstractMap
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 
 DATA_LEN = 17

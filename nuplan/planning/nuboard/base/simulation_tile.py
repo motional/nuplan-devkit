@@ -12,13 +12,13 @@ from bokeh.document.document import Document
 from bokeh.layouts import gridplot
 from bokeh.models import ColumnDataSource, Glyph, HoverTool, Line, MultiLine, MultiPolygons, Slider
 from bokeh.plotting import figure
-from nuplan.actor_state.state_representation import Point2D, StateSE2
-from nuplan.actor_state.transform_state import get_front_left_corner, get_front_right_corner, get_rear_left_corner, \
-    get_rear_right_corner, translate_longitudinally
-from nuplan.actor_state.vehicle_parameters import VehicleParameters, BoxParameters
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.abstract_map_objects import StopLine
-from nuplan.maps.maps_datatypes import SemanticMapLayer, StopLineType
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.actor_state.transform_state import get_front_left_corner, get_front_right_corner, \
+    get_rear_left_corner, get_rear_right_corner, translate_longitudinally
+from nuplan.common.actor_state.vehicle_parameters import BoxParameters, VehicleParameters
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map_objects import StopLine
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer, StopLineType
 from nuplan.planning.nuboard.base.data_class import BokehAgentStates, SimulationScenarioKey
 from nuplan.planning.nuboard.style import simulation_map_layer_color, simulation_tile_style
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
@@ -41,6 +41,51 @@ def extract_source_from_states(states: List[Dict[str, Any]]) -> ColumnDataSource
         ys=y_coords)
     )
     return source
+
+
+def _extract_serialization_type(first_file: pathlib.Path) -> str:
+    """
+    Deduce the serialization type
+    :param first_file: serialized file
+    :return: one from ["msgpack", "pickle", "json"].
+    """
+    msg_pack = first_file.suffixes == ['.msgpack', '.xz']
+    msg_pickle = first_file.suffixes == ['.pkl', '.xz']
+    msg_json = first_file.suffix == ".json"
+    number_of_available_types = int(msg_pack) + int(msg_json) + int(msg_pickle)
+
+    # We can handle only conclusive serialization type
+    if number_of_available_types != 1:
+        raise RuntimeError(f"Inconclusive file type: {first_file}!")
+
+    if msg_pickle:
+        return "pickle"
+    elif msg_json:
+        return "json"
+    elif msg_pack:
+        return "msgpack"
+    else:
+        raise RuntimeError("Unknown condition!")
+
+
+def _load_data(file_name: pathlib.Path, serialization_type: str) -> Any:
+    """
+    Load data from file_name
+    :param file_name: the name of a file which we want to deserialize
+    :param serialization_type: type of serialization of the file
+    :return: deserialized type
+    """
+    if serialization_type == "json":
+        with open(str(file_name), 'r') as f:  # type: ignore
+            return json.load(f)
+    elif serialization_type == "msgpack":
+        with lzma.open(str(file_name), "rb") as f:
+            return msgpack.unpackb(f.read())
+    elif serialization_type == "pickle":
+        with lzma.open(str(file_name), "rb") as f:
+            return pickle.load(f)
+    else:
+        raise ValueError(f"Unknown serialization type: {serialization_type}!")
 
 
 class SimulationTile:
@@ -180,36 +225,24 @@ class SimulationTile:
 
         for figure_index, simulation_scenario_key in enumerate(self._selected_scenario_keys):
             sorted_files = sorted(simulation_scenario_key.files, reverse=False)
+            if len(sorted_files) == 0:
+                raise RuntimeError("No files were found!")
 
-            # Load all existent files based on suffix
-            msgpack_files = [file for file in sorted_files if file.suffixes == ['.msgpack', '.xz']]
-            pkl_files = [file for file in sorted_files if file.suffixes == ['.pkl', '.xz']]
-            json_files = [file for file in sorted_files if file.suffix == ".json"]
-            number_of_available_types = int(len(msgpack_files) == 1) + int(len(pkl_files) == 1) + int(
-                len(json_files) > 0)
+            # Deduce the type of files
+            first_file = sorted_files[0]
+            serialization = _extract_serialization_type(first_file)
 
-            if number_of_available_types != 1:
-                raise RuntimeError("Found too many log files! Make only one of json/msgpack/pickle is available!")
-
-            if len(msgpack_files) == 1:
-                # In this case compressed msgpack file was found, which will be loaded all at once
-                with lzma.open(str(msgpack_files[0]), "rb") as f:
-                    scenes = msgpack.unpackb(f.read())
-                    self._load_scenes(figure_index, scenes)
-
-            if len(pkl_files) == 1:
-                # In this case compressed pickle file was found, which will be loaded all at once
-                with lzma.open(str(pkl_files[0]), "rb") as f:
-                    scenes = pickle.load(f)
-                    self._load_scenes(figure_index, scenes)
-
-            if len(json_files) > 0:
-                # In this case, every scene is stored in a separate json file
+            if len(sorted_files) > 1:
+                # Load scenes from all the available files
                 for file_index, file in enumerate(sorted_files):
-                    with open(file, 'r') as f:  # type: ignore
-                        if file not in self._scenes[figure_index]:
-                            self._scenes[figure_index][file] = json.load(f)
-                            self._update_data_sources(self._scenes[figure_index][file], figure_index, file_index)
+                    self._scenes[figure_index][file] = _load_data(file, serialization)
+                    self._update_data_sources(self._scenes[figure_index][file], figure_index, file_index)
+            else:
+                # Load all scenes in one go
+                file = first_file
+                scenes = _load_data(file, serialization)
+                scenes = scenes if isinstance(scenes, list) else [scenes]
+                self._load_scenes(figure_index, scenes)
 
     def _load_scenes(self, figure_index: int, scenes: List[Dict[str, Any]]) -> None:
         """

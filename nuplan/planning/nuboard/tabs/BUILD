@@ -43,7 +43,7 @@ py_library(
     name = "scenario_tab",
     srcs = ["scenario_tab.py"],
     deps = [
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",

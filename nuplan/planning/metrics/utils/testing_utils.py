@@ -1,10 +1,10 @@
 import os
 from typing import Any, Dict, List
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
-from nuplan.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.observation.observation_type import Detections

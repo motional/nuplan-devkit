@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
 from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory
 

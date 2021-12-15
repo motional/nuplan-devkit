@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Type
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.maps.abstract_map import AbstractMap
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.observation_type import Observation
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import AbstractModelFeature

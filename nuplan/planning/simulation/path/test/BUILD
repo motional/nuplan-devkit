@@ -7,7 +7,7 @@ py_test(
     size = "small",
     srcs = ["test_path.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/simulation/path:interpolated_path",
         "//nuplan/planning/simulation/path:utils",
     ],

@@ -5,8 +5,8 @@ import unittest
 from unittest.mock import Mock
 
 import msgpack
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.callback.serialization_callback import SerializationCallback
 from nuplan.planning.simulation.controller.abstract_controller import AbstractEgoController
@@ -25,8 +25,10 @@ class TestSerializationCallback(unittest.TestCase):
     def setUp(self) -> None:
         """ Setup Mocked classes. """
         self.output_folder = tempfile.TemporaryDirectory()
-        self.callback = SerializationCallback(output_directory=self.output_folder.name, folder_name="sim",
-                                              serialization_type="msgpack")
+        self.callback = SerializationCallback(output_directory=self.output_folder.name,
+                                              folder_name="sim",
+                                              serialization_type="msgpack",
+                                              serialize_into_single_file=True)
 
         self.sim_manager = Mock(spec=AbstractSimulationManager)
         self.observation = Mock(spec=AbstractObservation)

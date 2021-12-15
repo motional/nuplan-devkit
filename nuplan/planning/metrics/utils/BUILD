@@ -6,9 +6,9 @@ py_library(
     name = "geometry",
     srcs = ["geometry.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/actor_state:transform_state",
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:transform_state",
+        "//nuplan/common/actor_state:vehicle_parameters",
     ],
 )
 
@@ -24,9 +24,9 @@ py_library(
     name = "state_extractors",
     srcs = ["state_extractors.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/actor_state:transform_state",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:transform_state",
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/simulation/history:simulation_history",
     ],
@@ -37,11 +37,11 @@ py_test(
     size = "small",
     srcs = ["testing_utils.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/maps:maps_datatypes",
-        "//nuplan/maps/nuplan_map:map_factory",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",

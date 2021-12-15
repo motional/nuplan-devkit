@@ -2,10 +2,10 @@ from typing import List, Type
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import DynamicCarState, EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
-from nuplan.maps.abstract_map import AbstractMap
+from nuplan.common.actor_state.ego_state import DynamicCarState, EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.observation.observation_type import Detections, Observation
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner

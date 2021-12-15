@@ -6,10 +6,10 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import Point2D
-from nuplan.maps.abstract_map import AbstractMap, SemanticMapLayer
-from nuplan.maps.abstract_map_objects import BaselinePath, PolygonMapObject
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import Point2D
+from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
+from nuplan.common.maps.abstract_map_objects import BaselinePath, PolygonMapObject
 from nuplan.planning.simulation.observation.observation_type import Detections
 from pyquaternion import Quaternion
 from scipy.spatial.transform import Rotation as R

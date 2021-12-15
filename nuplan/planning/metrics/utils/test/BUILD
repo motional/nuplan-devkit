@@ -7,7 +7,7 @@ py_test(
     size = "medium",
     srcs = ["test_geometry.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/metrics/utils:geometry",
     ],
 )

@@ -6,8 +6,8 @@ py_library(
     name = "abstract_observation",
     srcs = ["abstract_observation.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
     ],
@@ -17,8 +17,8 @@ py_library(
     name = "box",
     srcs = ["box.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/observation:abstract_observation",
         "//nuplan/planning/simulation/observation:observation_type",
@@ -30,8 +30,8 @@ py_library(
     name = "idm_agents_observation",
     srcs = ["idm_agents_observation.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/observation:abstract_observation",
         "//nuplan/planning/simulation/observation:observation_type",
@@ -45,8 +45,8 @@ py_library(
     name = "lidar_pc",
     srcs = ["lidar_pc.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/observation:abstract_observation",
         "//nuplan/planning/simulation/observation:observation_type",
@@ -58,8 +58,8 @@ py_library(
     name = "observation_type",
     srcs = ["observation_type.py"],
     deps = [
-        "//nuplan/actor_state:tracked_objects",
+        "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/common/maps:maps_datatypes",
         "//nuplan/database/utils/boxes:box3d",
-        "//nuplan/maps:maps_datatypes",
     ],
 )

@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.state_representation import StateSE2
 
 
 def _convert_absolute_to_relative_states(

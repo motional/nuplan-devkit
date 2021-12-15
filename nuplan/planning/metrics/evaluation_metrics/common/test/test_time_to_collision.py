@@ -2,8 +2,8 @@ import os
 
 import hydra
 import pytest
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.utils.testing_utils import setup_history
-from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
 CONFIG_PATH = os.path.join('..', '..', '..', '..', 'script/config/common/simulation_metric/common/')
 CONFIG_NAME = 'time_to_collision_statistics'

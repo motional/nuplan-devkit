@@ -12,7 +12,7 @@ py_test(
     size = "medium",
     srcs = ["test_nuboard.py"],
     deps = [
-        "//nuplan/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",

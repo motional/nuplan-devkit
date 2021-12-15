@@ -7,11 +7,11 @@ from typing import Any, Dict, List, Optional, Union
 
 import msgpack
 import ujson as json
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData
 from nuplan.database.utils.label.utils import PBVTB_LABELMAPPING
-from nuplan.maps.maps_datatypes import TrafficLightStatusData
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
@@ -29,6 +29,41 @@ class SceneColors:
     ego_predicted_trajectory = [0, 0, 255, 100]  # [r, g, b, a] color
     ego_expert_trajectory = [255, 0, 0, 100]  # [r, g, b, a] color
     agents_predicted_trajectory = [0, 255, 0, 50]  # [r, g, b, a] color
+
+
+def _dump_to_json(file: pathlib.Path, scene_to_save: Any) -> None:
+    """ Dump file into json """
+    with open(str(file.with_suffix(".json")), 'w') as f:
+        json.dump(scene_to_save, f)
+
+
+def _dump_to_pickle(file: pathlib.Path, scene_to_save: Any) -> None:
+    """ Dump file into compressed pickle """
+    with lzma.open(file.with_suffix(".pkl.xz"), "wb") as f:  # type: ignore
+        pickle.dump(scene_to_save, f)  # type: ignore
+
+
+def _dump_to_msgpack(file: pathlib.Path, scene_to_save: Any) -> None:
+    """ Dump file into compressed msgpack """
+    with lzma.open(file.with_suffix(".msgpack.xz"), "wb") as f:  # type: ignore
+        f.write(msgpack.packb(scene_to_save))
+
+
+def _dump_to_file(file: pathlib.Path, scene_to_save: Any, serialization_type: str) -> None:
+    """
+    Dump scene into file
+    :param serialization_type: type of serialization ["json", "pickle", "msgpack"]
+    :param file: file name
+    :param scene_to_save: what to store
+    """
+    if serialization_type == "json":
+        _dump_to_json(file, scene_to_save)
+    elif serialization_type == "pickle":
+        _dump_to_pickle(file, scene_to_save)
+    elif serialization_type == "msgpack":
+        _dump_to_msgpack(file, scene_to_save)
+    else:
+        raise ValueError(f"Unknown option: {serialization_type}")
 
 
 def convert_sample_to_scene(map_name: str,
@@ -97,11 +132,14 @@ class SerializationCallback(AbstractCallback):
                  output_directory: Union[str, pathlib.Path],
                  folder_name: Union[str, pathlib.Path],
                  serialization_type: str,
+                 serialize_into_single_file: bool,
                  vehicle: VehicleParameters = get_pacifica_parameters()):
         """
         Construct serialization callback
         :param output_directory: where scenes should be serialized
         :param folder_name: folder where output should be serialized
+        :param serialize_into_single_file: if true all data will be in single file, if false, each time step will
+                be serialized into a separate file
         :param serialization_type: A way to serialize output, options: ["json", "pickle", "msgpack"]
         """
         available_formats = ["json", "pickle", "msgpack"]
@@ -112,6 +150,7 @@ class SerializationCallback(AbstractCallback):
         self._output_directory = pathlib.Path(output_directory) / folder_name
         self._serialization_type = serialization_type
         self._vehicle = vehicle
+        self._serialize_into_single_file = serialize_into_single_file
 
     def on_initialization_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
         """
@@ -149,25 +188,15 @@ class SerializationCallback(AbstractCallback):
         :param scenario_directory: directory where they should be serialized
         """
 
-        # Dump to json
-        if self._serialization_type == "json":
+        if not self._serialize_into_single_file:
+            # Split data into many smaller files
             for scene in scenes:
-                # Dump scene to file with timestamp for name
-                scene_file_name = (scenario_directory / str(scene["ego"]["timestamp_us"])).with_suffix(".json")
-                with open(str(scene_file_name), 'w') as f:
-                    json.dump(scene, f, indent=4)
-
-        # Dump to Pickle
-        if self._serialization_type == "pickle":
-            file_name = str((scenario_directory / scenario_directory.name).with_suffix(".pkl.xz"))
-            with lzma.open(file_name, "wb") as f:  # type: ignore
-                pickle.dump(scenes, f)  # type: ignore
-
-        # Dump to Msgpack
-        if self._serialization_type == "msgpack":
-            file_name = str((scenario_directory / scenario_directory.name).with_suffix(".msgpack.xz"))
-            with lzma.open(file_name, "wb") as f:  # type: ignore
-                f.write(msgpack.packb(scenes))
+                file_name = (scenario_directory / str(scene["ego"]["timestamp_us"]))
+                _dump_to_file(file_name, scene, self._serialization_type)
+        else:
+            # Dump all data into a single file
+            file_name = (scenario_directory / scenario_directory.name)
+            _dump_to_file(file_name, scenes, self._serialization_type)
 
     def _get_scenario_folder(self, planner_name: str, scenario: AbstractScenario) -> pathlib.Path:
         """

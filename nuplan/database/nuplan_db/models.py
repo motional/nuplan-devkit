@@ -18,9 +18,9 @@ import PIL
 from cachetools import LRUCache, cached
 from cachetools.keys import hashkey
 from matplotlib.axes import Axes
-from nuplan.actor_state.agent import Agent, AgentType
-from nuplan.actor_state.oriented_box import OrientedBox
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D
+from nuplan.common.actor_state.agent import Agent, AgentType
+from nuplan.common.actor_state.oriented_box import OrientedBox
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D
 from nuplan.database.utils.label.label import Label
 from nuplan.database.common import data_types, sql_types
 from nuplan.database.common.db import Table

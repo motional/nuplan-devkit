@@ -1,4 +1,4 @@
-_target_: nuplan.actor_state.vehicle_parameters.VehicleParameters
+_target_: nuplan.common.actor_state.vehicle_parameters.VehicleParameters
 _convert_: 'all'
 width: 2.297
 front_length: 4.049

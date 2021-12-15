@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Deque, List, Type
 
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.observation_type import Detections, Observation, Sensors
 

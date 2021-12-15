@@ -12,8 +12,8 @@ py_test(
     size = "medium",
     srcs = ["test_metric_engine.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/metrics:metric_result",

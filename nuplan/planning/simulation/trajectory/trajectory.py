@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from typing import List, Union
 
-from nuplan.actor_state.agent import Agent
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import TimePoint
+from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import TimePoint
 
 
 class AbstractTrajectory(metaclass=ABCMeta):

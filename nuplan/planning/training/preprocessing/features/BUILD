@@ -29,7 +29,7 @@ py_library(
     name = "raster",
     srcs = ["raster.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
+        "//nuplan/common/actor_state:ego_state",
         "//nuplan/planning/script/builders/utils:utils_type",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
     ],
@@ -39,9 +39,9 @@ py_library(
     name = "raster_utils",
     srcs = ["raster_utils.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/maps:abstract_map",
-        "//nuplan/maps:abstract_map_objects",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/planning/simulation/observation:observation_type",
     ],
 )
@@ -69,7 +69,7 @@ py_library(
     name = "trajectory_utils",
     srcs = ["trajectory_utils.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
     ],
 )
 

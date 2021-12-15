@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Type
 
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.simulation.observation.observation_type import Observation
 from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
 

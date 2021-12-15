@@ -1,6 +1,6 @@
 import unittest
 
-from nuplan.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.planning.simulation.path.interpolated_path import InterpolatedPath
 from nuplan.planning.simulation.path.utils import calculate_progress, convert_se2_path_to_progress_path, \
     get_trimmed_path_up_to_progress

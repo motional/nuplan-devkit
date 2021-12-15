@@ -7,7 +7,7 @@ from pathlib import Path
 from bokeh.document.document import Document
 from bokeh.layouts import LayoutDOM
 from bokeh.models import Panel
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.metrics.metric_engine import MetricsEngine
 from nuplan.planning.metrics.metric_file import MetricFile, MetricFileKey
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries

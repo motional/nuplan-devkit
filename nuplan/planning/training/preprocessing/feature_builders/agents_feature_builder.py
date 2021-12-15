@@ -1,8 +1,8 @@
 from typing import List, Type, cast
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, TimePoint
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import hydra
 from hydra.utils import instantiate
-from nuplan.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.nuboard import NuBoard
 from nuplan.planning.script.builders.metric_builder import build_metric_categories
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder

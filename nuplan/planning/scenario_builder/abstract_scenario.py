@@ -4,11 +4,11 @@ import abc
 from functools import lru_cache
 from typing import List
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, TimePoint
-from nuplan.actor_state.vehicle_parameters import VehicleParameters
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.maps_datatypes import TrafficLightStatusData, Transform
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, Transform
 from nuplan.planning.simulation.observation.observation_type import Detections, DetectionsTracks, Sensors
 
 

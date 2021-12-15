@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from nuplan.actor_state.state_representation import TimePoint
+from nuplan.common.actor_state.state_representation import TimePoint
 
 
 @dataclass

@@ -6,8 +6,8 @@ py_library(
     name = "agents_preprocessing",
     srcs = ["agents_preprocessing.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
@@ -38,7 +38,7 @@ py_library(
     name = "utils_scene",
     srcs = ["utils_scene.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/training/preprocessing/features:trajectory",
     ],

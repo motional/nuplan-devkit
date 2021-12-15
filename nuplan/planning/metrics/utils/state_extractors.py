@@ -2,10 +2,10 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import Point2D, StateSE2
-from nuplan.actor_state.transform_state import get_front_left_corner, get_front_right_corner, get_rear_left_corner, \
-    get_rear_right_corner
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.actor_state.transform_state import get_front_left_corner, get_front_right_corner, \
+    get_rear_left_corner, get_rear_right_corner
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 from scipy.signal import savgol_filter

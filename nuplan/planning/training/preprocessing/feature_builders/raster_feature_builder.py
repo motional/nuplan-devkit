@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Dict, List, Type
 
 import numpy as np
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.maps.abstract_map import AbstractMap
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.observation_type import Detections, Observation
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractFeatureBuilder, \

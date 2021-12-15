@@ -2,7 +2,7 @@ from typing import Callable, List
 
 import numpy as np
 import scipy.interpolate as sp_interp
-from nuplan.actor_state.state_representation import ProgressStateSE2
+from nuplan.common.actor_state.state_representation import ProgressStateSE2
 from nuplan.planning.simulation.path.path import AbstractPath
 
 

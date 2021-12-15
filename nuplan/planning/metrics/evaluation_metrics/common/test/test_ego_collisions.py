@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
-from nuplan.actor_state.car_footprint import CarFootprint
-from nuplan.actor_state.ego_state import DynamicCarState, EgoState
-from nuplan.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.car_footprint import CarFootprint
+from nuplan.common.actor_state.ego_state import DynamicCarState, EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.metrics.evaluation_metrics.common.ego_collisions import EgoCollisionStatistics
 from nuplan.planning.metrics.metric_result import MetricStatisticsType

@@ -6,8 +6,8 @@ py_library(
     name = "dummy_vectormap_builder",
     srcs = ["dummy_vectormap_builder.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",

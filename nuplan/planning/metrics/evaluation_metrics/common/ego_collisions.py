@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List, Set
 
-from nuplan.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricViolation
 from nuplan.planning.metrics.utils.metric_violation_aggregator import aggregate_metric_violations

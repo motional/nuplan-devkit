@@ -1,6 +1,6 @@
 import unittest
 
-from nuplan.actor_state.state_representation import TimePoint
+from nuplan.common.actor_state.state_representation import TimePoint
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.controller.perfect_tracking import PerfectTrackingController
 from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration

@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from nuplan.maps.abstract_map import SemanticMapLayer
+from nuplan.common.maps.abstract_map import SemanticMapLayer
 
 MOTIONAL_PALETTE: Dict[str, str] = {
     'motional_purple': '#5C48F6',

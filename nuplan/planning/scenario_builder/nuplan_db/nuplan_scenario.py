@@ -3,13 +3,13 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Any, Dict, List, Optional, Tuple, Type, cast
 
-from nuplan.actor_state.ego_state import EgoState
-from nuplan.actor_state.state_representation import StateSE2, TimePoint
-from nuplan.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType, Transform
 from nuplan.database.nuplan_db.models import LidarPc
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType, Transform
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioExtractionInfo, extract_boxes, \
     extract_lidarpc_tokens_as_scenario, extract_tracked_objects, get_map_api, get_time_stamp_from_lidar_pc, \

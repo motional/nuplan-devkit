@@ -6,8 +6,8 @@ py_library(
     name = "ml_planner",
     srcs = ["ml_planner.py"],
     deps = [
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/maps:abstract_map",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
@@ -25,8 +25,8 @@ py_library(
     name = "transform_utils",
     srcs = ["transform_utils.py"],
     deps = [
-        "//nuplan/actor_state:ego_state",
-        "//nuplan/actor_state:state_representation",
-        "//nuplan/actor_state:transform_state",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:transform_state",
     ],
 )

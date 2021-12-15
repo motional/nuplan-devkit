@@ -1,10 +1,10 @@
 from typing import Any, Dict
 
 import pytest
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.evaluation_metrics.common.drivable_area_violation import DrivableAreaViolationStatistics
 from nuplan.planning.metrics.metric_result import MetricStatisticsType
 from nuplan.planning.metrics.utils.testing_utils import setup_history
-from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
 
 @nuplan_test(path='json/drivable_area_violation/drivable_area_violation.json')

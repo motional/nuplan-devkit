@@ -3,12 +3,13 @@ import os
 from typing import Any, Dict, List
 
 import pytest
-from nuplan.actor_state.state_representation import StateSE2
-from nuplan.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.maps.abstract_map import AbstractMap
-from nuplan.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_agent import IDMAgent
 from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_agent_manager import IDMAgentManager, \
     UniqueIDMAgents
@@ -17,7 +18,6 @@ from nuplan.planning.simulation.observation.smart_agents.idm_agents.idm_policy i
 from nuplan.planning.simulation.observation.smart_agents.occupancy_map.strtree_occupancy_map import \
     STRTreeOccupancyMapFactory
 from nuplan.planning.utils.serialization.from_scene import from_scene_to_agents, to_agent_state_from_scene
-from nuplan.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 
 map_factory = NuPlanMapFactory(
     GPKGMapsDB('nuplan-maps-v0.1', map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"), 'maps')))

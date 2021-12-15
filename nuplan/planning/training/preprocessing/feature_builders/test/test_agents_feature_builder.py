@@ -1,6 +1,6 @@
 import unittest
 
-from nuplan.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractMap, MockAbstractScenario
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.training.preprocessing.feature_builders.agents_feature_builder import AgentsFeatureBuilder, \
