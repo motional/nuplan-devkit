@@ -12,8 +12,6 @@ class SimulationIteration:
     # In closed loop this represents the n-th sample of the simulation.
     index: int
 
-    # TODO: Can we disentangle index and time point?
-
     def __post_init__(self):
         assert self.index >= 0, f"Iteration must be >= 0, but it is {self.index}!"
 

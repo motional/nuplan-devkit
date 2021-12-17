@@ -44,7 +44,6 @@ class AbstractTrajectory(metaclass=ABCMeta):
     def get_sampled_trajectory(self) -> List[Union[EgoState, Agent]]:
         """
         Get the sampled states along the trajectory.
-        TODO: Are these sampled according to the iteration time?
         :return: Discrete trajectory consisting of states.
         """
         pass

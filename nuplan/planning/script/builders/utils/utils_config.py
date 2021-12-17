@@ -3,9 +3,10 @@ from pathlib import Path
 from shutil import rmtree
 
 import torch
+from omegaconf import DictConfig, ListConfig, OmegaConf
+
 from nuplan.planning.script.builders.utils.utils_type import is_target_type
 from nuplan.planning.simulation.callback.timing_callback import TimingCallback
-from omegaconf import DictConfig, ListConfig, OmegaConf
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +58,6 @@ def update_config_for_training(cfg: DictConfig) -> None:
         cfg.lightning.trainer.params.gpus = None
         cfg.lightning.trainer.params.accelerator = None
         cfg.lightning.trainer.params.precision = 32
-
-    # Todo: Remove it once we have goal search
-    if 'enable_goal_search' in cfg.scenario_builder:
-        cfg.scenario_builder.enable_goal_search = False
 
     # Save all interpolations and remove keys that were only used for interpolation and have no further use.
     OmegaConf.resolve(cfg)
