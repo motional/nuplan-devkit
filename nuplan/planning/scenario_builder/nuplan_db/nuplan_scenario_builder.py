@@ -5,7 +5,7 @@ import math
 import random
 from collections import defaultdict
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.common.maps.abstract_map import AbstractMap
@@ -15,8 +15,8 @@ from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping, filter_invalid_goals, \
-    flatten_scenarios
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping, \
+    extract_lidar_pcs_from_scenes, extract_scenes_from_log, filter_invalid_goals, flatten_scenarios
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilters
 from nuplan.planning.utils.multithreading.spliter import chunk_list
 from nuplan.planning.utils.multithreading.worker_pool import Task, WorkerPool
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def _create_scenarios(db: NuPlanDB,
                       scenario_tuples: List[Tuple[str, str]],
-                      scenario_mapping: ScenarioMapping,
+                      scenario_mapping: Optional[ScenarioMapping],
                       vehicle_parameters: VehicleParameters,
                       subsample_ratio: Optional[float] = None) -> List[AbstractScenario]:
     """
@@ -44,7 +44,7 @@ def _create_scenarios(db: NuPlanDB,
 
 def _create_scenario(db: NuPlanDB,
                      scenario_tuple: Tuple[str, str],
-                     scenario_mapping: ScenarioMapping,
+                     scenario_mapping: Optional[ScenarioMapping],
                      vehicle_parameters: VehicleParameters,
                      subsample_ratio: Optional[float] = None) -> AbstractScenario:
     """
@@ -57,7 +57,7 @@ def _create_scenario(db: NuPlanDB,
     :return: Instantiated AbstractScenario object.
     """
     scenario_type, lidar_token = scenario_tuple
-    extraction_info = scenario_mapping.get_extraction_info(scenario_type)
+    extraction_info = scenario_mapping.get_extraction_info(scenario_type) if scenario_mapping is not None else None
     scenario = NuPlanScenario(db=db, initial_lidar_token=lidar_token,
                               subsample_ratio=subsample_ratio,
                               scenario_extraction_info=extraction_info,
@@ -65,6 +65,24 @@ def _create_scenario(db: NuPlanDB,
                               ego_vehicle_parameters=vehicle_parameters)
 
     return scenario
+
+
+def worker_map(worker: WorkerPool, fn: Callable[..., List[Any]], input_objects: List[Any]) -> List[Any]:
+    """
+    Maps a list of objects through a worker.
+    :param worker: Worker pool to use for parallelization.
+    :param fn: Function to use when mapping.
+    :param input_objects: List of objects to map.
+    :return: List of mapped objects.
+    """
+    if worker.number_of_threads == 0:
+        return fn(input_objects)
+
+    object_chunks = chunk_list(input_objects, worker.number_of_threads)
+    scattered_objects = worker.map(Task(fn=fn), object_chunks)
+    output_objects = [result for results in scattered_objects for result in results]
+
+    return output_objects
 
 
 class NuPlanScenarioBuilder(AbstractScenarioBuilder):
@@ -90,7 +108,7 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         """
         return self.__class__, (self._db.version, self._db.data_root, self._scenario_mapping, self._vehicle_parameters)
 
-    @lru_cache(maxsize=8)  # type: ignore
+    @lru_cache(maxsize=8)
     def get_map_api(self, map_name: str) -> AbstractMap:
         """ Inherited. See superclass. """
         return NuPlanMapFactory(self._db.maps_db).build_map_from_name(map_name)
@@ -114,14 +132,13 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
             candidate_logs = [log for log in self._db.log if log.logfile in scenario_filters.log_names]
             if scenario_filters.max_scenarios_per_log:
                 max_num = scenario_filters.max_scenarios_per_log
-                log_scenes = [
-                    scene for log in candidate_logs for scene in log.scenes[1:-1][:max_num]]
+                scenes = [scene for log in candidate_logs for scene in extract_scenes_from_log(log)[:max_num]]
             else:
-                log_scenes = [scene for log in candidate_logs for scene in log.scenes[1:-1]]
-            scenario_dict['unknown'] = [scene.lidar_pcs[0].token for scene in log_scenes]
+                scenes = [scene for log in candidate_logs for scene in extract_scenes_from_log(log)]
+            scenario_dict['unknown'] = extract_lidar_pcs_from_scenes(scenes)
         else:  # Use all scenarios from each scene
-            all_scenes = [scene for log in self._db.log for scene in log.scenes[1:-1]]
-            scenario_dict['unknown'] = [scene.lidar_pcs[0].token for scene in all_scenes]
+            scenes = [scene for log in self._db.log for scene in extract_scenes_from_log(log)]
+            scenario_dict['unknown'] = extract_lidar_pcs_from_scenes(scenes)
         logger.info('Initial scenario filtering...DONE')
 
         # Filter by the map version.
@@ -165,27 +182,23 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
 
         # Expand to AbstractScenario objects
         logger.info("Converting scenarios to AbstractScenario...")
+        scenario_mapping = self._scenario_mapping if not scenario_filters.flatten_scenarios else None
         if worker.number_of_threads > 1:
             scenario_chunks = chunk_list(scenario_tuples, worker.number_of_threads)
             scattered_objects = worker.map(Task(fn=_create_scenarios), self._db, scenario_chunks,
-                                           self._scenario_mapping, self._vehicle_parameters,
+                                           scenario_mapping, self._vehicle_parameters,
                                            scenario_filters.subsample_ratio)
             scenario_objects = [result for results in scattered_objects for result in results]
         else:
-            scenario_objects = worker.map(Task(fn=_create_scenario), self._db, scenario_tuples, self._scenario_mapping,
+            scenario_objects = worker.map(Task(fn=_create_scenario), self._db, scenario_tuples, scenario_mapping,
                                           self._vehicle_parameters, scenario_filters.subsample_ratio)
-        logger.debug("Converting scenarios to AbstractScenario...DONE")
+        logger.info("Converting scenarios to AbstractScenario...DONE")
 
         # Flatten scenarios
         if scenario_filters.flatten_scenarios:
-            logger.debug("Flattening multi-sample scenarios to single-sample scenarios...")
-            if worker.number_of_threads > 1:
-                object_chunks = chunk_list(scenario_objects, worker.number_of_threads)
-                scattered_objects = worker.map(Task(fn=flatten_scenarios), object_chunks)
-                scenario_objects = [result for results in scattered_objects for result in results]
-            else:
-                scenario_objects = flatten_scenarios(scenario_objects)
-            logger.debug("Flattening multi-sample scenarios to single-sample scenarios...DONE")
+            logger.info("Flattening multi-sample scenarios to single-sample scenarios...")
+            scenario_objects = worker_map(worker, flatten_scenarios, scenario_objects)
+            logger.info("Flattening multi-sample scenarios to single-sample scenarios...DONE")
 
         # Shuffle scenario objexts
         if scenario_filters.shuffle:
@@ -193,13 +206,8 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
 
         # Remove scenarios that have invalid mission goals (e.g. nearby ego)
         if scenario_filters.remove_invalid_goals:
-            logger.debug("Removing scenarios with invalid goals...")
-            if worker.number_of_threads > 1:
-                object_chunks = chunk_list(scenario_objects, worker.number_of_threads)
-                scattered_objects = worker.map(Task(fn=filter_invalid_goals), object_chunks)
-                scenario_objects = [result for results in scattered_objects for result in results]
-            else:
-                scenario_objects = filter_invalid_goals(scenario_objects)
+            logger.info("Removing scenarios with invalid goals...")
+            scenario_objects = worker_map(worker, filter_invalid_goals, scenario_objects)
             logger.info("Removing scenarios with invalid goals...DONE")
 
         # Filter total number of scenarios

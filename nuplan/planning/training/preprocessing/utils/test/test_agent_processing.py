@@ -147,15 +147,15 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
 
         self.assertEqual(len(filtered_agents), num_frames)
         self.assertEqual(len(filtered_agents[0]), len(agent_trajectories[0]))
-        self.assertEqual(len(filtered_agents[5]), 0)
-        self.assertEqual(len(filtered_agents[7]), num_agents - missing_agents)
+        self.assertEqual(len(filtered_agents[5]), num_agents - missing_agents)
+        self.assertEqual(len(filtered_agents[-1]), num_agents - missing_agents)
 
         filtered_agents = filter_agents(agent_trajectories, reverse=True)
 
         self.assertEqual(len(filtered_agents), num_frames)
         self.assertEqual(len(filtered_agents[0]), len(agent_trajectories[-1]))
-        self.assertEqual(len(filtered_agents[5]), 0)
-        self.assertEqual(len(filtered_agents[7]), num_agents - missing_agents)
+        self.assertEqual(len(filtered_agents[5]), num_agents - missing_agents)
+        self.assertEqual(len(filtered_agents[-1]), num_agents - missing_agents)
 
 
 if __name__ == '__main__':

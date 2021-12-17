@@ -6,12 +6,13 @@ from typing import Dict, List, Optional, Tuple, cast
 
 from cachetools import LRUCache, cached
 from cachetools.keys import hashkey
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.tracked_objects import TrackedObjects
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
-from nuplan.database.nuplan_db.models import Lidar, LidarPc
+from nuplan.database.nuplan_db.models import Lidar, LidarPc, Log, Scene
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
@@ -48,6 +49,26 @@ class ScenarioMapping:
         :return: Scenario extraction information for the queried scenario type.
         """
         return self.mapping[scenario_type] if scenario_type in self.mapping else ScenarioExtractionInfo()
+
+
+def extract_scenes_from_log(log: Log, first_valid_idx: int = 2, last_valid_idx: int = -2) -> List[Scene]:
+    """
+    Retrieves all valid scenes from a log.
+    :param log: Log to get scenes from.
+    :param first_valid_idx: Index of first valid scene.
+    :param last_valid_idx: Index of last valid scene.
+    :return: Retrieved scenes.
+    """
+    return cast(List[Scene], log.scenes[first_valid_idx:last_valid_idx])
+
+
+def extract_lidar_pcs_from_scenes(scenes: List[Scene]) -> List[LidarPc]:
+    """
+    Retrieves all lidar pcs from a set of scenes.
+    :param scenes: Scenes to get lidarpcs from.
+    :return: Retrieved lidarpcs.
+    """
+    return [lidar_pc.token for scene in scenes for lidar_pc in scene.lidar_pcs]
 
 
 def flatten_scenarios(scenarios: List[AbstractScenario]) -> List[AbstractScenario]:

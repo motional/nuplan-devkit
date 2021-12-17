@@ -3,9 +3,9 @@ _convert_: 'all'
 
 # Scenarios
 log_names:                          # List of logs from which scenarios should be included
-  - 2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5
-  - 2021.06.07.18.53.26_26_1623106484854240.2_1623107990854673.8
-  - 2021.07.21.02.32.00_26_1626834838399916.8_1626835894396760.2
+  - 2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5  # train
+  - 2021.06.04.19.10.47_47_1622848319071793.5_1622849413071686.2  # val
+  - 2021.05.28.21.56.29_24_1622239057169313.0_1622240664170207.2  # test
 log_labels: [machine_labeled]       # Labels used to filter logs
 max_scenarios_per_log: 2            # Maximum number of scenarios extracted per log
 scenario_types: null                # A list of scenario types to be used

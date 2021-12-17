@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import numpy.typing as npt
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
 from nuplan.database.utils.boxes.box3d import Box3D
@@ -140,13 +141,12 @@ def filter_agents(agent_trajectories: List[List[Box3D]], reverse: bool = False) 
     :param reverse: if True, the last element in the list will be used as the filter
     :return: filtered agents in the same format [num_frames, num_agents]
     """
-    # TODO: temporary hack to keep only vehicle agents
     if reverse:
         agent_tokens = [box.token for box in agent_trajectories[-1]]
     else:
         agent_tokens = [box.token for box in agent_trajectories[0]]
-    filtered_agents = [[box for box in boxes if box.token in agent_tokens and box.label == 1]
-                       for boxes in agent_trajectories]
+
+    filtered_agents = [[box for box in boxes if box.token in agent_tokens] for boxes in agent_trajectories]
 
     return filtered_agents
 

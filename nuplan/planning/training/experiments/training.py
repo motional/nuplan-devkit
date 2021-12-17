@@ -3,14 +3,15 @@ import pathlib
 from dataclasses import dataclass
 
 import pytorch_lightning as pl
+from omegaconf import DictConfig, OmegaConf
+from tqdm import tqdm
+
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 from nuplan.planning.script.builders.model_builder import build_nn_model
 from nuplan.planning.script.builders.training_builder import build_lightning_datamodule, build_lightning_module, \
     build_trainer
 from nuplan.planning.training.callbacks.profile_callback import ProfileCallback
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
-from omegaconf import DictConfig, OmegaConf
-from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,12 @@ class TrainingEngine:
     trainer: pl.Trainer  # Trainer for models
     model: pl.LightningModule  # Module describing NN model, loss, metrics, visualization
     datamodule: pl.LightningDataModule  # Loading data
+
+    def __repr__(self) -> str:
+        """
+        :return: String representation of class without expanding the fields.
+        """
+        return f"<{type(self).__module__}.{type(self).__qualname__} object at {hex(id(self))}>"
 
 
 def build_training_engine(cfg: DictConfig,

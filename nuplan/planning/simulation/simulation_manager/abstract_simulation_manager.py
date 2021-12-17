@@ -23,7 +23,6 @@ class AbstractSimulationManager(metaclass=ABCMeta):
     def next_iteration(self) -> Optional[SimulationIteration]:
         """
         Move to the next iteration and return its simulation iteration.
-        TODO: Should the iteration increment be separate?
         Returns None if we have reached the end of the simulation.
         """
         pass

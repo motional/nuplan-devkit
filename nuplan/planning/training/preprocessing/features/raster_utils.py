@@ -6,13 +6,14 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
+from pyquaternion import Quaternion
+from scipy.spatial.transform import Rotation as R
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
 from nuplan.common.maps.abstract_map_objects import BaselinePath, PolygonMapObject
 from nuplan.planning.simulation.observation.observation_type import Detections
-from pyquaternion import Quaternion
-from scipy.spatial.transform import Rotation as R
 
 
 def _linestring_to_coords(geometry: List[BaselinePath]) -> List[Tuple[array]]:  # type: ignore
@@ -203,9 +204,6 @@ def get_agents_raster(
     """
     Constructs the agents layer of the raster by transforming all detected boxes around the agent
     and creating polygons of them in a raster grid.
-
-    TODO: use labelmap to filter out pedestrians
-    TODO: add pedestrians to agents layer
 
     :param ego_state: SE2 state of ego.
     :param detections: list of 3D bounding box of detected agents.

@@ -13,4 +13,4 @@ def chunk_list(input_list: List[Any], num_chunks: Optional[int] = None) -> List[
     """
     num_chunks = num_chunks if num_chunks else cpu_count(logical=True)
     chunks = np.array_split(input_list, num_chunks)  # type: ignore
-    return [chunk for chunk in chunks if len(chunk) != 0]
+    return [chunk.tolist() for chunk in chunks if len(chunk) != 0]
