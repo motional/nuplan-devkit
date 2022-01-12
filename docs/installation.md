@@ -62,14 +62,14 @@ conda deactivate
 
 **For beginners**, the easiest option is to install the PIP package:
 ```
-pip install nuplan-devkit
+pip install nuplan-devkit -f https://download.pytorch.org/whl/torch_stable.html
 ```
 This installs the devkit and all of its dependencies.
 
 ### Option B: Install PIP package from local
 **We recommend** that you install the local devkit as a PIP package:
 ```
-pip install -e .
+pip install -e . -f https://download.pytorch.org/whl/torch_stable.html
 ```
 This installs the devkit and all of its dependencies.
 Note that the editable mode (`-e`) is optional and means that the code is used in-place, rather than being copied elsewhere, and can be modified for easy development.
@@ -85,7 +85,7 @@ source ~/.bashrc
 ```
 To install the dependencies, run the following command:
 ```
-pip install -r requirements.txt
+pip install -r requirements.txt -f https://download.pytorch.org/whl/torch_stable.html
 ``` 
 
 -----
