@@ -1,4 +1,3 @@
--f https://download.pytorch.org/whl/torch_stable.html
 bokeh  # Used in the nuBoard dashboard
 boto3  # Used in s3_store.py to download data from S3.
 cachetools  # Used widely
