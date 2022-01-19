@@ -212,7 +212,7 @@ class CameraIntrinsic(List[List[float]]):
         Get the focal length along y.
         :return: The focal length along y.
         """
-        return self[1][2]
+        return self[1][1]
 
     @property
     def px(self) -> float:
