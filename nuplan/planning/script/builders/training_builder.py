@@ -151,7 +151,7 @@ def build_trainer(cfg: DictConfig) -> pl.Trainer:
         if not last_checkpoint:
             raise ValueError("Resume Training is enabled but no checkpoint was found!")
 
-        cfg.trainer.params.resume_from_checkpoint = str(last_checkpoint)
+        params.resume_from_checkpoint = str(last_checkpoint)
         logger.info(f'Resuming from checkpoint {last_checkpoint}')
 
         OmegaConf.set_struct(cfg, True)
