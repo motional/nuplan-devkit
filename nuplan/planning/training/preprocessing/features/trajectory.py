@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from functools import cached_property
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
+
 from nuplan.planning.script.builders.utils.utils_type import validate_type
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractModelFeature
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import FeatureDataType, to_tensor
@@ -22,7 +24,7 @@ class Trajectory(AbstractModelFeature):
     data: FeatureDataType
 
     def __post_init__(self) -> None:
-
+        """Sanitize attributes of the dataclass."""
         array_dims = self.num_dimensions
         state_size = self.data.shape[-1]
 
@@ -34,19 +36,28 @@ class Trajectory(AbstractModelFeature):
                 f'Invalid trajectory array. Expected {self.state_size()} variables per state, got {state_size}.'
             )
 
+    @cached_property
+    def is_valid(self) -> bool:
+        """Inherited, see superclass."""
+        return len(self.data) > 0 and self.data.shape[-2] > 0 and self.data.shape[-1] == self.state_size()
+
     def to_device(self, device: torch.device) -> Trajectory:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         validate_type(self.data, torch.Tensor)
         return Trajectory(data=self.data.to(device=device))
 
     def to_feature_tensor(self) -> Trajectory:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return Trajectory(data=to_tensor(self.data))
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> Trajectory:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return Trajectory(data=data["data"])
+
+    def unpack(self) -> List[Trajectory]:
+        """Implemented. See interface."""
+        return [Trajectory(data[None]) for data in self.data]
 
     @staticmethod
     def state_size() -> int:
@@ -123,7 +134,7 @@ class Trajectory(AbstractModelFeature):
         """
         :return: number of states in a trajectory
         """
-        return self.data.shape[-2]
+        return int(self.data.shape[-2])
 
     @property
     def num_batches(self) -> Optional[int]:
@@ -139,8 +150,7 @@ class Trajectory(AbstractModelFeature):
         :return: state corresponding to the index along trajectory horizon
         @raise in case index is not within valid range: 0 < index <= num_of_iterations
         """
-        assert 0 <= index < self.num_of_iterations, \
-            f"Index is out of bounds! 0 <= {index} < {self.num_of_iterations}!"
+        assert 0 <= index < self.num_of_iterations, f"Index is out of bounds! 0 <= {index} < {self.num_of_iterations}!"
         return self.data[..., index, :]
 
     def extract_number_of_last_states(self, number_of_states: int) -> Trajectory:
@@ -152,8 +162,9 @@ class Trajectory(AbstractModelFeature):
         """
         assert number_of_states > 0, f"number_of_states has to be > 0, {number_of_states} > 0!"
         length = self.num_of_iterations
-        assert number_of_states <= length, \
-            f"number_of_states has to be smaller than length, {number_of_states} <= {length}!"
+        assert (
+            number_of_states <= length
+        ), f"number_of_states has to be smaller than length, {number_of_states} <= {length}!"
         return self.extract_trajectory_between(length - number_of_states, length)
 
     def extract_trajectory_between(self, start_index: int, end_index: Optional[int]) -> Trajectory:
@@ -166,10 +177,12 @@ class Trajectory(AbstractModelFeature):
         """
         if not end_index:
             end_index = self.num_of_iterations
-        assert 0 <= start_index < self.num_of_iterations, \
-            f"Start index is out of bounds! 0 <= {start_index} < {self.num_of_iterations}!"
-        assert 0 <= end_index <= self.num_of_iterations, \
-            f"Start index is out of bounds! 0 <= {end_index} <= {self.num_of_iterations}!"
+        assert (
+            0 <= start_index < self.num_of_iterations
+        ), f"Start index is out of bounds! 0 <= {start_index} < {self.num_of_iterations}!"
+        assert (
+            0 <= end_index <= self.num_of_iterations
+        ), f"Start index is out of bounds! 0 <= {end_index} <= {self.num_of_iterations}!"
         assert start_index < end_index, f"Start Index has to be smaller then end, {start_index} < {end_index}!"
 
         return Trajectory(data=self.data[..., start_index:end_index, :])

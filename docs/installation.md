@@ -62,14 +62,14 @@ conda deactivate
 
 **For beginners**, the easiest option is to install the PIP package:
 ```
-pip install nuplan-devkit -f https://download.pytorch.org/whl/torch_stable.html
+pip install nuplan-devkit
 ```
 This installs the devkit and all of its dependencies.
 
 ### Option B: Install PIP package from local
 **We recommend** that you install the local devkit as a PIP package:
 ```
-pip install -e . -f https://download.pytorch.org/whl/torch_stable.html
+pip install -e .
 ```
 This installs the devkit and all of its dependencies.
 Note that the editable mode (`-e`) is optional and means that the code is used in-place, rather than being copied elsewhere, and can be modified for easy development.
@@ -85,7 +85,8 @@ source ~/.bashrc
 ```
 To install the dependencies, run the following command:
 ```
-pip install -r requirements.txt -f https://download.pytorch.org/whl/torch_stable.html
+pip install -r requirements_torch.txt
+pip install -r requirements.txt
 ``` 
 
 -----
@@ -98,6 +99,7 @@ As described in the [general readme](https://github.com/motional/nuplan-devkit/b
 If you want to change these on your system, you need to set the corresponding environment variables in your `~/.bashrc`, e.g.:
 ```
 export NUPLAN_DATA_ROOT="$HOME/nuplan/dataset"
+export NUPLAN_MAPS_ROOT="$HOME/nuplan/dataset/maps"
 export NUPLAN_EXP_ROOT="$HOME/nuplan/exp"
 ```
 This step is also required if you want to run any of the unit tests in the devkit.

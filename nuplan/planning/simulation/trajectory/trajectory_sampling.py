@@ -3,6 +3,10 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TrajectorySampling:
+    """
+    Trajectory sampling config.
+    """
+
     num_poses: int  # Number of poses in trajectory in addition to initial state
     time_horizon: float  # [s] the time horizon of a trajectory
 

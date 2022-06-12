@@ -1,0 +1,8 @@
+gaussian_smooth_agent_augmentation:
+  _target_: nuplan.planning.training.data_augmentation.gaussian_smooth_agent_augmentation.GaussianSmoothAgentAugmentor
+  _convert_: 'all'
+
+  augment_prob: 0.5  # probability of applying data augmentation for training
+  mean: [1.0, 0.0, 0.0]  # the mean vector of the Gaussian noise on [x, y, heading]
+  std: [1.0, 1.0, 0.5]  #  the std vector of the Gaussian noise on [x, y, heading]
+  sigma: 5.0  #  the sigma for Guassian kernel smoothing, the higher the smoother

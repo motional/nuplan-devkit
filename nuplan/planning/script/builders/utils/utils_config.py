@@ -11,43 +11,22 @@ from nuplan.planning.simulation.callback.timing_callback import TimingCallback
 logger = logging.getLogger(__name__)
 
 
-def _update_scenario_config(cfg: DictConfig) -> None:
-    """
-    Update scenario related configs.
-    :param cfg: omegaconf dictionary that is used to run the experiment
-    """
-
-    # Move scenario_builder.database.scenario_filter
-    database_names = []
-    scenario_configs = {}
-    for scenario_builder_config_name, scenario_builder_config in cfg.scenario_builder.items():
-        if isinstance(scenario_builder_config, DictConfig):
-            database_names.append(scenario_builder_config_name)
-            scenario_configs.update(scenario_builder_config)
-
-    for database_name in database_names:
-        cfg.scenario_builder.pop(database_name)
-
-    cfg.update(scenario_configs)
-
-
 def update_config_for_training(cfg: DictConfig) -> None:
     """
     Updates the config based on some conditions.
-
     :param cfg: omegaconf dictionary that is used to run the experiment
     """
-
     # Make the configuration editable.
     OmegaConf.set_struct(cfg, False)
 
-    if cfg.cleanup_cache and Path(cfg.cache_dir).exists():
-        rmtree(cfg.cache_dir)
-    Path(cfg.cache_dir).mkdir(parents=True, exist_ok=True)
+    if cfg.cache.cache_path is None:
+        logger.warning('Parameter cache_path is not set, caching is disabled')
+    else:
+        if not str(cfg.cache.cache_path).startswith('s3://'):
+            if cfg.cache.cleanup_cache and Path(cfg.cache.cache_path).exists():
+                rmtree(cfg.cache.cache_path)
 
-    if not cfg.cache_dir:
-        logger.warning("cache_dir is not set, and thus caching is disable.")
-        cfg.cache_dir = None
+            Path(cfg.cache.cache_path).mkdir(parents=True, exist_ok=True)
 
     if cfg.lightning.trainer.overfitting.enable:
         cfg.data_loader.params.num_workers = 0
@@ -61,9 +40,6 @@ def update_config_for_training(cfg: DictConfig) -> None:
 
     # Save all interpolations and remove keys that were only used for interpolation and have no further use.
     OmegaConf.resolve(cfg)
-
-    # Move scenario_builder.database config
-    _update_scenario_config(cfg)
 
     # Finalize the configuration and make it non-editable.
     OmegaConf.set_struct(cfg, True)
@@ -79,7 +55,6 @@ def update_config_for_simulation(cfg: DictConfig) -> None:
     Updates the config based on some conditions.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
     """
-
     # Make the configuration editable.
     OmegaConf.set_struct(cfg, False)
     if cfg.max_number_of_workers:
@@ -92,14 +67,12 @@ def update_config_for_simulation(cfg: DictConfig) -> None:
     # Save all interpolations and remove keys that were only used for interpolation and have no further use.
     OmegaConf.resolve(cfg)
 
-    # Move scenario_builder.database config
-    _update_scenario_config(cfg)
     # Finalize the configuration and make it non-editable.
     OmegaConf.set_struct(cfg, True)
 
     # Log the final configuration after all overrides, interpolations and updates.
     if cfg.log_config:
-        logger.info(f"Creating experiment: {cfg.experiment}")
+        logger.info(f'Creating experiment: {cfg.experiment}')
         logger.info('\n' + OmegaConf.to_yaml(cfg))
 
 
@@ -108,7 +81,6 @@ def update_config_for_nuboard(cfg: DictConfig) -> None:
     Updates the config based on some conditions.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
     """
-
     # Make the configuration editable.
     OmegaConf.set_struct(cfg, False)
 
@@ -119,9 +91,6 @@ def update_config_for_nuboard(cfg: DictConfig) -> None:
 
     # Save all interpolations and remove keys that were only used for interpolation and have no further use.
     OmegaConf.resolve(cfg)
-
-    # Move scenario_builder.database config
-    _update_scenario_config(cfg)
 
     # Finalize the configuration and make it non-editable.
     OmegaConf.set_struct(cfg, True)

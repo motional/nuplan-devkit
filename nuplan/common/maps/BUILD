@@ -36,6 +36,15 @@ py_library(
 )
 
 py_library(
+    name = "map_manager",
+    srcs = ["map_manager.py"],
+    deps = [
+        ":abstract_map",
+        ":abstract_map_factory",
+    ],
+)
+
+py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     deps = [

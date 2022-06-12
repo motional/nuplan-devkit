@@ -10,29 +10,14 @@ py_library(
         "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
 )
 
 py_library(
-    name = "end_to_end",
-    srcs = ["end_to_end.py"],
-    deps = [
-        "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/maps:abstract_map",
-        "//nuplan/planning/simulation/history:simulation_history_buffer",
-        "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/planner:abstract_planner",
-        "//nuplan/planning/simulation/planner:simple_planner",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
-    ],
-)
-
-py_library(
-    name = "log_future",
-    srcs = ["log_future.py"],
+    name = "log_future_planner",
+    srcs = ["log_future_planner.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -40,9 +25,9 @@ py_library(
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
-        "//nuplan/planning/simulation/trajectory:interpolated",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )
 
@@ -54,11 +39,10 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/maps:abstract_map",
-        "//nuplan/planning/simulation/history:simulation_history_buffer",
+        "//nuplan/planning/simulation/controller/motion_model:kinematic_bicycle",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
-        "//nuplan/planning/simulation/trajectory:interpolated",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )

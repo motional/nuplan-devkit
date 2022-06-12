@@ -3,24 +3,16 @@ from __future__ import annotations
 import pathlib
 import pickle
 from dataclasses import dataclass
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, Optional
 
-
-class BokehAgentStates(NamedTuple):
-    """ Agent states in bokeh. """
-
-    xs: List[List[List[List[float]]]]   # [m], [[list of [[Polygon connected corners in x]]]]
-    ys: List[List[List[List[float]]]]   # [m], [[list of [[Polygon connected corners in y]]]]
-    agent_type: List[str]   # Agent's category
-    track_id: List[int]     # Agent's track id
-    trajectory_x: List[List[float]]  # [m], [a list of trajectory in x]
-    trajectory_y: List[List[float]]     # [m], [a list of trajectory in y]
+from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 
 
 @dataclass
 class MetricScenarioKey:
-    """ Metric key for scenario in nuBoard. """
+    """Metric key for scenario in nuBoard."""
 
+    log_name: str
     planner_name: str
     scenario_type: str
     scenario_name: str
@@ -30,25 +22,31 @@ class MetricScenarioKey:
 
 @dataclass
 class SimulationScenarioKey:
-    """ Simulation key for scenario in nuBoard. """
+    """Simulation key for scenario in nuBoard."""
 
+    log_name: str
     planner_name: str
     scenario_type: str
     scenario_name: str
     files: List[pathlib.Path]
+    nuboard_file_index: int
 
 
 @dataclass
 class NuBoardFile:
-    """ Data class to save nuBoard file info. """
+    """Data class to save nuBoard file info."""
 
-    main_path: str
-    simulation_folder: str
-    metric_folder: str
+    simulation_main_path: str  # Simulation main path
+    simulation_folder: str  # Simulation folder
+    metric_main_path: str  # Metric main path
+    metric_folder: str  # Metric folder
+    aggregator_metric_folder: str  # Aggregated metric folder
+    current_path: Optional[pathlib.Path] = None  # Current path of the nuboard file
 
     @classmethod
     def extension(cls) -> str:
-        return '.nuboard'
+        """Return nuboard file extension."""
+        return ".nuboard"
 
     def __eq__(self, other: object) -> bool:
         """
@@ -56,31 +54,34 @@ class NuBoardFile:
         :param other: Other object.
         :return True if both objects are same.
         """
-
         if not isinstance(other, NuBoardFile):
             raise NotImplementedError
 
-        return other.main_path == self.main_path and other.simulation_folder == self.simulation_folder and \
-            other.metric_folder == self.metric_folder
+        return (
+            other.simulation_main_path == self.simulation_main_path
+            and other.simulation_folder == self.simulation_folder
+            and other.metric_main_path == self.metric_main_path
+            and other.metric_folder == self.metric_folder
+            and other.aggregator_metric_folder == self.aggregator_metric_folder
+            and other.current_path == self.current_path
+        )
 
-    def save_nuboard_file(self, file: pathlib.Path) -> None:
+    def save_nuboard_file(self, filename: pathlib.Path) -> None:
         """
         Save NuBoardFile data class to a file.
-        :param file: The saved file path.
+        :param filename: The saved file path.
         """
-
-        with open(file, 'wb') as f:
-            pickle.dump(self.serialize(), f)
+        with open(filename, "wb") as file:
+            pickle.dump(self.serialize(), file)
 
     @classmethod
-    def load_nuboard_file(cls, file: pathlib.Path) -> NuBoardFile:
+    def load_nuboard_file(cls, filename: pathlib.Path) -> NuBoardFile:
         """
         Read a NuBoard file to NuBoardFile data class.
         :file: NuBoard file path.
         """
-
-        with open(file, 'rb') as f:
-            data = pickle.load(f)
+        with open(filename, "rb") as file:
+            data = pickle.load(file)
 
         return cls.deserialize(data=data)
 
@@ -89,23 +90,37 @@ class NuBoardFile:
         Serialization of NuBoardFile data class to dictionary.
         :return A serialized dictionary class.
         """
-
         return {
-            'main_path': self.main_path,
-            'simulation_folder': self.simulation_folder,
-            'metric_folder': self.metric_folder
+            "simulation_main_path": self.simulation_main_path,
+            "simulation_folder": self.simulation_folder,
+            "metric_main_path": self.metric_main_path,
+            "metric_folder": self.metric_folder,
+            "aggregator_metric_folder": self.aggregator_metric_folder,
         }
 
     @classmethod
     def deserialize(cls, data: Dict[str, str]) -> NuBoardFile:
         """
-        Deserialization of a NuBoard file into NuBoardFile dtata class.
+        Deserialization of a NuBoard file into NuBoardFile data class.
         :param data: A serialized nuboard file data.
         :return A NuBoard file data class.
         """
+        simulation_main_path = data["simulation_main_path"].replace("//", "/")
+        metric_main_path = data["metric_main_path"].replace("//", "/")
+        return NuBoardFile(
+            simulation_main_path=simulation_main_path,
+            simulation_folder=data["simulation_folder"],
+            metric_main_path=metric_main_path,
+            metric_folder=data["metric_folder"],
+            aggregator_metric_folder=data["aggregator_metric_folder"],
+        )
 
-        main_path = data['main_path'].replace('//', '/')
-        return NuBoardFile(main_path=main_path,
-                           simulation_folder=data['simulation_folder'],
-                           metric_folder=data['metric_folder']
-                           )
+
+@dataclass
+class SelectedMetricStatisticDataFrame:
+    """
+    Selected metric statistics dataframe
+    """
+
+    dataframe_index: int  # dataframe index
+    dataframe: MetricStatisticsDataFrame  # metric statistics dataframe

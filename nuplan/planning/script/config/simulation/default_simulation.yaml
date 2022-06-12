@@ -15,12 +15,21 @@ defaults:
       - default_metric
   - callback:
       - serialization_callback
+      - simulation_log_callback
+  - main_callback:
+      - time_callback
+      - metric_file_callback
+      - metric_aggregator_callback
+
+  - splitter: nuplan
 
   # Hyperparameters need to be specified
-  - observation: ???
-  - ego_controller: ???
+  - observation: null
+  - ego_controller: null
   - planner: null
-  - simulation_manager: step_simulation_manager
+  - simulation_time_controller: step_simulation_time_controller
+  - metric_aggregator:
+      - weighted_average_metric_aggregator
 
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging
@@ -40,6 +49,12 @@ number_of_gpus_used_for_one_simulation: null
 # This number specifies number of CPU threads that are used for simulation
 # In case this is null, all CPU available threads are utilized
 number_of_cpus_used_for_one_simulation: null
+
+# Set false to disable metric computation
+run_metric: true
+
+# Set to rerun metrics with existing simulation logs without setting run_metric to false.
+simulation_log_main_path: null
 
 # If false, continue running the simulation even it a scenario has failed
 exit_on_failure: false

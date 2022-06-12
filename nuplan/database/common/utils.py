@@ -22,6 +22,8 @@ def jsontabledump(f: TextIO, c: Tuple[str, Dict[str, Tuple[str, str]]], name: st
 
 
 class MotionalColor(Enum):
+    """Color Mappings."""
+
     BLACK = auto()
     WHITE = auto()
 
@@ -138,7 +140,7 @@ class MotionalColor(Enum):
             MotionalColor.OLIVE: (128, 0, 128),
             MotionalColor.BLUE_VIOLET: (138, 226, 43),
             MotionalColor.ROSY_BROWN: (188, 143, 143),
-            MotionalColor.BURLY_WOOD: (222, 135, 184)
+            MotionalColor.BURLY_WOOD: (222, 135, 184),
         }
         return rgb_tuples[self]
 

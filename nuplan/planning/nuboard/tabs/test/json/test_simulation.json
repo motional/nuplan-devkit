@@ -179,5 +179,6 @@
     }
    ]
   }
- }
+ },
+ "traffic_light_status": []
 }

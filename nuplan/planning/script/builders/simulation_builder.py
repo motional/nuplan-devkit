@@ -1,86 +1,113 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from hydra.utils import instantiate
+from omegaconf import DictConfig
+
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 from nuplan.planning.script.builders.metric_builder import build_metrics_engines
-from nuplan.planning.script.builders.planner_builder import build_planner
+from nuplan.planning.script.builders.observation_builder import build_observations
+from nuplan.planning.script.builders.planner_builder import build_planners
 from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
-from nuplan.planning.simulation.callback.metric_callback import MetricCallBack
+from nuplan.planning.simulation.callback.metric_callback import MetricCallback
+from nuplan.planning.simulation.callback.multi_callback import MultiCallback
 from nuplan.planning.simulation.controller.abstract_controller import AbstractEgoController
 from nuplan.planning.simulation.observation.abstract_observation import AbstractObservation
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
-from nuplan.planning.simulation.simulation import Simulation, SimulationSetup
-from nuplan.planning.simulation.simulation_manager.abstract_simulation_manager import AbstractSimulationManager
+from nuplan.planning.simulation.runner.simulations_runner import SimulationsRunner
+from nuplan.planning.simulation.simulation import Simulation
+from nuplan.planning.simulation.simulation_setup import SimulationSetup
+from nuplan.planning.simulation.simulation_time_controller.abstract_simulation_time_controller import (
+    AbstractSimulationTimeController,
+)
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
-from omegaconf import DictConfig, ListConfig
 
 logger = logging.getLogger(__name__)
 
 
-def build_simulations(cfg: DictConfig,
-                      scenario_builder: AbstractScenarioBuilder,
-                      worker: WorkerPool,
-                      callbacks: List[AbstractCallback],
-                      planners: List[AbstractPlanner]) -> List[Simulation]:
+def build_simulations(
+    cfg: DictConfig,
+    scenario_builder: AbstractScenarioBuilder,
+    worker: WorkerPool,
+    callbacks: List[AbstractCallback],
+    pre_built_planners: Optional[List[AbstractPlanner]] = None,
+) -> List[SimulationsRunner]:
     """
     Build simulations.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
     :param scenario_builder: Scenario builder used to extract scenarios
     :param callbacks: Callbacks for simulation.
     :param worker: Worker for job execution
-    :param planners: List of pre-built planners to run in simulation.
+    :param pre_built_planners: List of pre-built planners to run in simulation.
     :return A dict of simulation engines with challenge names.
     """
-
-    logger.info("Building simulations...")
+    logger.info('Building simulations...')
 
     # Create Simulation object container
     simulations = list()
 
     # Retrieve scenarios
     scenario_filter = build_scenario_filter(cfg.scenario_filter)
-    logger.info("Extracting scenarios...")
+    logger.info('Extracting scenarios...')
     scenarios = scenario_builder.get_scenarios(scenario_filter, worker)
-    logger.info("Extracting scenarios...DONE!")
+    logger.info('Extracting scenarios %d...DONE!', len(scenarios))
 
-    logger.info("Building metric engines...")
-    metric_engines_map = build_metrics_engines(cfg=cfg, scenarios=scenarios)
-    logger.info("Building metric engines...DONE")
+    metric_engines_map = {}
+    if cfg.run_metric:
+        logger.info('Building metric engines...')
+        metric_engines_map = build_metrics_engines(cfg=cfg, scenarios=scenarios)
+        logger.info('Building metric engines...DONE')
+    else:
+        logger.info('Metric engine is disable')
 
-    logger.info(f"Building simulations from {len(planners)} planners and {len(scenarios)} scenarios...")
-    for planner in planners:
-        for scenario in scenarios:
+    logger.info('Building simulations from %s scenarios...', len(scenarios))
+
+    # Build a metric metadata file
+    for scenario in scenarios:
+
+        # Build planners.
+        if pre_built_planners is None:
+            if 'planner' not in cfg.keys():
+                raise KeyError('Planner not specified in config. Please specify a planner using "planner" field.')
+
+            planners = build_planners(cfg.planner, scenario)
+        else:
+            planners = pre_built_planners
+
+        for planner in planners:
             # Ego Controller
             ego_controller: AbstractEgoController = instantiate(cfg.ego_controller, scenario=scenario)
 
             # Simulation Manager
-            simulation_manager: AbstractSimulationManager = instantiate(cfg.simulation_manager, scenario=scenario)
+            simulation_time_controller: AbstractSimulationTimeController = instantiate(
+                cfg.simulation_time_controller, scenario=scenario
+            )
 
             # Perception
-            observations: AbstractObservation = instantiate(cfg.observation, scenario=scenario)
+            observations: AbstractObservation = build_observations(cfg.observation, scenario=scenario)
 
             # Metric Engine
-            metric_engine = metric_engines_map[scenario.scenario_type]
+            metric_engine = metric_engines_map.get(scenario.scenario_type, None)
+            if metric_engine is not None:
+                metric_callbacks = [MetricCallback(metric_engine=metric_engine)]
+            else:
+                metric_callbacks = []
 
-            extra_callbacks = [
-                MetricCallBack(metric_engine=metric_engine, scenario_name=scenario.scenario_name)
-            ]
-            simulation_callbacks = callbacks + extra_callbacks
+            # Construct simulation and manager
+            simulation_setup = SimulationSetup(
+                time_controller=simulation_time_controller,
+                observations=observations,
+                ego_controller=ego_controller,
+                scenario=scenario,
+            )
 
-            simulation_setup = SimulationSetup(simulation_manager=simulation_manager,
-                                               observations=observations,
-                                               ego_controller=ego_controller,
-                                               scenario=scenario)
+            simulation = Simulation(
+                simulation_setup=simulation_setup,
+                callback=MultiCallback(callbacks + metric_callbacks),
+                simulation_history_buffer_duration=cfg.simulation_history_buffer_duration,
+            )
+            simulations.append(SimulationsRunner([simulation], planner))
 
-            simulation = Simulation(simulation_setup=simulation_setup,
-                                    planner=planner,
-                                    callbacks=simulation_callbacks,
-                                    enable_progress_bar=cfg.enable_simulation_progress_bar,
-                                    simulation_history_buffer_duration=cfg.simulation_history_buffer_duration)
-
-            simulations.append(simulation)
-
-    logger.info("Building simulations...DONE!")
+    logger.info('Building simulations...DONE!')
     return simulations

@@ -6,8 +6,13 @@ from nuplan.planning.simulation.visualization.abstract_visualization import Abst
 
 
 class VisualizationCallback(AbstractCallback):
+    """Callback to render simulation data as the simulation runs."""
 
     def __init__(self, renderer: AbstractVisualization):
+        """
+        Constructor for VisualizationCallback.
+        :param renderer: handler to create visualization.
+        """
         self._visualization = renderer
 
     def on_initialization_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:

@@ -3,43 +3,53 @@ import logging
 import lzma
 import pathlib
 import pickle
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import cv2
 import msgpack
+import numpy as np
+from bokeh.document import without_document_lock
 from bokeh.document.document import Document
-from bokeh.layouts import gridplot
-from bokeh.models import ColumnDataSource, Glyph, HoverTool, Line, MultiLine, MultiPolygons, Slider
+from bokeh.io.export import get_screenshot_as_png
+from bokeh.layouts import column, gridplot
+from bokeh.models import Button, ColumnDataSource, Slider
 from bokeh.plotting import figure
-from nuplan.common.actor_state.state_representation import Point2D, StateSE2
-from nuplan.common.actor_state.transform_state import get_front_left_corner, get_front_right_corner, \
-    get_rear_left_corner, get_rear_right_corner, translate_longitudinally
-from nuplan.common.actor_state.vehicle_parameters import BoxParameters, VehicleParameters
+from selenium import webdriver
+from tornado import gen
+from tqdm import tqdm
+
+from nuplan.common.actor_state.state_representation import Point2D
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.abstract_map_objects import StopLine
+from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer, StopLineType
-from nuplan.planning.nuboard.base.data_class import BokehAgentStates, SimulationScenarioKey
+from nuplan.planning.nuboard.base.data_class import SimulationScenarioKey
+from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
+from nuplan.planning.nuboard.base.plot_data import MapPoint, SimulationData, SimulationFigure
 from nuplan.planning.nuboard.style import simulation_map_layer_color, simulation_tile_style
-from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
+
+try:
+    import chromedriver_binary
+except ImportError:
+    chromedriver_binary = None
 
 logger = logging.getLogger(__name__)
 
 
 def extract_source_from_states(states: List[Dict[str, Any]]) -> ColumnDataSource:
-    """ Helper function to get the xy coordinates into ColumnDataSource format from a list of states.
+    """Helper function to get the xy coordinates into ColumnDataSource format from a list of states.
     :param states: List of states (containing the pose)
     :return: A ColumnDataSource object containing the xy coordinates.
     """
     x_coords = []
     y_coords = []
     for state in states:
-        x_coords.append(state['pose'][0])
-        y_coords.append(state['pose'][1])
-    source = ColumnDataSource(dict(
-        xs=x_coords,
-        ys=y_coords)
-    )
+        x_coords.append(state["pose"][0])
+        y_coords.append(state["pose"][1])
+    source = ColumnDataSource(dict(xs=x_coords, ys=y_coords))
     return source
 
 
@@ -49,8 +59,8 @@ def _extract_serialization_type(first_file: pathlib.Path) -> str:
     :param first_file: serialized file
     :return: one from ["msgpack", "pickle", "json"].
     """
-    msg_pack = first_file.suffixes == ['.msgpack', '.xz']
-    msg_pickle = first_file.suffixes == ['.pkl', '.xz']
+    msg_pack = first_file.suffixes == [".msgpack", ".xz"]
+    msg_pickle = first_file.suffixes == [".pkl", ".xz"]
     msg_json = first_file.suffix == ".json"
     number_of_available_types = int(msg_pack) + int(msg_json) + int(msg_pickle)
 
@@ -76,137 +86,286 @@ def _load_data(file_name: pathlib.Path, serialization_type: str) -> Any:
     :return: deserialized type
     """
     if serialization_type == "json":
-        with open(str(file_name), 'r') as f:  # type: ignore
+        with open(str(file_name), "r") as f:
             return json.load(f)
     elif serialization_type == "msgpack":
         with lzma.open(str(file_name), "rb") as f:
             return msgpack.unpackb(f.read())
     elif serialization_type == "pickle":
-        with lzma.open(str(file_name), "rb") as f:
+        with lzma.open(
+            str(file_name),
+            "rb",
+        ) as f:
             return pickle.load(f)
     else:
         raise ValueError(f"Unknown serialization type: {serialization_type}!")
 
 
 class SimulationTile:
+    """Scenario simulation tile for visualization."""
 
-    def __init__(self,
-                 doc: Document,
-                 vehicle_parameters: VehicleParameters,
-                 scenario_builder: AbstractScenarioBuilder,
-                 period_milliseconds: int = 5000,
-                 radius: float = 150.0):
+    def __init__(
+        self,
+        doc: Document,
+        experiment_file_data: ExperimentFileData,
+        vehicle_parameters: VehicleParameters,
+        map_factory: AbstractMapFactory,
+        period_milliseconds: int = 5000,
+        radius: float = 300.0,
+    ):
         """
         Scenario simulation tile.
         :param doc: Bokeh HTML document.
+        :param experiment_file_data: Experiment file data.
         :param vehicle_parameters: Ego pose parameters.
-        :param scenario_builder: Scenario builder instance.
+        :param map_factory: Map factory for building maps.
         :param period_milliseconds: Milli seconds to update the tile.
         :param radius: Map radius.
         """
-
         self._doc = doc
         self._vehicle_parameters = vehicle_parameters
-        self._scenario_builder = scenario_builder
+        self._map_factory = map_factory
+        self._experiment_file_data = experiment_file_data
         self._period_milliseconds = period_milliseconds
         self._radius = radius
         self._selected_scenario_keys: List[SimulationScenarioKey] = []
+        self._executor = ThreadPoolExecutor(max_workers=4)
         self._maps: Dict[str, AbstractMap] = {}
+        self._figures: List[SimulationFigure] = []
+
+    def _create_initial_figure(self, figure_index: int, backend: Optional[str] = "webgl") -> SimulationFigure:
+        """
+        Create an initial Bokeh figure.
+        :param figure_index: Figure index.
+        :param backend: Bokeh figure backend.
+        :return: A Bokeh figure.
+        """
+        experiment_path = Path(
+            self._experiment_file_data.file_paths[
+                self._selected_scenario_keys[figure_index].nuboard_file_index
+            ].metric_main_path
+        )
+        planner_name = self._selected_scenario_keys[figure_index].planner_name
+        presented_planner_name = planner_name + f' ({experiment_path.stem})'
+        simulation_figure = figure(
+            x_range=(-self._radius, self._radius),
+            y_range=(-self._radius, self._radius),
+            width=simulation_tile_style["figure_sizes"][0],
+            height=simulation_tile_style["figure_sizes"][1],
+            title=f"{presented_planner_name}",
+            tools=["pan", "wheel_zoom", "save", "reset"],
+            match_aspect=True,
+            active_scroll="wheel_zoom",
+            margin=simulation_tile_style["figure_margins"],
+            background_fill_color=simulation_tile_style["background_color"],
+            output_backend=backend,
+        )
+        simulation_figure.axis.visible = False
+        simulation_figure.xgrid.visible = False
+        simulation_figure.ygrid.visible = False
+        simulation_figure.title.text_font_size = simulation_tile_style["figure_title_text_font_size"]
+        slider = Slider(
+            start=0,
+            end=1,
+            value=0,
+            step=1,
+            title="Frame",
+            margin=simulation_tile_style["slider_margins"],
+            css_classes=["scenario-frame-slider"],
+        )
+        slider.on_change("value", partial(self._slider_on_change, figure_index=figure_index))
+        video_button = Button(
+            label="Render video",
+            margin=simulation_tile_style["video_button_margins"],
+            css_classes=["scenario-video-button"],
+        )
+        video_button.on_click(partial(self._video_button_on_click, figure_index=figure_index))
+
+        simulation_figure_data = SimulationFigure(
+            figure=simulation_figure,
+            slider=slider,
+            video_button=video_button,
+            vehicle_parameters=self._vehicle_parameters,
+            planner_name=planner_name,
+        )
+
+        return simulation_figure_data
 
     def _map_api(self, map_name: str) -> AbstractMap:
-
+        """
+        Get a map api.
+        :param map_name: Map name.
+        :return Map api.
+        """
         if map_name not in self._maps:
-            self._maps[map_name] = self._scenario_builder.get_map_api(map_name)
+            self._maps[map_name] = self._map_factory.build_map_from_name(map_name)
 
         return self._maps[map_name]
 
-    def _init_simulations(self) -> None:
-        """ Initialization of the visualization of simulation panel. """
-
-        self._figures: List[figure] = []
-        self._sliders: List[Slider] = []
-
-        self._scenes: List[Dict[Path, Any]] = []
-        self._ego_state_plots: List[Optional[Glyph]] = []
-        self._ego_state_trajectory_plots: List[Optional[Glyph]] = []
-        self._agent_state_plots: List[Optional[Glyph]] = []
-        self._agent_state_heading_plots: List[Optional[Glyph]] = []
-        self._agent_state_trajectory_plots: List[Optional[Glyph]] = []
-        self._ego_state_data_sources: List[List[ColumnDataSource]] = []
-        self._ego_state_trajectory_data_sources: List[List[ColumnDataSource]] = []
-        self._agent_data_sources: List[List[ColumnDataSource]] = []
-        self._agent_state_trajectory_data_sources: List[List[ColumnDataSource]] = []
-
+    def init_simulations(self) -> None:
+        """Initialization of the visualization of simulation panel."""
+        self._figures = []
         for figure_index in range(len(self._selected_scenario_keys)):
-            self._scenes.append({})
-            self._ego_state_plots.append(None)
-            self._ego_state_trajectory_plots.append(None)
-            self._agent_state_plots.append(None)
-            self._agent_state_heading_plots.append(None)
-            self._agent_state_trajectory_plots.append(None)
-            self._ego_state_data_sources.append([])
-            self._ego_state_trajectory_data_sources.append([])
-            self._agent_data_sources.append([])
-            self._agent_state_trajectory_data_sources.append([])
-            simulation_figure = figure(x_range=(-self._radius, self._radius), y_range=(-self._radius, self._radius),
-                                       plot_width=simulation_tile_style['figure_sizes'][0],
-                                       plot_height=simulation_tile_style['figure_sizes'][1],
-                                       title=f"{self._selected_scenario_keys[figure_index].planner_name}",
-                                       tools=["pan", "wheel_zoom", "save", "reset"],
-                                       match_aspect=True, active_scroll="wheel_zoom",
-                                       margin=simulation_tile_style['figure_margins'],
-                                       background_fill_color=simulation_tile_style['background_color'],
-                                       )
-            simulation_figure.axis.visible = False
-            simulation_figure.xgrid.visible = False
-            simulation_figure.ygrid.visible = False
-            simulation_figure.title.text_font_size = simulation_tile_style['figure_title_text_font_size']
-            simulation_figure.rect(fill_color=simulation_tile_style['planner_color'], legend_label="Ego")
-            simulation_figure.rect(fill_color=simulation_tile_style['agent_color'], legend_label="Agents")
-            simulation_figure.line(line_color=simulation_tile_style['planner_color'], legend_label="Planned trajectory")
-            simulation_figure.line(line_color=simulation_tile_style['expert_color'], legend_label="Expert trajectory")
-            simulation_figure.legend.background_fill_color = 'lightgray'
-            simulation_figure.legend.label_text_font_style = 'bold'
-            simulation_figure.legend.glyph_height = 25
-            simulation_figure.legend.glyph_width = 25
-            slider = Slider(start=0, end=1, value=0, step=1, title="Frame",
-                            margin=simulation_tile_style['slider_margins'])
-            slider.on_change("value", partial(self._slider_on_change, figure_index=figure_index))
+            simulation_figure = self._create_initial_figure(figure_index=figure_index)
             self._figures.append(simulation_figure)
-            self._sliders.append(slider)
 
     @property
-    def figures(self) -> List[figure]:
+    def figures(self) -> List[SimulationFigure]:
         """
         Access bokeh figures.
         :return A list of bokeh figures.
         """
-
         return self._figures
 
-    @property
-    def sliders(self) -> List[Slider]:
+    def _render_simulation_layouts(self) -> List[SimulationData]:
         """
-        Access bokeh sliders.
-        :return A list of bokeh sliders.
+        Render simulation layouts.
+        :return: A list of columns or rows.
         """
+        grid_layouts: List[SimulationData] = []
+        for simulation_figure in self.figures:
+            grid_layouts.append(
+                SimulationData(
+                    planner_name=simulation_figure.planner_name,
+                    plot=gridplot(
+                        [[simulation_figure.slider], [simulation_figure.figure], [simulation_figure.video_button]],
+                        toolbar_location="left",
+                    ),
+                )
+            )
+        return grid_layouts
 
-        return self._sliders
-
-    def _update_data_sources(self, scene: Dict[str, Any], figure_index: int, file_index: int) -> None:
+    def render_simulation_tiles(self, selected_scenario_keys: List[SimulationScenarioKey]) -> List[SimulationData]:
         """
-        Update data sources once there are new data sources.
-        :param scene: A dict of scene data.
-        :param figure_index: A figure index.
-        :param file_index: A file index.
+        Render simulation tiles.
+        :param selected_scenario_keys: A list of selected scenario keys.
+        :return A list of bokeh layouts.
         """
+        self._selected_scenario_keys = selected_scenario_keys
+        self.init_simulations()
+        self._read_files()
 
-        if file_index != 0:
-            self._sliders[figure_index].end = file_index
-        self._update_ego_state(ego_state=scene['ego'], figure_index=figure_index)
-        self._update_ego_state_trajectory(trajectory=scene['trajectories']['ego_predicted_trajectory'],
-                                          figure_index=figure_index)
-        self._update_agents(observations=scene['world'], figure_index=figure_index)
+        for main_figure in self._figures:
+            self._render_scenario(main_figure)
+
+        layouts = self._render_simulation_layouts()
+        return layouts
+
+    def _read_files(self) -> None:
+        """Read all simulation files to memory."""
+        for figure_index, simulation_scenario_key in enumerate(self._selected_scenario_keys):
+            sorted_files = sorted(simulation_scenario_key.files, reverse=False)
+            if len(sorted_files) == 0:
+                raise RuntimeError("No files were found!")
+
+            # Deduce the type of files
+            first_file = sorted_files[0]
+            serialization = _extract_serialization_type(first_file)
+            main_figure = self._figures[figure_index]
+
+            if len(sorted_files) > 1:
+                # Load scenes from all the available files
+                for file in sorted_files:
+                    main_figure.scenes[file] = _load_data(file, serialization)
+            else:
+                # Load all scenes in one go
+                file = first_file
+                scenes = _load_data(file, serialization)
+                scenes = scenes if isinstance(scenes, list) else [scenes]
+                for scene in scenes:
+                    timestamp_us = pathlib.Path(str(scene["ego"]["timestamp_us"]))
+                    main_figure.scenes[timestamp_us] = scene
+
+    @gen.coroutine
+    @without_document_lock
+    def _video_button_on_click(self, figure_index: int) -> None:
+        """
+        Callback to video button click event.
+        Note that this callback in run on a background thread.
+        :param figure_index: Figure index.
+        """
+        self._figures[figure_index].video_button.disabled = True
+        self._figures[figure_index].video_button.label = "Rendering video now..."
+
+        self._executor.submit(self._video_button_next_tick, figure_index)
+
+    def _reset_video_button(self, figure_index: int) -> None:
+        """
+        Reset a video button after exporting is done.
+        :param figure_index: Figure index.
+        """
+        self.figures[figure_index].video_button.label = "Render video"
+        self.figures[figure_index].video_button.disabled = False
+
+    def _update_video_button_label(self, figure_index: int, label: str) -> None:
+        """
+        Update a video button label to show progress when rendering a video.
+        :param figure_index: Figure index.
+        :param label: New video button text.
+        """
+        self.figures[figure_index].video_button.label = label
+
+    def _video_button_next_tick(self, figure_index: int) -> None:
+        """
+        Synchronous callback to the video button on click event.
+        :param figure_index: Figure index.
+        """
+        if not len(self._figures):
+            return
+
+        images = []
+        scenario_name = self._selected_scenario_keys[figure_index].scenario_name
+        scenario_type = self._selected_scenario_keys[figure_index].scenario_type
+        planner_name = self._selected_scenario_keys[figure_index].planner_name
+        video_name = scenario_type + "_" + planner_name + "_" + scenario_name + ".avi"
+        video_path = Path(self._experiment_file_data.file_paths[figure_index].simulation_main_path) / "video_screenshot"
+        if not video_path.exists():
+            video_path.mkdir(parents=True, exist_ok=True)
+        video_save_path = video_path / video_name
+
+        scenes = self.figures[figure_index].scenes
+        scene_keys = list(scenes.keys())
+        scene_states = scenes[scene_keys[0]]
+        database_interval = scene_states.get("database_interval", None)
+        selected_simulation_figure = self._figures[figure_index]
+
+        try:
+            if len(selected_simulation_figure.ego_state_plot.data_sources):
+                chrome_options = webdriver.ChromeOptions()
+                chrome_options.headless = True
+                driver = webdriver.Chrome(chrome_options=chrome_options)
+                shape = None
+                simulation_figure = self._create_initial_figure(figure_index=figure_index, backend="canvas")
+                # Copy the data sources
+                simulation_figure.copy_datasources(selected_simulation_figure)
+                self._render_scenario(main_figure=simulation_figure)
+                length = len(selected_simulation_figure.ego_state_plot.data_sources)
+                for frame_index in tqdm(range(length), desc="Rendering video"):
+                    self._render_plots(main_figure=simulation_figure, frame_index=frame_index)
+                    image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
+                    shape = image.size
+                    images.append(image)
+                    label = f"Rendering video now... ({frame_index}/{length})"
+                    self._doc.add_next_tick_callback(
+                        partial(self._update_video_button_label, figure_index=figure_index, label=label)
+                    )
+
+                fourcc = cv2.VideoWriter_fourcc("M", "P", "E", "G")
+                if database_interval:
+                    fps = 1 / database_interval
+                else:
+                    fps = 20  # Assume default fps is 20
+                video_obj = cv2.VideoWriter(filename=str(video_save_path), fourcc=fourcc, fps=fps, frameSize=shape)
+                for index, image in enumerate(images):
+                    cv2_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                    video_obj.write(cv2_image)
+
+                video_obj.release()
+                logger.info("Video saved to %s" % str(video_save_path))
+        except (RuntimeError, Exception) as e:
+            logger.error("%s" % e)
+
+        self._doc.add_next_tick_callback(partial(self._reset_video_button, figure_index=figure_index))
 
     def _slider_on_change(self, attr: str, old: int, new: int, figure_index: int) -> None:
         """
@@ -216,397 +375,156 @@ class SimulationTile:
         :param new: New value.
         :param figure_index: Figure index.
         """
+        if new != len(self._figures[figure_index].scenes):
+            self._render_plots(main_figure=self._figures[figure_index], frame_index=new)
 
-        if new != len(self._scenes[figure_index]):
-            self._render_plots(frame_index=new, figure_index=figure_index)
-
-    def _read_files(self) -> None:
-        """ Read all simulation files to memory. """
-
-        for figure_index, simulation_scenario_key in enumerate(self._selected_scenario_keys):
-            sorted_files = sorted(simulation_scenario_key.files, reverse=False)
-            if len(sorted_files) == 0:
-                raise RuntimeError("No files were found!")
-
-            # Deduce the type of files
-            first_file = sorted_files[0]
-            serialization = _extract_serialization_type(first_file)
-
-            if len(sorted_files) > 1:
-                # Load scenes from all the available files
-                for file_index, file in enumerate(sorted_files):
-                    self._scenes[figure_index][file] = _load_data(file, serialization)
-                    self._update_data_sources(self._scenes[figure_index][file], figure_index, file_index)
-            else:
-                # Load all scenes in one go
-                file = first_file
-                scenes = _load_data(file, serialization)
-                scenes = scenes if isinstance(scenes, list) else [scenes]
-                self._load_scenes(figure_index, scenes)
-
-    def _load_scenes(self, figure_index: int, scenes: List[Dict[str, Any]]) -> None:
+    def _render_scenario(self, main_figure: SimulationFigure) -> None:
         """
-        Load all scenes corresponding to figure_index
-        :param figure_index: index of the loading figure
-        :param scenes: all scenes to be loaded
+        Render scenario.
+        :param main_figure: Simulation figure object.
         """
-        for file_index, scene in enumerate(scenes):
-            timestamp_us = pathlib.Path(str(scene["ego"]["timestamp_us"]))
-            self._scenes[figure_index][timestamp_us] = scene
-            self._update_data_sources(self._scenes[figure_index][timestamp_us], figure_index, file_index)
-
-    @staticmethod
-    def _render_simulation_layouts(figures: List[figure], sliders: List[Slider]) -> List[Any]:
-        """
-        Render simulation layouts.
-        :param figures: A list of figures.
-        :param sliders: A list of sliders.
-        :return: A list of columns or rows.
-        """
-
-        grid_layouts = []
-        for figure_plot, slider in zip(figures, sliders):
-            grid_layouts.append(gridplot([[figure_plot], [slider]]))
-        return grid_layouts
-
-    def render_simulation_tiles(self, selected_scenario_keys: List[SimulationScenarioKey]) -> List[Any]:
-        """
-        Render simulation tiles.
-        :param selected_scenario_keys: A list of selected scenario keys.
-        :return A list of bokeh layouts.
-        """
-
-        self._selected_scenario_keys = selected_scenario_keys
-        self._init_simulations()
-        self._read_files()
-        if len(self._scenes) > 0:
-            self._render_scenario()
-
-        layouts = self._render_simulation_layouts(self._figures, self._sliders)
-        return layouts
-
-    def _render_scenario(self) -> None:
-        """ Render scenario. """
-
-        if len(self._scenes) == 0:
+        scenes = main_figure.scenes
+        files = list(scenes.keys())
+        if len(files) == 0:
             return
 
-        for figure_index, scene in enumerate(self._scenes):
-            files = list(scene.keys())
+        # Load the first file only.
+        scene_states = scenes[files[0]]
+        self._render_map(main_figure=main_figure, scene=scene_states)
 
-            if len(files) == 0:
-                continue
+        expert_ego_trajectory = None
+        if "ego_expert_trajectory" in scene_states["trajectories"]:
+            expert_ego_trajectory = scene_states["trajectories"]["ego_expert_trajectory"]
 
-            # Load the first file only.
-            scene_states = scene[files[0]]
-            self._render_map(figure_index=figure_index, scene=scene_states)
+        if expert_ego_trajectory is not None:
+            self._render_expert_trajectory(main_figure=main_figure, expert_ego_trajectory=expert_ego_trajectory)
 
-            expert_ego_trajectory = None
-            if 'ego_expert_trajectory' in scene_states['trajectories']:
-                expert_ego_trajectory = scene_states['trajectories']['ego_expert_trajectory']
+        if scene_states["goal"] is not None:
+            main_figure.render_mission_goal(mission_goal_state=scene_states["goal"])
 
-            if expert_ego_trajectory is not None:
-                self._render_expert_trajectory(expert_ego_trajectory=expert_ego_trajectory, figure_index=figure_index)
+        # Must be updated after drawing maps
+        main_figure.update_data_sources()
+        self._render_plots(main_figure=main_figure, frame_index=0)
 
-            self._render_plots(frame_index=0, figure_index=figure_index)
-
-    def _render_map(self, figure_index: int, scene: Dict[str, Any]) -> None:
+    def _render_map(self, main_figure: SimulationFigure, scene: Dict[str, Any]) -> None:
         """
         Render a map.
-        :param figure_index: Index of the figure.
+        :param main_figure: Simulation figure.
         :param scene: A dictionary of scene info.
         """
-
-        map_name = scene['map_name']
+        map_name = scene["map_name"]
         map_api = self._map_api(map_name)
-        layer_names = [SemanticMapLayer.LANE_CONNECTOR, SemanticMapLayer.LANE,
-                       SemanticMapLayer.CROSSWALK, SemanticMapLayer.INTERSECTION, SemanticMapLayer.STOP_LINE]
-        ego_pose = scene['ego']['pose']
+        layer_names = [
+            SemanticMapLayer.LANE_CONNECTOR,
+            SemanticMapLayer.LANE,
+            SemanticMapLayer.CROSSWALK,
+            SemanticMapLayer.INTERSECTION,
+            SemanticMapLayer.STOP_LINE,
+            SemanticMapLayer.WALKWAYS,
+            SemanticMapLayer.CARPARK_AREA,
+        ]
+        ego_pose = scene["ego"]["pose"]
         center = Point2D(ego_pose[0], ego_pose[1])
 
         nearest_vector_map = map_api.get_proximal_map_objects(center, self._radius, layer_names)
         # Filter out stop polygons in turn stop
         if SemanticMapLayer.STOP_LINE in nearest_vector_map:
-            stop_polygons: List[StopLine] = nearest_vector_map[SemanticMapLayer.STOP_LINE]
-            nearest_vector_map[SemanticMapLayer.STOP_LINE] = [stop_polygon for stop_polygon in stop_polygons
-                                                              if stop_polygon.stop_line_type == StopLineType.TURN_STOP]
+            stop_polygons = nearest_vector_map[SemanticMapLayer.STOP_LINE]
+            nearest_vector_map[SemanticMapLayer.STOP_LINE] = [
+                stop_polygon for stop_polygon in stop_polygons if stop_polygon.stop_line_type != StopLineType.TURN_STOP
+            ]
 
         # Draw polygons
-        polygon_layer_names = \
-            [(SemanticMapLayer.LANE, simulation_map_layer_color[SemanticMapLayer.LANE]),
-             (SemanticMapLayer.INTERSECTION, simulation_map_layer_color[SemanticMapLayer.INTERSECTION]),
-             (SemanticMapLayer.STOP_LINE, simulation_map_layer_color[SemanticMapLayer.STOP_LINE]),
-             (SemanticMapLayer.CROSSWALK, simulation_map_layer_color[SemanticMapLayer.CROSSWALK])]
+        polygon_layer_names = [
+            (SemanticMapLayer.LANE, simulation_map_layer_color[SemanticMapLayer.LANE]),
+            (SemanticMapLayer.INTERSECTION, simulation_map_layer_color[SemanticMapLayer.INTERSECTION]),
+            (SemanticMapLayer.STOP_LINE, simulation_map_layer_color[SemanticMapLayer.STOP_LINE]),
+            (SemanticMapLayer.CROSSWALK, simulation_map_layer_color[SemanticMapLayer.CROSSWALK]),
+            (SemanticMapLayer.WALKWAYS, simulation_map_layer_color[SemanticMapLayer.WALKWAYS]),
+            (SemanticMapLayer.CARPARK_AREA, simulation_map_layer_color[SemanticMapLayer.CARPARK_AREA]),
+        ]
 
-        polygon_xs = []
-        polygon_ys = []
-        fill_colors = []
-        fill_color_alphas = []
-        line_colors = []
         for layer_name, color in polygon_layer_names:
             layer = nearest_vector_map[layer_name]
-            for map_obj in layer:
-                xs = []
-                ys = []
-                coords = map_obj.polygon.exterior.coords
-                for x, y in coords:
-                    xs.append(x)
-                    ys.append(y)
-                fill_colors.append(color['fill_color'])
-                fill_color_alphas.append(color['fill_color_alpha'])
-                line_colors.append(color['line_color'])
-                polygon_xs.append([[xs]])
-                polygon_ys.append([[ys]])
+            map_polygon = MapPoint(point_2d=[])
 
-        polygon_source = ColumnDataSource(dict(
-            xs=polygon_xs,
-            ys=polygon_ys,
-            fill_colors=fill_colors,
-            fill_color_alphas=fill_color_alphas,
-            line_colors=line_colors
-        )
-        )
-        polygon_glyph = MultiPolygons(xs="xs", ys="ys", fill_color="fill_colors", fill_alpha='fill_color_alphas',
-                                      line_color="line_colors")
+            for map_obj in layer:
+                coords = map_obj.polygon.exterior.coords
+                points = [Point2D(x=x, y=y) for x, y in coords]
+                map_polygon.point_2d.append(points)
+
+            polygon_source = ColumnDataSource(
+                dict(
+                    xs=map_polygon.polygon_xs,
+                    ys=map_polygon.polygon_ys,
+                )
+            )
+            main_figure.map_polygon_plots[layer_name.name] = main_figure.figure.multi_polygons(
+                xs="xs",
+                ys="ys",
+                fill_color=color["fill_color"],
+                fill_alpha=color["fill_color_alpha"],
+                line_color=color["line_color"],
+                source=polygon_source,
+            )
 
         # Draw lines
-        line_layer_names = [(SemanticMapLayer.LANE,
-                             simulation_map_layer_color[SemanticMapLayer.BASELINE_PATHS]),
-                            (SemanticMapLayer.LANE_CONNECTOR,
-                             simulation_map_layer_color[SemanticMapLayer.LANE_CONNECTOR])]
-        line_xs = []
-        line_ys = []
-        line_colors = []
-        line_color_alphas = []
+        line_layer_names = [
+            (SemanticMapLayer.LANE, simulation_map_layer_color[SemanticMapLayer.BASELINE_PATHS]),
+            (SemanticMapLayer.LANE_CONNECTOR, simulation_map_layer_color[SemanticMapLayer.LANE_CONNECTOR]),
+        ]
         for layer_name, color in line_layer_names:
             layer = nearest_vector_map[layer_name]
+            map_line = MapPoint(point_2d=[])
             for map_obj in layer:
-                xs = []
-                ys = []
                 path = map_obj.baseline_path().discrete_path()
-                for pose in path:
-                    xs.append(pose.x)
-                    ys.append(pose.y)
-                line_colors.append(color['line_color'])
-                line_color_alphas.append(color['line_color_alpha'])
-                line_xs.append(xs)
-                line_ys.append(ys)
+                points = [Point2D(x=pose.x, y=pose.y) for pose in path]
+                map_line.point_2d.append(points)
 
-        line_source = ColumnDataSource(dict(
-            xs=line_xs,
-            ys=line_ys,
-            line_colors=line_colors,
-            line_color_alphas=line_color_alphas)
-        )
-        line_glyph = MultiLine(xs="xs", ys="ys", line_color="line_colors", line_alpha="line_color_alphas",
-                               line_width=0.5, line_dash='dashed')
+            line_source = ColumnDataSource(dict(xs=map_line.line_xs, ys=map_line.line_ys))
+            main_figure.map_line_plots[layer_name.name] = main_figure.figure.multi_line(
+                xs="xs",
+                ys="ys",
+                line_color=color["line_color"],
+                line_alpha=color["line_color_alpha"],
+                line_width=0.5,
+                line_dash="dashed",
+                source=line_source,
+            )
 
-        figure = self._figures[figure_index]
-        figure.add_glyph(polygon_source, polygon_glyph)
-        figure.add_glyph(line_source, line_glyph)
+        main_figure.lane_connectors = {
+            lane_connector.id: lane_connector for lane_connector in nearest_vector_map[SemanticMapLayer.LANE_CONNECTOR]
+        }
 
-    def _render_mission_goal(self, mission_goal_state: Dict[str, Any], figure_index: int) -> None:
-        """
-        Render the mission goal.
-        :param mission_goal_state: Mission goal state.
-        :param figure_index: Figure index.
-        """
-
-        pose = mission_goal_state['pose']
-        source = ColumnDataSource(dict(
-            xs=[pose[0]],
-            ys=[pose[1]],
-            heading=[pose[2]]
-        ))
-        self._figures[figure_index].circle_cross(
-            x="xs",
-            y="ys",
-            size=simulation_tile_style['mission_goal_size'],
-            fill_alpha=simulation_tile_style['mission_goal_alpha'],
-            angle="heading",
-            color=simulation_tile_style['mission_goal_color'],
-            line_width=simulation_tile_style['mission_goal_line_width'],
-            source=source
-        )
-
-    def _render_expert_trajectory(self, expert_ego_trajectory: Dict[str, Any], figure_index: int) -> None:
+    @staticmethod
+    def _render_expert_trajectory(main_figure: SimulationFigure, expert_ego_trajectory: Dict[str, Any]) -> None:
         """
         Render expert trajectory.
+        :param main_figure: Main simulation figure.
         :param expert_ego_trajectory: A list of trajectory states.
-        :param figure_index: Figure index.
         """
-
         source = extract_source_from_states(expert_ego_trajectory["states"])
+        main_figure.render_expert_trajectory(expert_ego_trajectory_state=source)
 
-        glyph = Line(x="xs", y="ys", line_color=simulation_tile_style['expert_color'],
-                     line_width=simulation_tile_style['expert_trajectory_line_width'])
-        self._figures[figure_index].add_glyph(source, glyph)
-
-    def _update_ego_state(self, ego_state: Dict[str, Any], figure_index: int) -> None:
-        """
-        Update ego state.
-        :param ego_state: A dict of ego states.
-        :param figure_index: Figure index.
-        """
-
-        pose = ego_state['pose']
-        ego_state_se: StateSE2 = StateSE2(
-            x=pose[0],
-            y=pose[1],
-            heading=pose[2]
-        )
-        ego_corners = [get_front_left_corner(ego_state_se,
-                                             self._vehicle_parameters.half_length,
-                                             self._vehicle_parameters.half_width),
-                       get_front_right_corner(ego_state_se,
-                                              self._vehicle_parameters.half_length,
-                                              self._vehicle_parameters.half_width),
-                       get_rear_right_corner(ego_state_se,
-                                             self._vehicle_parameters.half_length,
-                                             self._vehicle_parameters.half_width),
-                       get_rear_left_corner(ego_state_se,
-                                            self._vehicle_parameters.half_length,
-                                            self._vehicle_parameters.half_width)]
-        corner_xs = [corner.x for corner in ego_corners]
-        corner_ys = [corner.y for corner in ego_corners]
-
-        # Connect to the first point
-        corner_xs.append(corner_xs[0])
-        corner_ys.append(corner_ys[0])
-        source = ColumnDataSource(
-            dict(
-                x=[ego_state_se.x],
-                y=[ego_state_se.y],
-                xs=[[[corner_xs]]],
-                ys=[[[corner_ys]]])
-        )
-
-        self._ego_state_data_sources[figure_index].append(source)
-
-    def _update_ego_state_trajectory(self, trajectory: Dict[str, Any], figure_index: int) -> None:
-        """
-        Render trajectory.
-        :param trajectory: Trajectory to be rendered.
-        :param figure_index: Figure index
-        """
-
-        source = extract_source_from_states(trajectory["states"])
-        self._ego_state_trajectory_data_sources[figure_index].append(source)
-
-    def _update_agents(self, observations: Dict[str, List[Dict[str, Any]]], figure_index: int) -> None:
-        """
-        Update agents.
-        :param observations: A dict of a list of scenes.
-        :param figure_index: Figure index.
-        """
-
-        corner_xs = []
-        corner_ys = []
-        track_ids = []
-        agent_types = []
-        trajectory_xs = []
-        trajectory_ys = []
-        for category, scenes in observations.items():
-            for scene in scenes:
-                pose = scene['box']['pose']
-                sizes = scene['box']['size']
-                state = StateSE2(x=pose[0], y=pose[1], heading=pose[2])
-                box_param = BoxParameters(length=sizes[1], width=sizes[0])
-                agent_corners = [get_front_left_corner(state, box_param.half_length, box_param.half_width),
-                                 get_front_right_corner(state, box_param.half_length, box_param.half_width),
-                                 get_rear_right_corner(state, box_param.half_length, box_param.half_width),
-                                 get_rear_left_corner(state, box_param.half_length, box_param.half_width)]
-                corners_x = [corner.x for corner in agent_corners]
-                corners_y = [corner.y for corner in agent_corners]
-                corners_x.append(corners_x[0])
-                corners_y.append(corners_y[0])
-                corner_xs.append([[corners_x]])
-                corner_ys.append([[corners_y]])
-                agent_trajectory = translate_longitudinally(state, distance=sizes[1] / 2 + 1)
-                trajectory_xs.append([state.x, agent_trajectory.x])
-                trajectory_ys.append([state.y, agent_trajectory.y])
-                agent_types.append(scene['type'])
-                track_ids.append(scene['id'])
-
-        agent_states = BokehAgentStates(
-            xs=corner_xs,
-            ys=corner_ys,
-            track_id=track_ids,
-            agent_type=agent_types,
-            trajectory_x=trajectory_xs,
-            trajectory_y=trajectory_ys
-        )
-        self._agent_data_sources[figure_index].append(ColumnDataSource(agent_states._asdict()))
-
-    def _render_plots(self, frame_index: int, figure_index: int) -> None:
+    def _render_plots(self, main_figure: SimulationFigure, frame_index: int) -> None:
         """
         Render plot with a frame index.
         :param frame_index: A frame index.
-        :param figure_index: A figure index.
         """
+        if main_figure.lane_connectors is not None and len(main_figure.lane_connectors):
+            main_figure.traffic_light_plot.update_plot(main_figure=main_figure.figure, frame_index=frame_index)
 
-        ego_state = self._ego_state_data_sources[figure_index][frame_index]
-        ego_state = dict(ego_state.data)
-
-        main_figure = self._figures[figure_index]
-        center_x = ego_state["x"][0]
-        center_y = ego_state["y"][0]
-
-        if self._ego_state_plots[figure_index] is None:
-            # Ego state initial plot.
-
-            self._ego_state_plots[figure_index] = main_figure.multi_polygons(
-                xs="xs", ys="ys",
-                fill_color=simulation_tile_style['planner_color'],
-                line_width=simulation_tile_style['planner_line_width'],
-                source=ego_state)
-        else:
-            self._ego_state_plots[figure_index].data_source.data = ego_state  # type: ignore
-        main_figure.x_range.start = center_x - self._radius / 2
-        main_figure.x_range.end = center_x + self._radius / 2
-        main_figure.y_range.start = center_y - self._radius / 2
-        main_figure.y_range.end = center_y + self._radius / 2
+        main_figure.ego_state_plot.update_plot(
+            main_figure=main_figure.figure, frame_index=frame_index, radius=self._radius
+        )
 
         # Update ego pose trajectory state.
-        ego_state_trajectory_data_source = self._ego_state_trajectory_data_sources[figure_index][frame_index]
-        ego_state_trajectory_data_source = dict(ego_state_trajectory_data_source.data)
-        if self._ego_state_trajectory_plots[figure_index] is None:
-            self._ego_state_trajectory_plots[figure_index] = main_figure.line(
-                x="xs",
-                y="ys",
-                line_color=simulation_tile_style['planner_color'],
-                line_width=simulation_tile_style['planner_line_width'],
-                source=ego_state_trajectory_data_source
-            )
-        else:
-            ego_state_trajectory_plot = self._ego_state_trajectory_plots[figure_index]
-            ego_state_trajectory_plot.data_source.data = ego_state_trajectory_data_source  # type: ignore
+        main_figure.ego_state_trajectory_plot.update_plot(main_figure=main_figure.figure, frame_index=frame_index)
 
-        agent_data_source = self._agent_data_sources[figure_index][frame_index]
-        agent_data_source = dict(agent_data_source.data)
-        if self._agent_state_plots[figure_index] is None:
+        # Update agent data sources
+        main_figure.agent_state_plot.update_plot(main_figure=main_figure.figure, frame_index=frame_index)
 
-            # Agent state
-            self._agent_state_plots[figure_index] = main_figure.multi_polygons(
-                xs="xs",
-                ys="ys",
-                fill_color=simulation_tile_style['agent_color'],
-                line_width=simulation_tile_style['agent_line_width'],
-                source=agent_data_source)
-            agent_hover = HoverTool(renderers=[self._agent_state_plots[figure_index]],
-                                    tooltips=[("Type", "@agent_type"), ("Track id", "@track_id")])
-            main_figure.add_tools(agent_hover)
-        else:
-            self._agent_state_plots[figure_index].data_source.data = agent_data_source  # type: ignore
+        # Update agent heading data sources
+        main_figure.agent_state_heading_plot.update_plot(main_figure=main_figure.figure, frame_index=frame_index)
 
-        if self._agent_state_heading_plots[figure_index] is None:
-
-            # Agent state heading
-            self._agent_state_heading_plots[figure_index] = main_figure.multi_line(
-                xs="trajectory_x",
-                ys="trajectory_y",
-                line_color=simulation_tile_style['agent_trajectory_color'],
-                line_width=simulation_tile_style['agent_trajectory_line_width'],
-                source=agent_data_source)
-        else:
-            self._agent_state_heading_plots[figure_index].data_source.data = agent_data_source  # type: ignore
+        main_figure.update_legend()

@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 
 class TestInfo:
-    """ Stores different configurations for nuplan_test and retrieves the type of test. """
+    """Stores different configurations for nuplan_test and retrieves the type of test."""
 
     def __init__(self, params: Optional[str], absdirpath: Optional[str], relpath: Optional[str]):
         """
@@ -46,13 +46,14 @@ class TestInfo:
 
 
 class Registry:
-    """ Registry containing all the nuplan tests. """
+    """Registry containing all the nuplan tests."""
 
     def __init__(self) -> None:
+        """Initializes an empty registry"""
         self.registry: Dict[str, TestInfo] = {}
 
     def add(self, id_: str, params: Optional[str], absdirpath: Optional[str], relpath: Optional[str]) -> None:
-        """ Adds a test to the registry, fails if the same test is added twice.
+        """Adds a test to the registry, fails if the same test is added twice.
         :param id_: The id of the test
         :param params: Parameters of the test
         :param absdirpath: Absolute path of the test json

@@ -14,7 +14,6 @@ def quaternion_yaw(q: Quaternion) -> float:
     :param q: Quaternion of interest.
     :return: Yaw angle in radians.
     """
-
     a = 2.0 * (q[0] * q[3] + q[1] * q[2])
     b = 1.0 - 2.0 * (q[2] ** 2 + q[3] ** 2)
 
@@ -30,9 +29,11 @@ def yaw_to_quaternion(yaw: float) -> Quaternion:
     return Quaternion(axis=(0, 0, 1), radians=yaw)
 
 
-def transform_matrix(translation: npt.NDArray[np.float64] = np.array([0, 0, 0]),
-                     rotation: Quaternion = Quaternion([1, 0, 0, 0]),
-                     inverse: bool = False) -> npt.NDArray[np.float64]:
+def transform_matrix(
+    translation: npt.NDArray[np.float64] = np.array([0, 0, 0]),
+    rotation: Quaternion = Quaternion([1, 0, 0, 0]),
+    inverse: bool = False,
+) -> npt.NDArray[np.float64]:
     """
     Converts pose to transform matrix.
     :param translation: <np.float32: 3>. Translation in x, y, z.
@@ -54,9 +55,9 @@ def transform_matrix(translation: npt.NDArray[np.float64] = np.array([0, 0, 0]),
     return tm
 
 
-def view_points(points: npt.NDArray[np.float64],
-                view: npt.NDArray[np.float64],
-                normalize: bool) -> npt.NDArray[np.float64]:
+def view_points(
+    points: npt.NDArray[np.float64], view: npt.NDArray[np.float64], normalize: bool
+) -> npt.NDArray[np.float64]:
     """
     This is a helper class that maps 3d points to a 2d plane. It can be used to implement both perspective and
     orthographic projections. It first applies the dot product between the points and the view. By convention,
@@ -74,19 +75,18 @@ def view_points(points: npt.NDArray[np.float64],
     :param normalize: Whether to normalize the remaining coordinate (along the third axis).
     :return: <np.float32: 3, n>. Mapped point. If normalize=False, the third coordinate is the height.
     """
-
     assert view.shape[0] <= 4
     assert view.shape[1] <= 4
     assert points.shape[0] == 3
 
     viewpad = np.eye(4)
-    viewpad[:view.shape[0], :view.shape[1]] = view
+    viewpad[: view.shape[0], : view.shape[1]] = view
 
     nbr_points = points.shape[1]
 
     # Do operation in homogenous coordinates.
-    points = np.concatenate((points, np.ones((1, nbr_points))))  # type: ignore
-    points = np.dot(viewpad, points)  # type: ignore
+    points = np.concatenate((points, np.ones((1, nbr_points))))
+    points = np.dot(viewpad, points)
     points = points[:3, :]
 
     if normalize:
@@ -132,10 +132,11 @@ def minimum_bounding_rectangle(points: npt.NDArray[np.float64]) -> npt.NDArray[n
     :param points: <nbr_points, 2>. A nx2 matrix of coordinates where n >= 3.
     :return: A 4x2 matrix of coordinates of the minimum bounding rectangle (in clockwise order).
     """
+    assert points.ndim == 2, "Points ndim should be 2."
+    assert points.shape[1] == 2, "Points shape: n x 2 where n>= 3."
+    assert points.shape[0] >= 3, "Points shape: n x 2 where n>= 3."
 
-    assert points.ndim == 2 and points.shape[1] == 2 and points.shape[0] >= 3, "Points shape: n x 2 where n>= 3."
-
-    pi2 = np.pi / 2.
+    pi2 = np.pi / 2.0
 
     # Get the convex hull for the points.
     hull_points = points[ConvexHull(points).vertices]
@@ -144,25 +145,23 @@ def minimum_bounding_rectangle(points: npt.NDArray[np.float64]) -> npt.NDArray[n
     edges = hull_points[1:] - hull_points[:-1]
     angles = np.arctan2(edges[:, 1], edges[:, 0])
     angles = np.abs(np.mod(angles, pi2))
-    angles = np.unique(angles)  # type: ignore
+    angles = np.unique(angles)
 
     # Find rotation matrices for all the unique angles.
-    rotations = np.vstack([
-        np.cos(angles),
-        np.cos(angles - pi2),
-        np.cos(angles + pi2),
-        np.cos(angles)]).T
+    rotations = np.vstack(
+        [np.cos(angles), np.cos(angles - pi2), np.cos(angles + pi2), np.cos(angles)]
+    ).T  # type: ignore
 
     rotations = rotations.reshape((-1, 2, 2))
 
     # Apply rotations to the hull.
-    rot_points = np.dot(rotations, hull_points.T)  # type: ignore
+    rot_points = np.dot(rotations, hull_points.T)
 
     # Find the bounding rectangle for each set of points.
-    min_x = np.nanmin(rot_points[:, 0], axis=1)  # type: ignore
-    max_x = np.nanmax(rot_points[:, 0], axis=1)  # type: ignore
-    min_y = np.nanmin(rot_points[:, 1], axis=1)  # type: ignore
-    max_y = np.nanmax(rot_points[:, 1], axis=1)  # type: ignore
+    min_x = np.nanmin(rot_points[:, 0], axis=1)
+    max_x = np.nanmax(rot_points[:, 0], axis=1)
+    min_y = np.nanmin(rot_points[:, 1], axis=1)
+    max_y = np.nanmax(rot_points[:, 1], axis=1)
 
     # Find the bounding rectangle with the minimum area.
     areas = (max_x - min_x) * (max_y - min_y)
@@ -176,9 +175,9 @@ def minimum_bounding_rectangle(points: npt.NDArray[np.float64]) -> npt.NDArray[n
     r = rotations[best_idx]
 
     pts_clockwise_order = np.zeros((4, 2))
-    pts_clockwise_order[0] = np.dot([x1, y2], r)  # type: ignore
-    pts_clockwise_order[1] = np.dot([x2, y2], r)  # type: ignore
-    pts_clockwise_order[2] = np.dot([x2, y1], r)  # type: ignore
-    pts_clockwise_order[3] = np.dot([x1, y1], r)  # type: ignore
+    pts_clockwise_order[0] = np.dot([x1, y2], r)
+    pts_clockwise_order[1] = np.dot([x2, y2], r)
+    pts_clockwise_order[2] = np.dot([x2, y1], r)
+    pts_clockwise_order[3] = np.dot([x1, y1], r)
 
     return pts_clockwise_order

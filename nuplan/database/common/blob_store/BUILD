@@ -51,6 +51,7 @@ py_library(
     name = "s3_store",
     srcs = ["s3_store.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/database/common/blob_store",
     ],
 )

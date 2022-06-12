@@ -1,24 +1,30 @@
-from typing import cast, List
+from typing import List, Type, cast
 
+from hydra._internal.utils import _locate
 from hydra.utils import instantiate
-from nuplan.planning.script.builders.model_builder import build_nn_model
+from omegaconf import DictConfig, OmegaConf
+
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.script.builders.model_builder import build_torch_module_wrapper
 from nuplan.planning.script.builders.utils.utils_type import is_target_type
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.planner.ml_planner.ml_planner import MLPlanner
-from nuplan.planning.training.modeling.planning_module import PlanningModule
-from omegaconf import DictConfig, ListConfig, OmegaConf
+from nuplan.planning.training.modeling.lightning_module_wrapper import LightningModuleWrapper
 
 
-def build_planner(planner_cfg: DictConfig) -> AbstractPlanner:
+def _build_planner(planner_cfg: DictConfig, scenario: AbstractScenario) -> AbstractPlanner:
     """
     Instantiate planner
     :param planner_cfg: config of a planner
+    :param scenario: scenario
     :return AbstractPlanner
     """
     if is_target_type(planner_cfg, MLPlanner):
         # Build model and feature builders needed to run an ML model in simulation
-        nn_model = build_nn_model(planner_cfg.model_config)
-        model = PlanningModule.load_from_checkpoint(planner_cfg.checkpoint_path, model=nn_model).model
+        torch_module_wrapper = build_torch_module_wrapper(planner_cfg.model_config)
+        model = LightningModuleWrapper.load_from_checkpoint(
+            planner_cfg.checkpoint_path, model=torch_module_wrapper
+        ).model
 
         # Remove config elements that are redundant to MLPlanner
         config = planner_cfg.copy()
@@ -29,17 +35,22 @@ def build_planner(planner_cfg: DictConfig) -> AbstractPlanner:
 
         planner: AbstractPlanner = instantiate(config, model=model)
     else:
-        planner = cast(AbstractPlanner, instantiate(planner_cfg))
+        planner_cls: Type[AbstractPlanner] = _locate(planner_cfg._target_)
+
+        if planner_cls.requires_scenario:
+            planner = cast(AbstractPlanner, instantiate(planner_cfg, scenario=scenario))
+        else:
+            planner = cast(AbstractPlanner, instantiate(planner_cfg))
 
     return planner
 
 
-def build_planners(planner_cfg: DictConfig) -> List[AbstractPlanner]:
+def build_planners(planner_cfg: DictConfig, scenario: AbstractScenario) -> List[AbstractPlanner]:
     """
     Instantiate multiple planners by calling build_planner
     :param planner_cfg: config of a planner
+    :param scenario: scenario
     :return planners: List of AbstractPlanners
     """
-    planner_cfgs = planner_cfg if isinstance(planner_cfg, ListConfig) else [planner_cfg]
-    planners: List[AbstractPlanner] = [build_planner(planner) for planner in planner_cfgs]
+    planners: List[AbstractPlanner] = [_build_planner(planner, scenario) for planner in planner_cfg.values()]
     return planners

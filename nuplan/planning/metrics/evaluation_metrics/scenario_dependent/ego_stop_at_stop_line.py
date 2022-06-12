@@ -3,26 +3,30 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
+from shapely.geometry import CAP_STYLE, LineString, Polygon
+
+from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.scene_object import SceneObject
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.abstract_map_objects import Lane, StopLine
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer
-from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.database.utils.geometry import quaternion_yaw
-from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
+from nuplan.planning.metrics.evaluation_metrics.base.violation_metric_base import ViolationMetricBase
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
-from nuplan.planning.simulation.observation.observation_type import Detections, Observation
-from nuplan.planning.simulation.observation.smart_agents.idm_agents.utils import create_path_from_se2, \
-    ego_state_to_box_3d, path_to_linestring
-from nuplan.planning.simulation.observation.smart_agents.occupancy_map.strtree_occupancy_map import \
-    STRTreeOccupancyMapFactory
-from nuplan.planning.simulation.path.utils import get_trimmed_path_up_to_progress
-from shapely.geometry import CAP_STYLE, LineString, Polygon
+from nuplan.planning.simulation.observation.idm.utils import create_path_from_se2, path_to_linestring
+from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Observation
+from nuplan.planning.simulation.occupancy_map.strtree_occupancy_map import STRTreeOccupancyMapFactory
+from nuplan.planning.simulation.path.utils import trim_path_up_to_progress
 
 
 @dataclass
 class VelocityRecord:
+    """
+    Class to track velocity and distance to stop line at a timestamp.
+    """
+
     velocity: float  # [m/s^2], Velocity at the current timestamp
     timestamp: int  # timestamp
     distance_to_stop_line: float  # [m], Distance to the stop line
@@ -30,117 +34,108 @@ class VelocityRecord:
 
 @dataclass
 class VelocityData:
+    """
+    Class to track VelocityRecord over the simulation history.
+    """
+
     data: List[VelocityRecord]
 
-    def add_data(self,
-                 velocity: float,
-                 timestamp: int,
-                 distance_to_stop_line: float
-                 ) -> None:
+    def add_data(self, velocity: float, timestamp: int, distance_to_stop_line: float) -> None:
         """
-        Add new data to the list.
-        :param velocity: [m/s^2], Velocity at the current timestamp.
-        :param timestamp: Timestamp.
-        :param distance_to_stop_line: [m], Distance to the stop line
+        Add new data to the list
+        :param velocity: [m/s^2], Velocity at the current timestamp
+        :param timestamp: Timestamp
+        :param distance_to_stop_line: [m], Distance to the stop line.
         """
-
         if self.data is None:
             self.data = []
 
         self.data.append(
-            VelocityRecord(
-                velocity=velocity,
-                timestamp=timestamp,
-                distance_to_stop_line=distance_to_stop_line
-            )
+            VelocityRecord(velocity=velocity, timestamp=timestamp, distance_to_stop_line=distance_to_stop_line)
         )
 
     @property
     def velocity_np(self) -> npt.NDArray[np.float32]:
-        """ Velocity in numpy representation. """
-
+        """
+        Velocity in numpy representation.
+        """
         return np.asarray([data.velocity for data in self.data])
 
     @property
     def timestamp_np(self) -> npt.NDArray[np.int32]:
-        """ Timestamp in numpy representation. """
-
+        """
+        Timestamp in numpy representation.
+        """
         return np.asarray([data.timestamp for data in self.data])
 
     @property
     def distance_to_stop_line_np(self) -> npt.NDArray[np.float32]:
-        """ Distance to stop line in numpy representation. """
-
+        """
+        Distance to stop line in numpy representation.
+        """
         return np.asarray([data.distance_to_stop_line for data in self.data])
 
     @property
     def min_distance_stop_line_record(self) -> VelocityRecord:
         """
-        Return velocity record of minimum distance stop line.
+        Return velocity record of minimum distance stop line
         :return A velocity record.
         """
-
         distance_to_stop_line = self.distance_to_stop_line_np
         index = np.argmin(distance_to_stop_line)
         return self.data[int(index)]
 
-
-class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
-
-    def __init__(self,
-                 name: str,
-                 category: str,
-                 distance_threshold: float,
-                 velocity_threshold: float) -> None:
+    @property
+    def min_velocity_record(self) -> VelocityRecord:
         """
-        Ego stopped at stop line metric.
+        Return minimum velocity record
+        :return A velocity record.
+        """
+        index = np.argmin(self.velocity_np)
+        return self.data[int(index)]
+
+
+class EgoStopAtStopLineStatistics(ViolationMetricBase):
+    """
+    Ego stopped at stop line metric.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        category: str,
+        max_violation_threshold: int,
+        distance_threshold: float,
+        velocity_threshold: float,
+    ) -> None:
+        """
+        Initializes the EgoProgressAlongExpertRouteStatistics class
         Rule formulation: 1. Get the nearest stop polygon (less than the distance threshold).
                           2. Check if the stop polygon is in any lanes.
                           3. Check if front corners of ego cross the stop polygon.
                           4. Check if no any leading agents.
                           5. Get min_velocity(distance_stop_line) until the ego leaves the stop polygon.
-        :param name: Metric name.
-        :param category: Metric category.
+        :param name: Metric name
+        :param category: Metric category
+        :param max_violation_threshold: Maximum threshold for the violation when computing the score
         :param distance_threshold: Distances between ego front side and stop line lower than this threshold
-        assumed to be the first vehicle before the stop line.
+        assumed to be the first vehicle before the stop line
         :param velocity_threshold: Velocity threshold to consider an ego stopped.
         """
-
-        self._name = name
-        self._category = category
+        super().__init__(name=name, category=category, max_violation_threshold=max_violation_threshold)
         self._distance_threshold = distance_threshold
         self._velocity_threshold = velocity_threshold
         self._stopping_velocity_data: List[VelocityData] = []
         self._previous_stop_polygon_fid: Optional[str] = None
 
-    @property
-    def name(self) -> str:
-        """
-        Returns the metric name.
-        :return: the metric name.
-        """
-
-        return self._name
-
-    @property
-    def category(self) -> str:
-        """
-        Returns the metric category.
-        :return: the metric category.
-        """
-
-        return self._category
-
     @staticmethod
-    def get_nearest_stop_line(map_api: AbstractMap,
-                              ego_pose_front: LineString) -> Optional[Tuple[str, Polygon]]:
+    def get_nearest_stop_line(map_api: AbstractMap, ego_pose_front: LineString) -> Optional[Tuple[str, Polygon]]:
         """
-        Retrieve the nearest stop polygon.
-        :param map_api: AbstractMap map api.
-        :param ego_pose_front: Ego pose front corner line.
+        Retrieve the nearest stop polygon
+        :param map_api: AbstractMap map api
+        :param ego_pose_front: Ego pose front corner line
         :return Nearest stop polygon fid if distance is less than the threshold.
         """
-
         center_x, center_y = ego_pose_front.centroid.xy
         center = Point2D(center_x[0], center_y[0])
 
@@ -163,47 +158,49 @@ class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
         return None
 
     @staticmethod
-    def check_for_leading_agents(detections: Observation,
-                                 ego_box_3d: Box3D,
-                                 map_api: AbstractMap) -> bool:
+    def check_for_leading_agents(detections: Observation, ego_state: EgoState, map_api: AbstractMap) -> bool:
         """
-        Get the nearest leading agent.
-        :param detections: Detection class.
-        :param ego_box_3d: Ego in 3d box representation.
-        :param map_api: AbstractMap api.
+        Get the nearest leading agent
+        :param detections: Detection class
+        :param ego_state: Ego in oriented box representation
+        :param map_api: AbstractMap api
         :return True if there is a leading agent, False otherwise
         """
+        if isinstance(detections, DetectionsTracks):
 
-        if isinstance(detections, Detections):
-
-            # Assign a new instance token to ego pose
-            ego_box_3d.token = '0'
-
-            # Check if any missing instance token
-            for index, box in enumerate(detections.boxes):
-                if box.token is None:
-                    box.token = str(index + 1)
-            agent_boxes = [ego_box_3d] + detections.boxes
-
-            if len(detections.boxes) == 0:
+            if len(detections.tracked_objects.tracked_objects) == 0:
                 return False
 
-            occupancy_map = STRTreeOccupancyMapFactory.get_from_boxes(agent_boxes)
-            agent_states = {box.token: StateSE2(x=box.center[0], y=box.center[1],
-                                                heading=quaternion_yaw(box.orientation)) for box in agent_boxes}
-            ego_state: StateSE2 = agent_states['0']
-            lane = map_api.get_one_map_object(ego_state, SemanticMapLayer.LANE)
+            ego_agent = ego_state.agent
+
+            # Check if any missing instance token
+            for index, box in enumerate(detections.tracked_objects):
+                if box.token is None:
+                    box.token = str(index + 1)
+            scene_objects: List[SceneObject] = [ego_agent]
+            scene_objects.extend([scene_object for scene_object in detections.tracked_objects])
+
+            occupancy_map = STRTreeOccupancyMapFactory.get_from_boxes(scene_objects)
+            agent_states = {
+                scene_object.token: StateSE2(
+                    x=scene_object.center.x, y=scene_object.center.y, heading=scene_object.center.heading
+                )
+                for scene_object in scene_objects
+            }
+            ego_pose: StateSE2 = agent_states['ego']
+            lane = map_api.get_one_map_object(ego_pose, SemanticMapLayer.LANE)
 
             # Construct ego's path to go
             ego_baseline = lane.baseline_path()
-            ego_progress = ego_baseline.get_nearest_arc_length_from_position(ego_state)
+            ego_progress = ego_baseline.get_nearest_arc_length_from_position(ego_pose)
             progress_path = create_path_from_se2(ego_baseline.discrete_path())
-            ego_path_to_go = get_trimmed_path_up_to_progress(progress_path, ego_progress)
+            ego_path_to_go = trim_path_up_to_progress(progress_path, ego_progress)
 
             # Check for intersection between the path and the any other agents
             ego_path_to_go = path_to_linestring(ego_path_to_go)
-            intersecting_agents = occupancy_map.intersects(ego_path_to_go.buffer((agent_boxes[0].width / 2),
-                                                                                 cap_style=CAP_STYLE.flat))
+            intersecting_agents = occupancy_map.intersects(
+                ego_path_to_go.buffer((scene_objects[0].box.width / 2), cap_style=CAP_STYLE.flat)
+            )
 
             # If there are other agents ahead of the ego in the same lane there should be at least two agents
             if intersecting_agents.size > 1:
@@ -211,61 +208,87 @@ class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
 
         return False
 
-    def _compute_velocity_statistics(self) -> List[MetricStatistics]:
+    def _compute_velocity_statistics(self, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
-        Compute statistics in each stop line.
+        Compute statistics in each stop line
+        :param scenario: Scenario running this metric
         :return A list of metric statistics.
         """
+        if not self._stopping_velocity_data:
+            return []
 
-        results = []
+        mean_ego_min_distance_to_stop_line = []
+        mean_ego_min_velocity_before_stop_line = []
+        aggregated_timestamp_velocity = []
+        aggregated_timestamps = []
+        ego_stop_status = []
+
         for velocity_data in self._stopping_velocity_data:
 
             # Stop at stop line success rate, we check the velocity of minimum distance to the stop line in each record
             min_distance_velocity_record = velocity_data.min_distance_stop_line_record
-            if min_distance_velocity_record.distance_to_stop_line > self._distance_threshold:
-                continue
+            mean_ego_min_distance_to_stop_line.append(min_distance_velocity_record.distance_to_stop_line)
+            mean_ego_min_velocity_before_stop_line.append(min_distance_velocity_record.velocity)
 
-            if min_distance_velocity_record.velocity < self._velocity_threshold:
+            if (
+                min_distance_velocity_record.distance_to_stop_line < self._distance_threshold
+                and min_distance_velocity_record.velocity < self._velocity_threshold
+            ):
                 stop_status = True
             else:
                 stop_status = False
 
-            statistics = {
-                MetricStatisticsType.DISTANCE: Statistic(name="ego_min_distance_to_stop_line", unit="meters",
-                                                         value=min_distance_velocity_record.distance_to_stop_line),
-                MetricStatisticsType.VELOCITY: Statistic(name="ego_min_velocity_before_stop_line",
-                                                         unit="meters_per_second_squared",
-                                                         value=min_distance_velocity_record.velocity),
-                MetricStatisticsType.BOOLEAN: Statistic(name="ego_stop_status", unit="boolean", value=stop_status),
-            }
+            ego_stop_status.append(stop_status)
+            aggregated_timestamp_velocity.append(velocity_data.velocity_np)
+            aggregated_timestamps.append(velocity_data.timestamp_np)
 
-            time_stamps = velocity_data.timestamp_np
-            velocity_time_series = TimeSeries(unit='meters_per_second_squared',
-                                              time_stamps=list(time_stamps),
-                                              values=list(velocity_data.velocity_np))
+        # Aggregate
+        statistics = {
+            MetricStatisticsType.DISTANCE: Statistic(
+                name='mean_ego_min_distance_to_stop_line',
+                unit='meters',
+                value=float(np.mean(mean_ego_min_distance_to_stop_line)),
+            ),
+            MetricStatisticsType.VELOCITY: Statistic(
+                name='mean_ego_min_velocity_before_stop_line',
+                unit='meters_per_second_squared',
+                value=float(np.mean(mean_ego_min_velocity_before_stop_line)),
+            ),
+            MetricStatisticsType.VALUE: Statistic(
+                name='number_of_ego_before_stop_line', unit='value', value=len(ego_stop_status)
+            ),
+            MetricStatisticsType.COUNT: Statistic(
+                name='number_of_ego_stop_before_stop_line', unit='count', value=sum(ego_stop_status)
+            ),
+        }
 
-            result = MetricStatistics(metric_computator=self.name,
-                                      name="ego_stop_at_stop_line_statistics",
-                                      statistics=statistics,
-                                      time_series=velocity_time_series,
-                                      metric_category=self.category)
-            results.append(result)
+        aggregated_timestamp_velocity = np.hstack(aggregated_timestamp_velocity)  # type: ignore
+        aggregated_timestamps = np.hstack(aggregated_timestamps)  # type: ignore
+        velocity_time_series = TimeSeries(
+            unit='meters_per_second_squared',
+            time_stamps=list(aggregated_timestamps),
+            values=list(aggregated_timestamp_velocity),
+        )
 
-        return results
+        results = self._construct_metric_results(
+            metric_statistics=statistics, time_series=velocity_time_series, scenario=scenario
+        )
+        return results  # type: ignore
 
-    def _save_stopping_velocity(self,
-                                current_stop_polygon_fid: str,
-                                history_data: SimulationHistorySample,
-                                stop_polygon_in_lane: Polygon,
-                                ego_pose_front: LineString) -> None:
+    def _save_stopping_velocity(
+        self,
+        current_stop_polygon_fid: str,
+        history_data: SimulationHistorySample,
+        stop_polygon_in_lane: Polygon,
+        ego_pose_front: LineString,
+    ) -> None:
         """
-        Save velocity, timestamp and distance to a stop line if the ego is stopping.
-        :param current_stop_polygon_fid: Current stop polygon fid.
-        :param history_data: History sample data at current timestamp.
-        :param stop_polygon_in_lane: The stop polygon where the ego is in.
+        Save velocity, timestamp and distance to a stop line if the ego is stopping
+        :param current_stop_polygon_fid: Current stop polygon fid
+        :param history_data: History sample data at current timestamp
+        :param stop_polygon_in_lane: The stop polygon where the ego is in
         :param ego_pose_front: Front line string (front right corner and left corner) of the ego.
         """
-
         # Distance between the front stop line and ego's front footprint
         stop_line: LineString = LineString(stop_polygon_in_lane.exterior.coords[:2])
         distance_ego_front_stop_line = stop_line.distance(ego_pose_front)
@@ -277,7 +300,7 @@ class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
             self._stopping_velocity_data[-1].add_data(
                 velocity=current_velocity,
                 timestamp=current_timestamp,
-                distance_to_stop_line=distance_ego_front_stop_line
+                distance_to_stop_line=distance_ego_front_stop_line,
             )
         else:
             # If it is a new stop polygon
@@ -286,32 +309,41 @@ class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
             velocity_data.add_data(
                 velocity=current_velocity,
                 timestamp=current_timestamp,
-                distance_to_stop_line=distance_ego_front_stop_line
+                distance_to_stop_line=distance_ego_front_stop_line,
             )
             self._stopping_velocity_data.append(velocity_data)
 
-    def compute(self, history: SimulationHistory) -> List[MetricStatistics]:
+    def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
-        Returns the estimated metric.
-        :param history: History from a simulation engine.
-        :return: the estimated metric.
+        Returns the ego stopped at stop line metric
+        :param history: History from a simulation engine
+        :param scenario: Scenario running this metric
+        :return the estimated ego stopped at stop line metric.
         """
-
         # Extract ego pose in box3d.
-        ego_pose_box_3ds: List[Box3D] = [ego_state_to_box_3d(sample.ego_state) for sample in history.data]
+        ego_states: List[EgoState] = history.extract_ego_state
 
         # Get egos' front footprint
-        ego_pose_fronts: List[LineString] = [LineString(box_3d.bottom_corners[:2, :2].T) for box_3d in ego_pose_box_3ds]
+        ego_pose_fronts: List[LineString] = [
+            LineString(
+                [
+                    state.car_footprint.oriented_box.geometry.exterior.coords[0],
+                    state.car_footprint.oriented_box.geometry.exterior.coords[3],
+                ]
+            )
+            for state in ego_states
+        ]
 
         # Get stop polygons
         scenario_map: AbstractMap = history.map_api
 
         # Get the nearest stop polygon.
-        for ego_pose_front, ego_pose_box_3d, history_data in zip(ego_pose_fronts, ego_pose_box_3ds, history.data):
+        for ego_pose_front, ego_state, history_data in zip(ego_pose_fronts, ego_states, history.data):
 
             # 1) Get the nearest stop polygon if it is in the same lane as ego.
-            stop_polygon_info: Optional[Tuple[str, Polygon]] = self.get_nearest_stop_line(map_api=scenario_map,
-                                                                                          ego_pose_front=ego_pose_front)
+            stop_polygon_info: Optional[Tuple[str, Polygon]] = self.get_nearest_stop_line(
+                map_api=scenario_map, ego_pose_front=ego_pose_front
+            )
 
             if stop_polygon_info is None:
                 continue
@@ -327,9 +359,9 @@ class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
 
             # 3) Check if no any leading agents.
             detections: Observation = history_data.observation
-            has_leading_agent = self.check_for_leading_agents(detections=detections,
-                                                              ego_box_3d=ego_pose_box_3d,
-                                                              map_api=scenario_map)
+            has_leading_agent = self.check_for_leading_agents(
+                detections=detections, ego_state=ego_state, map_api=scenario_map
+            )
 
             # Skip if there is any leading agent in the stop polygon (means the ego is not the first vehicle)
             if has_leading_agent:
@@ -340,8 +372,8 @@ class EgoStopAtStopLineStatistics(AbstractMetricBuilder):
                 current_stop_polygon_fid=fid,
                 history_data=history_data,
                 stop_polygon_in_lane=stop_polygon_in_lane,
-                ego_pose_front=ego_pose_front
+                ego_pose_front=ego_pose_front,
             )
 
-        results = self._compute_velocity_statistics()
+        results = self._compute_velocity_statistics(scenario=scenario)
         return results

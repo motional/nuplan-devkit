@@ -1,5 +1,6 @@
-_target_: nuplan.planning.simulation.planner.ml_planner.ml_planner.MLPlanner
-_convert_: 'all'
+ml_planner:
+  _target_: nuplan.planning.simulation.planner.ml_planner.ml_planner.MLPlanner
+  _convert_: 'all'
 
-model_config: ???  # Dictionary key from existing planner model config (e.g. raster_model)
-checkpoint_path: ???  # Path to trained model checkpoint
+  model_config: ???  # Dictionary key from existing planner model config (e.g. raster_model)
+  checkpoint_path: ???  # Path to trained model checkpoint

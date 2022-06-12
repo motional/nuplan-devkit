@@ -2,12 +2,14 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.common.actor_state.transform_state import convert_relative_to_absolute_poses
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.geometry.convert import relative_to_absolute_poses
 
 
-def _state_se2_to_ego_state(state: StateSE2, timestamp: float) -> EgoState:
+def _state_se2_to_ego_state(state: StateSE2, timestamp: float, vehicle: VehicleParameters) -> EgoState:
     """
     Convert StateSE2 to EgoState given a timestamp.
 
@@ -15,11 +17,15 @@ def _state_se2_to_ego_state(state: StateSE2, timestamp: float) -> EgoState:
     :param timestamp: [s] timestamp of state
     :return: output agent state
     """
-    return EgoState.from_raw_params(state,
-                                    velocity_2d=StateVector2D(0.0, 0.0),
-                                    acceleration_2d=StateVector2D(0.0, 0.0),
-                                    tire_steering_angle=0.0,
-                                    time_point=TimePoint(int(timestamp * 1e6)))
+    return EgoState.build_from_rear_axle(
+        rear_axle_pose=state,
+        rear_axle_velocity_2d=StateVector2D(0.0, 0.0),
+        rear_axle_acceleration_2d=StateVector2D(0.0, 0.0),
+        tire_steering_angle=0.0,
+        time_point=TimePoint(int(timestamp * 1e6)),
+        vehicle_parameters=vehicle,
+        is_in_auto_mode=True,
+    )
 
 
 def _get_fixed_timesteps(state: EgoState, future_horizon: float, step_interval: float) -> List[float]:
@@ -38,9 +44,7 @@ def _get_fixed_timesteps(state: EgoState, future_horizon: float, step_interval: 
 
 
 def _get_absolute_agent_states_from_numpy_poses(
-    poses: npt.NDArray[np.float32],
-    ego_state: EgoState,
-    timesteps: List[float],
+    poses: npt.NDArray[np.float32], ego_state: EgoState, timesteps: List[float]
 ) -> List[EgoState]:
     """
     Converts an array of relative numpy poses to a list of absolute EgoState objects.
@@ -51,8 +55,11 @@ def _get_absolute_agent_states_from_numpy_poses(
     :return: list of agent states
     """
     relative_states = [StateSE2.deserialize(pose) for pose in poses]
-    absolute_states = convert_relative_to_absolute_poses(ego_state.rear_axle, relative_states)
-    agent_states = [_state_se2_to_ego_state(state, timestep) for state, timestep in zip(absolute_states, timesteps)]
+    absolute_states = relative_to_absolute_poses(ego_state.rear_axle, relative_states)
+    agent_states = [
+        _state_se2_to_ego_state(state, timestep, ego_state.car_footprint.vehicle_parameters)
+        for state, timestep in zip(absolute_states, timesteps)
+    ]
 
     return agent_states
 

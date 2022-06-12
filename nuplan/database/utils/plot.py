@@ -19,17 +19,19 @@ def rainbow(nbr_colors: int, normalized: bool = False) -> List[Tuple[Any, ...]]:
     :return: <[(R <TYPE>, G <TYPE>, B <TYPE>)]>. Color <TYPE> varies depending on whether they are normalized.
     """
     hsv_tuples = [(x * 1.0 / nbr_colors, 0.5, 1) for x in range(nbr_colors)]
-    colors = 255 * np.array(list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)))  # type: ignore
+    colors = 255 * np.array(list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples)))
     if normalized:
         colors = colors / 255.0  # type: ignore
         return list(colors)
     else:
-        return [tuple([int(c) for c in color]) for color in colors]  # type: ignore
+        return [tuple([int(c) for c in color]) for color in colors]
 
 
-def _color_prep(ncolors: Optional[int] = None, alpha: int = 128,
-                colors: Optional[Union[Dict[int, Tuple[int, int, int]], Dict[int, Tuple[int, int, int, int]]]] = None) \
-        -> Dict[int, Tuple[int, int, int, int]]:
+def _color_prep(
+    ncolors: Optional[int] = None,
+    alpha: int = 128,
+    colors: Optional[Union[Dict[int, Tuple[int, int, int]], Dict[int, Tuple[int, int, int, int]]]] = None,
+) -> Dict[int, Tuple[int, int, int, int]]:
     """
     Prepares colors for image_with_boxes and draw_masks.
     :param ncolors: Total number of colors.
@@ -43,7 +45,8 @@ def _color_prep(ncolors: Optional[int] = None, alpha: int = 128,
     else:
         if ncolors is not None:
             assert ncolors == len(colors), 'Number of supplied colors {} disagrees with supplied ncolor: {}'.format(
-                len(colors), ncolors)
+                len(colors), ncolors
+            )
         for _id, color in colors.items():
             if isinstance(color, list):
                 # Convert to tuple.
@@ -56,15 +59,16 @@ def _color_prep(ncolors: Optional[int] = None, alpha: int = 128,
     return colors  # type: ignore
 
 
-def image_with_boxes(img: npt.NDArray[np.uint8],
-                     boxes: Optional[List[Tuple[float, float, float, float]]] = None,
-                     labels: Optional[List[int]] = None,
-                     ncolors: Optional[int] = None,
-                     alpha: int = 128,
-                     labelset: Optional[Dict[int, str]] = None,
-                     scores: Optional[List[float]] = None,
-                     colors: Optional[Union[Dict[int, Tuple[int, int, int]],
-                                            Dict[int, Tuple[int, int, int, int]]]] = None) -> Image:
+def image_with_boxes(
+    img: npt.NDArray[np.uint8],
+    boxes: Optional[List[Tuple[float, float, float, float]]] = None,
+    labels: Optional[List[int]] = None,
+    ncolors: Optional[int] = None,
+    alpha: int = 128,
+    labelset: Optional[Dict[int, str]] = None,
+    scores: Optional[List[float]] = None,
+    colors: Optional[Union[Dict[int, Tuple[int, int, int]], Dict[int, Tuple[int, int, int, int]]]] = None,
+) -> Image:
     """
     Simple plotting function to view image with boxes.
     :param img: <np.uint8: nrows, ncols, 3>. Input image.
@@ -77,7 +81,6 @@ def image_with_boxes(img: npt.NDArray[np.uint8],
     :param colors: {id: (R, G, B) OR (R, G, B, A)}.
     :return: Image instance with overlaid boxes.
     """
-
     if isinstance(img, np.ndarray):
         img = Image.fromarray(img)
 
@@ -111,8 +114,9 @@ def image_with_boxes(img: npt.NDArray[np.uint8],
     return img
 
 
-def build_color_mask(target: npt.NDArray[np.uint8],
-                     colors: Dict[int, Tuple[int, int, int, int]]) -> npt.NDArray[np.uint8]:
+def build_color_mask(
+    target: npt.NDArray[np.uint8], colors: Dict[int, Tuple[int, int, int, int]]
+) -> npt.NDArray[np.uint8]:
     """
     Builds color mask based on color dictionary.
     :param target: <np.uint8: nrows, ncols>. Same size as image. Indicates the label of each pixel.
@@ -120,18 +124,20 @@ def build_color_mask(target: npt.NDArray[np.uint8],
     :return: Color mask.
     """
     nrows, ncols = target.shape
-    color_mask = np.zeros(shape=(nrows, ncols, 4), dtype='uint8')
-    for i in np.unique(target):  # type: ignore
+    color_mask = np.zeros(shape=(nrows, ncols, 4), dtype='uint8')  # type: ignore
+    for i in np.unique(target):
         color_mask[target == i] = colors[i]
 
     return color_mask
 
 
-def draw_masks(img: Image,
-               target: npt.NDArray[np.uint8],
-               ncolors: Optional[int] = None,
-               colors: Optional[Union[Dict[int, Tuple[int, int, int]], Dict[int, Tuple[int, int, int, int]]]] = None,
-               alpha: int = 128) -> None:
+def draw_masks(
+    img: Image,
+    target: npt.NDArray[np.uint8],
+    ncolors: Optional[int] = None,
+    colors: Optional[Union[Dict[int, Tuple[int, int, int]], Dict[int, Tuple[int, int, int, int]]]] = None,
+    alpha: int = 128,
+) -> None:
     """
     Utility function for overlaying masks on images.
     :param img: Input image.

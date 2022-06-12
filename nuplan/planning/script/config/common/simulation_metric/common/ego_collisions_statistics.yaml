@@ -3,3 +3,4 @@ ego_collisions_statistics:
   _convert_: 'all'
   name: 'ego_collisions_statistics'
   category: 'Dynamics'
+  max_violation_threshold: 0

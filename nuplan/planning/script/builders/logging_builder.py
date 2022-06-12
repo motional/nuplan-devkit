@@ -37,8 +37,8 @@ class PathKeywordMatch(logging.Filter):
 
 
 class TqdmLoggingHandler(logging.Handler):
-    """ Log consistently when using the tqdm progress bar.
-
+    """
+    Log consistently when using the tqdm progress bar.
     From https://stackoverflow.com/questions/38543506/
     change-logging-print-function-to-tqdm-write-so-logging-doesnt-interfere-wit
     """
@@ -55,7 +55,6 @@ class TqdmLoggingHandler(logging.Handler):
         Consistently emit the specified logging record.
         :param record: Logging.LogRecord, the record to emit.
         """
-
         try:
             msg = self.format(record)
             tqdm.tqdm.write(msg)
@@ -67,12 +66,9 @@ class TqdmLoggingHandler(logging.Handler):
 
 
 class LogHandlerConfig:
-    """ This is a simple config struct for log handles. Used by configure_logger method. """
+    """This is a simple config struct for log handles. Used by configure_logger method."""
 
-    def __init__(self,
-                 level: str,
-                 path: Optional[str] = None,
-                 filter_regexp: str = '') -> None:
+    def __init__(self, level: str, path: Optional[str] = None, filter_regexp: str = '') -> None:
         """
         :param level: logging level represented as string, E.g. 'info'.
         :param path: Path to where to store the log. Leave as None for logging to console.
@@ -89,16 +85,16 @@ class LogHandlerConfig:
                 os.makedirs(_dir)
 
 
-def configure_logger(handler_configs: List[LogHandlerConfig],
-                     format_str: str = '%(asctime)s %(levelname)-2s {%(pathname)s:%(lineno)d}  %(message)s') \
-        -> logging.Logger:
+def configure_logger(
+    handler_configs: List[LogHandlerConfig],
+    format_str: str = '%(asctime)s %(levelname)-2s {%(pathname)s:%(lineno)d}  %(message)s',
+) -> logging.Logger:
     """
     Configures the python default logger.
     :param handler_configs: List of LogHandlerConfig objects specifying the logger handlers.
     :param format_str: Formats the log events.
     :return: A logger.
     """
-
     # Purge old handlers.
     logger = logging.getLogger()
     for old_handler in logger.handlers:
@@ -124,16 +120,18 @@ def build_logger(cfg: DictConfig) -> logging.Logger:
     :param cfg: Input dict config.
     :return: Logger with associated handlers.
     """
-    handler_configs = [LogHandlerConfig(level='info')]
+    handler_configs = [LogHandlerConfig(level=cfg.logger_level)]
 
     if cfg.output_dir is not None:
         path = str(Path(cfg.output_dir) / 'log.txt')
-        handler_configs.append(LogHandlerConfig(level='info', path=path))
+        handler_configs.append(LogHandlerConfig(level=cfg.logger_level, path=path))
 
     logger = configure_logger(handler_configs)
 
     # Disable logger if it's not main process. This is useful when the trainer uses multiple processes in the DDP mode.
     if cfg.gpu:
         logger.disabled = int(os.environ.get('LOCAL_RANK', 0)) != 0
+
+    logger.setLevel(level=LOGGING_LEVEL_MAP[cfg.logger_level])
 
     return logger

@@ -1,0 +1,15 @@
+weighted_average_metric_aggregator:
+  _target_: nuplan.planning.metrics.aggregator.weighted_average_metric_aggregator.WeightedAverageMetricAggregator
+  name: 'weighted_average_metric_aggregator'
+  metric_weights:     # Weights for each metric, would be default if not specified
+    drivable_area_violation_statistics: 10.0
+    speed_limit_violation_statistics: 4.0
+    ego_progress_along_expert_route: 3.0
+    time_to_collision: 5.0
+    ego_at_fault_collisions_statistics: 10.0
+    ego_is_comfortable_statistics: 2.0
+    default: 1.0
+  file_name: weighted_average_metrics_${now:${date_format}}
+  multiple_metrics:
+    - ego_at_fault_collisions_statistics
+    - drivable_area_violation_statistics

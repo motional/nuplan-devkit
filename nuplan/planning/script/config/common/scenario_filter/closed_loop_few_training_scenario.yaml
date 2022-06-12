@@ -1,0 +1,18 @@
+_target_: nuplan.planning.scenario_builder.scenario_filter.ScenarioFilter
+_convert_: 'all'
+
+scenario_types: null                # List of scenario types to include
+scenario_tokens: null               # List of scenario tokens to include
+
+log_names:                          # Filter scenarios by log names
+  - 2021.07.16.20.45.29_veh-35_01095_01486  # train
+  - 2021.08.31.14.40.58_veh-40_00285_00668  # val
+  - 2021.10.06.07.26.10_veh-52_00006_00398  # test
+map_names: null                     # Filter scenarios by map names
+
+num_scenarios_per_type: null        # Number of scenarios per type
+limit_total_scenarios: null         # Limit total scenarios (float = fraction, int = num) - this filter can be applied on top of num_scenarios_per_type
+
+expand_scenarios: false             # Whether to expand multi-sample scenarios to multiple single-sample scenarios
+remove_invalid_goals: true          # Whether to remove scenarios where the mission goal is invalid
+shuffle: true                       # Whether to shuffle the scenarios

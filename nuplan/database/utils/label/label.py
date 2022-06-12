@@ -6,7 +6,7 @@ Color = Tuple[int, int, int, int]
 
 
 class Label:
-    """ A label with the name and color. """
+    """A label with the name and color."""
 
     def __init__(self, name: str, color: Color) -> None:
         """
@@ -24,7 +24,6 @@ class Label:
         Represents a label using a string.
         :return: A string to represent a label.
         """
-
         return "Label(name='{}', color={})".format(self.name, self.color)
 
     def __eq__(self, other: object) -> bool:
@@ -39,12 +38,12 @@ class Label:
         return self.name == other.name and self.color == other.color
 
     @property
-    def normalized_color(self) -> Tuple[float, float, float, float]:
+    def normalized_color(self) -> Tuple[float, ...]:
         """
         Normalized color used for pyplot.
         :return: Normalized color.
         """
-        return tuple([c / 255.0 for c in self.color])  # type: ignore
+        return tuple([c / 255.0 for c in self.color])
 
     def serialize(self) -> Dict[str, Any]:
         """

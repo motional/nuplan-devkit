@@ -36,10 +36,15 @@ pipeline{
   }
 
   environment {
-    BAZEL_CMD        = "bazel --batch"
-    BAZEL_OPTS       = "--local_cpu_resources=8 --jobs=8 --remote_cache=http://bazel-cache.ci.motional.com:80 --remote_upload_local_results=true"
-    NUPLAN_DATA_ROOT = "/data/sets/nuplan"
-    NUPLAN_EXP_ROOT  = "/tmp/exp/nuplan"
+    BAZEL_CMD  = "bazel --batch"
+    BAZEL_OPTS = "--local_cpu_resources=8 --jobs=8 --remote_cache=http://bazel-cache.ci.motional.com:80 --remote_upload_local_results=true"
+
+    NUPLAN_DATA_ROOT         = "/data/sets/nuplan"
+    NUPLAN_DB_FILES          = "/data/sets/nuplan/nuplan-v1.0/mini"
+    NUPLAN_MAPS_ROOT         = "/data/sets/nuplan/maps"
+    NUPLAN_MAP_VERSION       = "nuplan-maps-v1.0"
+    NUPLAN_EXP_ROOT          = "/tmp/exp/nuplan"
+    NUPLAN_HYDRA_CONFIG_PATH = "config"
   }
 
   stages {
@@ -58,9 +63,59 @@ pipeline{
       steps {
         container('builder') {
           sh """#!/bin/bash -eu
-            pip3 install -r requirements.txt \
-              --index-url=${env.PIP_INDEX_URL_INTERNAL}
+            pip3 install -r requirements_torch.txt --index-url=${env.PIP_INDEX_URL_INTERNAL}
+            pip3 install -r requirements.txt --index-url=${env.PIP_INDEX_URL_INTERNAL}
+            pip3 install tox
           """
+        }
+      }
+    }
+    stage('Lint') {
+      failFast false
+      parallel {
+        stage('Bazel') {
+          steps {
+            container('builder') {
+              sh """#!/bin/bash -eu
+                ${env.BAZEL_CMD} run :buildifier_test
+              """
+            }
+          }
+          post {
+            failure {
+              println("Consider running 'bazel run :buildifier'")
+            }
+          }
+        }
+        stage('Yaml') {
+          steps {
+            container('builder') {
+              sh """#!/bin/bash -eu
+                tox -e yamllint -- .
+              """
+            }
+          }
+          post {
+            failure {
+              println("Consider running 'tox -e  yamlformat -- .'")
+            }
+          }
+        }
+        stage('Python') {
+          steps {
+            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE', message: "Consider running 'tox -e format -- .'") {
+              container('builder') {
+                sh """#!/bin/bash -eu
+                  tox -e lint -- .
+                """
+              }
+            }
+          }
+          post {
+            failure {
+              println("Consider running 'tox -e format -- .'")
+            }
+          }
         }
       }
     }

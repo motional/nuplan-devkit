@@ -4,10 +4,13 @@ from typing import Any, List
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
+from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 
 
 class AbstractVisualization(metaclass=ABCMeta):
+    """
+    Generic visualization interface.
+    """
 
     @abstractmethod
     def render_scenario(self, scenario: AbstractScenario, render_goal: bool) -> None:

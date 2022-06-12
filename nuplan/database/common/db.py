@@ -3,36 +3,39 @@ from __future__ import annotations
 import abc
 import logging
 import os
-import os.path as osp
 import sqlite3
 import threading
 import time
 import warnings
 from collections import defaultdict
+from pathlib import Path
 from typing import Any, BinaryIO, Callable, Dict, Iterator, List, Optional, Sequence, TypeVar, Union, overload
 
 import sqlalchemy
-from nuplan.database.common.blob_store.blob_store import BlobStore
-from nuplan.database.common.blob_store.cache_store import CacheStore
-from nuplan.database.common.blob_store.local_store import LocalStore
-from nuplan.database.maps_db.imapsdb import IMapsDB
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
+from nuplan.database.common.blob_store.cache_store import CacheStore
+from nuplan.database.common.blob_store.creator import BlobStoreCreator
+
 logger = logging.getLogger(__name__)
+
 
 T = TypeVar('T')
 
 
 class DBPathError(Exception):
-    """ DB Path Error. """
+    """DB Path Error."""
+
     pass
 
 
 class DBSplitterInterface(abc.ABC):
-    """ Interface for DB splitters. A DB splitter is responsible for splitting a DB into machine learning
-     splits. Splits names are not fixed by this interface and can vary between implementations, but the splits
-     themselves are assumed to be defined as a list of DB tokens. """
+    """
+    Interface for DB splitters. A DB splitter is responsible for splitting a DB into machine learning
+    splits. Splits names are not fixed by this interface and can vary between implementations, but the splits
+    themselves are assumed to be defined as a list of DB tokens.
+    """
 
     def __str__(self) -> str:
         """
@@ -82,9 +85,9 @@ class SessionManager:
         self._creator = engine_creator
 
         # Engines for each thread, because engine can not be shared among multiple threads.
-        self._engine_pool = defaultdict(dict)       # type: Dict[int, Dict[threading.Thread, sqlalchemy.engine.Engine]]
+        self._engine_pool = defaultdict(dict)  # type: Dict[int, Dict[threading.Thread, sqlalchemy.engine.Engine]]
         # Sessions for each thread, because session can not be shared among multiple threads.
-        self._session_pool = defaultdict(dict)      # type: Dict[int, Dict[threading.Thread, Session]]
+        self._session_pool = defaultdict(dict)  # type: Dict[int, Dict[threading.Thread, Session]]
 
     @property
     def engine(self) -> sqlalchemy.engine.Engine:
@@ -202,7 +205,7 @@ class Table(Sequence[T]):
         given filters, use select_many for searching multiple records.
             cat = nuplandb.category.select_one(name='vehicle')
         :param filters: Query using keyword expression. For example, query log by log file name:
-            log = nuplandb.log.select_one(logfile='2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5')
+            log = nuplandb.log.select_one(logfile='2021.07.16.20.45.29_veh-35_01095_01486')
         :return: Record object matching the given filters.
         """
         record: Optional[T] = self._session.query(self._table).filter_by(**filters).one_or_none()
@@ -245,21 +248,21 @@ class Table(Sequence[T]):
 
     @overload
     def __getitem__(self, index: int) -> T:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         ...
 
     @overload  # noqa: F811
     def __getitem__(self, token: str) -> T:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         ...
 
     @overload  # noqa: F811
     def __getitem__(self, indexes: slice) -> List[T]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         ...
 
-    def __getitem__(self, key: Union[int, str, slice]) -> T:  # type: ignore # noqa: F811
-        """ Inherited, see superclass. """
+    def __getitem__(self, key: Union[int, str, slice]) -> T:  # type: ignore  # noqa: F811
+        """Inherited, see superclass."""
         if isinstance(key, str):
             return self._session.query(self._table).get(key)  # type: ignore
         else:
@@ -280,9 +283,8 @@ class Table(Sequence[T]):
 
 class DB:
     """
-    Base class for DB loaders. Inherited class should implement property method for each table with type
+    Base class for DB loaders. Inherited classes should implement property method for each table with type
     annotation, for example:
-
         class NuPlanDB(DB):
             @property
             def category(self) -> Table[nuplandb_model.Category]:
@@ -292,76 +294,82 @@ class DB:
     db.category[some_token] instead, because we can't get any type hint from the former one.
     """
 
-    def __init__(self, table_names: List[str], models: Any, data_root: str, version: str,
-                 verbose: bool, blob_store: Optional[BlobStore] = None, maps_db: Optional[IMapsDB] = None):
+    def __init__(
+        self,
+        table_names: List[str],
+        models: Any,
+        data_root: str,
+        db_path: str,
+        verbose: bool,
+        model_source_dict: Dict[str, str] = {},
+    ):
         """
-        Initialize database, load json table and build token index.
-        :param table_names: Table names.
-        :param models: models.py generated from templates.py.
-        :param data_root: Path to the root directory for all versions of the database tables and blobs.
-        :param version: Database version.
-        :param verbose: Whether to print status messages during load.
-        :param blob_store: The blob store db will use to load file blobs.
-        :param maps_db: maps database.
+        Initialize database by loading from filesystem or downloading from S3, load json table and build token index.
+        :param table_names: List of table names.
+        :param models: Auto-generated model template.
+        :param data_root: Path to load the database from; if the database is downloaded from S3
+                          this is the path to store the downloaded database.
+        :param db_path: Local or S3 path to the database file.
+        :param verbose: Whether to print status messages when loading the database.
         """
-
-        self._table_names = table_names
-        self._version = version
+        self._table_names = list(table_names)
         self._data_root = data_root
-        self._table_root = osp.join(data_root, version)
+        self._blob_store = BlobStoreCreator.create_nuplandb(data_root)
         self._tables = {}
-        self._blob_store = blob_store or LocalStore(data_root)
-        self._maps_db = maps_db
 
-        db_filepath = self._table_root + '.db'
-        if not osp.exists(db_filepath):
-            logger.debug(f"Downloading db file to {db_filepath}...")
+        # Append the correct extension to the filename and prepend the data root if the file does not exist.
+        db_path = db_path if db_path.endswith('.db') else f'{db_path}.db'
+        self._db_path = Path(db_path)
+        self._filename = self._db_path if self._db_path.exists() else Path(self._data_root) / self._db_path.name
+
+        if not self._filename.exists():
+            logger.debug(f"DB path not found, downloading db file to {self._filename}...")
             start_time = time.time()
-            cache_store = CacheStore(data_root, blob_store)
-            cache_store.save_to_disk(version + '.db')
+            cache_store = CacheStore(self._data_root, self._blob_store)
+            cache_store.save_to_disk(self._db_path.name)
             logger.debug("Downloading db file took {:.1f} seconds".format(time.time() - start_time))
 
-        start_time = time.time()
         if verbose:
-            logger.debug("======\nLoading tables for version {}...".format(self.version))
+            logger.debug("\nLoading tables for database {}...".format(self.name))
+            start_time = time.time()
 
         self._session_manager = SessionManager(self._create_db_instance)
 
-        for table_name in table_names:
+        for table_name in self._table_names:
             model_name = ''.join([s.capitalize() for s in table_name.split('_')])
-            model_cls = getattr(models, model_name)
-
+            if len(model_source_dict) != 0:
+                if model_name in model_source_dict:
+                    model_pcls = getattr(models, model_source_dict[model_name])
+                else:
+                    model_pcls = getattr(models, model_source_dict['default'])
+                model_cls = getattr(model_pcls, model_name)
+            else:
+                model_cls = getattr(models, model_name)
             self._tables[table_name] = Table[model_cls](model_cls, self)  # type: ignore
 
         if verbose:
             for table_name in self._table_names:
                 logger.debug("{} {},".format(len(self._tables[table_name]), table_name))
-            logger.debug("Done loading in {:.1f} seconds.\n======".format(time.time() - start_time))
+            logger.debug("Done loading in {:.1f} seconds.\n".format(time.time() - start_time))
 
     def __repr__(self) -> str:
         """
         Get the string representation.
         :return: The string representation.
         """
-        return "{}('{}', data_root='{}')".format(self.__class__.__name__, self.version, self.data_root)
+        return "{}('{}', data_root='{}')".format(self.__class__.__name__, self.name, self.data_root)
 
     def __str__(self) -> str:
         """
         Get the string representation.
         :return: The string representation.
         """
-        _str = '{} {} with tables:\n{}'.format(self.__class__.__name__, self.version, '=' * 30)
+        _str = '{} {} with tables:\n{}'.format(self.__class__.__name__, self.name, '=' * 30)
         for table_name in self.table_names:
+            if 'log' == table_name:
+                continue
             _str += '\n{:20}: {}'.format(table_name, getattr(self, table_name).count())
         return _str
-
-    @property
-    def maps_db(self) -> Optional[IMapsDB]:
-        """
-        Get the underlying db.
-        :return: The underlying db.
-        """
-        return self._maps_db
 
     @property
     def session(self) -> Session:
@@ -372,12 +380,12 @@ class DB:
         return self._session_manager.session
 
     @property
-    def version(self) -> str:
+    def name(self) -> str:
         """
-        Get the db version.
-        :return: The db version.
+        Get the db name.
+        :return: The db name.
         """
-        return self._version
+        return self._db_path.stem
 
     @property
     def data_root(self) -> str:
@@ -393,7 +401,7 @@ class DB:
         Get the table root.
         :return: The table root.
         """
-        return self._table_root
+        return str(self._filename)
 
     @property
     def table_names(self) -> List[str]:
@@ -417,7 +425,7 @@ class DB:
         :param path: Path to the blob.
         :return: A binary stream to read the blob.
         """
-        return self._blob_store.get(path)   # type: ignore
+        return self._blob_store.get(path)  # type: ignore
 
     def get(self, table: str, token: str) -> Any:
         """
@@ -431,7 +439,7 @@ class DB:
 
     def field2token(self, table: str, field: str, query: str) -> List[str]:
         """
-        This function returns a list of tokens given a table and field of that table.
+        Function returns a list of tokens given a table and field of that table.
         :param table: Table name.
         :param field: Field name, see "template.py" for details.
         :param query: The same type as the field.
@@ -445,9 +453,8 @@ class DB:
         Internal method, return sqlite3 connection for sqlalchemy.
         :return: Sqlite3 connection.
         """
-        db_file = osp.join(self._data_root, self._version + '.db')
-        assert osp.exists(db_file), 'DB file not found: {}'.format(db_file)
-        db = sqlite3.connect('file:{}?mode=ro'.format(db_file), uri=True, check_same_thread=False)
+        assert Path(self.table_root).exists(), 'DB file not found: {}'.format(self.table_root)
+        db = sqlite3.connect('file:{}?mode=ro'.format(self.table_root), uri=True, check_same_thread=False)
         db.execute('PRAGMA main.journal_mode = OFF;')
         db.execute('PRAGMA main.cache_size=10240;')
         db.execute('PRAGMA main.page_size = 4096;')

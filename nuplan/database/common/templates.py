@@ -14,61 +14,126 @@ tables = copy.deepcopy(base_tables)
 # Semantics
 # =========
 tables.update(
-    {'category':
-        ("A category within our taxonomy. Includes both things (e.g. cars) or stuff (e.g. lanes, sidewalks). \n"
-         "Subcategories are delineated by a period.",
-            OrderedDict([
-                ("token", ("<str>", "Unique record identifier.")),
-                ("name", ("<str>", "Category name. Subcategories indicated by period. E.g. 'vehicle.car'.")),
-                ("description", ("<str>", "Category description.")),
-            ]))})
+    {
+        'category': (
+            "Taxonomy of object categories (e.g. 'vehicle', 'bicycle', 'pedestrian', 'traffic_cone', 'barrier', "
+            "'czone_sign', 'generic_object').",
+            OrderedDict(
+                [
+                    ("token", ("<str>", "Unique record identifier.")),
+                    ("name", ("<str>", "Category name.")),
+                    ("description", ("<str>", "Category description.")),
+                ]
+            ),
+        )
+    }
+)
 
 # =====================
 # Sensor, logs and maps
 # =====================
 tables.update(
-    {'log':
-        ("Information about the log from which the data was extracted.",
-            OrderedDict([
-                ("token", ("<str>", "Unique record identifier.")),
-                ("vehicle_name", ("<str>", "Vehicle name.")),
-                ("vehicle_type", ("<str>", "Vehicle type.")),
-                ("date", ("<str>", "Date (YYYY-MM-DD).")),
-                ("timestamp", ("<int>", "Unix timestamp for when log started.")),
-                ("logfile", ("<str>", "Original log file name.")),
-                ("location", ("<str>", "Area where log was captured, e.g. 'One North'.")),
-                ("map_version", ("<str>", "Name of map version used in this log. E.g. 'onenorth-2.2.4'.")),
-            ]))})
+    {
+        'log': (
+            "Information about the log from which the data was extracted.",
+            OrderedDict(
+                [
+                    ("token", ("<str>", "Unique record identifier.")),
+                    ("vehicle_name", ("<str>", "Vehicle name.")),
+                    ("date", ("<str>", "Date (YYYY-MM-DD).")),
+                    ("timestamp", ("<int>", "Unix timestamp for when the log started.")),
+                    ("logfile", ("<str>", "Original log file name.")),
+                    ("location", ("<str>", "Area where log was captured, e.g. singapore.")),
+                    ("map_version", ("<str>", "Name of map version used in this log.")),
+                ]
+            ),
+        )
+    }
+)
 
 tables.update(
-    {'camera':
-        ("Defines a calibrated camera used to record a particular log.",
-            OrderedDict([
-                ("token", ("<str>", "Unique record identifier.")),
-                ("log_token", ("<str>", "Foreign key.")),
-                ("channel", ("<str>", "Log channel name for this camera.")),
-                ("model", ("<str>", "Camera model, e.g. 'Basler', 'Sony IMX'.")),
-                ("translation", ("<float> [3]", "Coordinate system origin: x, y, z.")),
-                ("rotation", ("<float> [4]", "Coordinate system orientation in quaternions.")),
-                ("intrinsic", ("<float> [3, 3]", "Intrinsic camera calibration matrix.")),
-                ("distortion", ("<float> [*]", "Distortion per convention of the CalTech camera calibration toolbox. "
-                                               "Can be 5-10 coefficients.")),
-                ("width", ("<int>", "Image width in pixels.")),
-                ("height", ("<int>", "Image height in pixels.")),
-            ]))})
+    {
+        'camera': (
+            "The camera table contains information about the calibration and other settings of a particular camera "
+            "in a particular log.",
+            OrderedDict(
+                [
+                    ("token", ("<str>", "Unique record identifier.")),
+                    (
+                        "log_token",
+                        ("<str>", "Foreign key. Identifies the log that uses the configuration specified here."),
+                    ),
+                    (
+                        "channel",
+                        (
+                            "<str>",
+                            "The camera name, which describes it's position on the car (e.g. 'CAM_F0', 'CAM_R0', 'CAM_R1', 'CAM_R2', 'CAM_B0', 'CAM_L0', 'CAM_L1', 'CAM_L2').",
+                        ),
+                    ),
+                    ("model", ("<str>", "The camera model used.")),
+                    (
+                        "translation",
+                        (
+                            "<float> [3]",
+                            "The extrinsic translation of the camera relative to the ego vehicle coordinate frame. Coordinate system origin in meters: x, y, z.",
+                        ),
+                    ),
+                    (
+                        "rotation",
+                        (
+                            "<float> [4]",
+                            "The extrinsic rotation of the camera relative to the ego vehicle coordinate frame. Coordinate system orientation as quaternion: w, x, y, z.",
+                        ),
+                    ),
+                    ("intrinsic", ("<float> [3, 3]", "Intrinsic camera calibration matrix.")),
+                    (
+                        "distortion",
+                        (
+                            "<float> [*]",
+                            "The camera distortion parameters according to the Caltech model (k1, k2, p1, p2, k3)",
+                        ),
+                    ),
+                    ("width", ("<int>", "The width of the camera image in pixels.")),
+                    ("height", ("<int>", "The height of the camera image in pixels.")),
+                ]
+            ),
+        )
+    }
+)
 
 tables.update(
-    {'lidar':
-        ("Defines a calibrated lidar used to record a particular log.",
-            OrderedDict([
-                ("token", ("<str>", "Unique record identifier.")),
-                ("log_token", ("<str>", "Foreign key.")),
-                ("channel", ("<str>", "Log channel name.")),
-                ("model", ("<str>", "The lidar model.")),
-                ("translation", ("<float> [3]", "Coordinate system origin: x, y, z.")),
-                ("rotation", ("<float> [4]", "Coordinate system orientation in quaternions.")),
-                ("max_nbr_points", ("<int>", "Maximum number of points in the captured lidar point clouds.")),
-            ]))})
+    {
+        'lidar': (
+            "The lidar table contains information about the calibration and other settings of a particular lidar in a "
+            "particular  log.",
+            OrderedDict(
+                [
+                    ("token", ("<str>", "Unique record identifier.")),
+                    (
+                        "log_token",
+                        ("<str>", "Foreign key. Identifies the log that uses the configuration specified here."),
+                    ),
+                    ("channel", ("<str>", "Log channel name.")),
+                    ("model", ("<str>", "The lidar model.")),
+                    (
+                        "translation",
+                        (
+                            "<float> [3]",
+                            "The extrinsic translation of the lidar relative to the ego vehicle coordinate frame. Coordinate system origin in meters: x, y, z.",
+                        ),
+                    ),
+                    (
+                        "rotation",
+                        (
+                            "<float> [4]",
+                            "The extrinsic rotation of the lidar relative to the ego vehicle coordinate frame. Coordinate system orientation as quaternion: w, x, y, z.",
+                        ),
+                    ),
+                ]
+            ),
+        )
+    }
+)
 
 
 # ===========
@@ -76,28 +141,40 @@ tables.update(
 # ===========
 
 tables.update(
-    {'ego_pose':
-        ("Ego vehicle pose at a particular timestamp. Given with respect to global coordinate system.",
-            OrderedDict([
-                ("token", ("<str>", "Unique record identifier.")),
-                ("timestamp", ("<int>", "Unix timestamp.")),
-                ("x", ("<float>", "Ego vehicle location center_x.")),
-                ("y", ("<float>", "Ego vehicle location center_y.")),
-                ("z", ("<float>", "Ego vehicle location center_z.")),
-                ("qw", ("<float>", "Ego vehicle orientation in quaternions.")),
-                ("qx", ("<float>", "Ego vehicle orientation in quaternions.")),
-                ("qy", ("<float>", "Ego vehicle orientation in quaternions.")),
-                ("qz", ("<float>", "Ego vehicle orientation in quaternions.")),
-                ("vx", ("<float>", "Ego vehicle velocity x.")),
-                ("vy", ("<float>", "Ego vehicle velocity y.")),
-                ("vz", ("<float>", "Ego vehicle velocity z.")),
-                ("acceleration_x", ("<float>", "Ego vehicle acceleration x.")),
-                ("acceleration_y", ("<float>", "Ego vehicle acceleration y.")),
-                ("acceleration_z", ("<float>", "Ego vehicle acceleration z.")),
-                ("angular_rate_x", ("<float>", "Ego vehicle angular rate x.")),
-                ("angular_rate_y", ("<float>", "Ego vehicle angular rate y.")),
-                ("angular_rate_x", ("<float>", "Ego vehicle angular rate z.")),
-                ("epsg", ("<int>", "Ego vehicle epsg.")),
-                ("health", ("<bool>", "Ego vehicle health.")),
-                ("log_token", ("<str>", "Foreign key.")),
-            ]))})
+    {
+        'ego_pose': (
+            "Ego vehicle pose at a particular timestamp.",
+            OrderedDict(
+                [
+                    ("token", ("<str>", "Unique record identifier.")),
+                    ("log_token", ("<str>", "Foreign key. Identifies the log which this ego pose is a part of.")),
+                    ("timestamp", ("<int>", "Unix timestamp.")),
+                    ("x", ("<float>", "Ego vehicle location center_x in global coordinates(in meters).")),
+                    ("y", ("<float>", "Ego vehicle location center_y in global coordinates(in meters).")),
+                    ("z", ("<float>", "Ego vehicle location center_z in global coordinates(in meters).")),
+                    ("qw", ("<float>", "Ego vehicle orientation in quaternions in global coordinates.")),
+                    ("qx", ("<float>", "Ego vehicle orientation in quaternions in global coordinates.")),
+                    ("qy", ("<float>", "Ego vehicle orientation in quaternions in global coordinates.")),
+                    ("qz", ("<float>", "Ego vehicle orientation in quaternions in global coordinates.")),
+                    ("vx", ("<float>", "Ego vehicle velocity x in local coordinates(in m/s).")),
+                    ("vy", ("<float>", "Ego vehicle velocity y in local coordinates(in m/s).")),
+                    ("vz", ("<float>", "Ego vehicle velocity z in local coordinates(in m/s).")),
+                    ("acceleration_x", ("<float>", "Ego vehicle acceleration x in local coordinates(in m/s2).")),
+                    ("acceleration_y", ("<float>", "Ego vehicle acceleration y in local coordinates(in m/s2).")),
+                    ("acceleration_z", ("<float>", "Ego vehicle acceleration z in local coordinates(in m/s2).")),
+                    ("angular_rate_x", ("<float>", "Ego vehicle angular rate x in local coordinates.")),
+                    ("angular_rate_y", ("<float>", "Ego vehicle angular rate y in local coordinates.")),
+                    ("angular_rate_x", ("<float>", "Ego vehicle angular rate z in local coordinates.")),
+                    (
+                        "epsg",
+                        (
+                            "<int>",
+                            "Ego vehicle epsg. Epsg is a latitude/longitude coordinate system based on "
+                            "the Earth's center of mass.",
+                        ),
+                    ),
+                ]
+            ),
+        )
+    }
+)

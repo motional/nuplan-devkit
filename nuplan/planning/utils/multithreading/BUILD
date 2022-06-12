@@ -11,9 +11,10 @@ py_library(
 )
 
 py_library(
-    name = "spliter",
-    srcs = ["spliter.py"],
+    name = "worker_utils",
+    srcs = ["worker_utils.py"],
     deps = [
+        "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )
 

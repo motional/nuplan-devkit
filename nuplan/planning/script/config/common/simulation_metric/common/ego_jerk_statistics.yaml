@@ -3,3 +3,5 @@ ego_jerk_statistics:
   _convert_: 'all'
   name: 'ego_jerk_statistics'
   category: 'Dynamics'
+
+  max_abs_mag_jerk: 8.37

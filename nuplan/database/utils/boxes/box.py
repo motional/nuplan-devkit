@@ -5,9 +5,9 @@ from typing import Any, Dict
 
 
 class BoxInterface(abc.ABC):
-    """ Interface for box. """
+    """Interface for box."""
 
-    @property   # type: ignore
+    @property  # type: ignore
     @abc.abstractmethod
     def label(self) -> int:
         """

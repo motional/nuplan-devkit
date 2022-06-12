@@ -1,0 +1,110 @@
+{
+    "active_lane_connectors": [],
+    "camera": {
+        "bearing": 0.5124999999999997,
+        "lookat": [
+            664532.5387684227,
+            3999026.6429331857,
+            -1.9003388298137762
+        ],
+        "pitch": 0.0,
+        "scale": 1048576.000000008
+    },
+    "ego": {
+        "acceleration": 0.0,
+        "pose": [
+            664523.0698612131,
+            3999018.6419783393,
+            -1.9003388298137762
+        ],
+        "speed": 0.0
+    },
+    "expected_max_speed": 5.0,
+    "inactive_lane_connectors": [],
+    "map": {
+        "area": "us-nv-las-vegas-strip"
+    },
+    "markers": [],
+    "meta": {
+        "version": "3.0.0"
+    },
+    "path_info": [],
+    "world": {
+        "bicycles": [],
+        "pedestrians": [],
+        "vehicles": [
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664518.4103190809,
+                        3999060.13910519,
+                        2.741302282907444
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 0,
+                "real": true,
+                "speed": 1.779,
+                "type": "Vehicle"
+            },
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664596.8472024472,
+                        3999018.866933475,
+                        2.4693031705353485
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 1,
+                "real": true,
+                "speed": 2.0599,
+                "type": "Vehicle"
+            },
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664526.1111260704,
+                        3999028.155152326,
+                        -1.9132998667913332
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 2,
+                "real": true,
+                "speed": 3.0337,
+                "type": "Vehicle"
+            },
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664584.2279124823,
+                        3999027.9901711377,
+                        2.5514967100749977
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 3,
+                "real": true,
+                "speed": 5.0,
+                "type": "Vehicle"
+            }
+        ]
+    }
+}

@@ -18,7 +18,7 @@ py_library(
     deps = [
         "//nuplan/database/common/blob_store",
         "//nuplan/database/common/blob_store:cache_store",
-        "//nuplan/database/common/blob_store:local_store",
+        "//nuplan/database/common/blob_store:creator",
         "//nuplan/database/maps_db:imapsdb",
     ],
 )

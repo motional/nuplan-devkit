@@ -3,9 +3,14 @@ import concurrent.futures
 import logging
 from typing import Any, Iterable, List, Optional
 
-from nuplan.planning.utils.multithreading.worker_pool import Task, WorkerPool, WorkerResources, \
-    get_max_size_of_arguments
 from tqdm import tqdm
+
+from nuplan.planning.utils.multithreading.worker_pool import (
+    Task,
+    WorkerPool,
+    WorkerResources,
+    get_max_size_of_arguments,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +29,26 @@ class SingleMachineParallelExecutor(WorkerPool):
         # Set the number of available threads
         number_of_cpus_per_node = max_workers if max_workers else WorkerResources.current_node_cpu_count()
 
-        super().__init__(WorkerResources(number_of_nodes=1, number_of_cpus_per_node=number_of_cpus_per_node,
-                                         number_of_gpus_per_node=0))
+        super().__init__(
+            WorkerResources(
+                number_of_nodes=1, number_of_cpus_per_node=number_of_cpus_per_node, number_of_gpus_per_node=0
+            )
+        )
 
         # Create executor
-        self._executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) \
-            if use_process_pool else concurrent.futures.ThreadPoolExecutor(max_workers=number_of_cpus_per_node)
+        self._executor = (
+            concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+            if use_process_pool
+            else concurrent.futures.ThreadPoolExecutor(max_workers=number_of_cpus_per_node)
+        )
 
     def _map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return list(
-            tqdm(self._executor.map(task.fn, *item_lists), leave=False, total=get_max_size_of_arguments(*item_lists),
-                 desc="ThreadPoolExecutor"))
+            tqdm(
+                self._executor.map(task.fn, *item_lists),
+                leave=False,
+                total=get_max_size_of_arguments(*item_lists),
+                desc='ThreadPoolExecutor',
+            )
+        )

@@ -10,6 +10,8 @@ DATA_LEN = 17
 
 
 class TestSimulationHistory(TestCase):
+    """Tests for SimulationHistory buffer."""
+
     def setUp(self) -> None:
         """
         Setup mocks for the tests
@@ -45,7 +47,7 @@ class TestSimulationHistory(TestCase):
         """
         with patch.object(self.sh, 'data', clear=MagicMock()) as data:
             # Code execution
-            self.sh.clear()
+            self.sh.reset()
 
             # Expectations check
             data.clear.assert_called_once()

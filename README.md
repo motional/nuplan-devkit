@@ -27,25 +27,47 @@ ______________________________________________________________________
 </div>
 
 ______________________________________________________________________
+## Planning challenges
+Stay tuned for the upcoming nuPlan ML planning challenges!
+______________________________________________________________________
 
 ## Changelog
-- Dec. 10, 2021: Devkit v0.1.0: Release of the initial teaser dataset (v0.1) and corresponding devkit and maps (v0.1). See [Teaser release](#teaser-release) for more information.
+- Jun 10 2022
+  * v1.0 Dataset: Full nuPlan dataset release with over 1,300 hours of driving data (15,000+ logs) across 4 cities (Las Vegas, Pittsburgh, Boston, Singapore).
+  * v0.2 Devkit: Multiple devkit updates with improvements across the whole framework (planning models, training, simulation, metrics, dashboard, tutorials and more).
+- Dec 19 2021
+  * v0.2 Dataset: Fixed bugs in the teaser nuPlan dataset.
+- Dec 10 2021
+  * v0.1 Dataset: Initial teaser nuPlan dataset release with over 200 hours of driving data (350+ logs) across Las Vegas.
+  * v0.1 Devkit: Initial nuPlan devkit release.
+
 
 ______________________________________________________________________
 
-## Teaser release
-On Dec. 10 2021 we released the nuPlan teaser dataset and devkit. This is meant to be a **public beta** version. 
-We are aware of several limitations of the current dataset and devkit. 
-Nevertheless we have chosen to make this teaser available to the public for early consultation and to receive feedback on how to improve it.
-We appreciate your feedback as a [Github issue](https://github.com/motional/nuplan-devkit/issues).
+## Devkit and dataset setup
+Please refer to the [installation page](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) for detailed instructions on how to setup the devkit.
 
-**Note:** All interfaces are subject to change for the full release! No backward compatibility can be guaranteed.
+Please refer to the [dataset page](https://github.com/motional/nuplan-devkit/blob/master/docs/dataset_setup.md) for detailed instructions on how to download and setup the dataset.
 
-Below is a list of upcoming features for the full release:
-- The teaser dataset includes 200h of data from Las Vegas, we will be releasing the full 1500h dataset that also includes data from Singapore, Boston or Pittsburgh in early 2022.
-- The full release will also include the sensor data for 150h (10% of the total dataset).
-- Localization, perception scenario tags and traffic lights will be improved in future releases.
-- The full release will have an improved dashboard, closed-loop training, advanced planning baselines, end-to-end planners, ML smart agents, RL environment, as well as more metrics and scenarios.
+______________________________________________________________________
+
+## Getting started
+Please follow these steps to make yourself familiar with the nuPlan dataset:
+- Familiarize yourself with the main [features of nuPlan](https://www.nuplan.org) and the [dataset description](https://www.nuplan.org/nuplan).
+- Setup the devkit and dataset as described [above](#devkit-and-dataset-setup).
+- Walk through the tutorials in [this folder](https://github.com/motional/nuplan-devkit/blob/master/tutorials/) or run them yourself using `jupyter notebook ~/nuplan-devkit/tutorials/<filename>.ipynb` and replacing `<filename>` with the tutorial's name. The following tutorials are available:
+  - `nuplan_framework.ipynb`: Main tutorial for anyone who wants to dive right into ML planning.
+  It describes how to 1) train an ML planner, 2) simulate it, 3) measure the performance and 4) visualize the results.
+  - `nuplan_scenario_visualization.ipynb`: Tutorial for visualizing various scenario types contained within the nuPlan dataset (e.g. unprotected turns, lane changes, interactions with pedestrians and more).
+  - `nuplan_planner_tutorial.ipynb`: Tutorial with instructions on how to develop and simulate a planner from scratch within the nuPlan framework.
+
+- Familiarize yourself with the nuPlan CLI, which gets installed by installing the devkit using `pip` (editable and not)
+  by running:
+  ```
+  nuplan_cli --help
+  nuplan_cli COMMAND --help
+  ```
+- Read the [nuPlan paper](https://www.nuplan.org/publications) to understand the details behind the dataset.
 
 ______________________________________________________________________
 
@@ -54,55 +76,15 @@ Our code is organized in these directories:
 
 ```
 nuplan_devkit
-├── ci              - Continuous integration code. Not relevant for average users.
+├── ci              - Continuous integration code - not relevant for average users.
 ├── docs            - Readmes and other documentation of the repo and dataset.
 ├── nuplan          - The main source folder.
 │   ├── common      - Code shared by "database" and "planning".
 │   ├── database    - The core devkit used to load and render nuPlan dataset and maps.
 │   └── planning    - The stand-alone planning framework for simulation, training and evaluation.
+│   └── cli         - Command line interface tools for the nuPlan database.
 └── tutorials       - Interactive tutorials, see "Getting started".
 ```
-
-______________________________________________________________________
-
-## Devkit setup
-Please refer to the [installation page](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) for detailed instructions on how to setup the devkit.
-
-______________________________________________________________________
-
-## Dataset setup
-To download nuPlan you need to go to the [Download page](https://nuplan.org/nuplan#download), 
-create an account and agree to the [Terms of Use](https://www.nuplan.org/terms-of-use).
-After logging in you will see multiple archives. 
-For the devkit to work you will need to download *all* archives.
-Please unpack the archives to the `~/nuplan/dataset` folder.
-Eventually you should have the following folder structure:
-```
-~/nuplan/dataset    -   The dataset folder. Can be read-only.
-    nuplan_v*.db	  -	  SQLite database that includes all metadata
-    maps	          -	  Folder for all map files
-    <missing>       -   Sensor data will be added in the future
-~/nuplan/exp        -   The experiment and cache folder. Must have read and write access.
-```
-If you want to use another folder, you can set the corresponding [environment variable](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) or specify the `data_root` parameter of the NuPlanDB class (see tutorial).
-
-______________________________________________________________________
-
-## Getting started
-Please follow these steps to make yourself familiar with the nuPlan dataset:
-- Familiarize yourself with the main [features of nuPlan](https://www.nuplan.org) and the [dataset description](https://www.nuplan.org/nuplan).
-- Setup the [devkit](#dataset-setup) and [dataset](#dataset-setup) as described above.
-- Walk through the tutorials in [this folder](https://github.com/motional/nuplan-devkit/blob/master/tutorials/) or run them yourself using:
-```
-jupyter notebook ~/nuplan-devkit/tutorials/<filename>.ipynb
-```
-Replace &lt;filename&gt; with one of the following:
-- `nuplan_framework.ipynb`: This is the main tutorial for anyone who wants to dive right into ML planning.
-  It describes how to 1) train an ML planner, 2) simulate it, 3) measure the performance and 4) visualize the results.
-
-
-- Read the [nuPlan paper](https://www.nuplan.org/publications) to understand the details behind the dataset.
-
 ______________________________________________________________________
 
 ## Citation

@@ -1,6 +1,7 @@
 from typing import Dict
 
 import torch
+
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractModelFeature
 
 
@@ -8,6 +9,7 @@ class MissingFeature(Exception):
     """
     Exception used when a features is not present
     """
+
     pass
 
 

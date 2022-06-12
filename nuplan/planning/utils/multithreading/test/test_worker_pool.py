@@ -3,11 +3,12 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
-from nuplan.planning.utils.multithreading.spliter import chunk_list
+
 from nuplan.planning.utils.multithreading.worker_parallel import SingleMachineParallelExecutor
 from nuplan.planning.utils.multithreading.worker_pool import Task, WorkerPool
 from nuplan.planning.utils.multithreading.worker_ray import RayDistributed
 from nuplan.planning.utils.multithreading.worker_sequential import Sequential
+from nuplan.planning.utils.multithreading.worker_utils import chunk_list
 
 
 def matrix_multiplication(lhs: npt.NDArray[np.float32], rhs: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
@@ -17,24 +18,26 @@ def matrix_multiplication(lhs: npt.NDArray[np.float32], rhs: npt.NDArray[np.floa
     :param rhs: Matrix in the right hand side.
     return: result of simple matrix dot product
     """
-
     return lhs @ rhs
 
 
 class TestWorkerPool(unittest.TestCase):
-    """ Unittest class for WorkerPool """
+    """Unittest class for WorkerPool"""
 
     def setUp(self) -> None:
-        self.lhs_matrix = np.array([[1, 2, 4], [2, 3, 4]])
-        self.rhs_matrix = np.array([[2, 3, 4], [2, 5, 4]]).T
-        self.target = np.array([[24, 28], [29, 35]])
-        self.workers = [Sequential(),
-                        RayDistributed(local_mode=True),
-                        SingleMachineParallelExecutor(),
-                        SingleMachineParallelExecutor(use_process_pool=True)]
+        """Set up basic config."""
+        self.lhs_matrix: npt.NDArray[np.float32] = np.array([[1, 2, 4], [2, 3, 4]])
+        self.rhs_matrix: npt.NDArray[np.float32] = np.array([[2, 3, 4], [2, 5, 4]]).T
+        self.target: npt.NDArray[np.float32] = np.array([[24, 28], [29, 35]])
+        self.workers = [
+            Sequential(),
+            RayDistributed(debug_mode=True),
+            SingleMachineParallelExecutor(),
+            SingleMachineParallelExecutor(use_process_pool=True),
+        ]
 
     def test_task(self) -> None:
-        """ Test Task whether a function can be called"""
+        """Test Task whether a function can be called"""
 
         def add_inputs(input1: float, input2: float) -> float:
             """
@@ -46,7 +49,7 @@ class TestWorkerPool(unittest.TestCase):
         self.assertEqual(task(10, 20), 31)
 
     def test_workers(self) -> None:
-        """ Tests the sequential worker. """
+        """Tests the sequential worker."""
         for worker in self.workers:
             self.check_worker(worker)
 
@@ -69,8 +72,7 @@ class TestWorkerPool(unittest.TestCase):
         self.assertEqual(len(result), number_of_functions)
         self.validate_result(result)
 
-        result = worker.map(task, [self.lhs_matrix] * number_of_functions,
-                            [self.rhs_matrix] * number_of_functions)
+        result = worker.map(task, [self.lhs_matrix] * number_of_functions, [self.rhs_matrix] * number_of_functions)
         self.assertEqual(len(result), number_of_functions)
         self.validate_result(result)
 
@@ -94,5 +96,5 @@ class TestWorkerPool(unittest.TestCase):
         self.assertEqual(len(chunks), 2)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

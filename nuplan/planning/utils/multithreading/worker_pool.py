@@ -17,7 +17,7 @@ def get_max_size_of_arguments(*item_lists: Iterable[List[Any]]) -> int:
     """
     lengths = [len(items) for items in item_lists if isinstance(items, list)]
     if len(list(set(lengths))) > 1:
-        raise RuntimeError(f"There exists lists with different element size = {lengths}!")
+        raise RuntimeError(f'There exists lists with different element size = {lengths}!')
     return max(lengths) if len(lengths) != 0 else 1
 
 
@@ -35,7 +35,7 @@ def align_size_of_arguments(*item_lists: Iterable[List[Any]]) -> Tuple[int, Iter
 
 @dataclass(frozen=True)
 class Task:
-    """ This class represents a task that can be submitted to a worker with specific resource requirements """
+    """This class represents a task that can be submitted to a worker with specific resource requirements"""
 
     fn: Callable[..., Any]  # Function that should be called with arguments
 
@@ -59,6 +59,8 @@ class Task:
 
 @dataclass(frozen=True)
 class WorkerResources:
+    """Data class to indicate resources used by workers."""
+
     number_of_nodes: int  # Number of available independent nodes
     number_of_gpus_per_node: int  # Number of GPUs per node
     # Number of CPU logical cores per node, this can be smaller than
@@ -77,7 +79,7 @@ class WorkerResources:
         """
         :return: the number of logical cores on the current machine
         """
-        return cpu_count(logical=True)
+        return cpu_count(logical=True)  # type: ignore
 
 
 class WorkerPool(abc.ABC):
@@ -92,19 +94,26 @@ class WorkerPool(abc.ABC):
         """
         self.config = config
 
-        logger.info(f"Worker: {self.__class__.__name__}")
-        logger.info(f"{self}")
+        if self.config.number_of_threads < 1:
+            raise RuntimeError(f'Number of threads can not be 0, and it is {self.config.number_of_threads}!')
 
-    def map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
+        logger.info(f'Worker: {self.__class__.__name__}')
+        logger.info(f'{self}')
+
+    def map(self, task: Task, *item_lists: Iterable[List[Any]], verbose: bool = False) -> List[Any]:
         """
         Run function with arguments from item_lists, this function will make sure all arguments have the same
         number of elements
         :param task: function to be run
         :param item_lists: arguments to the function
+        :param verbose: Whether to increase logger verbosity.
         :return: type from the fn
         """
         max_size, aligned_item_lists = align_size_of_arguments(*item_lists)
-        logger.info(f"Submitting {max_size} tasks!")
+
+        if verbose:
+            logger.info(f'Submitting {max_size} tasks!')
+
         return self._map(task, *aligned_item_lists)
 
     @abc.abstractmethod
@@ -130,7 +139,9 @@ class WorkerPool(abc.ABC):
         """
         :return: string with information about this worker
         """
-        return f"Number of nodes: {self.config.number_of_nodes}\n" \
-               f"Number of CPUs per node: {self.config.number_of_cpus_per_node}\n" \
-               f"Number of GPUs per node: {self.config.number_of_gpus_per_node}\n" \
-               f"Number of threads across all nodes: {self.config.number_of_threads}"
+        return (
+            f'Number of nodes: {self.config.number_of_nodes}\n'
+            f'Number of CPUs per node: {self.config.number_of_cpus_per_node}\n'
+            f'Number of GPUs per node: {self.config.number_of_gpus_per_node}\n'
+            f'Number of threads across all nodes: {self.config.number_of_threads}'
+        )

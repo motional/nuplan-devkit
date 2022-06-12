@@ -1,0 +1,5 @@
+defaults:
+  - learning_rate_monitor_callback
+  - model_checkpoint_callback
+  - time_logging_callback
+  - visualization_callback

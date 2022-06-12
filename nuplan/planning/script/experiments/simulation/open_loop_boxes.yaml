@@ -1,0 +1,7 @@
+# @package _global_
+experiment_name: simulation_open_loop_boxes
+
+defaults:
+  - override /observation: box_observation
+  - override /ego_controller: log_play_back_controller
+  - override /planner: log_future_planner

@@ -7,45 +7,50 @@ from typing import Any, Dict, List, Optional, Union
 
 import msgpack
 import ujson as json
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
-from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData
-from nuplan.database.utils.label.utils import PBVTB_LABELMAPPING
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
-from nuplan.planning.simulation.observation.observation_type import Detections
+from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
-from nuplan.planning.utils.serialization.to_scene import create_trajectory_structure, \
-    to_scene_agent_prediction_from_boxes, to_scene_boxes, to_scene_ego_from_center_pose
+from nuplan.planning.utils.serialization.to_scene import (
+    create_trajectory_structure,
+    to_scene_agent_prediction_from_boxes,
+    to_scene_boxes,
+    to_scene_ego_from_center_pose,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class SceneColors:
+    """Colors to use for each trajectory in the serialization."""
+
     ego_predicted_trajectory = [0, 0, 255, 100]  # [r, g, b, a] color
     ego_expert_trajectory = [255, 0, 0, 100]  # [r, g, b, a] color
     agents_predicted_trajectory = [0, 255, 0, 50]  # [r, g, b, a] color
 
 
 def _dump_to_json(file: pathlib.Path, scene_to_save: Any) -> None:
-    """ Dump file into json """
+    """Dump file into json"""
     with open(str(file.with_suffix(".json")), 'w') as f:
         json.dump(scene_to_save, f)
 
 
 def _dump_to_pickle(file: pathlib.Path, scene_to_save: Any) -> None:
-    """ Dump file into compressed pickle """
-    with lzma.open(file.with_suffix(".pkl.xz"), "wb") as f:  # type: ignore
-        pickle.dump(scene_to_save, f)  # type: ignore
+    """Dump file into compressed pickle"""
+    with lzma.open(file.with_suffix(".pkl.xz"), "wb", preset=0) as f:
+        pickle.dump(scene_to_save, f)
 
 
 def _dump_to_msgpack(file: pathlib.Path, scene_to_save: Any) -> None:
-    """ Dump file into compressed msgpack """
-    with lzma.open(file.with_suffix(".msgpack.xz"), "wb") as f:  # type: ignore
+    """Dump file into compressed msgpack"""
+    with lzma.open(file.with_suffix(".msgpack.xz"), "wb", preset=0) as f:
         f.write(msgpack.packb(scene_to_save))
 
 
@@ -66,37 +71,38 @@ def _dump_to_file(file: pathlib.Path, scene_to_save: Any, serialization_type: st
         raise ValueError(f"Unknown option: {serialization_type}")
 
 
-def convert_sample_to_scene(map_name: str,
-                            traffic_light_status: List[TrafficLightStatusData],
-                            mission_goal: Optional[StateSE2],
-                            expert_trajectory: List[EgoState],
-                            data: SimulationHistorySample,
-                            vehicle: VehicleParameters,
-                            colors: SceneColors = SceneColors()) -> Dict[str, Any]:
+def convert_sample_to_scene(
+    map_name: str,
+    database_interval: float,
+    traffic_light_status: List[TrafficLightStatusData],
+    mission_goal: Optional[StateSE2],
+    expert_trajectory: List[EgoState],
+    data: SimulationHistorySample,
+    colors: SceneColors = SceneColors(),
+) -> Dict[str, Any]:
     """
     Serialize history and scenario.
     :param map_name: name of the map used for this scenario.
+    :param database_interval: Database interval (fps).
     :param traffic_light_status: Traffic light status.
     :param mission_goal: if mission goal is present, this is goal of this mission.
     :param expert_trajectory: trajectory of an expert driver.
     :param data: single sample from history.
-    :param vehicle: vehicle parameters.
     :param colors: colors for trajectories.
     :return: serialized dictionary.
     """
-
     # Initialize scene
     scene: Dict[str, Any] = {"timestamp_us": data.ego_state.time_us}
     trajectories: Dict[str, Dict[str, Any]] = {}
 
     # Convert goal
     if mission_goal is not None:
-        scene["goal"] = to_scene_ego_from_center_pose(mission_goal, vehicle)
+        scene["goal"] = to_scene_ego_from_center_pose(mission_goal)
     else:
         scene["goal"] = None
 
     # Convert ego pose
-    scene["ego"] = to_scene_ego_from_center_pose(data.ego_state.rear_axle, vehicle)
+    scene["ego"] = to_scene_ego_from_center_pose(data.ego_state.center)
     scene["ego"]["timestamp_us"] = data.ego_state.time_us
 
     # Convert Map Area
@@ -104,16 +110,17 @@ def convert_sample_to_scene(map_name: str,
     scene["map"] = {"area": map_name_without_suffix}
     scene["map_name"] = map_name
 
-    # Convert Detections
-    if isinstance(data.observation, Detections):
-        scene["world"] = to_scene_boxes(data.observation.boxes, PBVTB_LABELMAPPING)
-        scene["prediction"] = to_scene_agent_prediction_from_boxes(data.observation.boxes,
-                                                                   colors.agents_predicted_trajectory)
+    # Convert DetectionsTracks
+    if isinstance(data.observation, DetectionsTracks):
+        scene["world"] = to_scene_boxes(data.observation.tracked_objects)
+        scene["prediction"] = to_scene_agent_prediction_from_boxes(
+            data.observation.tracked_objects, colors.agents_predicted_trajectory
+        )
 
     # Convert Trajectory
     trajectories["ego_predicted_trajectory"] = create_trajectory_structure(
-        data.trajectory.get_sampled_trajectory(),
-        colors.ego_predicted_trajectory)
+        data.trajectory.get_sampled_trajectory(), colors.ego_predicted_trajectory
+    )
 
     # Convert Scenario
     trajectories["ego_expert_trajectory"] = create_trajectory_structure(expert_trajectory, colors.ego_expert_trajectory)
@@ -123,33 +130,40 @@ def convert_sample_to_scene(map_name: str,
 
     # Serialize traffic light status
     scene["traffic_light_status"] = [traffic_light.serialize() for traffic_light in traffic_light_status]
+
+    # Database interval rate
+    scene['database_interval'] = database_interval
+
     return scene
 
 
 class SerializationCallback(AbstractCallback):
+    """Callback for serializing scenes at the end of the simulation."""
 
-    def __init__(self,
-                 output_directory: Union[str, pathlib.Path],
-                 folder_name: Union[str, pathlib.Path],
-                 serialization_type: str,
-                 serialize_into_single_file: bool,
-                 vehicle: VehicleParameters = get_pacifica_parameters()):
+    def __init__(
+        self,
+        output_directory: Union[str, pathlib.Path],
+        folder_name: Union[str, pathlib.Path],
+        serialization_type: str,
+        serialize_into_single_file: bool,
+    ):
         """
         Construct serialization callback
         :param output_directory: where scenes should be serialized
         :param folder_name: folder where output should be serialized
+        :param serialization_type: A way to serialize output, options: ["json", "pickle", "msgpack"]
         :param serialize_into_single_file: if true all data will be in single file, if false, each time step will
                 be serialized into a separate file
-        :param serialization_type: A way to serialize output, options: ["json", "pickle", "msgpack"]
         """
         available_formats = ["json", "pickle", "msgpack"]
         if serialization_type not in available_formats:
-            raise ValueError("The serialization callback will not store files anywhere!"
-                             f"Choose at least one format from {available_formats} instead of {serialization_type}!")
+            raise ValueError(
+                "The serialization callback will not store files anywhere!"
+                f"Choose at least one format from {available_formats} instead of {serialization_type}!"
+            )
 
         self._output_directory = pathlib.Path(output_directory) / folder_name
         self._serialization_type = serialization_type
-        self._vehicle = vehicle
         self._serialize_into_single_file = serialize_into_single_file
 
     def on_initialization_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
@@ -174,9 +188,20 @@ class SerializationCallback(AbstractCallback):
 
         # Create directory
         scenario_directory = self._get_scenario_folder(planner.name(), setup.scenario)
-        scenes = [self._serialize_history_sample(setup.scenario, sample,
-                                                 setup.scenario.get_traffic_light_status_at_iteration(index))
-                  for index, sample in enumerate(history.data)]
+
+        scenario = setup.scenario
+        scenes = [
+            convert_sample_to_scene(
+                map_name=scenario.map_api.map_name,
+                database_interval=scenario.database_interval,
+                traffic_light_status=scenario.get_traffic_light_status_at_iteration(index),
+                expert_trajectory=scenario.get_expert_ego_trajectory(),
+                mission_goal=scenario.get_mission_goal(),
+                data=sample,
+                colors=SceneColors(),
+            )
+            for index, sample in enumerate(history.data)
+        ]
 
         # Serialize based on preference
         self._serialize_scenes(scenes, scenario_directory)
@@ -187,15 +212,14 @@ class SerializationCallback(AbstractCallback):
         :param scenes: scenes to be serialized
         :param scenario_directory: directory where they should be serialized
         """
-
         if not self._serialize_into_single_file:
             # Split data into many smaller files
             for scene in scenes:
-                file_name = (scenario_directory / str(scene["ego"]["timestamp_us"]))
+                file_name = scenario_directory / str(scene["ego"]["timestamp_us"])
                 _dump_to_file(file_name, scene, self._serialization_type)
         else:
             # Dump all data into a single file
-            file_name = (scenario_directory / scenario_directory.name)
+            file_name = scenario_directory / scenario_directory.name
             _dump_to_file(file_name, scenes, self._serialization_type)
 
     def _get_scenario_folder(self, planner_name: str, scenario: AbstractScenario) -> pathlib.Path:
@@ -205,22 +229,4 @@ class SerializationCallback(AbstractCallback):
         :param scenario: for which to compute directory name
         :return directory path
         """
-        return self._output_directory / planner_name / scenario.scenario_type / scenario.scenario_name  # type: ignore
-
-    def _serialize_history_sample(self,
-                                  scenario: AbstractScenario,
-                                  data: SimulationHistorySample,
-                                  traffic_light_status: List[TrafficLightStatusData],
-                                  colors: SceneColors = SceneColors()) -> Dict[str, Any]:
-        """
-        Serialize history and scenario
-        :param scenario: input scenario
-        :param data: single sample from history
-        :param colors: colors for trajectories
-        :return serialized dictionary
-        """
-        return convert_sample_to_scene(map_name=scenario.map_api.map_name,
-                                       traffic_light_status=traffic_light_status,
-                                       expert_trajectory=scenario.get_expert_ego_trajectory(),
-                                       mission_goal=scenario.get_mission_goal(),
-                                       data=data, colors=colors, vehicle=self._vehicle)
+        return self._output_directory / planner_name / scenario.scenario_type / scenario.log_name / scenario.scenario_name  # type: ignore

@@ -12,6 +12,7 @@ py_library(
     srcs = ["nuboard.py"],
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:configuration_tab",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
         "//nuplan/planning/nuboard/tabs:overview_tab",

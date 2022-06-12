@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <div class="tab-content" id="histogram">
+    <div class="search-section">
+        <div class="search-grid-item-text">
+          <b> Scenario Type: </b>
+        </div>
+        <div class="search-grid-item-widget">
+          {{ embed(roots.histogram_scenario_type_multi_choice) }}
+        </div>
+        <div class="search-grid-item-text">
+          <b> Metric: </b>
+        </div>
+        <div class="search-grid-item-widget">
+         {{ embed(roots.histogram_metric_name_multi_choice) }}
+        </div>
+    </div>
+    <div class="loading loading-lg" id="histogram-loading"></div>
+    <table class="histogram-plot-section" id="histogram-plot-section">
+          <tr>
+              <th class="section-table-title"> Histograms </th>
+          </tr>
+          <tr class="planner-search-row">
+              <td>{{ embed(roots.histogram_bin_spinner) }}</td>
+          </tr>
+          <tr class="planner-search-row">
+              <td>{{ embed(roots.histogram_planner_checkbox_group) }}</td>
+          </tr>
+          <tr class="histogram-table-row">
+              <td>
+                  {{ embed(roots.histogram_plots) }}
+              </td>
+          </tr>
+      </table>
+  </div>
+</html>

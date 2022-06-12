@@ -1,0 +1,31 @@
+_target_: nuplan.planning.scenario_builder.scenario_filter.ScenarioFilter
+_convert_: 'all'
+
+scenario_types:                     # List of scenario types to include
+  - behind_pedestrian_on_pickup_dropoff
+  - near_multiple_vehicles
+  - high_magnitude_jerk
+  - crossed_by_vehicle
+  - following_lane_with_lead
+  - changing_lane_to_left
+  - accelerating_at_traffic_light_without_lead
+  - stopping_at_stop_sign_with_lead
+  - traversing_narrow_lane
+  - waiting_for_pedestrian_to_cross
+  - starting_left_turn
+  - starting_high_speed_turn
+  - starting_unprotected_cross_turn
+  - starting_protected_noncross_turn
+  - on_pickup_dropoff
+scenario_tokens: null               # List of scenario tokens to include
+
+log_names: null                     # Filter scenarios by log names
+map_names:                          # Filter scenarios by map names
+  - us-nv-las-vegas-strip
+
+num_scenarios_per_type: 1           # Number of scenarios per type
+limit_total_scenarios: null         # Limit total scenarios (float = fraction, int = num) - this filter can be applied on top of num_scenarios_per_type
+
+expand_scenarios: false             # Whether to expand multi-sample scenarios to multiple single-sample scenarios
+remove_invalid_goals: true          # Whether to remove scenarios where the mission goal is invalid
+shuffle: false                      # Whether to shuffle the scenarios

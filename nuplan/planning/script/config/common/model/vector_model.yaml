@@ -12,6 +12,7 @@ feature_dim: 128
 
 # VectorMapFeatureBuilder
 vector_map_feature_radius: 20    # [m] The query radius scope relative to the current ego-pose.
+vector_map_connection_scales: [1, 2, 3, 4] # Use 4 scale connections which consider 1,2,3,4-hop neighbor lane
 
 # Parameters for past trajectory
 past_trajectory_sampling:

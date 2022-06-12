@@ -1,0 +1,3 @@
+time_logging_callback:
+  _target_: nuplan.planning.training.callbacks.time_logging_callback.TimeLoggingCallback
+  _convert_: 'all'

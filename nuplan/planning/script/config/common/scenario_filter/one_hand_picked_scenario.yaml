@@ -1,0 +1,18 @@
+_target_: nuplan.planning.scenario_builder.scenario_filter.ScenarioFilter
+_convert_: 'all'
+
+scenario_types:                     # List of scenario types to include
+  - on_pickup_dropoff
+scenario_tokens: null               # List of scenario tokens to include
+
+log_names:                          # Filter scenarios by log names
+  - 2021.07.16.20.45.29_veh-35_01095_01486
+map_names:                          # Filter scenarios by map names
+  - us-nv-las-vegas-strip
+
+num_scenarios_per_type: 1           # Number of scenarios per type
+limit_total_scenarios: null         # Limit total scenarios (float = fraction, int = num) - this filter can be applied on top of num_scenarios_per_type
+
+expand_scenarios: false             # Whether to expand multi-sample scenarios to multiple single-sample scenarios
+remove_invalid_goals: true          # Whether to remove scenarios where the mission goal is invalid
+shuffle: false                      # Whether to shuffle the scenarios

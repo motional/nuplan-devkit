@@ -1,16 +1,17 @@
-import os
 import unittest
 
-from nuplan.database.nuplan_db.nuplandb import NuPlanDB
+from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_db
 
 
 class TestNuplan(unittest.TestCase):
+    """Test Nuplan DB."""
+
     def test_nuplan(self) -> None:
         """
-        A simple unit test to check that we can load NuPlan.
+        Check whether the nuPlan DB can be loaded without errors.
         """
-        nuplan_db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
-        self.assertIsNotNone(nuplan_db)
+        db = get_test_nuplan_db()
+        self.assertIsNotNone(db)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ _ext
 *.o
 *.out
 *.pdf
+*.png
 .project
 *.pth.tar
 *.pyc
@@ -26,3 +27,6 @@ _ext
 .pydevproject
 *.so
 .vscode/*
+*.swp
+.tox/*
+.pytest_cache/*

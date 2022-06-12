@@ -9,6 +9,8 @@ py_test(
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/features:agents",
     ],
@@ -19,7 +21,10 @@ py_test(
     size = "medium",
     srcs = ["test_vector_map_feature_builder.py"],
     deps = [
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_utils",
+        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_map_feature_builder",
         "//nuplan/planning/training/preprocessing/features:vector_map",
     ],

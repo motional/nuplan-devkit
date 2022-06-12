@@ -14,6 +14,7 @@ py_library(
         "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
     ],
 )
 
@@ -25,6 +26,7 @@ py_library(
         "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
     ],
 )
 
@@ -36,6 +38,7 @@ py_library(
         "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
     ],
 )
 
@@ -47,6 +50,7 @@ py_library(
         "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/base:simulation_tile",
         "//nuplan/planning/scenario_builder:abstract_scenario_builder",
     ],

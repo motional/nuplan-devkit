@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 import torch
+
 from nuplan.planning.training.modeling.types import TargetsType
 
 

@@ -3,3 +3,5 @@ ego_yaw_rate_statistics:
   _convert_: 'all'
   name: 'ego_yaw_rate_statistics'
   category: 'Dynamics'
+
+  max_abs_yaw_rate: 0.95

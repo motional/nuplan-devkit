@@ -16,6 +16,8 @@ py_library(
     srcs = [
         "lane.py",
         "lane_connector.py",
+        "roadblock.py",
+        "roadblock_connector.py",
     ],
     deps = [
         "//nuplan/common/maps:abstract_map_objects",
@@ -32,14 +34,13 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:maps_datatypes",
-        "//nuplan/common/maps/nuplan_map:crosswalk",
+        "//nuplan/common/maps/nuplan_map:generic_polygon_map",
         "//nuplan/common/maps/nuplan_map:intersection",
         "//nuplan/common/maps/nuplan_map:map_objects",
         "//nuplan/common/maps/nuplan_map:stop_line",
         "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/database/maps_db:imapsdb",
         "//nuplan/database/maps_db:layer",
-        "//nuplan/database/maps_db:utils",
         "//nuplan/database/nuplan_db:utils",
     ],
 )
@@ -48,7 +49,9 @@ py_library(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
+        "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/database/maps_db:layer",
     ],
@@ -75,8 +78,8 @@ py_library(
 )
 
 py_library(
-    name = "crosswalk",
-    srcs = ["crosswalk.py"],
+    name = "intersection",
+    srcs = ["intersection.py"],
     deps = [
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:maps_datatypes",
@@ -85,8 +88,8 @@ py_library(
 )
 
 py_library(
-    name = "intersection",
-    srcs = ["intersection.py"],
+    name = "generic_polygon_map",
+    srcs = ["generic_polygon_map.py"],
     deps = [
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:maps_datatypes",

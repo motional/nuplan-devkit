@@ -1,67 +1,37 @@
 from typing import List
 
-import numpy as np
-from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
-from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
-from nuplan.planning.metrics.utils.state_extractors import extract_ego_acceleration, extract_ego_jerk, \
-    extract_ego_time_point
+from nuplan.planning.metrics.evaluation_metrics.base.within_bound_metric_base import WithinBoundMetricBase
+from nuplan.planning.metrics.metric_result import MetricStatistics
+from nuplan.planning.metrics.utils.state_extractors import extract_ego_jerk
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 
 
-class EgoJerkStatistics(AbstractMetricBuilder):
+class EgoJerkStatistics(WithinBoundMetricBase):
+    """Ego jerk metric."""
 
-    def __init__(self, name: str, category: str) -> None:
+    def __init__(self, name: str, category: str, max_abs_mag_jerk: float) -> None:
         """
-        Ego jerk metric.
-        :param name: Metric name.
-        :param category: Metric category.
+        Initializes the EgoProgressAlongExpertRouteStatistics class
+        :param name: Metric name
+        :param category: Metric category
+        :param max_abs_mag_jerk: Maximum threshold to define if absolute jerk is within bound.
         """
+        super().__init__(name=name, category=category)
+        self._max_abs_mag_jerk = max_abs_mag_jerk
 
-        self._name = name
-        self._category = category
-
-    @property
-    def name(self) -> str:
+    def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
-        Returns the metric name.
-        :return: the metric name.
+        Returns the jerk metric
+        :param history: History from a simulation engine
+        :param scenario: Scenario running this metric
+        :return the estimated jerk metric.
         """
-
-        return self._name
-
-    @property
-    def category(self) -> str:
-        """
-        Returns the metric category.
-        :return: the metric category.
-        """
-
-        return self._category
-
-    def compute(self, history: SimulationHistory) -> List[MetricStatistics]:
-        """
-        Returns the estimated metric.
-        :param history: History from a simulation engine.
-        :return: the estimated metric.
-        """
-
-        accelerations = extract_ego_acceleration(history)
-        jerk = extract_ego_jerk(history, accelerations=accelerations)
-        timestamps = extract_ego_time_point(history=history)
-
-        statistics = {MetricStatisticsType.MAX: Statistic(name="ego_max_jerk", unit="meters_per_second_cubed",
-                                                          value=np.amax(jerk)),
-                      MetricStatisticsType.MIN: Statistic(name="ego_min_jerk", unit="meters_per_second_cubed",
-                                                          value=np.amin(jerk)),
-                      MetricStatisticsType.P90: Statistic(name="ego_p90_jerk", unit="meters_per_second_cubed",
-                                                          value=np.percentile(np.abs(jerk), 90)),  # type:ignore
-                      }
-
-        time_series = TimeSeries(unit='meters_per_second_cubed',
-                                 time_stamps=list(timestamps),
-                                 values=list(jerk))
-        result = MetricStatistics(metric_computator=self.name,
-                                  name="ego_jerk_statistics",
-                                  statistics=statistics,
-                                  time_series=time_series, metric_category=self.category)
-        return [result]
+        return self._compute_statistics(  # type: ignore
+            history=history,
+            scenario=scenario,
+            statistic_unit_name='meters_per_second_cubed',
+            extract_function=extract_ego_jerk,
+            extract_function_params={'acceleration_coordinate': 'magnitude'},
+            max_within_bound_threshold=self._max_abs_mag_jerk,
+        )

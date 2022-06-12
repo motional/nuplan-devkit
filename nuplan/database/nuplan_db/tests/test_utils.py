@@ -1,23 +1,35 @@
-import os
 import unittest
 from typing import List, Optional, Tuple
 from unittest.mock import MagicMock, Mock
 
 import numpy as np
 import numpy.typing as npt
+from pyquaternion import Quaternion
+
 from nuplan.database.nuplan_db.frame import Frame
-from nuplan.database.nuplan_db.models import LidarPc
-from nuplan.database.nuplan_db.nuplandb import NuPlanDB
-from nuplan.database.nuplan_db.utils import _get_past_future_sweep, get_boxes, get_future_box_sequence, \
-    get_future_ego_trajectory, load_boxes_from_lidarpc, load_pointcloud_from_pc, pack_future_boxes, \
-    prepare_pointcloud_points, render_on_map
+from nuplan.database.nuplan_db.lidar_pc import LidarPc
+from nuplan.database.nuplan_db.utils import (
+    _get_past_future_sweep,
+    get_boxes,
+    get_future_box_sequence,
+    get_future_ego_trajectory,
+    load_boxes_from_lidarpc,
+    load_pointcloud_from_pc,
+    pack_future_boxes,
+    prepare_pointcloud_points,
+    render_on_map,
+)
+from nuplan.database.tests.nuplan_db_test_utils import (
+    get_test_nuplan_db,
+    get_test_nuplan_lidarpc,
+    get_test_nuplan_lidarpc_with_blob,
+)
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.pointclouds.lidar import LidarPointCloud
-from pyquaternion import Quaternion
 
 
 class TestGetBoxes(unittest.TestCase):
-    """ Test get box. """
+    """Test get box."""
 
     # TODO: Setup map
 
@@ -28,44 +40,52 @@ class TestGetBoxes(unittest.TestCase):
         Helper method to get one box.
         :return: One box.
         """
-        return Box3D(center=(0., 0., 0.),
-                     size=(1., 1., 1.),
-                     orientation=Quaternion(axis=[1, 0, 0], angle=0),
-                     velocity=(0., 0., 0.),
-                     angular_velocity=0.)
+        return Box3D(
+            center=(0.0, 0.0, 0.0),
+            size=(1.0, 1.0, 1.0),
+            orientation=Quaternion(axis=[1, 0, 0], angle=0),
+            velocity=(0.0, 0.0, 0.0),
+            angular_velocity=0.0,
+        )
 
     def _box_B(self) -> Box3D:
         """
         Helper method to get one box.
         :return: One box.
         """
-        return Box3D(center=(1., 2., 3.),
-                     size=(1., 1., 1.),
-                     orientation=Quaternion(axis=[1, 0, 0], angle=2),
-                     velocity=(5., 6., 7.),
-                     angular_velocity=8.)
+        return Box3D(
+            center=(1.0, 2.0, 3.0),
+            size=(1.0, 1.0, 1.0),
+            orientation=Quaternion(axis=[1, 0, 0], angle=2),
+            velocity=(5.0, 6.0, 7.0),
+            angular_velocity=8.0,
+        )
 
     def _box_quarterway_between_A_and_B(self) -> Box3D:
         """
         Helper method to get one box.
         :return: One box.
         """
-        return Box3D(center=(0.25, 0.5, 0.75),
-                     size=(1., 1., 1.),
-                     orientation=Quaternion(axis=[1, 0, 0], angle=0.5),
-                     velocity=(1.25, 1.5, 1.75),
-                     angular_velocity=2.)
+        return Box3D(
+            center=(0.25, 0.5, 0.75),
+            size=(1.0, 1.0, 1.0),
+            orientation=Quaternion(axis=[1, 0, 0], angle=0.5),
+            velocity=(1.25, 1.5, 1.75),
+            angular_velocity=2.0,
+        )
 
     def _box_halfway_between_A_and_B(self) -> Box3D:
         """
         Helper method to get one box.
         :return: One box.
         """
-        return Box3D(center=(0.5, 1., 1.5),
-                     size=(1., 1., 1.),
-                     orientation=Quaternion(axis=[1, 0, 0], angle=1),
-                     velocity=(2.5, 3, 3.5),
-                     angular_velocity=4.)
+        return Box3D(
+            center=(0.5, 1.0, 1.5),
+            size=(1.0, 1.0, 1.0),
+            orientation=Quaternion(axis=[1, 0, 0], angle=1),
+            velocity=(2.5, 3, 3.5),
+            angular_velocity=4.0,
+        )
 
     def _annotation_A(self, track_token: str) -> Mock:
         """
@@ -74,23 +94,23 @@ class TestGetBoxes(unittest.TestCase):
         :return: Mocked annotation.
         """
         ann = Mock()
-        ann.x = 0.
-        ann.y = 0.
-        ann.z = 0.
+        ann.x = 0.0
+        ann.y = 0.0
+        ann.z = 0.0
         ann.translation_np = np.array([ann.x, ann.y, ann.z])
-        ann.width = 1.
-        ann.length = 1.
-        ann.height = 1.
+        ann.width = 1.0
+        ann.length = 1.0
+        ann.height = 1.0
         ann.size = (ann.width, ann.length, ann.height)
-        ann.roll = 0.
-        ann.pitch = 0.
-        ann.yaw = 0.
+        ann.roll = 0.0
+        ann.pitch = 0.0
+        ann.yaw = 0.0
         ann.quaternion = Quaternion(axis=[1, 0, 0], angle=0)
-        ann.vx = 0.
-        ann.vy = 0.
-        ann.vz = 0.
+        ann.vx = 0.0
+        ann.vy = 0.0
+        ann.vz = 0.0
         ann.velocity = np.array([ann.vx, ann.vy, ann.vz])
-        ann.angular_velocity = 0.
+        ann.angular_velocity = 0.0
         ann.box.return_value = self._box_A()
         ann.track_token = track_token
         return ann
@@ -102,23 +122,23 @@ class TestGetBoxes(unittest.TestCase):
         :return: Mocked annotation.
         """
         ann = Mock()
-        ann.x = 1.
-        ann.y = 2.
-        ann.z = 3.
+        ann.x = 1.0
+        ann.y = 2.0
+        ann.z = 3.0
         ann.translation_np = np.array([ann.x, ann.y, ann.z])
-        ann.width = 1.
-        ann.length = 1.
-        ann.height = 1.
+        ann.width = 1.0
+        ann.length = 1.0
+        ann.height = 1.0
         ann.size = (ann.width, ann.length, ann.height)
-        ann.roll = 0.
-        ann.pitch = 0.
-        ann.yaw = 0.
+        ann.roll = 0.0
+        ann.pitch = 0.0
+        ann.yaw = 0.0
         ann.quaternion = Quaternion(axis=[1, 0, 0], angle=2)
-        ann.vx = 5.
-        ann.vy = 6.
-        ann.vz = 7.
+        ann.vx = 5.0
+        ann.vy = 6.0
+        ann.vz = 7.0
         ann.velocity = np.array([ann.vx, ann.vy, ann.vz])
-        ann.angular_velocity = 8.
+        ann.angular_velocity = 8.0
         ann.box.return_value = self._box_B()
         ann.track_token = track_token
         return ann
@@ -130,24 +150,14 @@ class TestGetBoxes(unittest.TestCase):
         """
         # These trans matrices aren't realistic, they just need to be orthogonal
         # affine transforms.
-        return np.array([
-            [0, 1, 0, 1],
-            [-1, 0, 0, 2],
-            [0, 0, 1, 3],
-            [0, 0, 0, 1]
-        ])
+        return np.array([[0, 1, 0, 1], [-1, 0, 0, 2], [0, 0, 1, 3], [0, 0, 0, 1]])
 
     def _trans_matrix_sensor(self) -> npt.NDArray[np.float64]:
         """
         Helper method to get a transformation.
         :return: <np.float: 4, 4> Transformation matrix.
         """
-        return np.array([
-            [0, 0, 1, 4],
-            [0, -1, 0, 5],
-            [1, 0, 0, 6],
-            [0, 0, 0, 1]
-        ])
+        return np.array([[0, 0, 1, 4], [0, -1, 0, 5], [1, 0, 0, 6], [0, 0, 0, 1]])
 
     # Tests ####################################################################
 
@@ -162,10 +172,9 @@ class TestGetBoxes(unittest.TestCase):
         box_b_vehicle_frame = self._box_B()
         box_b_vehicle_frame.transform(self._trans_matrix_ego())
 
-        self.assertEqual(get_boxes(lidarpc,
-                                   frame=Frame.VEHICLE,
-                                   trans_matrix_ego=self._trans_matrix_ego()),
-                         [box_b_vehicle_frame])
+        self.assertEqual(
+            get_boxes(lidarpc, frame=Frame.VEHICLE, trans_matrix_ego=self._trans_matrix_ego()), [box_b_vehicle_frame]
+        )
 
     def test_frame_sensor(self) -> None:
         """
@@ -179,28 +188,31 @@ class TestGetBoxes(unittest.TestCase):
         box_b_sensor_frame.transform(self._trans_matrix_ego())
         box_b_sensor_frame.transform(self._trans_matrix_sensor())
 
-        self.assertEqual(get_boxes(lidarpc,
-                                   frame=Frame.SENSOR,
-                                   trans_matrix_ego=self._trans_matrix_ego(),
-                                   trans_matrix_sensor=self._trans_matrix_sensor()),
-                         [box_b_sensor_frame])
+        self.assertEqual(
+            get_boxes(
+                lidarpc,
+                frame=Frame.SENSOR,
+                trans_matrix_ego=self._trans_matrix_ego(),
+                trans_matrix_sensor=self._trans_matrix_sensor(),
+            ),
+            [box_b_sensor_frame],
+        )
 
 
 class TestPointCloudPreparation(unittest.TestCase):
-    """ Test preparation of point cloud method (standalone method). """
+    """Test preparation of point cloud method (standalone method)."""
 
     def setUp(self) -> None:
-        self.db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
+        """Setup funciton for class."""
+        self.db = get_test_nuplan_db()
+        self.lidar_pc = get_test_nuplan_lidarpc_with_blob()
 
     def test_prepare_pointcloud_points(self) -> None:
         """
         Tests if the lidar point clouds are properly filtered when loaded and decorations are correctly applied.
         """
-        # The lidar point cloud is manually selected as need to have the .pcd file in local.
-        pt_cloud_rec = self.db.lidar_pc['1df0eeb62a5f5d10b1218d9a47c4c8c6']
-
         pc_none = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=False,
             use_ring=False,
             use_lidar_index=False,
@@ -209,7 +221,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_intensity = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=False,
             use_lidar_index=False,
@@ -218,7 +230,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_ring = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=False,
             use_ring=True,
             use_lidar_index=False,
@@ -227,7 +239,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_lidar = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=False,
             use_ring=False,
             use_lidar_index=True,
@@ -236,7 +248,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_all = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -245,7 +257,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_single_lidar = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -254,7 +266,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_all_0 = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -263,7 +275,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_all_1 = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -272,7 +284,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_all_no_sample_apillar = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -281,7 +293,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_sample_apillar_0 = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -290,7 +302,7 @@ class TestPointCloudPreparation(unittest.TestCase):
         )
 
         pc_sample_apillar_1 = prepare_pointcloud_points(
-            pt_cloud_rec.load(),
+            self.lidar_pc.load(self.db),
             use_intensity=True,
             use_ring=True,
             use_lidar_index=True,
@@ -298,7 +310,7 @@ class TestPointCloudPreparation(unittest.TestCase):
             sample_apillar_lidar_rings=False,
         )
 
-        pt_cloud = pt_cloud_rec.load()
+        pt_cloud = self.lidar_pc.load(self.db)
 
         # Check that the decorations (i.e. intensity, ring, lidar indices) are correctly applied.
         self.assertEqual(pc_none.points.shape[0], 3)
@@ -315,7 +327,7 @@ class TestPointCloudPreparation(unittest.TestCase):
 
         # Check that point clouds are only from the given lidar indices.
         self.assertTrue((pc_single_lidar.points[5] == 0).all())
-        self.assertTrue(np.isin(pc_all_0.points[5], [0, 1, 2, 3, 4]).all())  # type: ignore
+        self.assertTrue(np.isin(pc_all_0.points[5], [0, 1, 2, 3, 4]).all())
 
         # Check sampling of A-pillar indices has no effect when the two A-pillar lidar indices are not provided.
         self.assertTrue(np.array_equal(pc_sample_apillar_0.points, pc_sample_apillar_1.points))
@@ -324,43 +336,40 @@ class TestPointCloudPreparation(unittest.TestCase):
         self.assertTrue(
             pc_all_no_sample_apillar.points[
                 :, np.logical_or(pc_all_no_sample_apillar.points[5] == 1, pc_all_no_sample_apillar.points[5] == 2)
-            ].shape[1] >
-            pc_all_0.points[:, np.logical_or(pc_all_0.points[5] == 1, pc_all_0.points[5] == 2)].shape[1]
+            ].shape[1]
+            > pc_all_0.points[:, np.logical_or(pc_all_0.points[5] == 1, pc_all_0.points[5] == 2)].shape[1]
         )
 
 
 class TestNuPlanDBLidarMethods(unittest.TestCase):
-    """ Tests for NuPlanDBLidarMethods (Helper methods for interacting with NuPlanDB's lidar samples). """
+    """Tests for NuPlanDBLidarMethods (Helper methods for interacting with NuPlanDB's lidar samples)."""
 
     def setUp(self) -> None:
-        self.db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
+        """Set up the test case."""
+        self.db = get_test_nuplan_db()
+        self.lidar_pc = get_test_nuplan_lidarpc_with_blob()
 
     def test_get_past_future_sweep(self) -> None:
         """
         Go N sweeps back and N sweeps forth and see if we are back at the original.
         """
-        lidarpc_rec = self.db.lidar_pc['1df0eeb62a5f5d10b1218d9a47c4c8c6']
-
         for sweep_idx in range(-10, 10):
-            sweep_lidarpc_rec = _get_past_future_sweep(lidarpc_rec, sweep_idx)
+            sweep_lidarpc_rec = _get_past_future_sweep(self.lidar_pc, sweep_idx)
             if sweep_lidarpc_rec is None:
                 continue  # If we hit the start or end of a scene this test should be skipped.
             return_lidarpc_rec = _get_past_future_sweep(sweep_lidarpc_rec, -sweep_idx)
-            self.assertEqual(lidarpc_rec, return_lidarpc_rec)
+            self.assertEqual(self.lidar_pc, return_lidarpc_rec)
 
     def test_load_pointcloud_from_pc(self) -> None:
         """
         Test loading of point cloud from LidarPc based on distance, data shape, map filtering and timestmap.
         """
-        # Retrieving random LidarPc token
-        lidarpc_rec = self.db.lidar_pc['d0aaea2c0e3d5e0b837f75f80a03a015']
-
         min_dist = 0.9
         max_dist = 50.0
 
         pc = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=1,
             max_distance=max_dist,
             min_distance=min_dist,
@@ -371,7 +380,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_intensity = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=1,
             max_distance=max_dist,
             min_distance=min_dist,
@@ -382,7 +391,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_ring = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=1,
             max_distance=max_dist,
             min_distance=min_dist,
@@ -393,7 +402,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_lidar_index = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=1,
             max_distance=max_dist,
             min_distance=min_dist,
@@ -404,7 +413,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_multiple_sweeps = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=3,
             max_distance=max_dist,
             min_distance=min_dist,
@@ -415,7 +424,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_multiple_sweeps_new_format = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=list(range(-3 + 1, 0 + 1)),
             max_distance=max_dist,
             min_distance=min_dist,
@@ -426,7 +435,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_map_filtered_random = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=1,
             max_distance=max_dist,
             min_distance=min_dist,
@@ -437,7 +446,7 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         pc_past_future = load_pointcloud_from_pc(
             nuplandb=self.db,
-            token=lidarpc_rec.token,
+            token=self.lidar_pc.token,
             nsweeps=[-2, 0, 1],
             max_distance=max_dist,
             min_distance=min_dist,
@@ -446,8 +455,8 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
             use_lidar_index=False,
         )
 
-        pc_dist_from_orig = np.linalg.norm(pc.points[:2, :], axis=0)  # type: ignore
-        pc_multiple_sweeps_dist_from_orig = np.linalg.norm(pc_multiple_sweeps.points[:2, :], axis=0)  # type: ignore
+        pc_dist_from_orig = np.linalg.norm(pc.points[:2, :], axis=0)
+        pc_multiple_sweeps_dist_from_orig = np.linalg.norm(pc_multiple_sweeps.points[:2, :], axis=0)
 
         # Check point cloud has time, x, y, z (4 elements).
         self.assertEqual(pc.points.shape[0], 4)
@@ -473,8 +482,8 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
 
         # Check that past and future sweeps are included and striding works by looking at the timestamps
         timestamps = np.unique(pc_past_future.points[3, :])  # type: ignore
-        past_timestamp = (lidarpc_rec.timestamp - lidarpc_rec.prev.prev.timestamp) / 1e6
-        future_timestamp = (lidarpc_rec.timestamp - lidarpc_rec.next.timestamp) / 1e6
+        past_timestamp = (self.lidar_pc.timestamp - self.lidar_pc.prev.prev.timestamp) / 1e6
+        future_timestamp = (self.lidar_pc.timestamp - self.lidar_pc.next.timestamp) / 1e6
         self.assertAlmostEqual(past_timestamp, timestamps[2])  # Timestamps are sorted in ascending order
         self.assertAlmostEqual(0, timestamps[1])
         self.assertAlmostEqual(future_timestamp, timestamps[0])
@@ -484,13 +493,16 @@ class TestNuPlanDBLidarMethods(unittest.TestCase):
         self.assertTrue(np.all(pc_multiple_sweeps.points == pc_multiple_sweeps_new_format.points))
 
 
-def mock_prepare_pointcloud_points(pc: LidarPointCloud,
-                                   use_intensity: bool = True,
-                                   use_ring: bool = False,
-                                   use_lidar_index: bool = False,
-                                   lidar_indices: Optional[Tuple[int, ...]] = None,
-                                   sample_apillar_lidar_rings: bool = False) -> LidarPointCloud:
+def mock_prepare_pointcloud_points(
+    pc: LidarPointCloud,
+    use_intensity: bool = True,
+    use_ring: bool = False,
+    use_lidar_index: bool = False,
+    lidar_indices: Optional[Tuple[int, ...]] = None,
+    sample_apillar_lidar_rings: bool = False,
+) -> LidarPointCloud:
     """
+    Mock Pointcloud points.
     :param pc: Pointcloud input.
     :param use_intensity: Whether to use intensity or not.
     :param use_ring: Whether to use ring index or not.
@@ -509,6 +521,8 @@ def mock_prepare_pointcloud_points(pc: LidarPointCloud,
 
 
 class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
+    """Test Loading PointCloud."""
+
     @unittest.mock.patch("nuplan.database.nuplan_db.utils.prepare_pointcloud_points")
     def test_distance_filtering(self, prepare_pointcloud_points_mock: Mock) -> None:
         """
@@ -517,20 +531,13 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
         prepare_pointcloud_points_mock.side_effect = mock_prepare_pointcloud_points
         mock_lidarpc_rec = Mock()
         mock_lidarpc_rec.load.return_value = LidarPointCloud(
-            points=np.array([[0.1, -0.1, 10, -10, 1000, 1000],
-                             [0.2, -0.2, 20, 20, 2000, -2000]])
+            points=np.array([[0.1, -0.1, 10, -10, 1000, 1000], [0.2, -0.2, 20, 20, 2000, -2000]])
         )
 
         nuplandb = MagicMock()
         nuplandb.lidar_pc.__getitem__.return_value = mock_lidarpc_rec
-        loaded_pc = load_pointcloud_from_pc(nuplandb,
-                                            token="abc",
-                                            nsweeps=1,
-                                            max_distance=1000,
-                                            min_distance=1)
-        expected_points = np.array([[10, -10],
-                                    [20, 20],
-                                    [0, 0]], dtype=np.float32)
+        loaded_pc = load_pointcloud_from_pc(nuplandb, token="abc", nsweeps=1, max_distance=1000, min_distance=1)
+        expected_points = np.array([[10, -10], [20, 20], [0, 0]], dtype=np.float32)  # type: ignore
 
         self.assertTrue(np.allclose(loaded_pc.points, expected_points))
 
@@ -541,21 +548,9 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
         """
         prepare_pointcloud_points_mock.side_effect = mock_prepare_pointcloud_points
         mock_lidarpc_rec = Mock()
-        mock_lidarpc_rec.load.return_value = LidarPointCloud(
-            points=np.array([[100, -100],
-                             [200, 200],
-                             [300, 300]])
-        )
-        mock_lidarpc_rec.prev.load.return_value = LidarPointCloud(
-            points=np.array([[10, -10],
-                             [20, 20],
-                             [30, 30]])
-        )
-        mock_lidarpc_rec.prev.prev.load.return_value = LidarPointCloud(
-            points=np.array([[1, -1],
-                             [2, 2],
-                             [3, 3]])
-        )
+        mock_lidarpc_rec.load.return_value = LidarPointCloud(points=np.array([[100, -100], [200, 200], [300, 300]]))
+        mock_lidarpc_rec.prev.load.return_value = LidarPointCloud(points=np.array([[10, -10], [20, 20], [30, 30]]))
+        mock_lidarpc_rec.prev.prev.load.return_value = LidarPointCloud(points=np.array([[1, -1], [2, 2], [3, 3]]))
 
         mock_lidarpc_rec.timestamp = 507
         mock_lidarpc_rec.prev.timestamp = 504
@@ -570,15 +565,16 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
 
         nuplandb = MagicMock()
         nuplandb.lidar_pc.__getitem__.return_value = mock_lidarpc_rec
-        loaded_pc = load_pointcloud_from_pc(nuplandb,
-                                            token="abc",
-                                            nsweeps=3,
-                                            max_distance=1000,
-                                            min_distance=0)
-        expected_points = np.array([[1, -1, 10, -10, 100, -100],
-                                    [2, 2, 20, 20, 200, 200, ],
-                                    [3, 3, 30, 30, 300, 300, ],
-                                    [7e-6, 7e-6, 3e-6, 3e-6, 0, 0]], dtype=np.float32)
+        loaded_pc = load_pointcloud_from_pc(nuplandb, token="abc", nsweeps=3, max_distance=1000, min_distance=0)
+        expected_points = np.array(
+            [
+                [1, -1, 10, -10, 100, -100],
+                [2, 2, 20, 20, 200, 200],
+                [3, 3, 30, 30, 300, 300],
+                [7e-6, 7e-6, 3e-6, 3e-6, 0, 0],
+            ],
+            dtype=np.float32,
+        )  # type: ignore
 
         self.assertTrue(np.allclose(loaded_pc.points, expected_points))
 
@@ -589,21 +585,9 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
         """
         prepare_pointcloud_points_mock.side_effect = mock_prepare_pointcloud_points
         mock_lidarpc_rec = Mock()
-        mock_lidarpc_rec.load.return_value = LidarPointCloud(
-            points=np.array([[100, -100],
-                             [200, 200],
-                             [300, 300]])
-        )
-        mock_lidarpc_rec.next.next.load.return_value = LidarPointCloud(
-            points=np.array([[10, -10],
-                             [20, 20],
-                             [30, 30]])
-        )
-        mock_lidarpc_rec.prev.prev.load.return_value = LidarPointCloud(
-            points=np.array([[1, -1],
-                             [2, 2],
-                             [3, 3]])
-        )
+        mock_lidarpc_rec.load.return_value = LidarPointCloud(points=np.array([[100, -100], [200, 200], [300, 300]]))
+        mock_lidarpc_rec.next.next.load.return_value = LidarPointCloud(points=np.array([[10, -10], [20, 20], [30, 30]]))
+        mock_lidarpc_rec.prev.prev.load.return_value = LidarPointCloud(points=np.array([[1, -1], [2, 2], [3, 3]]))
 
         mock_lidarpc_rec.prev.prev.timestamp = 500
         mock_lidarpc_rec.timestamp = 504
@@ -618,25 +602,28 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
 
         nuplandb = MagicMock()
         nuplandb.lidar_pc.__getitem__.return_value = mock_lidarpc_rec
-        loaded_pc = load_pointcloud_from_pc(nuplandb,
-                                            token="abc",
-                                            nsweeps=[-2, 0, 2],
-                                            max_distance=1000,
-                                            min_distance=0)
-        expected_points = np.array([[1, -1, 100, -100, 10, -10],
-                                    [2, 2, 200, 200, 20, 20],
-                                    [3, 3, 300, 300, 30, 30],
-                                    [4e-6, 4e-6, 0, 0, -3e-6, -3e-6]], dtype=np.float32)
+        loaded_pc = load_pointcloud_from_pc(
+            nuplandb, token="abc", nsweeps=[-2, 0, 2], max_distance=1000, min_distance=0
+        )
+        expected_points = np.array(
+            [
+                [1, -1, 100, -100, 10, -10],
+                [2, 2, 200, 200, 20, 20],
+                [3, 3, 300, 300, 30, 30],
+                [4e-6, 4e-6, 0, 0, -3e-6, -3e-6],
+            ],
+            dtype=np.float32,
+        )  # type: ignore
         self.assertTrue(np.allclose(loaded_pc.points, expected_points))
 
     @unittest.mock.patch("nuplan.database.nuplan_db.utils.prepare_pointcloud_points")
     def test_5_sweeps_moving_vehicle(self, prepare_pointcloud_points_mock: Mock) -> None:
-        """ Test accumulating sweeps with moving vehicle. """
+        """Test accumulating sweeps with moving vehicle."""
         prepare_pointcloud_points_mock.side_effect = mock_prepare_pointcloud_points
 
         # The car observes a single point at position (1, 1, 1) in each frame, but the
         # car itself will be in a different position for each frame.
-        point_111 = np.ones((3, 1), dtype=np.float32)
+        point_111 = np.ones((3, 1), dtype=np.float32)  # type: ignore
         mock_lidarpc_rec = Mock()
         mock_lidarpc_rec.load.return_value = LidarPointCloud(points=point_111)
         mock_lidarpc_rec.prev.load.return_value = LidarPointCloud(points=point_111)
@@ -658,12 +645,7 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
             Create a 4 by 4 transformation matrix given translation.
             :return: <np.float: 4, 4>. The transformation matrix.
             """
-            return np.array([
-                [1, 0, 0, x],
-                [0, 1, 0, y],
-                [0, 0, 1, z],
-                [0, 0, 0, 1]
-            ], dtype=np.float32)
+            return np.array([[1, 0, 0, x], [0, 1, 0, y], [0, 0, 1, z], [0, 0, 0, 1]], dtype=np.float32)
 
         # final car position is at the origin
         mock_lidarpc_rec.ego_pose.trans_matrix_inv = np.eye(4)
@@ -675,15 +657,10 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
 
         nuplandb = MagicMock()
         nuplandb.lidar_pc.__getitem__.return_value = mock_lidarpc_rec
-        loaded_pc = load_pointcloud_from_pc(nuplandb,
-                                            token="abc",
-                                            nsweeps=5,
-                                            max_distance=1000,
-                                            min_distance=0)
-        expected_points = np.array([[5, 4, 3, 2, 1],
-                                    [6, 5, 4, 3, 1],
-                                    [7, 6, 5, 4, 1],
-                                    [4e-6, 3e-6, 2e-6, 1e-6, 0]], dtype=np.float32)
+        loaded_pc = load_pointcloud_from_pc(nuplandb, token="abc", nsweeps=5, max_distance=1000, min_distance=0)
+        expected_points = np.array(
+            [[5, 4, 3, 2, 1], [6, 5, 4, 3, 1], [7, 6, 5, 4, 1], [4e-6, 3e-6, 2e-6, 1e-6, 0]], dtype=np.float32
+        )  # type: ignore
 
         self.assertTrue(np.allclose(loaded_pc.points, expected_points))
 
@@ -694,20 +671,10 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
         """
         prepare_pointcloud_points_mock.side_effect = mock_prepare_pointcloud_points
         mock_lidarpc_rec = Mock()
-        mock_lidarpc_rec.load.return_value = LidarPointCloud(
-            points=np.array([[100],
-                             [200],
-                             [300]], dtype=np.float32)
-        )
-        mock_lidarpc_rec.prev.load.return_value = LidarPointCloud(
-            points=np.array([[10],
-                             [20],
-                             [30]], dtype=np.float32)
-        )
+        mock_lidarpc_rec.load.return_value = LidarPointCloud(points=np.array([[100], [200], [300]], dtype=np.float32))
+        mock_lidarpc_rec.prev.load.return_value = LidarPointCloud(points=np.array([[10], [20], [30]], dtype=np.float32))
         mock_lidarpc_rec.prev.prev.load.return_value = LidarPointCloud(
-            points=np.array([[1],
-                             [2],
-                             [3]], dtype=np.float32)
+            points=np.array([[1], [2], [3]], dtype=np.float32)
         )
 
         mock_lidarpc_rec.timestamp = 507
@@ -720,73 +687,61 @@ class TestLoadPointcloudFromSampledataUsingMocks(unittest.TestCase):
         # Let's say the car points north here
         mock_lidarpc_rec.ego_pose.trans_matrix_inv = np.eye(4)
         # car points west, ego x-axis is global y-axis
-        mock_lidarpc_rec.prev.ego_pose.trans_matrix = np.array([
-            [0, -1, 0, 0],
-            [1, 0, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ], dtype=np.float32)
+        mock_lidarpc_rec.prev.ego_pose.trans_matrix = np.array(
+            [[0, -1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.float32
+        )
         # car points east, ego x-axis is global negative y-axis
-        mock_lidarpc_rec.prev.prev.ego_pose.trans_matrix = np.array([
-            [0, 1, 0, 0],
-            [-1, 0, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ], dtype=np.float32)
+        mock_lidarpc_rec.prev.prev.ego_pose.trans_matrix = np.array(
+            [[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.float32
+        )
 
         nuplandb = MagicMock()
         nuplandb.lidar_pc.__getitem__.return_value = mock_lidarpc_rec
-        loaded_pc = load_pointcloud_from_pc(nuplandb,
-                                            token="abc",
-                                            nsweeps=3,
-                                            max_distance=1000,
-                                            min_distance=0,
-                                            sweep_map="sweep_idx")
-        expected_points = np.array([[2, -20, 100],
-                                    [-1, 10, 200],
-                                    [3, 30, 300],
-                                    [1, 2, 3]], dtype=np.float32)
+        loaded_pc = load_pointcloud_from_pc(
+            nuplandb, token="abc", nsweeps=3, max_distance=1000, min_distance=0, sweep_map="sweep_idx"
+        )
+        expected_points = np.array(
+            [[2, -20, 100], [-1, 10, 200], [3, 30, 300], [1, 2, 3]], dtype=np.float32
+        )  # type: ignore
 
         self.assertTrue(np.allclose(loaded_pc.points, expected_points))
 
 
 class TestLoadBoxes(unittest.TestCase):
-    """ Tests for get_boxes() and get_future_box_sequence() """
+    """Tests for get_boxes() and get_future_box_sequence()"""
 
     def setUp(self) -> None:
-        self.db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
+        """Set up the test case."""
+        self.db = get_test_nuplan_db()
+        self.lidar_pc = get_test_nuplan_lidarpc()
 
         # The default NuPlanDB splitter.
         self.future_horizon_len_s = 1
         self.future_interval_s = 0.05
 
     def test_can_run_get_future_box_sequence(self) -> None:
-        """ Test get future box sequence. """
-        lidarpc_rec = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a']
-        ego_pose = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a'].ego_pose
+        """Test get future box sequence."""
         get_future_box_sequence(
-            lidar_pcs=[lidarpc_rec, lidarpc_rec.next],
+            lidar_pcs=[self.lidar_pc, self.lidar_pc.next],
             frame=Frame.VEHICLE,
             future_horizon_len_s=self.future_horizon_len_s,
-            trans_matrix_ego=ego_pose.trans_matrix_inv,
-            future_interval_s=self.future_interval_s
+            trans_matrix_ego=self.lidar_pc.ego_pose.trans_matrix_inv,
+            future_interval_s=self.future_interval_s,
         )
 
     def test_pack_future_boxes(self) -> None:
-        """ Test pack future boxes. """
-        lidarpc_rec = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a']
-        ego_pose = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a'].ego_pose
+        """Test pack future boxes."""
         track_token_2_box_sequence = get_future_box_sequence(
-            lidar_pcs=[lidarpc_rec, lidarpc_rec.next],
+            lidar_pcs=[self.lidar_pc, self.lidar_pc.next],
             frame=Frame.VEHICLE,
             future_horizon_len_s=self.future_horizon_len_s,
-            trans_matrix_ego=ego_pose.trans_matrix_inv,
-            future_interval_s=self.future_interval_s
+            trans_matrix_ego=self.lidar_pc.ego_pose.trans_matrix_inv,
+            future_interval_s=self.future_interval_s,
         )
         boxes_with_futures = pack_future_boxes(
             track_token_2_box_sequence=track_token_2_box_sequence,
             future_horizon_len_s=self.future_horizon_len_s,
-            future_interval_s=self.future_interval_s
+            future_interval_s=self.future_interval_s,
         )
         for box in boxes_with_futures:
             for horizon_idx, horizon_s in enumerate(box.get_all_future_horizons_s()):
@@ -795,79 +750,83 @@ class TestLoadBoxes(unittest.TestCase):
                 self.assertTrue(box.track_token is not None)
                 expected_future_box = track_token_2_box_sequence[box.track_token][horizon_idx + 1]
                 if expected_future_box is None:
-                    np.testing.assert_array_equal(future_center, [np.nan, np.nan, np.nan])  # type: ignore
+                    np.testing.assert_array_equal(future_center, [np.nan, np.nan, np.nan])
                     self.assertEqual(future_orientation, None)
                 else:
-                    np.testing.assert_array_equal(expected_future_box.center, future_center)  # type: ignore
+                    np.testing.assert_array_equal(expected_future_box.center, future_center)
                     self.assertEqual(expected_future_box.orientation, future_orientation)
 
     def test_load_boxes_from_lidarpc(self) -> None:
-        """ Test load all boxes from a lidar pc. """
-
-        lidar_pc_rec = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a']
-
-        boxes = load_boxes_from_lidarpc(self.db, lidar_pc_rec, ['pedestrian', 'vehicle'], False, 80.04,
-                                        self.future_horizon_len_s, self.future_interval_s,
-                                        {'pedestrian': 0, 'vehicle': 1})
+        """Test load all boxes from a lidar pc."""
+        boxes = load_boxes_from_lidarpc(
+            self.db,
+            self.lidar_pc,
+            ['pedestrian', 'vehicle'],
+            False,
+            80.04,
+            self.future_horizon_len_s,
+            self.future_interval_s,
+            {'pedestrian': 0, 'vehicle': 1},
+        )
 
         self.assertSetEqual({'pedestrian', 'vehicle'}, set(boxes.keys()))
-        self.assertEqual(len(boxes['pedestrian']), 6)
-        self.assertEqual(len(boxes['vehicle']), 23)
+        self.assertEqual(len(boxes['pedestrian']), 70)
+        self.assertEqual(len(boxes['vehicle']), 29)
 
 
 class TestGetFutureEgoTrajectory(unittest.TestCase):
     """Test getting future ego trajectory."""
 
     def setUp(self) -> None:
+        """Set up test case."""
+        self.lidar_pc = get_test_nuplan_lidarpc()
 
-        self.db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'))
-
-        self.lidarpc_rec = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a']
-        self.future_lidarpc_recs: List[LidarPc] = [self.lidarpc_rec]
+        self.future_lidarpc_recs: List[LidarPc] = [self.lidar_pc]
         while len(self.future_lidarpc_recs) < 200:
             self.future_lidarpc_recs.append(self.future_lidarpc_recs[-1].next)
         self.future_ego_poses = [rec.ego_pose for rec in self.future_lidarpc_recs]
 
     def test_get_future_ego_trajectory(self) -> None:
-        """ Test getting future ego trajectory. """
-
-        future_ego_traj = get_future_ego_trajectory(self.lidarpc_rec, self.future_ego_poses, np.eye(4), 5.0, 0.5)
-        self.assertEqual(future_ego_traj[0, 3], self.lidarpc_rec.ego_pose.timestamp)
+        """Test getting future ego trajectory."""
+        future_ego_traj = get_future_ego_trajectory(self.lidar_pc, self.future_ego_poses, np.eye(4), 5.0, 0.5)
+        self.assertEqual(future_ego_traj[0, 3], self.lidar_pc.ego_pose.timestamp)
         self.assertEqual(len(future_ego_traj), 11)
         self.assertLessEqual(abs((future_ego_traj[-1, 3] - future_ego_traj[0, 3]) / 1.0e6 - 5.0), 0.5)
 
     def test_get_future_ego_trajectory_not_enough(self) -> None:
-        """ Test getting future ego trajectory when there are not enough ego poses. """
-
-        future_ego_traj = get_future_ego_trajectory(self.lidarpc_rec, self.future_ego_poses[:50], np.eye(4), 5.0, 0.5)
-        self.assertEqual(future_ego_traj[0, 3], self.lidarpc_rec.ego_pose.timestamp)
+        """Test getting future ego trajectory when there are not enough ego poses."""
+        future_ego_traj = get_future_ego_trajectory(self.lidar_pc, self.future_ego_poses[:50], np.eye(4), 5.0, 0.5)
+        self.assertEqual(future_ego_traj[0, 3], self.lidar_pc.ego_pose.timestamp)
         self.assertEqual(len(future_ego_traj), 11)
-        np.testing.assert_equal(future_ego_traj[-1, :], [np.nan, np.nan, np.nan, np.nan])  # type: ignore
+        np.testing.assert_equal(future_ego_traj[-1, :], [np.nan, np.nan, np.nan, np.nan])
 
 
 class TestRenderOnMap(unittest.TestCase):
-    """ Test rendering on map. """
+    """Test rendering on map."""
 
     def setUp(self) -> None:
+        """Set up test case."""
+        self.db = get_test_nuplan_db()
+        self.lidar_pc = get_test_nuplan_lidarpc_with_blob()
 
-        self.db = NuPlanDB('nuplan_v0.1_mini', data_root=os.getenv('NUPLAN_DATA_ROOT'),
-                           map_version='nuplan-maps-v0.1')
-
-        self.lidarpc_rec = self.db.lidar_pc['dcd84209329f5bb0b6f6feb9a3ae155a']
-        self.future_lidarpc_recs: List[LidarPc] = [self.lidarpc_rec]
+        self.future_lidarpc_recs: List[LidarPc] = [self.lidar_pc]
         while len(self.future_lidarpc_recs) < 200:
             self.future_lidarpc_recs.append(self.future_lidarpc_recs[-1].next)
         self.future_ego_poses = [rec.ego_pose for rec in self.future_lidarpc_recs]
 
     def test_render_on_map(self) -> None:
-        """ Test render on map. """
-
-        render_on_map(self.lidarpc_rec, self.lidarpc_rec.boxes(), self.future_ego_poses,
-                      render_boxes_with_velocity=True,
-                      render_map_raster=False,
-                      render_vector_map=True,
-                      with_random_color=True,
-                      render_future_ego_poses=True)
+        """Test render on map."""
+        render_on_map(
+            self.lidar_pc,
+            self.db,
+            self.lidar_pc.boxes(),
+            self.future_ego_poses,
+            render_boxes_with_velocity=True,
+            render_map_raster=False,
+            render_vector_map=True,
+            with_random_color=True,
+            render_future_ego_poses=True,
+        )
 
 
 if __name__ == '__main__':

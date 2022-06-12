@@ -5,81 +5,76 @@ from typing import cast
 import pytorch_lightning as pl
 import pytorch_lightning.loggers
 import pytorch_lightning.plugins
-from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
+import torch
+from omegaconf import DictConfig, OmegaConf
+
+from nuplan.planning.script.builders.data_augmentation_builder import build_agent_augmentor
 from nuplan.planning.script.builders.objectives_builder import build_objectives
-from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
+from nuplan.planning.script.builders.scenario_builder import build_scenarios
 from nuplan.planning.script.builders.splitter_builder import build_splitter
+from nuplan.planning.script.builders.training_callback_builder import build_callbacks
 from nuplan.planning.script.builders.training_metrics_builder import build_training_metrics
 from nuplan.planning.script.builders.utils.utils_checkpoint import extract_last_checkpoint_from_experiment
-from nuplan.planning.training.callbacks.checkpoint_callback import ModelCheckpointAtEpochEnd
-from nuplan.planning.training.callbacks.time_logging_callback import TimeLoggingCallback
 from nuplan.planning.training.data_loader.datamodule import DataModule
-from nuplan.planning.training.modeling.nn_model import NNModule
-from nuplan.planning.training.modeling.planning_module import PlanningModule
-from nuplan.planning.training.preprocessing.feature_caching_preprocessor import FeatureCachingPreprocessor
-from nuplan.planning.training.visualization.visualization_callbacks import RasterVisualizationCallback
+from nuplan.planning.training.modeling.lightning_module_wrapper import LightningModuleWrapper
+from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
+from nuplan.planning.training.preprocessing.feature_preprocessor import FeaturePreprocessor
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
-from omegaconf import DictConfig, OmegaConf
 
 logger = logging.getLogger(__name__)
 
 
-def build_lightning_datamodule(cfg: DictConfig, scenario_builder: AbstractScenarioBuilder,
-                               worker: WorkerPool, model: NNModule) -> pl.LightningDataModule:
+def build_lightning_datamodule(
+    cfg: DictConfig, worker: WorkerPool, model: TorchModuleWrapper
+) -> pl.LightningDataModule:
     """
-    Builds the lightning datamodule from the config.
-
-    :param cfg: omegaconf dictionary
-    :param scenario_builder: access to database able to filter scenarios
-    :param model: NN model used for training
-    :param worker: Worker to submit tasks which can be executed in parallel
-    :return: built object.
+    Build the lightning datamodule from the config.
+    :param cfg: Omegaconf dictionary.
+    :param model: NN model used for training.
+    :param worker: Worker to submit tasks which can be executed in parallel.
+    :return: Instantiated datamodule object.
     """
-
     # Build features and targets
     feature_builders = model.get_list_of_required_feature()
-    target_builder = model.get_list_of_computed_target()
+    target_builders = model.get_list_of_computed_target()
 
     # Build splitter
     splitter = build_splitter(cfg.splitter)
 
-    # Create caching feature computator
-    computator = FeatureCachingPreprocessor(
-        cache_dir=cfg.cache_dir,
-        force_feature_computation=cfg.force_feature_computation,
+    # Create feature preprocessor
+    feature_preprocessor = FeaturePreprocessor(
+        cache_path=cfg.cache.cache_path,
+        force_feature_computation=cfg.cache.force_feature_computation,
         feature_builders=feature_builders,
-        target_builders=target_builder,
+        target_builders=target_builders,
     )
 
-    # Build and run scenario filter to extract scenarios
-    scenario_filter = build_scenario_filter(cfg.scenario_filter)
-    logger.info("Extracting all scenarios...")
-    scenarios = scenario_builder.get_scenarios(scenario_filter, worker)
-    logger.info("Extracting all scenarios...DONE")
+    # Create data augmentation
+    augmentors = build_agent_augmentor(cfg.data_augmentation) if 'data_augmentation' in cfg else None
 
-    assert len(scenarios) > 0, "No scenarios were retrieved for training, check the scenario_filter parameters!"
+    # Build dataset scenarios
+    scenarios = build_scenarios(cfg, worker, model)
 
     # Create datamodule
     datamodule: pl.LightningDataModule = DataModule(
-        feature_and_targets_builders=computator,
+        feature_preprocessor=feature_preprocessor,
         splitter=splitter,
         all_scenarios=scenarios,
         dataloader_params=cfg.data_loader.params,
+        augmentors=augmentors,
         **cfg.data_loader.datamodule,
     )
 
     return datamodule
 
 
-def build_lightning_module(cfg: DictConfig, nn_model: NNModule) -> pl.LightningModule:
+def build_lightning_module(cfg: DictConfig, torch_module_wrapper: TorchModuleWrapper) -> pl.LightningModule:
     """
     Builds the lightning module from the config.
-
     :param cfg: omegaconf dictionary
-    :param nn_model: NN model used for training
+    :param torch_module_wrapper: NN model used for training
     :return: built object.
     """
-
     # Build loss
     objectives = build_objectives(cfg)
 
@@ -87,8 +82,8 @@ def build_lightning_module(cfg: DictConfig, nn_model: NNModule) -> pl.LightningM
     metrics = build_training_metrics(cfg)
 
     # Create the complete Module
-    model = PlanningModule(
-        model=nn_model,
+    model = LightningModuleWrapper(
+        model=torch_module_wrapper,
         objectives=objectives,
         metrics=metrics,
         **cfg.lightning.hparams,
@@ -100,22 +95,12 @@ def build_lightning_module(cfg: DictConfig, nn_model: NNModule) -> pl.LightningM
 def build_trainer(cfg: DictConfig) -> pl.Trainer:
     """
     Builds the lightning trainer from the config.
-
     :param cfg: omegaconf dictionary
     :return: built object.
     """
     params = cfg.lightning.trainer.params
 
-    callbacks = [
-        pl.callbacks.LearningRateMonitor(logging_interval='step', log_momentum=True),
-        RasterVisualizationCallback(**cfg.lightning.callbacks.raster_visualization),
-        TimeLoggingCallback(),
-        ModelCheckpointAtEpochEnd(
-            dirpath=str(Path(cfg.output_dir) / 'best_model'),
-            save_last=False,
-            **cfg.lightning.trainer.checkpoint,
-        ),
-    ]
+    callbacks = build_callbacks(cfg.callbacks)
 
     if params.gpus:
         callbacks.append(pl.callbacks.GPUStatsMonitor(intra_step_time=True, inter_step_time=True))
@@ -142,17 +127,20 @@ def build_trainer(cfg: DictConfig) -> pl.Trainer:
 
         return pl.Trainer(plugins=plugins, **params)
 
-    if cfg.resume_training:
+    if cfg.lightning.trainer.checkpoint.resume_training:
+        # Resume training from latest checkpoint
         output_dir = Path(cfg.output_dir)
         date_format = cfg.date_format
 
         OmegaConf.set_struct(cfg, False)
         last_checkpoint = extract_last_checkpoint_from_experiment(output_dir, date_format)
         if not last_checkpoint:
-            raise ValueError("Resume Training is enabled but no checkpoint was found!")
+            raise ValueError('Resume Training is enabled but no checkpoint was found!')
 
         params.resume_from_checkpoint = str(last_checkpoint)
-        logger.info(f'Resuming from checkpoint {last_checkpoint}')
+        latest_epoch = torch.load(last_checkpoint)['epoch']
+        params.max_epochs += latest_epoch
+        logger.info(f'Resuming at epoch {latest_epoch} from checkpoint {last_checkpoint}')
 
         OmegaConf.set_struct(cfg, True)
 

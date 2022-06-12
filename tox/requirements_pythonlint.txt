@@ -1,0 +1,8 @@
+black
+black[jupyter]
+flake8
+flake8-docstrings
+flake8-pytest-style
+isort
+mypy
+pre-commit

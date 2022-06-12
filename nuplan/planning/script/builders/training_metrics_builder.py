@@ -2,9 +2,10 @@ import logging
 from typing import List
 
 from hydra.utils import instantiate
+from omegaconf import DictConfig
+
 from nuplan.planning.script.builders.utils.utils_type import validate_type
 from nuplan.planning.training.modeling.metrics.abstract_training_metric import AbstractTrainingMetric
-from omegaconf import DictConfig
 
 logger = logging.getLogger(__name__)
 

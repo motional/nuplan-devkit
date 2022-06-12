@@ -1,12 +1,14 @@
-hparams: # passed directly to the lightning module
+hparams:  # passed directly to the lightning module
   learning_rate: ${lightning.optimization.optimizer.learning_rate}  # learning rate of the optimizer
   batch_size: ${data_loader.params.batch_size}  # batch size per GPU (not total)
+
 optimization:
   optimizer:
     learning_rate: 1e-5  # learning rate of the optimizer
 
 trainer:
   checkpoint:
+    resume_training: false  # load the model from the last epoch and resume training
     save_top_k: 1  # save the top K models in terms of performance
     monitor: loss/val_loss  # metric to monitor for performance
     mode: min  # minimize/maximize metric
@@ -25,7 +27,6 @@ trainer:
     gpus: -1  # number of GPUs to utilize (-1 means all available GPUs)
     accelerator: ddp  # distribution method
     precision: 16  # floating point precision
-    amp_level: O2  # AMP optimization level
 
     auto_scale_batch_size: false
     auto_lr_find: false  # tunes LR before beginning training
@@ -47,10 +48,3 @@ trainer:
     params:
       max_epochs: 150  # number of epochs to overfit the same batches
       overfit_batches: 1  # number of batches to overfit
-
-callbacks:
-  raster_visualization:
-    images_per_tile: 8  # number of images per row
-    num_train_tiles: 5  # number of rows of training images
-    num_val_tiles: 5  # number of rows of validation images
-    pixel_size: 0.5  # [m] pixel size of raster

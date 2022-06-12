@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 import geopandas as gpd
+
 from nuplan.database.maps_db.layer import MapLayer
 
 
@@ -9,6 +10,7 @@ class IMapsDB(ABC):
     """
     Interface for MapsDB implementations.
     """
+
     @abstractmethod
     def load_layer(self, location: str, layer_name: str) -> MapLayer:
         """

@@ -1,0 +1,77 @@
+[flake8]
+max-line-length = 120
+max-complexity = 15
+copyright-check = False
+copyright-author = Motional AD LLC. All Rights Reserved.
+
+# Enable custom codes (https://github.com/DmytroLitvinov/awesome-flake8-extensions)
+select =
+    A00,  # Builtins
+    BLK,  # Black
+    C90,  # mccabe code complexity
+    D,  # pydocstyle
+    E,  # pycodestyle
+    F,  # pyflakes
+    W,  # pycodestyle
+    LN001,  # Smarter max line length
+    I,  # ISort, import sorting
+    PT  # https://pypi.org/project/flake8-pytest-style/
+
+# Ignore codes
+ignore =
+    # BugBear (not enabled):
+    B950,  # Line length (flake8-length conflict)
+
+    # Black
+    BLK100,  # Black changes
+
+    # Style extension https://www.flake8rules.com/
+    E203,  # Whitespace before colon (black conflict)
+    E231,  # Missing whitespace after ,:; (black conflict)
+    E501,  # Line too long (flake8-length conflict)
+    W503,  # Line break before binary operator (black conflict)
+    W505,  # Long doc strings (flake8-length conflict)
+
+    # PyDocStyle: http://www.pydocstyle.org/en/stable/error_codes.html
+    # Note: D400/D401 error codes will be ignored, but it's strongly suggested to add them to your editor's linter
+    # Note: D201/D202 error codes should not be ignored unless it's a multiline docstring!
+    #       According to PEP 257 – Docstring Conventions (https://peps.python.org/pep-0257/)
+    #       "There’s no blank line either before or after the one-line docstring."
+    D100,  # Missing docstring in public module
+    D104,  # Missing docstring in public package
+    D200,  # One-line docstring should fit on one line with quotes
+    D203,  # 1 blank line required before class docstring
+    D205,  # 1 blank line required between summary line and description
+    D210,  # No whitespaces allowed surrounding docstring text
+    D212,  # Multi-line docstring summary should start at the first line
+    D400,  # First line should end with a period
+    D401,  # First line should be in imperative mood
+    D412,  # No blank lines allowed between a section header and its content
+    D415,  # First line should end with a period, question mark, or exclamation point
+
+    # PyTestStyle
+    PT009  # Use a regular assert instead of unittest-style '{assertion}'
+
+
+exclude =
+    .eggs,
+    .git,
+    .mypy_cache,
+    .pytest_cache,
+    BUILD,
+    .tox,
+    .env,
+    .venv,
+    .vscode,
+    __pycache__,
+    bazel-bin,
+    bazel-out,
+    bazel-testlogs
+
+per-file-ignores =
+    # F401 - Module imported but unused
+    # D104 - Missing docstring in public package
+    __init__.py: F401, D104
+
+    # Ignore all linters for the following directories
+    misc/*, bazel/*, pyglove/*: A00, BLK, C90, D, E, F, W, LN001, I, PT

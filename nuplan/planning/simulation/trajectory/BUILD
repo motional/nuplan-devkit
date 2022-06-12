@@ -3,21 +3,20 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "interpolated",
-    srcs = ["interpolated.py"],
+    name = "interpolated_trajectory",
+    srcs = ["interpolated_trajectory.py"],
     deps = [
-        "//nuplan/common/actor_state:ego_state",
+        ":abstract_trajectory",
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/planning/simulation/trajectory",
+        "//nuplan/common/geometry:compute",
+        "//nuplan/common/utils:interpolatable_state",
     ],
 )
 
 py_library(
-    name = "trajectory",
-    srcs = ["trajectory.py"],
+    name = "abstract_trajectory",
+    srcs = ["abstract_trajectory.py"],
     deps = [
-        "//nuplan/common/actor_state:agent",
-        "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
     ],
 )
@@ -25,4 +24,14 @@ py_library(
 py_library(
     name = "trajectory_sampling",
     srcs = ["trajectory_sampling.py"],
+)
+
+py_library(
+    name = "predicted_trajectory",
+    srcs = ["predicted_trajectory.py"],
+    deps = [
+        ":abstract_trajectory",
+        ":interpolated_trajectory",
+        "//nuplan/common/actor_state:waypoint",
+    ],
 )

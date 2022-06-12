@@ -13,7 +13,6 @@ def check_nuboard_file_paths(main_paths: List[str]) -> List[Path]:
     :param main_paths: A list of file paths.
     :return A list of available nuBoard files.
     """
-
     available_paths = []
     for main_path in main_paths:
         main_folder_path: Path = Path(main_path)
@@ -44,9 +43,10 @@ def read_nuboard_file_paths(file_paths: List[Path]) -> List[NuBoardFile]:
     :param file_paths: A list of file paths.
     :return A list of NuBoard files.
     """
-
     nuboard_files = []
     for file_path in file_paths:
-        nuboard_files.append(NuBoardFile.load_nuboard_file(file=file_path))
+        nuboard_file = NuBoardFile.load_nuboard_file(file_path)
+        nuboard_file.current_path = file_path.parents[0]
+        nuboard_files.append(nuboard_file)
 
     return nuboard_files

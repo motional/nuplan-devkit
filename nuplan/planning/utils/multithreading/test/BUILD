@@ -19,7 +19,7 @@ py_test(
     size = "medium",
     srcs = ["test_splitter.py"],
     deps = [
-        "//nuplan/planning/utils/multithreading:spliter",
+        "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )
 
@@ -28,10 +28,10 @@ py_test(
     size = "medium",
     srcs = ["test_worker_pool.py"],
     deps = [
-        "//nuplan/planning/utils/multithreading:spliter",
         "//nuplan/planning/utils/multithreading:worker_parallel",
         "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_ray",
         "//nuplan/planning/utils/multithreading:worker_sequential",
+        "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )

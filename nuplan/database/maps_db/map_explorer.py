@@ -10,20 +10,19 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Circle
-from nuplan.database.maps_db.map_api import NuPlanMapWrapper
 from shapely import affinity
 from shapely.geometry import LineString, MultiPolygon, Polygon
+
+from nuplan.database.maps_db.map_api import NuPlanMapWrapper
 
 # Define a map geometry type for polygons and lines.
 Geometry = Union[Polygon, LineString]
 
 
 class NuPlanMapExplorer:
-    """ Helper class to explore the nuPlan map data. """
+    """Helper class to explore the nuPlan map data."""
 
-    def __init__(self,
-                 map_api: NuPlanMapWrapper,
-                 color_map: Optional[Dict[str, str]] = None) -> None:
+    def __init__(self, map_api: NuPlanMapWrapper, color_map: Optional[Dict[str, str]] = None) -> None:
         """
         Constructor.
         :param map_api: A NuPlanMapWrapper instance.
@@ -32,31 +31,35 @@ class NuPlanMapExplorer:
         self.map_api = map_api
 
         if color_map is None:
-            self.color_map = dict(generic_drivable_areas='#a6cee3',
-                                  road_segments='#1f78b4',
-                                  lanes_polygons='#b2df8a',
-                                  ped_crossings='#fb9a99',
-                                  walkways='#e31a1c',
-                                  carpark_areas='#ff7f00',
-                                  traffic_lights='#7e772e',
-                                  intersections='#703642',
-                                  lane_group_connectors='#cab2d6',
-                                  stop_polygons='#800080',
-                                  speed_bumps='#DC7633',
-                                  lane_connectors='#6a3d9a',
-                                  lane_groups_polygons='#85929E',
-                                  boundaries='#839192',
-                                  crosswalks='#F6DDCC')
+            self.color_map = dict(
+                generic_drivable_areas='#a6cee3',
+                road_segments='#1f78b4',
+                lanes_polygons='#b2df8a',
+                ped_crossings='#fb9a99',
+                walkways='#e31a1c',
+                carpark_areas='#ff7f00',
+                traffic_lights='#7e772e',
+                intersections='#703642',
+                lane_group_connectors='#cab2d6',
+                stop_polygons='#800080',
+                speed_bumps='#DC7633',
+                lane_connectors='#6a3d9a',
+                lane_groups_polygons='#85929E',
+                boundaries='#839192',
+                crosswalks='#F6DDCC',
+            )
         else:
             self.color_map = color_map
 
-    def render_map_mask(self,
-                        patch_box: Tuple[float, float, float, float],
-                        patch_angle: float,
-                        layer_names: List[str],
-                        output_size: Tuple[int, int],
-                        figsize: Tuple[int, int],
-                        n_row: int = 2) -> Tuple[Figure, List[Axes]]:
+    def render_map_mask(
+        self,
+        patch_box: Tuple[float, float, float, float],
+        patch_angle: float,
+        layer_names: List[str],
+        output_size: Tuple[int, int],
+        figsize: Tuple[int, int],
+        n_row: int = 2,
+    ) -> Tuple[Figure, List[Axes]]:
         """
         Render map mask of the patch specified by patch_box and patch_angle.
         :param patch_box: Patch box defined as [x_center, y_center, height, width].
@@ -91,10 +94,9 @@ class NuPlanMapExplorer:
 
         return fig, fig.axes
 
-    def render_layers(self,
-                      layer_names: List[str],
-                      alpha: float,
-                      tokens: Optional[Dict[str, List[str]]] = None) -> Tuple[Figure, Axes]:
+    def render_layers(
+        self, layer_names: List[str], alpha: float, tokens: Optional[Dict[str, List[str]]] = None
+    ) -> Tuple[Figure, Axes]:
         """
         Render a list of layers.
         :param layer_names: A list of layer names.
@@ -142,7 +144,6 @@ class NuPlanMapExplorer:
         :param alpha: The opacity of the layer to be rendered.
         :param tokens: The list of tokens of layer to render.
         """
-
         if layer_name in self.map_api.vector_polygon_layers:
             self._render_polygon_layer(ax, layer_name, alpha, tokens)
         elif (layer_name in self.map_api.vector_line_layers) or (layer_name in self.map_api.vector_point_layers):
@@ -150,11 +151,9 @@ class NuPlanMapExplorer:
         else:
             raise ValueError("{} is not a valid layer".format(layer_name))
 
-    def _render_polygon_layer(self,
-                              ax: Axes,
-                              layer_name: str,
-                              alpha: float,
-                              tokens: Optional[List[str]] = None) -> None:
+    def _render_polygon_layer(
+        self, ax: Axes, layer_name: str, alpha: float, tokens: Optional[List[str]] = None
+    ) -> None:
         """
         Renders an individual polygon layer on an axis.
         :param ax: The matplotlib axes where the layer will get rendered.
@@ -162,7 +161,6 @@ class NuPlanMapExplorer:
         :param alpha: The opacity of the layer to be rendered.
         :param tokens: The list of tokens of layer to render.
         """
-
         if layer_name in self.map_api.vector_layers:
             records = self.map_api.load_vector_layer(layer_name)
         else:
@@ -181,9 +179,12 @@ class NuPlanMapExplorer:
                 label = layer_name
                 first_time = False
             else:
-                label = None  # type: ignore
-            ax.add_patch(descartes.PolygonPatch(polygons, fc=self.color_map[layer_name], ec=self.color_map[layer_name],
-                                                alpha=alpha, label=label))
+                label = None
+            ax.add_patch(
+                descartes.PolygonPatch(
+                    polygons, fc=self.color_map[layer_name], ec=self.color_map[layer_name], alpha=alpha, label=label
+                )
+            )
 
     def _render_line_layer(self, ax: Axes, layer_name: str, alpha: float, tokens: Optional[List[str]] = None) -> None:
         """
@@ -211,7 +212,7 @@ class NuPlanMapExplorer:
                 label = layer_name
                 first_time = False
             else:
-                label = None  # type: ignore
+                label = None
             if line.is_empty:  # Skip lines without nodes.
                 continue
             xs, ys = line.xy
@@ -221,10 +222,12 @@ class NuPlanMapExplorer:
             else:
                 ax.plot(xs, ys, color=self.color_map[layer_name], alpha=alpha, label=label)
 
-    def map_geom_to_mask(self,
-                         map_geom: List[Tuple[str, List[Geometry]]],
-                         local_box: Tuple[float, float, float, float],
-                         output_size: Tuple[int, int]) -> npt.NDArray[np.uint8]:
+    def map_geom_to_mask(
+        self,
+        map_geom: List[Tuple[str, List[Geometry]]],
+        local_box: Tuple[float, float, float, float],
+        output_size: Tuple[int, int],
+    ) -> npt.NDArray[np.uint8]:
         """
         Return list of map mask layers of the specified patch.
         :param map_geom: List of layer names and their corresponding geometries.
@@ -242,11 +245,13 @@ class NuPlanMapExplorer:
 
         return np.array(map_mask)
 
-    def get_map_mask(self,
-                     patch_box: Tuple[float, float, float, float],
-                     patch_angle: float,
-                     layer_names: List[str],
-                     output_size: Tuple[int, int]) -> npt.NDArray[np.uint8]:
+    def get_map_mask(
+        self,
+        patch_box: Tuple[float, float, float, float],
+        patch_angle: float,
+        layer_names: List[str],
+        output_size: Tuple[int, int],
+    ) -> npt.NDArray[np.uint8]:
         """
         Returns list of map mask layers of the specified patch.
         :param patch_box: Patch box defined as [x_center, y_center, height, width]. If None, returns the entire map.
@@ -264,10 +269,9 @@ class NuPlanMapExplorer:
 
         return map_mask
 
-    def get_map_geom(self,
-                     patch_box: Tuple[float, float, float, float],
-                     patch_angle: float,
-                     layer_names: List[str]) -> List[Tuple[str, List[Geometry]]]:
+    def get_map_geom(
+        self, patch_box: Tuple[float, float, float, float], patch_angle: float, layer_names: List[str]
+    ) -> List[Tuple[str, List[Geometry]]]:
         """
         Returns a list of geometries in the specified patch_box.
         These are unscaled, but aligned with the patch angle.
@@ -287,11 +291,13 @@ class NuPlanMapExplorer:
 
         return map_geom
 
-    def _layer_geom_to_mask(self,
-                            layer_name: str,
-                            layer_geom: List[Geometry],
-                            local_box: Tuple[float, float, float, float],
-                            output_size: Tuple[int, int]) -> npt.NDArray[np.uint8]:
+    def _layer_geom_to_mask(
+        self,
+        layer_name: str,
+        layer_geom: List[Geometry],
+        local_box: Tuple[float, float, float, float],
+        output_size: Tuple[int, int],
+    ) -> npt.NDArray[np.uint8]:
         """
         Wrapper method that gets the mask for each layer's geometries.
         :param layer_name: The name of the layer for which we get the masks.
@@ -308,10 +314,9 @@ class NuPlanMapExplorer:
         else:
             raise ValueError("{} is not a valid layer".format(layer_name))
 
-    def _polygon_geom_to_mask(self,
-                              layer_geom: List[LineString],
-                              local_box: Tuple[float, float, float, float],
-                              output_size: Tuple[int, int]) -> npt.NDArray[np.uint8]:
+    def _polygon_geom_to_mask(
+        self, layer_geom: List[LineString], local_box: Tuple[float, float, float, float], output_size: Tuple[int, int]
+    ) -> npt.NDArray[np.uint8]:
         """
         Convert polygon inside patch to binary mask and return the map patch.
         :param layer_geom: list of polygons for each map layer.
@@ -331,13 +336,12 @@ class NuPlanMapExplorer:
         trans_x = -patch_x + patch_w / 2.0
         trans_y = -patch_y + patch_h / 2.0
 
-        map_mask = np.zeros(output_size, np.uint8)
+        map_mask = np.zeros(output_size, np.uint8)  # type: ignore
 
         for polygon in layer_geom:
             new_polygon = polygon.intersection(patch)
             if not new_polygon.is_empty:
-                new_polygon = affinity.affine_transform(new_polygon,
-                                                        [1.0, 0.0, 0.0, 1.0, trans_x, trans_y])
+                new_polygon = affinity.affine_transform(new_polygon, [1.0, 0.0, 0.0, 1.0, trans_x, trans_y])
                 new_polygon = affinity.scale(new_polygon, xfact=scale_width, yfact=scale_height, origin=(0, 0))
 
                 if new_polygon.geom_type == 'Polygon':
@@ -346,11 +350,13 @@ class NuPlanMapExplorer:
 
         return map_mask
 
-    def _line_geom_to_mask(self,
-                           layer_geom: List[LineString],
-                           local_box: Tuple[float, float, float, float],
-                           layer_name: str,
-                           output_size: Tuple[int, int]) -> Optional[npt.NDArray[np.uint8]]:
+    def _line_geom_to_mask(
+        self,
+        layer_geom: List[LineString],
+        local_box: Tuple[float, float, float, float],
+        layer_name: str,
+        output_size: Tuple[int, int],
+    ) -> Optional[npt.NDArray[np.uint8]]:
         """
         Convert line inside patch to binary mask and return the map patch.
         :param layer_geom: list of LineStrings for each map layer.
@@ -371,7 +377,7 @@ class NuPlanMapExplorer:
         trans_x = -patch_x + patch_w / 2.0
         trans_y = -patch_y + patch_h / 2.0
 
-        map_mask = np.zeros(output_size, np.uint8)
+        map_mask = np.zeros(output_size, np.uint8)  # type: ignore
 
         if layer_name == 'traffic_light':
             return None
@@ -379,17 +385,15 @@ class NuPlanMapExplorer:
         for line in layer_geom:
             new_line = line.intersection(patch)
             if not new_line.is_empty:
-                new_line = affinity.affine_transform(new_line,
-                                                     [1.0, 0.0, 0.0, 1.0, trans_x, trans_y])
+                new_line = affinity.affine_transform(new_line, [1.0, 0.0, 0.0, 1.0, trans_x, trans_y])
                 new_line = affinity.scale(new_line, xfact=scale_width, yfact=scale_height, origin=(0, 0))
 
                 map_mask = self.mask_for_lines(new_line, map_mask)
         return map_mask
 
-    def _get_layer_geom(self,
-                        patch_box: Tuple[float, float, float, float],
-                        patch_angle: float,
-                        layer_name: str) -> List[Geometry]:
+    def _get_layer_geom(
+        self, patch_box: Tuple[float, float, float, float], patch_angle: float, layer_name: str
+    ) -> List[Geometry]:
         """
         Wrapper method that gets the geometries for each layer.
         :param patch_box: Patch box defined as [x_center, y_center, height, width].
@@ -397,7 +401,6 @@ class NuPlanMapExplorer:
         :param layer_name: Name of map layer to be converted to binary map mask patch.
         :return: List of geometries for the given layer.
         """
-
         if layer_name in self.map_api.vector_polygon_layers:
             return self.map_api.get_layer_polygon(patch_box, patch_angle, layer_name)  # type: ignore
         elif layer_name in self.map_api.vector_line_layers:
@@ -434,10 +437,7 @@ class NuPlanMapExplorer:
 
         return intersect  # type: ignore
 
-    def render_nearby_roads(self,
-                            x: float,
-                            y: float,
-                            alpha: float = 0.5) -> Tuple[Figure, Axes]:
+    def render_nearby_roads(self, x: float, y: float, alpha: float = 0.5) -> Tuple[Figure, Axes]:
         """
         Renders the possible next roads from a point of interest.
         :param x: x coordinate of the point of interest.
@@ -468,7 +468,7 @@ class NuPlanMapExplorer:
         """
         if lines.geom_type == 'MultiLineString':
             for line in lines:
-                coords = np.array(line.coords, np.int32)
+                coords = np.array(line.coords, np.int32)  # type: ignore
                 coords = coords.reshape((-1, 2))
                 cv2.polylines(mask, [coords], False, 1, 2)
         else:

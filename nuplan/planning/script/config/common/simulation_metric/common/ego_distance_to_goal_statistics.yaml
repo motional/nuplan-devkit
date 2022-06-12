@@ -3,3 +3,4 @@ ego_distance_to_goal_statistics:
   _convert_: 'all'
   name: 'ego_distance_to_goal_statistics'
   category: 'Planning'
+  score_distance_threshold: 5.0

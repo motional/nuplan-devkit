@@ -1,82 +1,54 @@
 from typing import List
 
 import numpy as np
-import numpy.typing as npt
-from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
-from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
-from nuplan.planning.metrics.utils.state_extractors import extract_ego_time_point
+
+from nuplan.planning.metrics.evaluation_metrics.base.within_bound_metric_base import WithinBoundMetricBase
+from nuplan.planning.metrics.metric_result import MetricStatistics
+from nuplan.planning.metrics.utils.state_extractors import extract_ego_acceleration
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 
 
-class EgoLatAccelerationStatistics(AbstractMetricBuilder):
+class EgoLatAccelerationStatistics(WithinBoundMetricBase):
+    """Ego lateral acceleration metric."""
 
-    def __init__(self, name: str, category: str) -> None:
+    def __init__(self, name: str, category: str, max_abs_lat_accel: float) -> None:
         """
-        Ego lateral acceleration metric.
-        :param name: Metric name.
-        :param category: Metric category.
+        Initializes the EgoLatAccelerationStatistics class
+        :param name: Metric name
+        :param category: Metric category
+        :param max_abs_lat_accel: Maximum threshold to define if absolute lateral acceleration is within bound.
         """
-
-        self._name = name
-        self._category = category
-
-    @property
-    def name(self) -> str:
-        """
-        Returns the metric name.
-        :return: the metric name.
-        """
-
-        return self._name
-
-    @property
-    def category(self) -> str:
-        """
-        Returns the metric category.
-        :return: the metric category.
-        """
-
-        return self._category
+        super().__init__(name=name, category=category)
+        self._max_abs_lat_accel = max_abs_lat_accel
 
     @staticmethod
-    def ego_lat_accel(history: SimulationHistory) -> npt.NDArray[np.float32]:
+    def compute_comfortability(history: SimulationHistory, max_abs_lat_accel: float) -> bool:
         """
-        Compute ego acceleration in longitudinal.
-        :param history: History from a simulation engine.
-        :return An array of longitudinal accelerations in [N].
+        Compute comfortability based on max_abs_lat_accel
+        :param history: History from a simulation engine
+        :param max_abs_lat_accel: Threshold for the absolute lat jerk
+        :return True if within the threshold otherwise false.
         """
+        ego_pose_states = history.extract_ego_state
+        ego_pose_lat_accels = extract_ego_acceleration(ego_pose_states, acceleration_coordinate='y')
 
-        # Ego velocities are defined in ego's local frame
-        lat_accels = np.asarray([sample.ego_state.dynamic_car_state.center_acceleration_2d.y
-                                 for sample in history.data])
+        lat_accels_within_bounds = np.abs(ego_pose_lat_accels) < max_abs_lat_accel
 
-        return lat_accels
+        return bool(np.all(lat_accels_within_bounds))
 
-    def compute(self, history: SimulationHistory) -> List[MetricStatistics]:
+    def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
-        Returns the estimated metric.
-        :param history: History from a simulation engine.
-        :return: the estimated metric.
+        Returns the lateral acceleration metric
+        :param history: History from a simulation engine
+        :param scenario: Scenario running this metric
+        :return the estimated lateral acceleration metric.
         """
-
-        lat_accels = self.ego_lat_accel(history=history)
-        statistics = {
-            MetricStatisticsType.MAX: Statistic(name="ego_max_lat_acceleration", unit="meters_per_second_squared",
-                                                value=np.amax(lat_accels)),
-            MetricStatisticsType.MIN: Statistic(name="ego_min_lat_acceleration", unit="meters_per_second_squared",
-                                                value=np.amin(lat_accels)),
-            MetricStatisticsType.P90: Statistic(name="ego_p90_lat_acceleration", unit="meters_per_second_squared",
-                                                value=np.percentile(np.abs(lat_accels), 90)),  # type:ignore
-        }
-
-        time_stamps = extract_ego_time_point(history)
-        time_series = TimeSeries(unit='meters_per_second_squared',
-                                 time_stamps=list(time_stamps),
-                                 values=list(lat_accels))
-        result = MetricStatistics(metric_computator=self.name,
-                                  name="ego_lat_acceleration_statistics",
-                                  statistics=statistics,
-                                  time_series=time_series,
-                                  metric_category=self.category)
-
-        return [result]
+        return self._compute_statistics(  # type: ignore
+            history=history,
+            scenario=scenario,
+            statistic_unit_name='meters_per_second_squared',
+            extract_function=extract_ego_acceleration,
+            extract_function_params={'acceleration_coordinate': 'y'},
+            max_within_bound_threshold=self._max_abs_lat_accel,
+        )

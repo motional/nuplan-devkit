@@ -13,6 +13,7 @@ py_test(
     srcs = ["test_configuration_tab.py"],
     deps = [
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:configuration_tab",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
     ],
@@ -27,6 +28,7 @@ py_test(
         "//nuplan/planning/metrics:metric_file",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
     ],
 )
@@ -40,6 +42,7 @@ py_test(
         "//nuplan/planning/metrics:metric_file",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:overview_tab",
     ],
 )
@@ -54,6 +57,7 @@ py_test(
         "//nuplan/planning/metrics:metric_file",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:scenario_tab",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
     ],

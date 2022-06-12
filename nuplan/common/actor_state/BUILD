@@ -8,11 +8,6 @@ py_library(
 )
 
 py_library(
-    name = "utils",
-    srcs = ["utils.py"],
-)
-
-py_library(
     name = "state_representation",
     srcs = ["state_representation.py"],
 )
@@ -21,9 +16,9 @@ py_library(
     name = "transform_state",
     srcs = ["transform_state.py"],
     deps = [
-        "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/actor_state:vehicle_parameters",
-        "//nuplan/database/utils/boxes:box3d",
+        ":state_representation",
+        ":vehicle_parameters",
+        "//nuplan/common/geometry:transform",
     ],
 )
 
@@ -36,9 +31,8 @@ py_library(
     name = "oriented_box",
     srcs = ["oriented_box.py"],
     deps = [
-        "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/actor_state:transform_state",
-        "//nuplan/common/actor_state:utils",
+        ":state_representation",
+        "//nuplan/common/geometry:transform",
     ],
 )
 
@@ -46,10 +40,10 @@ py_library(
     name = "car_footprint",
     srcs = ["car_footprint.py"],
     deps = [
-        "//nuplan/common/actor_state:oriented_box",
-        "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/actor_state:transform_state",
-        "//nuplan/common/actor_state:vehicle_parameters",
+        ":oriented_box",
+        ":state_representation",
+        ":vehicle_parameters",
+        "//nuplan/common/geometry:transform",
     ],
 )
 
@@ -57,9 +51,32 @@ py_library(
     name = "ego_state",
     srcs = ["ego_state.py"],
     deps = [
-        "//nuplan/common/actor_state:agent",
-        "//nuplan/common/actor_state:car_footprint",
-        "//nuplan/common/actor_state:state_representation",
+        ":agent",
+        ":car_footprint",
+        ":dynamic_car_state",
+        ":state_representation",
+        ":tracked_objects_types",
+        "//nuplan/common/utils:interpolatable_state",
+        "//nuplan/common/utils:split_state",
+    ],
+)
+
+py_library(
+    name = "scene_object",
+    srcs = ["scene_object.py"],
+    deps = [
+        ":oriented_box",
+        ":state_representation",
+        ":tracked_objects_types",
+    ],
+)
+
+py_library(
+    name = "static_object",
+    srcs = ["static_object.py"],
+    deps = [
+        ":oriented_box",
+        ":state_representation",
     ],
 )
 
@@ -67,16 +84,47 @@ py_library(
     name = "agent",
     srcs = ["agent.py"],
     deps = [
-        "//nuplan/common/actor_state:oriented_box",
-        "//nuplan/common/actor_state:state_representation",
+        ":oriented_box",
+        ":scene_object",
+        ":state_representation",
+        ":tracked_objects_types",
+        "//nuplan/planning/simulation/trajectory:predicted_trajectory",
     ],
+)
+
+py_library(
+    name = "tracked_objects_types",
+    srcs = ["tracked_objects_types.py"],
+    deps = [],
 )
 
 py_library(
     name = "tracked_objects",
     srcs = ["tracked_objects.py"],
     deps = [
-        "//nuplan/common/actor_state:agent",
-        "//nuplan/common/actor_state:utils",
+        ":agent",
+        ":oriented_box",
+        ":scene_object",
+        ":static_object",
+        ":tracked_objects_types",
+    ],
+)
+
+py_library(
+    name = "dynamic_car_state",
+    srcs = ["dynamic_car_state.py"],
+    deps = [
+        ":state_representation",
+    ],
+)
+
+py_library(
+    name = "waypoint",
+    srcs = ["waypoint.py"],
+    deps = [
+        "state_representation",
+        ":oriented_box",
+        "//nuplan/common/utils:interpolatable_state",
+        "//nuplan/common/utils:split_state",
     ],
 )

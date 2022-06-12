@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Dict, List
 
+import numpy as np
 import torch
-from nuplan.planning.training.preprocessing.features.abstract_model_feature import AbstractModelFeature, \
-    FeatureDataType, to_tensor
-from pyquaternion import Quaternion
+
+from nuplan.planning.training.preprocessing.features.abstract_model_feature import (
+    AbstractModelFeature,
+    FeatureDataType,
+    to_tensor,
+)
 
 
 @dataclass
-class AgentsFeature(AbstractModelFeature):
+class Agents(AbstractModelFeature):
     """
     Model input feature representing the present and past states of the ego and agents.
 
@@ -34,25 +39,45 @@ class AgentsFeature(AbstractModelFeature):
     can have different size. For that reason, the feature can not be placed to a single tensor,
     and we batch the feature with a custom `collate` function
     """
+
     ego: List[FeatureDataType]
     agents: List[FeatureDataType]
 
     def __post_init__(self) -> None:
+        """Sanitize attributes of dataclass."""
         if len(self.ego) != len(self.agents):
-            raise AssertionError(
-                f"Not consistent length of batches! {len(self.ego)} != {len(self.agents)}")
+            raise AssertionError(f"Not consistent length of batches! {len(self.ego)} != {len(self.agents)}")
 
         if len(self.ego) == 0:
             raise AssertionError("Batch size has to be > 0!")
 
         if self.ego[0].ndim != 2:
-            raise AssertionError("Ego feature samples does not conform to feature dimensions! "
-                                 f"Got ndim: {self.ego[0].ndim} , expected 2 [num_frames, 3]")
+            raise AssertionError(
+                "Ego feature samples does not conform to feature dimensions! "
+                f"Got ndim: {self.ego[0].ndim} , expected 2 [num_frames, 3]"
+            )
 
         if self.agents[0].ndim != 3:
-            raise AssertionError("Agent feature samples does not conform to feature dimensions! "
-                                 f"Got ndim: {self.agents[0].ndim} , "
-                                 f"expected 3 [num_frames, num_agents, 8]")
+            raise AssertionError(
+                "Agent feature samples does not conform to feature dimensions! "
+                f"Got ndim: {self.agents[0].ndim} , "
+                f"expected 3 [num_frames, num_agents, 8]"
+            )
+
+    @cached_property
+    def is_valid(self) -> bool:
+        """Inherited, see superclass."""
+        return (
+            len(self.ego) > 0
+            and len(self.agents) > 0
+            and len(self.ego) == len(self.agents)
+            and len(self.ego[0]) > 0
+            and len(self.agents[0]) > 0
+            and len(self.ego[0]) == len(self.agents[0]) > 0
+            and self.ego[0].shape[-1] == self.ego_state_dim()
+            and self.agents[0].shape[-1] == self.agents_states_dim()
+            and all(agents.shape[-2] > 0 for agents in self.agents)  # all batches have positive number of agents
+        )
 
     @property
     def batch_size(self) -> int:
@@ -62,27 +87,31 @@ class AgentsFeature(AbstractModelFeature):
         return len(self.ego)
 
     @classmethod
-    def collate(cls, batch: List[AgentsFeature]) -> AgentsFeature:
+    def collate(cls, batch: List[Agents]) -> Agents:
         """
         Implemented. See interface.
         Collates a list of features that each have batch size of 1.
         """
-        return AgentsFeature(ego=[item.ego[0] for item in batch], agents=[item.agents[0] for item in batch])
+        return Agents(ego=[item.ego[0] for item in batch], agents=[item.agents[0] for item in batch])
 
-    def to_feature_tensor(self) -> AgentsFeature:
-        """ Implemented. See interface. """
-        return AgentsFeature(ego=[to_tensor(ego) for ego in self.ego],
-                             agents=[to_tensor(agents) for agents in self.agents])
+    def to_feature_tensor(self) -> Agents:
+        """Implemented. See interface."""
+        return Agents(ego=[to_tensor(ego) for ego in self.ego], agents=[to_tensor(agents) for agents in self.agents])
 
-    def to_device(self, device: torch.device) -> AgentsFeature:
-        """ Implemented. See interface. """
-        return AgentsFeature(ego=[ego.to(device=device) for ego in self.ego],
-                             agents=[agents.to(device=device) for agents in self.agents])
+    def to_device(self, device: torch.device) -> Agents:
+        """Implemented. See interface."""
+        return Agents(
+            ego=[ego.to(device=device) for ego in self.ego], agents=[agents.to(device=device) for agents in self.agents]
+        )
 
     @classmethod
-    def deserialize(cls, data: Dict[str, Any]) -> AgentsFeature:
-        """ Implemented. See interface. """
-        return AgentsFeature(ego=data["ego"], agents=data["agents"])
+    def deserialize(cls, data: Dict[str, Any]) -> Agents:
+        """Implemented. See interface."""
+        return Agents(ego=data["ego"], agents=data["agents"])
+
+    def unpack(self) -> List[Agents]:
+        """Implemented. See interface."""
+        return [Agents([ego], [agents]) for ego, agents in zip(self.ego, self.agents)]
 
     def num_agents_in_sample(self, sample_idx: int) -> int:
         """
@@ -118,14 +147,14 @@ class AgentsFeature(AbstractModelFeature):
         """
         :return: ego feature dimension. Note, the plus one is to account for the present frame
         """
-        return AgentsFeature.ego_state_dim() * self.num_frames
+        return Agents.ego_state_dim() * self.num_frames
 
     @property
     def agents_features_dim(self) -> int:
         """
         :return: ego feature dimension. Note, the plus one is to account for the present frame
         """
-        return AgentsFeature.agents_states_dim() * self.num_frames
+        return Agents.agents_states_dim() * self.num_frames
 
     def has_agents(self, batch_idx: int) -> bool:
         """
@@ -147,34 +176,76 @@ class AgentsFeature(AbstractModelFeature):
         axes = (1, 0) if isinstance(data, torch.Tensor) else (1, 0, 2)
         return data.transpose(*axes).reshape(data.shape[1], -1)
 
+    def get_present_ego_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Return the present ego in the given sample index
+        :param sample_idx: the batch index of interest
+        :return: <FeatureDataType: 8>. ego at sample index
+        """
+        return self.ego[sample_idx][-1]
+
+    def get_present_agents_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Return the present agents in the given sample index
+        :param sample_idx: the batch index of interest
+        :return: <FeatureDataType: num_agents, 8>. all agents at sample index
+        """
+        return self.agents[sample_idx][-1]
+
     def get_ego_agents_center_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
-        Return ego center in the given batch
+        Return ego center in the given sample index
         :param sample_idx: the batch index of interest
-        :return: <FeatureDataType: 2>. (x, y) positions of the ego's center at sample time step
+        :return: <FeatureDataType: 2>. (x, y) positions of the ego's center at sample index
         """
-        return self.ego[sample_idx][0][:2]
+        return self.get_present_ego_in_sample(sample_idx)[:2]
 
     def get_agents_centers_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
-        Returns all agents' centers in the given sample
+        Returns all agents'centers in the given sample index
         :param sample_idx: the batch index of interest
-        :return: <FeatureDataType: num_agents, 2>. (x, y) positions of the agents' the centers of all agents at the
-         sample time step
+        :return: <FeatureDataType: num_agents, 2>. (x, y) positions of the agents' centers at the sample index
         """
-        return self.agents[sample_idx][0][:, :2]
+        return self.get_present_agents_in_sample(sample_idx)[:, :2]
 
-    def rotate(self, quaternion: Quaternion) -> AgentsFeature:
-        raise NotImplementedError
+    def get_agents_length_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents' length in the given sample index
+        :param sample_idx: the batch index of interest
+        :return: <FeatureDataType: num_agents>. lengths of all the agents at the sample index
+        """
+        return self.get_present_agents_in_sample(sample_idx)[:, 6]
 
-    def translate(self, translation_value: FeatureDataType) -> AgentsFeature:
-        raise NotImplementedError
+    def get_agents_width_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents' width in the given sample index
+        :param sample_idx: the batch index of interest
+        :return: <FeatureDataType: num_agents>. width of all the agents at the sample index
+        """
+        return self.get_present_agents_in_sample(sample_idx)[:, 7]
 
-    def scale(self, scale_value: FeatureDataType) -> AgentsFeature:
-        raise NotImplementedError
+    def get_agent_corners_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents' corners in the given sample index
+        :param sample_idx: the batch index of interest
+        :return: <FeatureDataType: num_agents, 4, 3>. (x, y, 1) positions of all the agents' corners at the sample index
+        """
+        widths = self.get_agents_width_in_sample(sample_idx)
+        lengths = self.get_agents_length_in_sample(sample_idx)
 
-    def xflip(self) -> AgentsFeature:
-        raise NotImplementedError
+        half_widths = widths / 2.0
+        half_lengths = lengths / 2.0
 
-    def yflip(self) -> AgentsFeature:
-        raise NotImplementedError
+        feature_cls = np.array if isinstance(widths, np.ndarray) else torch.Tensor
+
+        return feature_cls(
+            [
+                [
+                    [half_width, half_length, 1.0],
+                    [-half_width, half_length, 1.0],
+                    [-half_width, -half_length, 1.0],
+                    [half_width, -half_length, 1.0],
+                ]
+                for half_width, half_length in zip(half_widths, half_lengths)
+            ]
+        )

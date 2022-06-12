@@ -4,13 +4,13 @@ from pathlib import Path
 
 import hydra
 from hydra.utils import instantiate
+from omegaconf import DictConfig
+
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.nuboard import NuBoard
-from nuplan.planning.script.builders.metric_builder import build_metric_categories
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
 from nuplan.planning.script.builders.utils.utils_config import update_config_for_nuboard
-from nuplan.planning.script.default_path import set_default_path
-from omegaconf import DictConfig
+from nuplan.planning.script.utils import set_default_path
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +18,13 @@ logger = logging.getLogger(__name__)
 set_default_path()
 
 # If set, use the env. variable to overwrite the Hydra config
-CONFIG_PATH = os.getenv("NUPLAN_HYDRA_CONFIG_PATH", "config/nuboard")
-if os.path.basename(CONFIG_PATH) != "nuboard":
-    CONFIG_PATH = os.path.join(CONFIG_PATH, "nuboard")
+CONFIG_PATH = os.getenv('NUPLAN_HYDRA_CONFIG_PATH', 'config/nuboard')
+
+if os.environ.get('NUPLAN_HYDRA_CONFIG_PATH') is not None:
+    CONFIG_PATH = os.path.join('../../../../', CONFIG_PATH)
+
+if os.path.basename(CONFIG_PATH) != 'nuboard':
+    CONFIG_PATH = os.path.join(CONFIG_PATH, 'nuboard')
 CONFIG_NAME = 'default_nuboard'
 
 
@@ -30,26 +34,25 @@ def initialize_nuboard(cfg: DictConfig) -> NuBoard:
     :param cfg: DictConfig. Configuration that is used to run the experiment.
     :return: NuBoard object.
     """
-
     # Update and override configs for nuboard
     update_config_for_nuboard(cfg=cfg)
 
     scenario_builder = build_scenario_builder(cfg)
-    metric_categories = build_metric_categories(cfg)
 
     # Build vehicle parameters
-    vehicle_parameters: VehicleParameters = instantiate(cfg.vehicle_parameters)
+    vehicle_parameters: VehicleParameters = instantiate(cfg.scenario_builder.vehicle_parameters)
     profiler_path = None
     if cfg.profiler_path:
         profiler_path = Path(cfg.profiler_path)
 
-    nuboard = NuBoard(profiler_path=profiler_path,
-                      nuboard_paths=cfg.simulation_path,
-                      scenario_builder=scenario_builder,
-                      port_number=cfg.port_number,
-                      metric_categories=metric_categories,
-                      resource_prefix=cfg.resource_prefix,
-                      vehicle_parameters=vehicle_parameters)
+    nuboard = NuBoard(
+        profiler_path=profiler_path,
+        nuboard_paths=cfg.simulation_path,
+        scenario_builder=scenario_builder,
+        port_number=cfg.port_number,
+        resource_prefix=cfg.resource_prefix,
+        vehicle_parameters=vehicle_parameters,
+    )
 
     return nuboard
 

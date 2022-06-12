@@ -1,6 +1,7 @@
 from typing import List
 
 import torch
+
 from nuplan.planning.training.modeling.metrics.abstract_training_metric import AbstractTrainingMetric
 from nuplan.planning.training.modeling.types import TargetsType
 from nuplan.planning.training.preprocessing.features.agents_trajectories import AgentsTrajectories
@@ -26,8 +27,8 @@ class AgentsAverageDisplacementError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
-        return ["agents"]
+        """Implemented. See interface."""
+        return ["agents_trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
         """
@@ -37,12 +38,18 @@ class AgentsAverageDisplacementError(AbstractTrainingMetric):
         :param targets: ground truth targets from the dataset
         :return: metric scalar tensor
         """
-        predicted_agents: AgentsTrajectories = predictions["agents"]
-        target_agents: AgentsTrajectories = targets["agents"]
+        predicted_agents: AgentsTrajectories = predictions["agents_trajectory"]
+        target_agents: AgentsTrajectories = targets["agents_trajectory"]
         batch_size = predicted_agents.batch_size
 
-        error = torch.mean(torch.tensor([torch.norm(predicted_agents.xy[sample_idx] - target_agents.xy[sample_idx],
-                                                    dim=-1).mean() for sample_idx in range(batch_size)]))
+        error = torch.mean(
+            torch.tensor(
+                [
+                    torch.norm(predicted_agents.xy[sample_idx] - target_agents.xy[sample_idx], dim=-1).mean()
+                    for sample_idx in range(batch_size)
+                ]
+            )
+        )
 
         return error
 
@@ -67,8 +74,8 @@ class AgentsFinalDisplacementError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
-        return ["agents"]
+        """Implemented. See interface."""
+        return ["agents_trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
         """
@@ -78,13 +85,20 @@ class AgentsFinalDisplacementError(AbstractTrainingMetric):
         :param targets: ground truth targets from the dataset
         :return: metric scalar tensor
         """
-        predicted_agents: AgentsTrajectories = predictions["agents"]
-        target_agents: AgentsTrajectories = targets["agents"]
+        predicted_agents: AgentsTrajectories = predictions["agents_trajectory"]
+        target_agents: AgentsTrajectories = targets["agents_trajectory"]
         batch_size = predicted_agents.batch_size
 
-        error = torch.mean(torch.tensor([torch.norm(predicted_agents.terminal_xy[sample_idx] -
-                                                    target_agents.terminal_xy[sample_idx],
-                                                    dim=-1).mean() for sample_idx in range(batch_size)]))
+        error = torch.mean(
+            torch.tensor(
+                [
+                    torch.norm(
+                        predicted_agents.terminal_xy[sample_idx] - target_agents.terminal_xy[sample_idx], dim=-1
+                    ).mean()
+                    for sample_idx in range(batch_size)
+                ]
+            )
+        )
         return error
 
 
@@ -108,8 +122,8 @@ class AgentsAverageHeadingError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
-        return ["agents"]
+        """Implemented. See interface."""
+        return ["agents_trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
         """
@@ -119,8 +133,8 @@ class AgentsAverageHeadingError(AbstractTrainingMetric):
         :param targets: ground truth targets from the dataset
         :return: metric scalar tensor
         """
-        predicted_agents: AgentsTrajectories = predictions["agents"]
-        target_agents: AgentsTrajectories = targets["agents"]
+        predicted_agents: AgentsTrajectories = predictions["agents_trajectory"]
+        target_agents: AgentsTrajectories = targets["agents_trajectory"]
         batch_size = predicted_agents.batch_size
 
         errors = []
@@ -151,8 +165,8 @@ class AgentsFinalHeadingError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
-        return ["agents"]
+        """Implemented. See interface."""
+        return ["agents_trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
         """
@@ -162,14 +176,15 @@ class AgentsFinalHeadingError(AbstractTrainingMetric):
         :param targets: ground truth targets from the dataset
         :return: metric scalar tensor
         """
-        predicted_agents: AgentsTrajectories = predictions["agents"]
-        target_agents: AgentsTrajectories = targets["agents"]
+        predicted_agents: AgentsTrajectories = predictions["agents_trajectory"]
+        target_agents: AgentsTrajectories = targets["agents_trajectory"]
         batch_size = predicted_agents.batch_size
 
         errors = []
         for sample_idx in range(batch_size):
-            error = torch.abs(predicted_agents.terminal_heading[sample_idx] -
-                              target_agents.terminal_heading[sample_idx])
+            error = torch.abs(
+                predicted_agents.terminal_heading[sample_idx] - target_agents.terminal_heading[sample_idx]
+            )
             error_wrapped = torch.atan2(torch.sin(error), torch.cos(error)).mean()
             errors.append(error_wrapped)
 

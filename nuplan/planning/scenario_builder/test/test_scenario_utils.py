@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon
 
 
@@ -35,8 +36,9 @@ class TestIndexTimeSampling(unittest.TestCase):
         """
         Tests the edge case of receiving a smaller time horizon than time interval.
         """
-        self.assertRaises(ValueError, sample_indices_with_time_horizon,
-                          num_samples=3, time_horizon=0.3, time_interval=0.5)
+        self.assertRaises(
+            ValueError, sample_indices_with_time_horizon, num_samples=3, time_horizon=0.3, time_interval=0.5
+        )
 
 
 if __name__ == '__main__':

@@ -1,0 +1,6 @@
+agent_dropout_augmentation:
+  _target_: nuplan.planning.training.data_augmentation.agent_dropout_augmentation.AgentDropoutAugmentor
+  _convert_: 'all'
+
+  augment_prob: 0.5  # probability of applying data augmentation for training
+  dropout_rate: 0.5  # probability of an agent being dropout

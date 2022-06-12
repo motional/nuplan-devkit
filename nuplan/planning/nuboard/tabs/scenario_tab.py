@@ -1,114 +1,229 @@
 import logging
 import time
-from typing import Any, Dict, List, Tuple
+from collections import defaultdict
+from dataclasses import dataclass
+from itertools import chain
+from typing import Any, Dict, List
 
 import numpy as np
+import numpy.typing as npt
+import pandas
 from bokeh.document.document import Document
-from bokeh.layouts import column, gridplot, row
-from bokeh.models import Div, Panel, Select
+from bokeh.layouts import column, gridplot, layout
+from bokeh.models import Div, HoverTool, Select
+from bokeh.models.callbacks import CustomJS
 from bokeh.plotting import figure
+
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.base.base_tab import BaseTab
-from nuplan.planning.nuboard.base.data_class import NuBoardFile
+from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile
-from nuplan.planning.nuboard.style import MOTIONAL_PALETTE, PLOT_PALETTE, scenario_tab_style
+from nuplan.planning.nuboard.style import PLOT_PALETTE, default_div_style, scenario_tab_style
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 
 logger = logging.getLogger(__name__)
 
 
-class ScenarioTab(BaseTab):
+@dataclass
+class ScenarioTimeSeriesData:
+    """Time series data in the scenario tab."""
 
-    def __init__(self,
-                 doc: Document,
-                 vehicle_parameters: VehicleParameters,
-                 scenario_builder: AbstractScenarioBuilder,
-                 file_paths: List[NuBoardFile]):
+    experiment_index: int  # Experiment index to represent color.
+    planner_name: str  # Planner name
+    time_series_values: npt.NDArray[np.float64]  # A list of time series values
+    time_series_timestamps: List[int]  # A list of time series timestamps
+    time_series_unit: str  # Time series unit
+
+
+class ScenarioTab(BaseTab):
+    """Scenario tab in nuboard."""
+
+    def __init__(
+        self,
+        doc: Document,
+        experiment_file_data: ExperimentFileData,
+        vehicle_parameters: VehicleParameters,
+        scenario_builder: AbstractScenarioBuilder,
+    ):
         """
-        Metric board to render metrics.
-        :param doc: Bokeh html document.
+        Scenario tab to render metric results about a scenario.
+        :param doc: Bokeh HTML document.
+        :param experiment_file_data: Experiment file data.
         :param vehicle_parameters: Vehicle parameters.
         :param scenario_builder: nuPlan scenario builder instance.
-        :param file_paths: Path to a metric pickle file.
         """
-
-        super().__init__(doc=doc,
-                         file_paths=file_paths)
+        super().__init__(doc=doc, experiment_file_data=experiment_file_data)
+        self.planner_checkbox_group.name = "scenario_planner_checkbox_group"
         self._scenario_builder = scenario_builder
 
         # UI.
-        self._scalar_scenario_type_select = Select(title="Scenario type:",
-                                                   margin=self.search_criteria_margin)
+        self._scalar_scenario_type_select = Select(
+            name="scenario_scalar_scenario_type_select",
+            css_classes=["scalar-scenario-type-select"],
+        )
         self._scalar_scenario_type_select.on_change("value", self._scalar_scenario_type_select_on_change)
+        self._scalar_log_name_select = Select(
+            name="scenario_scalar_log_name_select",
+            css_classes=["scalar-log-name-select"],
+        )
+        self._scalar_log_name_select.on_change("value", self._scalar_log_name_select_on_change)
 
-        self._scalar_scenario_name_select = Select(title="Scenario:",
-                                                   margin=self.search_criteria_margin)
+        self._scalar_scenario_name_select = Select(
+            name="scenario_scalar_scenario_name_select",
+            css_classes=["scalar-scenario-name-select"],
+        )
         self._scalar_scenario_name_select.on_change("value", self._scalar_scenario_name_select_on_change)
+        self._loading_js = CustomJS(
+            args={},
+            code="""
+            document.getElementById('scenario-loading').style.visibility = 'visible';
+            document.getElementById('scenario-plot-section').style.visibility = 'hidden';
+        """,
+        )
+        self._scalar_scenario_name_select.js_on_change("value", self._loading_js)
+        self.planner_checkbox_group.js_on_change("active", self._loading_js)
+        self._default_time_series_div = Div(
+            text=""" <p> No time series results, please add more experiments or
+                adjust the search filter.</p>""",
+            css_classes=['scenario-time-series-default-div'],
+            margin=default_div_style['margin'],
+        )
+        self._time_series_layout = column(
+            self._default_time_series_div,
+            css_classes=["scenario-time-series-layout"],
+            name="time_series_layout",
+        )
 
-        search_criteria = column(self.search_criteria_title,
-                                 self._scalar_scenario_type_select, self._scalar_scenario_name_select,
-                                 css_classes=["search-criteria-panel"], height=self.search_criteria_height)
-
-        self._time_series_title = Div(text="""<h3 style='margin-left: 18px; margin-top: 20px; width: 200px;'>
-        Time series</h3>""")
-        self._simulation_title = Div(text="""<h3 style='margin-left: 18px; margin-top: 20px; width: 200px;'>
-        Simulation</h3>""")
-        time_series_frame = column(self._simulation_title,
-                                   Div(),
-                                   self._time_series_title,
-                                   Div(),
-                                   css_classes=["scenario-time-series-panel"],
-                                   sizing_mode="scale_height",
-                                   height=self.plot_frame_sizes[1])
-
-        self._plot_layout = row([search_criteria, time_series_frame], css_classes=["scenario-tab"])
-        self._panel = Panel(title="Scenarios", child=self._plot_layout)
-
-        self.simulation_tile = SimulationTile(scenario_builder=self._scenario_builder,
-                                              doc=self._doc,
-                                              vehicle_parameters=vehicle_parameters)
-
+        self._default_simulation_div = Div(
+            text=""" <p> No simulation data, please add more experiments or
+                adjust the search filter.</p>""",
+            css_classes=['scenario-simulation-default-div'],
+            margin=default_div_style['margin'],
+        )
+        self._simulation_tile_layout = column(
+            self._default_simulation_div,
+            css_classes=["scenario-simulation-layout"],
+            name="simulation_tile_layout",
+        )
+        self._end_loading_js = CustomJS(
+            args={},
+            code="""
+            document.getElementById('scenario-loading').style.visibility = 'hidden';
+            document.getElementById('scenario-plot-section').style.visibility = 'visible';
+        """,
+        )
+        self._simulation_tile_layout.js_on_change("children", self._end_loading_js)
+        self.simulation_tile = SimulationTile(
+            map_factory=self._scenario_builder.get_map_factory(),
+            doc=self._doc,
+            vehicle_parameters=vehicle_parameters,
+            experiment_file_data=experiment_file_data,
+        )
+        self._time_series_data: Dict[str, List[ScenarioTimeSeriesData]] = {}
+        self._simulation_figure_data: List[Any] = []
+        self._available_scenario_names: List[str] = []
         self._init_selection()
 
-    def file_paths_on_change(self, file_paths: List[NuBoardFile]) -> None:
-        """ Update if file_path is changed. """
+    @property
+    def scalar_scenario_type_select(self) -> Select:
+        """Return scalar_scenario_type_select."""
+        return self._scalar_scenario_type_select
 
-        self._file_paths = file_paths
+    @property
+    def scalar_log_name_select(self) -> Select:
+        """Return scalar_log_name_select."""
+        return self._scalar_log_name_select
 
-        self._scalar_scenario_type_select.value = ''
-        self._scalar_scenario_type_select.options = []
-        self._scalar_scenario_name_select.value = ''
-        self._scalar_scenario_name_select.options = []
+    @property
+    def scalar_scenario_name_select(self) -> Select:
+        """Return scalar_scenario_name_select."""
+        return self._scalar_scenario_name_select
+
+    @property
+    def time_series_layout(self) -> column:
+        """Return time_series_layout."""
+        return self._time_series_layout
+
+    @property
+    def simulation_tile_layout(self) -> column:
+        """Return simulation_tile_layout."""
+        return self._simulation_tile_layout
+
+    def file_paths_on_change(
+        self, experiment_file_data: ExperimentFileData, experiment_file_active_index: List[int]
+    ) -> None:
+        """
+        Interface to update layout when file_paths is changed.
+        :param experiment_file_data: Experiment file data.
+        :param experiment_file_active_index: Active indexes for experiment files.
+        """
+        self._experiment_file_data = experiment_file_data
+        self._experiment_file_active_index = experiment_file_active_index
+
+        self.simulation_tile.init_simulations()
+        self._init_selection()
         self._update_scenario_plot()
 
-        self.load_metric_files(reset=True)
-        self.load_simulation_files(reset=True)
-        self._init_selection()
+    def _click_planner_checkbox_group(self, attr: Any) -> None:
+        """
+        Click event handler for planner_checkbox_group.
+        :param attr: Clicked attributes.
+        """
+        filtered_time_series_data: Dict[str, List[ScenarioTimeSeriesData]] = defaultdict(list)
+        for key, time_series_data in self._time_series_data.items():
+            for data in time_series_data:
+                if data.planner_name not in self.enable_planner_names:
+                    continue
+                filtered_time_series_data[key].append(data)
+
+        # Render time_series data
+        time_series_plots = self._render_time_series(aggregated_time_series_data=filtered_time_series_data)
+        self._time_series_layout.children[0] = layout(time_series_plots)
+
+        # Render simulation
+        filtered_simulation_figures = [
+            data.plot for data in self._simulation_figure_data if data.planner_name in self.enable_planner_names
+        ]
+        if not filtered_simulation_figures:
+            simulation_layouts = column(
+                self._default_simulation_div,
+                width=800,
+                css_classes=["scenario-simulation-layout"],
+                name="simulation_tile_layout",
+            )
+        else:
+            simulation_layouts = column(filtered_simulation_figures)
+        self._simulation_tile_layout.children[0] = layout(simulation_layouts)
 
     def _update_scenario_plot(self) -> None:
-        """ Update scenario plots when selection is made. """
-
+        """Update scenario plots when selection is made."""
         start_time = time.perf_counter()
 
         # Render time series.
-        time_series_plots = self._render_time_series()
+        self._time_series_data = self._aggregate_time_series_data()
+        time_series_plots = self._render_time_series(aggregated_time_series_data=self._time_series_data)
+        self._time_series_layout.children[0] = layout(time_series_plots)
 
         # Render simulations.
-        simulation_layouts = self._render_simulations()
-
-        col = column([self._simulation_title] +
-                     simulation_layouts +
-                     [self._time_series_title] +
-                     time_series_plots,
-                     css_classes=["scenario-time-series-panel"],
-                     sizing_mode="scale_height",
-                     height=self.plot_frame_sizes[1])
-
-        self._plot_layout.children[1] = col
-
+        simulation_plots = self._render_simulations()
+        self._simulation_tile_layout.children[0] = layout(simulation_plots)
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         logger.debug(f"Rending scenario plot takes {elapsed_time:.4f} seconds.")
+
+    def _update_planner_names(self) -> None:
+        """Update planner name options in the checkbox widget."""
+        self.planner_checkbox_group.labels = []
+        self.planner_checkbox_group.active = []
+        selected_keys = [
+            key
+            for key in self.experiment_file_data.simulation_scenario_keys
+            if key.scenario_type == self._scalar_scenario_type_select.value
+            and key.scenario_name == self._scalar_scenario_name_select.value
+        ]
+        sorted_planner_names = sorted(list({key.planner_name for key in selected_keys}))
+        self.planner_checkbox_group.labels = sorted_planner_names
+        self.planner_checkbox_group.active = [index for index in range(len(sorted_planner_names))]
 
     def _scalar_scenario_type_select_on_change(self, attr: str, old: str, new: str) -> None:
         """
@@ -117,18 +232,26 @@ class ScenarioTab(BaseTab):
         :param old: Old value.
         :param new: New value.
         """
-
-        if new == '':
+        if new == "":
             return
 
-        # Update metric options.
-        scenario_names = list({scenario_key.scenario_name for scenario_key in self.simulation_scenario_keys
-                               if scenario_key.scenario_type == new})
-        scenario_names = sorted(scenario_names, reverse=False)
+        available_log_names = self.load_log_name(scenario_type=self._scalar_scenario_type_select.value)
+        self._scalar_log_name_select.options = [""] + available_log_names
+        self._scalar_log_name_select.value = ""
 
-        self._scalar_scenario_name_select.options = []
-        self._scalar_scenario_name_select.options = [''] + scenario_names
-        self._scalar_scenario_name_select.value = ''
+    def _scalar_log_name_select_on_change(self, attr: str, old: str, new: str) -> None:
+        """
+        Helper function to change event in scalar log name.
+        :param attr: Attribute.
+        :param old: Old value.
+        :param new: New value.
+        """
+        if new == "":
+            return
+
+        available_scenario_names = self.load_scenario_names(log_name=self._scalar_log_name_select.value)
+        self._scalar_scenario_name_select.options = [""] + available_scenario_names
+        self._scalar_scenario_name_select.value = ""
 
     def _scalar_scenario_name_select_on_change(self, attr: str, old: str, new: str) -> None:
         """
@@ -137,145 +260,215 @@ class ScenarioTab(BaseTab):
         :param old: Old value.
         :param new: New value.
         """
-
         # Do nothing
-        if new == '':
+        if new == "":
             return
 
+        self._update_planner_names()
         self._update_scenario_plot()
 
     def _init_selection(self) -> None:
-        """ Init histogram and scalar selection options. """
+        """Init histogram and scalar selection options."""
+        self._scalar_scenario_type_select.value = ""
+        self._scalar_scenario_type_select.options = []
+        self._scalar_scenario_name_select.value = ""
+        self._scalar_scenario_name_select.options = []
+        self._available_scenario_names = []
 
-        scenario_keys = self.simulation_scenario_keys
-
-        # Scenario types.
-        scenario_types: List[str] = list({key.scenario_type for key in scenario_keys})
-        scenario_types = sorted(list(scenario_types), reverse=False)
         if len(self._scalar_scenario_type_select.options) == 0:
-            self._scalar_scenario_type_select.options = scenario_types
+            self._scalar_scenario_type_select.options = [""] + self.experiment_file_data.available_scenario_types
 
         if len(self._scalar_scenario_type_select.options) > 0:
             self._scalar_scenario_type_select.value = self._scalar_scenario_type_select.options[0]
+        self._update_planner_names()
 
-    def _render_time_series_plot(self, title: str, y_axis_label: str) -> figure:
+    @staticmethod
+    def _render_time_series_plot(title: str, y_axis_label: str) -> figure:
         """
         Render a time series plot.
         :param title: Plot title.
         :param y_axis_label: Y axis label.
         :return A time series plot.
         """
+        time_series_figure = figure(
+            background_fill_color=PLOT_PALETTE["background_white"],
+            title=title,
+            css_classes=["time-series-figure"],
+            margin=scenario_tab_style["time_series_figure_margins"],
+            width=350,
+            height=350,
+            output_backend="webgl",
+        )
+        hover = HoverTool(tooltips=[("Frame", "@x"), ("Value", "@y{0.0000}"), ("Planner", "$name")])
+        time_series_figure.add_tools(hover)
 
-        time_series_figure = figure(background_fill_color=PLOT_PALETTE['background_white'],
-                                    title=title,
-                                    css_classes=['time-series-figure'],
-                                    margin=scenario_tab_style['time_series_figure_margins'],
-                                    height=self.plot_sizes[1])
-
-        time_series_figure.title.text_font_size = scenario_tab_style['time_series_figure_title_text_font_size']
-        time_series_figure.xaxis.axis_label_text_font_size = \
-            scenario_tab_style['time_series_figure_xaxis_axis_label_text_font_size']
-        time_series_figure.xaxis.major_label_text_font_size = \
-            scenario_tab_style['time_series_figure_xaxis_major_label_text_font_size']
-        time_series_figure.yaxis.axis_label_text_font_size = \
-            scenario_tab_style['time_series_figure_yaxis_axis_label_text_font_size']
-        time_series_figure.yaxis.major_label_text_font_size = \
-            scenario_tab_style['time_series_figure_yaxis_major_label_text_font_size']
+        time_series_figure.title.text_font_size = scenario_tab_style["time_series_figure_title_text_font_size"]
+        time_series_figure.xaxis.axis_label_text_font_size = scenario_tab_style[
+            "time_series_figure_xaxis_axis_label_text_font_size"
+        ]
+        time_series_figure.xaxis.major_label_text_font_size = scenario_tab_style[
+            "time_series_figure_xaxis_major_label_text_font_size"
+        ]
+        time_series_figure.yaxis.axis_label_text_font_size = scenario_tab_style[
+            "time_series_figure_yaxis_axis_label_text_font_size"
+        ]
+        time_series_figure.yaxis.major_label_text_font_size = scenario_tab_style[
+            "time_series_figure_yaxis_major_label_text_font_size"
+        ]
         time_series_figure.toolbar.logo = None
 
         # Rotate the x_axis label with 45 (180/4) degrees.
         time_series_figure.xaxis.major_label_orientation = np.pi / 4
 
         time_series_figure.yaxis.axis_label = y_axis_label
-        time_series_figure.xaxis.axis_label = scenario_tab_style['time_series_figure_xaxis_axis_label']
+        time_series_figure.xaxis.axis_label = scenario_tab_style["time_series_figure_xaxis_axis_label"]
 
         return time_series_figure
 
-    def _render_time_series_layout(self, time_series: Dict[str, Dict[str, figure]]) -> List[column]:
+    def _render_time_series_layout(self, time_series_figures: Dict[str, figure]) -> column:
         """
         Render time series layout.
-        :param time_series: A dictionary of time series plots.
+        :param time_series_figures: A dictionary of time series plots.
         :return: A list of lists of figures (a list per row).
         """
-
         figures: List[figure] = []
-        for metric_name, metric_result_figures in time_series.items():
-            for metric_result_name, time_series_figure in metric_result_figures.items():
-                plot = time_series_figure[0]
-                plot.legend.label_text_font_size = scenario_tab_style['plot_legend_label_text_font_size']
-                figures.append(plot)
-        grid_plot = gridplot(figures, ncols=self.plot_cols)
-        grid_layout = [column(grid_plot)]
+        for metric_statistic_name, time_series_figure in time_series_figures.items():
+            time_series_figure.legend.label_text_font_size = scenario_tab_style["plot_legend_label_text_font_size"]
+            figures.append(time_series_figure)
 
-        return grid_layout
+        grid_plot = gridplot(figures, ncols=self.plot_cols, toolbar_location="left")
+        time_series_layout = column(grid_plot)
 
-    def _render_time_series(self) -> List[column]:
+        return time_series_layout
+
+    def _aggregate_time_series_data(self) -> Dict[str, List[ScenarioTimeSeriesData]]:
+        """
+        Aggregate time series data.
+        :return A dict of metric statistic names and their data.
+        """
+        aggregated_time_series_data: Dict[str, List[ScenarioTimeSeriesData]] = {}
+        scenario_types = (
+            tuple([self._scalar_scenario_type_select.value]) if self._scalar_scenario_type_select.value else None
+        )
+        log_names = tuple([self._scalar_log_name_select.value]) if self._scalar_log_name_select.value else None
+
+        if not len(self._scalar_scenario_name_select.value):
+            return aggregated_time_series_data
+
+        for index, metric_statistics_dataframes in enumerate(self.experiment_file_data.metric_statistics_dataframes):
+            if index not in self._experiment_file_active_index:
+                continue
+
+            for metric_statistics_dataframe in metric_statistics_dataframes:
+                planner_names = metric_statistics_dataframe.planner_names
+                if metric_statistics_dataframe.metric_statistic_name not in aggregated_time_series_data:
+                    aggregated_time_series_data[metric_statistics_dataframe.metric_statistic_name] = []
+                for planner_name in planner_names:
+                    data_frame = metric_statistics_dataframe.query_scenarios(
+                        scenario_names=tuple([str(self._scalar_scenario_name_select.value)]),
+                        scenario_types=scenario_types,
+                        planner_names=tuple([planner_name]),
+                        log_names=log_names,
+                    )
+                    if not len(data_frame):
+                        continue
+
+                    time_series_headers = metric_statistics_dataframe.time_series_headers
+                    time_series: pandas.DataFrame = data_frame[time_series_headers]
+                    if time_series[time_series_headers[0]].iloc[0] is None:
+                        continue
+
+                    time_series_values: npt.NDArray[np.float64] = np.round(
+                        np.asarray(
+                            list(
+                                chain.from_iterable(time_series[metric_statistics_dataframe.time_series_values_column])
+                            )
+                        ),
+                        4,
+                    )
+
+                    time_series_timestamps = list(
+                        chain.from_iterable(time_series[metric_statistics_dataframe.time_series_timestamp_column])
+                    )
+                    time_series_unit = time_series[metric_statistics_dataframe.time_series_unit_column].iloc[0]
+
+                    scenario_time_series_data = ScenarioTimeSeriesData(
+                        experiment_index=index,
+                        planner_name=planner_name,
+                        time_series_values=time_series_values,
+                        time_series_timestamps=time_series_timestamps,
+                        time_series_unit=time_series_unit,
+                    )
+
+                    aggregated_time_series_data[metric_statistics_dataframe.metric_statistic_name].append(
+                        scenario_time_series_data
+                    )
+
+        return aggregated_time_series_data
+
+    def _render_time_series(self, aggregated_time_series_data: Dict[str, List[ScenarioTimeSeriesData]]) -> column:
         """
         Render time series plots.
-        :return A list of columns.
+        :param aggregated_time_series_data: Aggregated scenario time series data.
+        :return A column.
         """
+        time_series_figures: Dict[str, figure] = {}
+        for metric_statistic_name, scenario_time_series_data in aggregated_time_series_data.items():
+            for data in scenario_time_series_data:
+                if not len(data.time_series_values):
+                    continue
 
-        selected_keys = [key for key in self.metric_scenario_keys
-                         if key.scenario_type == self._scalar_scenario_type_select.value and
-                         key.scenario_name == self._scalar_scenario_name_select.value]
+                if metric_statistic_name not in time_series_figures:
+                    time_series_figures[metric_statistic_name] = self._render_time_series_plot(
+                        title=metric_statistic_name, y_axis_label=data.time_series_unit
+                    )
+                planner_name = data.planner_name + f" ({self.get_file_path_last_name(data.experiment_index)})"
+                color = self.experiment_file_data.file_path_colors[data.experiment_index][data.planner_name]
+                time_series_figure = time_series_figures[metric_statistic_name]
+                time_series_figure.line(
+                    x=list(range(len(data.time_series_values))),
+                    y=data.time_series_values,
+                    color=color,
+                    legend_label=planner_name,
+                    name=planner_name,
+                )
 
-        if len(selected_keys) == 0:
-            return []
+        if not time_series_figures:
+            time_series_column = column(
+                self._default_time_series_div,
+                width=800,
+                css_classes=["scenario-simulation-layout"],
+                name="simulation_tile_layout",
+            )
+        else:
+            time_series_column = self._render_time_series_layout(time_series_figures=time_series_figures)
+        return time_series_column
 
-        metric_files = [self._read_metric_file(key.file) for key in selected_keys]
-        color_keys = list(MOTIONAL_PALETTE.keys())
-        figures: Dict[str, Dict[str, Tuple[figure, int]]] = {}
-
-        for metric_file in metric_files:
-            key = metric_file.key
-            metric_name = key.metric_name
-            planner_name = key.planner_name
-
-            for statistic_group_name, metric_statistics in metric_file.metric_statistics.items():
-                for metric_statistic in metric_statistics:
-                    time_series = metric_statistic.time_series
-                    if time_series is None:
-                        continue
-
-                    values = np.asarray(time_series.values)
-                    values = values[np.isfinite(values)]
-
-                    if not len(values):
-                        continue
-
-                    if metric_name not in figures:
-                        figures[metric_name] = {}
-
-                    if statistic_group_name not in figures[metric_name]:
-                        time_series_figure = self._render_time_series_plot(title=statistic_group_name,
-                                                                           y_axis_label=time_series.unit)
-                        color_index = 0
-                        figures[metric_name][statistic_group_name] = (time_series_figure, color_index)
-                    else:
-                        time_series_figure, color_index = figures[metric_name][statistic_group_name]
-                        color_index += 1
-                        figures[metric_name][statistic_group_name] = (time_series_figure, color_index)
-
-                    color = MOTIONAL_PALETTE[color_keys[color_index]]
-                    time_series_figure.line(x=list(range(len(values))),
-                                            y=values,
-                                            color=color,
-                                            legend_label=planner_name)
-        layout = self._render_time_series_layout(time_series=figures)
-        return layout
-
-    def _render_simulations(self) -> List[Any]:
+    def _render_simulations(self) -> column:
         """
         Render simulation plot.
         :return: A list of Bokeh columns or rows.
         """
+        selected_keys = [
+            key
+            for key in self.experiment_file_data.simulation_scenario_keys
+            if key.scenario_type == self._scalar_scenario_type_select.value
+            and key.log_name == self._scalar_log_name_select.value
+            and key.scenario_name == self._scalar_scenario_name_select.value
+            and key.nuboard_file_index in self._experiment_file_active_index
+        ]
+        if not selected_keys:
+            simulation_layouts = column(
+                self._default_simulation_div,
+                width=800,
+                css_classes=["scenario-simulation-layout"],
+                name="simulation_tile_layout",
+            )
+        else:
+            self._simulation_figure_data = self.simulation_tile.render_simulation_tiles(
+                selected_scenario_keys=selected_keys
+            )
+            simulation_figures = [data.plot for data in self._simulation_figure_data]
+            simulation_layouts = column(simulation_figures)
 
-        selected_keys = [key for key in self.simulation_scenario_keys
-                         if key.scenario_type == self._scalar_scenario_type_select.value and
-                         key.scenario_name == self._scalar_scenario_name_select.value]
-
-        if len(selected_keys) == 0:
-            return []
-
-        layouts = self.simulation_tile.render_simulation_tiles(selected_scenario_keys=selected_keys)
-        return layouts  # type: ignore
+        return simulation_layouts

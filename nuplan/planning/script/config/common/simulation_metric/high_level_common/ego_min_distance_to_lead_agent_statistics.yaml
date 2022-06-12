@@ -1,0 +1,12 @@
+ego_min_distance_to_lead_agent_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_min_distance_to_lead_agent.EgoMinDistanceToLeadAgent
+  _convert_: 'all'
+  name: 'ego_min_distance_to_lead_agent_statistics'
+  category: 'Planning'
+
+  min_front_distance: 1.5
+  lateral_distance_threshold: 2.0
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    ego_at_fault_collisions_metric: ego_at_fault_collisions_statistics

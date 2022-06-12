@@ -1,23 +1,19 @@
-import os
 import unittest
 
-from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.database.maps_db.map_api import NuPlanMapWrapper
 from nuplan.database.maps_db.map_explorer import NuPlanMapExplorer
+from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
 
 
 class TestMapExplorer(unittest.TestCase):
-    """ Test NuPlanMapExplorer class. """
+    """Test NuPlanMapExplorer class."""
 
     def setUp(self) -> None:
         """
         Initialize the map.
         """
-        self.map_version = os.getenv('NUPLAN_MAPS_VERSION', 'nuplan-maps-v0.1')
+        self.maps_db = get_test_maps_db()
         self.location = "us-nv-las-vegas-strip"
-        self.maps_db = GPKGMapsDB(self.map_version,
-                                  map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"),
-                                                        'maps'))
         self.nuplan_map = NuPlanMapWrapper(maps_db=self.maps_db, map_name=self.location)
         self.nuplan_explore = NuPlanMapExplorer(self.nuplan_map)
 
@@ -34,13 +30,18 @@ class TestMapExplorer(unittest.TestCase):
         """
         Checks the function to render map mask.
         """
-
         xmin, ymin, xmax, ymax = self.nuplan_map.get_bounds('lanes_polygons')
         width = xmax - xmin
         height = ymax - ymin
         try:
-            self.nuplan_explore.render_map_mask((xmin + (width / 2), ymin + (height / 2), height, width), 0.0,
-                                                ['lanes_polygons', 'intersections'], (500, 500), (50, 50), 2)
+            self.nuplan_explore.render_map_mask(
+                (xmin + (width / 2), ymin + (height / 2), height, width),
+                0.0,
+                ['lanes_polygons', 'intersections'],
+                (500, 500),
+                (50, 50),
+                2,
+            )
         except RuntimeError:
             self.fail("render_map_mask() raised RuntimeError unexpectedly!")
 
@@ -48,7 +49,6 @@ class TestMapExplorer(unittest.TestCase):
         """
         Checks the function to render nearby roads.
         """
-
         xmin, ymin, xmax, ymax = self.nuplan_map.get_bounds('lanes_polygons')
         width = xmax - xmin
         height = ymax - ymin

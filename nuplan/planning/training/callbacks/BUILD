@@ -24,6 +24,27 @@ py_library(
     srcs = ["validate_setup_callback.py"],
     deps = [
         "//nuplan/planning/training/data_loader:datamodule",
-        "//nuplan/planning/training/modeling:planning_module",
+        "//nuplan/planning/training/modeling:lightning_module_wrapper",
+    ],
+)
+
+py_library(
+    name = "scenario_scoring_callback",
+    srcs = ["scenario_scoring_callback.py"],
+    deps = [
+        "//nuplan/planning/training/callbacks/utils:scene_converter",
+        "//nuplan/planning/training/data_loader:scenario_dataset",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing:feature_collate",
+    ],
+)
+
+py_library(
+    name = "visualization_callback",
+    srcs = ["visualization_callback.py"],
+    deps = [
+        "//nuplan/planning/training/callbacks/utils:visualization_utils",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing:feature_collate",
     ],
 )
