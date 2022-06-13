@@ -3,11 +3,12 @@ from typing import Dict, List, Optional, Tuple, Union
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
+from shapely import affinity
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
+
 from nuplan.common.maps.maps_datatypes import RasterLayer
 from nuplan.common.maps.nuplan_map.nuplan_map import NuPlanMap
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
-from shapely import affinity
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 
 # Define a map geometry type for polygons and lines.
 Geometry = Union[Polygon, LineString]
@@ -27,15 +28,22 @@ class NuPlanMapWrapper(NuPlanMap):
         """
         map_name = map_name.replace(".gpkg", "")
         super().__init__(maps_db, map_name)
-
         self.available_vector_layers = self._maps_db.vector_layer_names(map_name)
         self.available_raster_layers = self._maps_db.get_raster_layer_names(map_name)
-
         self.semantic_scale = 10.0  # The semantic maps have a scale of 10px/m.
 
-        self.vector_polygon_layers = ['lanes_polygons', 'intersections', 'generic_drivable_areas', 'walkways',
-                                      'carpark_areas', 'crosswalks', 'lane_group_connectors',
-                                      'lane_groups_polygons', 'road_segments', 'stop_polygons']
+        self.vector_polygon_layers = [
+            'lanes_polygons',
+            'intersections',
+            'generic_drivable_areas',
+            'walkways',
+            'carpark_areas',
+            'crosswalks',
+            'lane_group_connectors',
+            'lane_groups_polygons',
+            'road_segments',
+            'stop_polygons',
+        ]
         self.vector_line_layers = ['lane_connectors', 'boundaries']
         self.vector_point_layers = ['traffic_lights']
         self.vector_layers = self.vector_polygon_layers + self.vector_line_layers + self.vector_point_layers
@@ -56,15 +64,14 @@ class NuPlanMapWrapper(NuPlanMap):
         :return: Returns raster layer as numpy array.
         """
         raster_layer: RasterLayer = self._load_raster_layer(layer_name)
-        return raster_layer.data   # type: ignore
+        return raster_layer.data  # type: ignore
 
     def get_map_dimension(self) -> Tuple[int, int]:
         """
         Gets the dimension of the map.
         :return: The dimension of the map.
         """
-
-        map_dims = self._maps_db.maps_dimension[self._map_name]
+        map_dims = self._maps_db._map_dimensions[self._map_name]
 
         return int(map_dims[0]), int(map_dims[1])
 
@@ -109,9 +116,7 @@ class NuPlanMapWrapper(NuPlanMap):
         return xmin, ymin, xmax, ymax
 
     @staticmethod
-    def _is_line_record_in_patch(line_coords: LineString,
-                                 box_coords: List[float],
-                                 mode: str = 'within') -> bool:
+    def _is_line_record_in_patch(line_coords: LineString, box_coords: List[float], mode: str = 'within') -> bool:
         """
         Query whether a particular polygon record is in a rectangular patch.
         :param line_coords: Line Coordinates.
@@ -136,9 +141,7 @@ class NuPlanMapWrapper(NuPlanMap):
             raise ValueError("Only 'intersect' and 'within' are supported.")
 
     @staticmethod
-    def _is_polygon_record_in_patch(polygon_coords: Polygon,
-                                    box_coords: List[float],
-                                    mode: str = 'within') -> bool:
+    def _is_polygon_record_in_patch(polygon_coords: Polygon, box_coords: List[float], mode: str = 'within') -> bool:
         """
         Query whether a particular polygon record is in a rectangular patch.
         :param polygon_coords: Polygon Coordinates.
@@ -151,15 +154,14 @@ class NuPlanMapWrapper(NuPlanMap):
         rectangular_patch = box(x_min, y_min, x_max, y_max)
 
         if mode == 'intersect':
-            return polygon_coords.intersects(rectangular_patch)   # type: ignore
+            return polygon_coords.intersects(rectangular_patch)  # type: ignore
         elif mode == 'within':
-            return polygon_coords.within(rectangular_patch)     # type: ignore
+            return polygon_coords.within(rectangular_patch)  # type: ignore
         else:
             raise ValueError("Only 'intersect' and 'within' are supported.")
 
     @staticmethod
-    def get_patch_coord(patch_box: Tuple[float, float, float, float],
-                        patch_angle: float = 0.0) -> Polygon:
+    def get_patch_coord(patch_box: Tuple[float, float, float, float], patch_angle: float = 0.0) -> Polygon:
         """
         Converts patch_box to shapely Polygon coordinates.
         :param patch_box: Patch box defined as [x_center, y_center, height, width].
@@ -224,10 +226,9 @@ class NuPlanMapWrapper(NuPlanMap):
 
         return fids
 
-    def get_records_in_patch(self,
-                             box_coords: List[float],
-                             layer_names: Optional[List[str]] = None,
-                             mode: str = 'intersect') -> Dict[str, List[str]]:
+    def get_records_in_patch(
+        self, box_coords: List[float], layer_names: Optional[List[str]] = None, mode: str = 'intersect'
+    ) -> Dict[str, List[str]]:
         """
         Gets all the record token that intersects or within a particular rectangular patch.
         :param box_coords: The rectangular patch coordinates (x_min, y_min, x_max, y_max).
@@ -264,17 +265,16 @@ class NuPlanMapWrapper(NuPlanMap):
 
         return records_in_patch
 
-    def get_layer_polygon(self,
-                          patch_box: Tuple[float, float, float, float],
-                          patch_angle: float,
-                          layer_name: str) -> List[Polygon]:
+    def get_layer_polygon(
+        self, patch_box: Tuple[float, float, float, float], patch_angle: float, layer_name: str
+    ) -> List[Polygon]:
         """
-         Retrieves the polygons of a particular layer within the specified patch.
-         :param patch_box: Patch box defined as [x_center, y_center, height, width].
-         :param patch_angle: Patch orientation in degrees.
-         :param layer_name: name of map layer to be extracted.
-         :return: List of Polygon in a patch box.
-         """
+        Retrieves the polygons of a particular layer within the specified patch.
+        :param patch_box: Patch box defined as [x_center, y_center, height, width].
+        :param patch_angle: Patch orientation in degrees.
+        :param layer_name: name of map layer to be extracted.
+        :return: List of Polygon in a patch box.
+        """
         patch_x = patch_box[0]
         patch_y = patch_box[1]
 
@@ -290,20 +290,17 @@ class NuPlanMapWrapper(NuPlanMap):
             polygons = records['geometry'][i]
             new_polygon = polygons.intersection(patch)
             if not new_polygon.is_empty:
-                new_polygon = affinity.rotate(new_polygon, -patch_angle,
-                                              origin=(patch_x, patch_y), use_radians=False)
-                new_polygon = affinity.affine_transform(new_polygon,
-                                                        [1.0, 0.0, 0.0, 1.0, -patch_x, -patch_y])
+                new_polygon = affinity.rotate(new_polygon, -patch_angle, origin=(patch_x, patch_y), use_radians=False)
+                new_polygon = affinity.affine_transform(new_polygon, [1.0, 0.0, 0.0, 1.0, -patch_x, -patch_y])
                 if new_polygon.geom_type == 'Polygon':
                     new_polygon = MultiPolygon([new_polygon])
                 polygon_list.append(new_polygon)
 
         return polygon_list
 
-    def get_layer_line(self,
-                       patch_box: Tuple[float, float, float, float],
-                       patch_angle: float,
-                       layer_name: str) -> Optional[List[LineString]]:
+    def get_layer_line(
+        self, patch_box: Tuple[float, float, float, float], patch_angle: float, layer_name: str
+    ) -> Optional[List[LineString]]:
         """
         Retrieve the lines of a particular layer within the specified patch.
         :param patch_box: Patch box defined as [x_center, y_center, height, width].
@@ -330,8 +327,7 @@ class NuPlanMapWrapper(NuPlanMap):
             new_line = line.intersection(patch)
             if not new_line.is_empty:
                 new_line = affinity.rotate(new_line, -patch_angle, origin=(patch_x, patch_y), use_radians=False)
-                new_line = affinity.affine_transform(new_line,
-                                                     [1.0, 0.0, 0.0, 1.0, -patch_x, -patch_y])
+                new_line = affinity.affine_transform(new_line, [1.0, 0.0, 0.0, 1.0, -patch_x, -patch_y])
                 line_list.append(new_line)
 
         return line_list

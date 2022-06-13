@@ -11,8 +11,8 @@ py_library(
         "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
 )
 

@@ -9,35 +9,36 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )
 
 py_library(
-    name = "box",
-    srcs = ["box.py"],
+    name = "tracks_observation",
+    srcs = ["tracks_observation.py"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/observation:abstract_observation",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )
 
 py_library(
-    name = "idm_agents_observation",
-    srcs = ["idm_agents_observation.py"],
+    name = "idm_agents",
+    srcs = ["idm_agents.py"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:abstract_observation",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/observation/smart_agents/idm_agents:idm_agent_manager",
-        "//nuplan/planning/simulation/observation/smart_agents/idm_agents:idm_agents_builder",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
+        "//nuplan/planning/simulation/observation/idm:idm_agent_manager",
+        "//nuplan/planning/simulation/observation/idm:idm_agents_builder",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )
 
@@ -48,9 +49,10 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:abstract_observation",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )
 
@@ -61,5 +63,42 @@ py_library(
         "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/database/utils/boxes:box3d",
+    ],
+)
+
+py_library(
+    name = "abstract_ml_agents",
+    srcs = ["abstract_ml_agents.py"],
+    deps = [
+        "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history_buffer",
+        "//nuplan/planning/simulation/observation:abstract_observation",
+        "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/planner/ml_planner:model_loader",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
+    ],
+)
+
+py_library(
+    name = "ego_centric_ml_agents",
+    srcs = ["ego_centric_ml_agents.py"],
+    deps = [
+        "//nuplan/common/actor_state:agent",
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/common/actor_state:waypoint",
+        "//nuplan/common/geometry:convert",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/observation:abstract_ml_agents",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing/features:agents_trajectories",
     ],
 )

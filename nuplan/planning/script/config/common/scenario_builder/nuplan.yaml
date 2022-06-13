@@ -1,10 +1,18 @@
 _target_: nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.NuPlanScenarioBuilder
 _convert_: 'all'
 
-version: nuplan_v0.1
-data_root: ${oc.env:NUPLAN_DATA_ROOT}
+data_root: ${oc.env:NUPLAN_DATA_ROOT}/nuplan-v1.0/trainval
+map_root: ${oc.env:NUPLAN_MAPS_ROOT}
+
+db_files: null  # if db file(s) exist locally, the data_root is ignored
+
+map_version: nuplan-maps-v1.0
+
+max_workers: null
+verbose: true
+
+ground_truth_predictions: null
 
 defaults:
-  - nuplan/scenario_filter: one_continuous_log
-  - nuplan/vehicle_parameters: nuplan_vehicle_parameters
-  - nuplan/scenario_mapping: nuplan_scenario_mapping
+  - vehicle_parameters: nuplan_vehicle_parameters
+  - scenario_mapping: nuplan_scenario_mapping

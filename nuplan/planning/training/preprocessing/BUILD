@@ -9,8 +9,8 @@ py_library(
 )
 
 py_library(
-    name = "feature_caching_preprocessor",
-    srcs = ["feature_caching_preprocessor.py"],
+    name = "feature_preprocessor",
+    srcs = ["feature_preprocessor.py"],
     deps = [
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/training/modeling:types",

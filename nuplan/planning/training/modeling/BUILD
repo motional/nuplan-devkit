@@ -3,8 +3,8 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "nn_model",
-    srcs = ["nn_model.py"],
+    name = "torch_module_wrapper",
+    srcs = ["torch_module_wrapper.py"],
     deps = [
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
@@ -13,10 +13,10 @@ py_library(
 )
 
 py_library(
-    name = "planning_module",
-    srcs = ["planning_module.py"],
+    name = "lightning_module_wrapper",
+    srcs = ["lightning_module_wrapper.py"],
     deps = [
-        "//nuplan/planning/training/modeling:nn_model",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/modeling/metrics:planning_metrics",
         "//nuplan/planning/training/modeling/objectives:abstract_objective",

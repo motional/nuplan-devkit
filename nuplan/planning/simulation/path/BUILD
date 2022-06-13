@@ -7,6 +7,7 @@ py_library(
     srcs = ["interpolated_path.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/geometry:compute",
         "//nuplan/planning/simulation/path",
     ],
 )

@@ -1,0 +1,11 @@
+model_checkpoint_callback:
+  _target_: nuplan.planning.training.callbacks.checkpoint_callback.ModelCheckpointAtEpochEnd
+  _convert_: 'all'
+
+  save_last: false
+  dirpath: ${output_dir}/best_model
+
+  # see default_lightning.yaml
+  save_top_k: ${lightning.trainer.checkpoint.save_top_k}
+  monitor: ${lightning.trainer.checkpoint.monitor}
+  mode: ${lightning.trainer.checkpoint.mode}

@@ -10,12 +10,7 @@ import numpy as np
 class MapLayerMeta:
     """Stores the metadata for a map layer (layer name and md5 hash)."""
 
-    def __init__(self,
-                 name: str,
-                 md5_hash: str,
-                 can_dilate: bool,
-                 is_binary: bool,
-                 precision: float):
+    def __init__(self, name: str, md5_hash: str, can_dilate: bool, is_binary: bool, precision: float):
         """
         Initializes MapLayerMeta.
         :param name: Map layer name, e.g. 'drivable_area'
@@ -26,7 +21,6 @@ class MapLayerMeta:
         :param precision: Identified map resolution in meters per pixel. Typically set to 0.1, meaning that 10 pixels
             correspond to 1 meter.
         """
-
         self.name = name
         self.md5_hash = md5_hash
         self.can_dilate = can_dilate
@@ -39,7 +33,6 @@ class MapLayerMeta:
         Returns the binary mask file name.
         :return: The binary mask file name.
         """
-
         return self.md5_hash + '.bin'
 
     @property
@@ -48,7 +41,6 @@ class MapLayerMeta:
         Returns the binary joint distance file name.
         :return: The binary joint distance file name.
         """
-
         return self.md5_hash + '.joint_dist.bin'
 
     @property
@@ -57,7 +49,6 @@ class MapLayerMeta:
         Returns the PNG mask file name.
         :return: The PNG mask file name.
         """
-
         return self.md5_hash + '.png'
 
     def serialize(self) -> Dict[str, Any]:
@@ -65,11 +56,13 @@ class MapLayerMeta:
         Serializes the meta data of a map layer to a JSON-friendly dictionary representation.
         :return: A dict of meta data of map layer.
         """
-        return {'name': self.name,
-                'md5_hash': self.md5_hash,
-                'can_dilate': self.can_dilate,
-                'is_binary': self.is_binary,
-                'precision': self.precision}
+        return {
+            'name': self.name,
+            'md5_hash': self.md5_hash,
+            'can_dilate': self.can_dilate,
+            'is_binary': self.is_binary,
+            'precision': self.precision,
+        }
 
     @classmethod
     def deserialize(cls, encoding: Dict[str, Any]) -> MapLayerMeta:
@@ -78,11 +71,13 @@ class MapLayerMeta:
         :param encoding: Output from serialize.
         :return: Deserialized meta data.
         """
-        return MapLayerMeta(name=encoding['name'],
-                            md5_hash=encoding['md5_hash'],
-                            can_dilate=encoding['can_dilate'],
-                            is_binary=encoding['is_binary'],
-                            precision=encoding['precision'])
+        return MapLayerMeta(
+            name=encoding['name'],
+            md5_hash=encoding['md5_hash'],
+            can_dilate=encoding['can_dilate'],
+            is_binary=encoding['is_binary'],
+            precision=encoding['precision'],
+        )
 
 
 @dataclasses.dataclass
@@ -94,7 +89,6 @@ class MapVersionMeta:
         Constructor.
         :param name: The name of a map layer.
         """
-
         self.name = name
         self.size = None  # Tuple[int, int]
         self.layers: Dict[str, MapLayerMeta] = {}  # Dict[layer_name: layer]
@@ -107,7 +101,6 @@ class MapVersionMeta:
         :param item: Layer name.
         :return: The metadata of a map layer.
         """
-
         return self.layers[item]
 
     def set_size(self, size: Tuple[int, int]) -> None:
@@ -115,7 +108,6 @@ class MapVersionMeta:
         Sets the size of map layer.
         :param size: The size used to set the map layer.
         """
-
         if self.size is None:
             self.size = size  # type: ignore
         else:
@@ -126,7 +118,6 @@ class MapVersionMeta:
         Sets the origin of the map.
         :param origin: The coordinate of the map origin.
         """
-
         if self.origin is None:
             self.origin = origin  # type: ignore
         else:
@@ -137,7 +128,6 @@ class MapVersionMeta:
         Sets the transform matrix of the MapVersionMeta object.
         :param transform_matrix: The transform matrix for converting from physical coordinates to pixel coordinates.
         """
-
         if transform_matrix is not None:
             self.transform_matrix = np.array(transform_matrix)  # type: ignore
 
@@ -146,7 +136,6 @@ class MapVersionMeta:
         Adds layer to the MapLayerMeta.
         :param map_layer: The map layer to be added.
         """
-
         self.layers[map_layer.name] = map_layer
 
     @property
@@ -162,9 +151,12 @@ class MapVersionMeta:
         Serializes the MapVersionMeta instance to a JSON-friendly dictionary representation.
         :return: Encoding of the MapVersionMeta.
         """
-        return {'size': self.size, 'name': self.name,
-                'origin': self.origin,
-                'layers': [layer.serialize() for layer in self.layers.values()]}
+        return {
+            'size': self.size,
+            'name': self.name,
+            'origin': self.origin,
+            'layers': [layer.serialize() for layer in self.layers.values()],
+        }
 
     @classmethod
     def deserialize(cls, encoding: Dict[str, Any]) -> MapVersionMeta:
@@ -173,7 +165,6 @@ class MapVersionMeta:
         :param encoding: Output from serialize.
         :return: Deserialized MapVersionMeta.
         """
-
         mv = MapVersionMeta(name=encoding['name'])
         mv.set_size(encoding['size'])
 
@@ -191,7 +182,6 @@ class MapVersionMeta:
         Returns the hash value for the MapVersionMeta object.
         :return: The hash value.
         """
-
         return hash((self.name, *[(key, self.layers[key].md5_hash) for key in sorted(self.layers)]))
 
     def __eq__(self, other: object) -> bool:
@@ -200,7 +190,6 @@ class MapVersionMeta:
         :param other: The other MapVersionMeta objects.
         :return: True if both objects are the same, otherwise False.
         """
-
         if not isinstance(other, MapVersionMeta):
             raise NotImplementedError
 
@@ -209,10 +198,10 @@ class MapVersionMeta:
 
 @dataclasses.dataclass
 class MapMetaData:
-    """ Stores the map metadata for all the MapVersions. """
+    """Stores the map metadata for all the MapVersions."""
 
     def __init__(self) -> None:
-
+        """Init function for class."""
         self.versions: Dict[str, MapVersionMeta] = {}  # Maps the map version name to MapVersionMeta object.
 
     def __getitem__(self, item: str) -> MapVersionMeta:
@@ -221,7 +210,6 @@ class MapMetaData:
         :param item: Map version name.
         :return: A MapVersionMeta object.
         """
-
         return self.versions[item]
 
     def add_version(self, map_version: MapVersionMeta) -> None:
@@ -229,13 +217,11 @@ class MapMetaData:
         Adds a MapVersionMeta to the versions.
         :param map_version: A map version to be added.
         """
-
         self.versions[map_version.name] = map_version
 
     @property
     def hash_sizes(self) -> Set[Tuple[str, Tuple[int, int]]]:
-        """ Returns the hash size of each layer in each map version. """
-
+        """Returns the hash size of each layer in each map version."""
         hash_sizes_: Set[Tuple[str, Tuple[int, int]]] = set()
         for version in self.versions.values():
             for layer in version.layers.values():
@@ -249,7 +235,6 @@ class MapMetaData:
         Returns a list of version names.
         :return: A list of version names.
         """
-
         return sorted(list(self.versions.keys()))
 
     def serialize(self) -> List[Dict[str, Any]]:
@@ -257,7 +242,6 @@ class MapMetaData:
         Serializes the MapMetaData instance to a JSON-friendly list representation.
         :return: Encoding of the MapMetaData.
         """
-
         return [map_version.serialize() for map_version in self.versions.values()]
 
     @classmethod
@@ -267,7 +251,6 @@ class MapMetaData:
         :param encoding: Output from serialize.
         :return: Deserialized MapMetaData.
         """
-
         mmd = MapMetaData()
         for map_version_encoding in encoding:
             mmd.add_version(MapVersionMeta.deserialize(map_version_encoding))

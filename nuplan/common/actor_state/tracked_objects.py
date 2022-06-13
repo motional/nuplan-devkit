@@ -1,53 +1,113 @@
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
-from nuplan.common.actor_state.agent import Agent, AgentType
-from nuplan.common.actor_state.utils import lazy_property
+from functools import cached_property
+from typing import Dict, Iterable, List, Optional, Tuple, Union
+
+from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.oriented_box import OrientedBox
+from nuplan.common.actor_state.scene_object import SceneObject, SceneObjectMetadata
+from nuplan.common.actor_state.static_object import StaticObject
+from nuplan.common.actor_state.tracked_objects_types import AGENT_TYPES, STATIC_OBJECT_TYPES, TrackedObjectType
+
+TrackedObject = Union[Agent, StaticObject, SceneObject]
 
 
 class TrackedObjects:
-    def __init__(self, agents: List[Agent]):
-        """
-        :param agents: List of Agents
-        """
-        self.agents = sorted(agents, key=lambda a: a.agent_type.value)
+    """Class representing tracked objects, a collection of SceneObjects"""
 
-    @lazy_property
-    def ranges_per_type(self) -> Dict[AgentType, Tuple[int, int]]:
+    def __init__(self, tracked_objects: Optional[List[TrackedObject]] = None):
+        """
+        :param tracked_objects: List of tracked objects
+        """
+        tracked_objects = tracked_objects if tracked_objects is not None else []
+
+        self.tracked_objects = sorted(
+            tracked_objects, key=lambda agent: agent.tracked_object_type.value  # type: ignore
+        )
+
+    def __iter__(self) -> Iterable[TrackedObject]:
+        """When iterating return the tracked objects."""
+        return iter(self.tracked_objects)
+
+    @classmethod
+    def from_oriented_boxes(cls, boxes: List[OrientedBox]) -> TrackedObjects:
+        """When iterating return the tracked objects."""
+        scene_objects = [
+            SceneObject(
+                TrackedObjectType.GENERIC_OBJECT,
+                box,
+                SceneObjectMetadata(timestamp_us=i, token=str(i), track_token=None, track_id=None),
+            )
+            for i, box in enumerate(boxes)
+        ]
+        return TrackedObjects(scene_objects)
+
+    @cached_property
+    def _ranges_per_type(self) -> Dict[TrackedObjectType, Tuple[int, int]]:
         """
         Returns the start and end index of the range of agents for each agent type
-        in the list of agents (sorted by agent type).
+        in the list of agents (sorted by agent type). The ranges are cached for subsequent calls.
         """
-        return self._create_ranges_per_type()
+        ranges_per_type: Dict[TrackedObjectType, Tuple[int, int]] = {}
 
-    def _create_ranges_per_type(self) -> Dict[AgentType, Tuple[int, int]]:
-        """ Extracts the start and end index of each agent type in the list of agents (sorted by agent type). """
-        ranges_per_type: Dict[AgentType, Tuple[int, int]] = {}
-
-        if self.agents:
-            last_agent_type = self.agents[0].agent_type
+        if self.tracked_objects:
+            last_agent_type = self.tracked_objects[0].tracked_object_type
             start_range = 0
-            end_range = len(self.agents)
+            end_range = len(self.tracked_objects)
 
-            for idx, agent in enumerate(self.agents):
-                if agent.agent_type is not last_agent_type:
+            for idx, agent in enumerate(self.tracked_objects):
+                if agent.tracked_object_type is not last_agent_type:
                     ranges_per_type[last_agent_type] = (start_range, idx)
                     start_range = idx
-                    last_agent_type = agent.agent_type
+                    last_agent_type = agent.tracked_object_type
             ranges_per_type[last_agent_type] = (start_range, end_range)
 
             ranges_per_type.update(
-                {agent_type: (end_range, end_range) for agent_type in AgentType if agent_type not in ranges_per_type})
+                {
+                    agent_type: (end_range, end_range)
+                    for agent_type in TrackedObjectType
+                    if agent_type not in ranges_per_type
+                }
+            )
 
         return ranges_per_type
 
-    def get_agents_of_type(self, agent_type: AgentType) -> List[Agent]:
+    def get_tracked_objects_of_type(self, tracked_object_type: TrackedObjectType) -> List[TrackedObject]:
         """
-        Gets the sublist of agents of a particular AgentType
-        :param agent_type: The query AgentType
-        :return: List of the present agents of the query type. Throws an error if the key is invalid. """
-        if agent_type in self.ranges_per_type:
-            start_idx, end_idx = self.ranges_per_type[agent_type]
-            return self.agents[start_idx:end_idx]
+        Gets the sublist of agents of a particular TrackedObjectType
+        :param tracked_object_type: The query TrackedObjectType
+        :return: List of the present agents of the query type. Throws an error if the key is invalid.
+        """
+        if tracked_object_type in self._ranges_per_type:
+            start_idx, end_idx = self._ranges_per_type[tracked_object_type]
+            return self.tracked_objects[start_idx:end_idx]
 
         else:
-            raise KeyError(f"Specified AgentType {agent_type} does not exist.")
+            # There are no objects of the queried type
+            return []
+
+    def get_agents(self) -> List[Agent]:
+        """
+        Getter for the tracked objects which are Agents
+        :return: list of Agents
+        """
+        agents = []
+        for agent_type in AGENT_TYPES:
+            agents.extend(self.get_tracked_objects_of_type(agent_type))
+        return agents
+
+    def get_static_objects(self) -> List[StaticObject]:
+        """
+        Getter for the tracked objects which are StaticObjects
+        :return: list of StaticObjects
+        """
+        static_objects = []
+        for static_object_type in STATIC_OBJECT_TYPES:
+            static_objects.extend(self.get_tracked_objects_of_type(static_object_type))
+        return static_objects
+
+    def __len__(self) -> int:
+        """
+        :return: The number of tracked objects in the class
+        """
+        return len(self.tracked_objects)

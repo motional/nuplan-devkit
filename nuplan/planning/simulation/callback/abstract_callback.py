@@ -1,10 +1,13 @@
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
-from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 
 
 class AbstractCallback:
+    """
+    Base class for simulation callbacks.
+    """
 
     def on_initialization_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
         """
@@ -53,18 +56,6 @@ class AbstractCallback:
         :param setup: simulation setup
         :param planner: planner after planner.compute_trajectory() is called
         :param trajectory: trajectory resulting from planner
-        """
-        pass
-
-    def on_simulation_manager_end(self,
-                                  setup: SimulationSetup,
-                                  planner: AbstractPlanner,
-                                  history: SimulationHistory) -> None:
-        """
-        Called when simulation manager reaches end of iterations.
-        :param setup: simulation setup
-        :param planner: when simulation manager terminates simulation
-        :param history: when simulation manager terminates simulation
         """
         pass
 

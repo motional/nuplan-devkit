@@ -4,8 +4,9 @@ from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_loader.splitter import AbstractSplitter
 
 
-def _filter_abstract_scenario_by_log_name(scenarios: List[AbstractScenario], log_names: List[str]) \
-        -> List[AbstractScenario]:
+def _filter_abstract_scenario_by_log_name(
+    scenarios: List[AbstractScenario], log_names: List[str]
+) -> List[AbstractScenario]:
     """
     Extracts all scenarios matching the input log names
 
@@ -32,13 +33,13 @@ class LogSplitter(AbstractSplitter):
         self.test_logs = log_splits['test']
 
     def get_train_samples(self, scenarios: List[AbstractScenario]) -> List[AbstractScenario]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return _filter_abstract_scenario_by_log_name(scenarios, self.train_logs)
 
     def get_val_samples(self, scenarios: List[AbstractScenario]) -> List[AbstractScenario]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return _filter_abstract_scenario_by_log_name(scenarios, self.val_logs)
 
     def get_test_samples(self, scenarios: List[AbstractScenario]) -> List[AbstractScenario]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return _filter_abstract_scenario_by_log_name(scenarios, self.test_logs)

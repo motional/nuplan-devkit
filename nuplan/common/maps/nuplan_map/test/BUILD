@@ -27,25 +27,164 @@ py_test(
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
     ],
 )
 
 py_test(
-    name = "test_map_objects",
+    name = "test_baseline_path",
     size = "large",
-    srcs = ["test_map_objects.py"],
+    srcs = ["test_baseline_path.py"],
     data = [":test_json"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
-        "//nuplan/common/maps/nuplan_map",
-        "//nuplan/common/maps/nuplan_map:crosswalk",
-        "//nuplan/common/maps/nuplan_map:intersection",
+        "//nuplan/common/maps/nuplan_map:baseline_path",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/maps/nuplan_map:stop_line",
+        "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_generic_polygon_map",
+    size = "large",
+    srcs = ["test_generic_polygon_map.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_intersection",
+    size = "large",
+    srcs = ["test_intersection.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_lane",
+    size = "large",
+    srcs = ["test_lane.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_lane_connector",
+    size = "large",
+    srcs = ["test_lane_connector.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_roadblock",
+    size = "large",
+    srcs = ["test_roadblock.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_roadblock_connector",
+    size = "large",
+    srcs = ["test_roadblock_connector.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_stop_line",
+    size = "large",
+    srcs = ["test_stop_line.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:test_utils",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_utils",
+    size = "large",
+    srcs = ["test_utils.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/maps/nuplan_map",
+        "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/maps/nuplan_map:utils",
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
     ],
 )

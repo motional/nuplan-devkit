@@ -2,6 +2,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
+
 from nuplan.database.maps_db.metadata import MapLayerMeta
 
 
@@ -11,12 +12,13 @@ class MapLayer:
      determining if points are on the foreground.
     """
 
-    def __init__(self,
-                 data: npt.NDArray[np.uint8],
-                 metadata: MapLayerMeta,
-                 joint_distance: Optional[npt.NDArray[np.float64]] = None,
-                 transform_matrix: Optional[npt.NDArray[np.float64]] = None
-                 ) -> None:
+    def __init__(
+        self,
+        data: npt.NDArray[np.uint8],
+        metadata: MapLayerMeta,
+        joint_distance: Optional[npt.NDArray[np.float64]] = None,
+        transform_matrix: Optional[npt.NDArray[np.float64]] = None,
+    ) -> None:
         """
         Initiates MapLayer.
         :param data: Map layer as a binary numpy array with one channel.
@@ -46,10 +48,14 @@ class MapLayer:
         if transform_matrix is None:
             # Use `n_rows - 1` so (0, 0) in physical space becomes (0, n_rows - 1)
             # in pixel space (the bottom-left pixel).
-            transform_matrix = np.array([[1.0 / self.metadata.precision, 0, 0, 0],
-                                         [0, -1.0 / self.metadata.precision, 0, self.nrows - 1],
-                                         [0, 0, 1, 0],
-                                         [0, 0, 0, 1]])
+            transform_matrix = np.array(
+                [
+                    [1.0 / self.metadata.precision, 0, 0, 0],
+                    [0, -1.0 / self.metadata.precision, 0, self.nrows - 1],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1],
+                ]
+            )
         self._transform_matrix = transform_matrix
 
     @property
@@ -59,7 +65,7 @@ class MapLayer:
             correspond to 1 meter.
         :return: Meters per pixel.
         """
-        return self.metadata.precision
+        return self.metadata.precision  # type: ignore
 
     def mask(self, dilation: float = 0) -> npt.NDArray[np.float64]:
         """
@@ -67,9 +73,7 @@ class MapLayer:
         :param dilation: Max distance from the foreground. Should be not less than 0.
         :return: A full map layer content as a numpy array.
         """
-        return self.crop(slice(0, self.nrows),
-                         slice(0, self.ncols),
-                         dilation)
+        return self.crop(slice(0, self.nrows), slice(0, self.ncols), dilation)
 
     def crop(self, rows: slice, cols: slice, dilation: float = 0) -> npt.NDArray[np.float64]:
         """
@@ -80,7 +84,6 @@ class MapLayer:
          foreground pixels.
         :return: A full map layer content as a numpy array.
         """
-
         assert dilation >= 0, "Negative dilation not supported."
         if dilation == 0:
             return self.data[rows, cols]  # type: ignore
@@ -110,8 +113,8 @@ class MapLayer:
         assert x.shape == y.shape
         assert x.ndim == y.ndim == 1
 
-        pts = np.stack([x, y, np.zeros(x.shape), np.ones(x.shape)])
-        pixel_coords = np.round(np.dot(self.transform_matrix, pts)).astype(np.int32)  # type: ignore
+        pts = np.stack([x, y, np.zeros(x.shape), np.ones(x.shape)])  # type: ignore
+        pixel_coords = np.round(np.dot(self.transform_matrix, pts)).astype(np.int32)
 
         return pixel_coords[0, :], pixel_coords[1, :]
 
@@ -130,9 +133,9 @@ class MapLayer:
 
         return in_bounds
 
-    def _dilated_distance(self, px: npt.NDArray[np.float64],
-                          py: npt.NDArray[np.float64],
-                          dilation: float) -> npt.NDArray[np.float64]:
+    def _dilated_distance(
+        self, px: npt.NDArray[np.float64], py: npt.NDArray[np.float64], dilation: float
+    ) -> npt.NDArray[np.float64]:
         """
         Gives the distance to the dilated mask. A positive distance means outside the mask,
         a negative means inside. px and py are in pixel coordinates and should be in bound.
@@ -141,7 +144,6 @@ class MapLayer:
         :param dilation: dilation in meters.
         :return: The distance matrix to the dilated mask.
         """
-
         # Dilating the mask (the 1's) makes the 1-to-nearest-0 distances larger,
         # and we return those as negative numbers. Dilation makes the
         # 0-to-nearest-1 distances smaller, and we return those as positive
@@ -160,7 +162,7 @@ class MapLayer:
         :return: <np.bool: x.shape>, True if the points are on the mask, otherwise False.
         """
         px, py = self.to_pixel_coords(x, y)
-        on_mask = np.zeros(px.size, dtype=bool)
+        on_mask = np.zeros(px.size, dtype=bool)  # type: ignore
         in_bounds = self._is_in_bounds(px, py)
 
         if dilation > 0:
@@ -188,7 +190,7 @@ class MapLayer:
 
         in_bounds = self._is_in_bounds(px, py)
 
-        distance = np.full(px.shape, np.nan, dtype=np.float32)
+        distance = np.full(px.shape, np.nan, dtype=np.float32)  # type: ignore
         distance[in_bounds] = self._dilated_distance(px[in_bounds], py[in_bounds], dilation)
 
         return distance

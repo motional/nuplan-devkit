@@ -9,32 +9,34 @@ from nuplan.planning.nuboard.utils.utils import check_nuboard_file_paths, read_n
 
 
 class TestNuBoardUtils(unittest.TestCase):
-    """ Unit tests for utils in nuboard. """
+    """Unit tests for utils in nuboard."""
 
     def setUp(self) -> None:
-        """ Set up a list of nuboard files. """
-
+        """Set up a list of nuboard files."""
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.nuboard_paths: List[str] = []
         self.nuboard_files: List[NuBoardFile] = []
         for i in range(2):
             main_path = os.path.join(self.tmp_dir.name, str(i))
-            nuboard_file = NuBoardFile(main_path=main_path,
-                                       metric_folder='metrics',
-                                       simulation_folder='simulations')
-            nuboard_file_name = os.path.join(main_path, 'nuboard_file' + NuBoardFile.extension())
+            nuboard_file = NuBoardFile(
+                simulation_main_path=main_path,
+                metric_folder="metrics",
+                simulation_folder="simulations",
+                metric_main_path=main_path,
+                aggregator_metric_folder="aggregator_metric",
+            )
+            nuboard_file_name = os.path.join(main_path, "nuboard_file" + NuBoardFile.extension())
             self.nuboard_files.append(nuboard_file)
             self.nuboard_paths.append(nuboard_file_name)
 
     def test_check_nuboard_file_paths(self) -> None:
-        """ Test if check_nuboard_file_paths works. """
-
+        """Test if check_nuboard_file_paths works."""
         # Expected to raise a run time error since the file is not saved.
         self.assertRaises(RuntimeError, check_nuboard_file_paths, self.nuboard_paths)
 
         # Save nuboard files
         for nuboard_file, nuboard_path in zip(self.nuboard_files, self.nuboard_paths):
-            main_path = Path(nuboard_file.main_path)
+            main_path = Path(nuboard_file.simulation_main_path)
             main_path.mkdir(parents=True, exist_ok=True)
             file = Path(nuboard_path)
             nuboard_file.save_nuboard_file(file)
@@ -56,13 +58,12 @@ class TestNuBoardUtils(unittest.TestCase):
             self.assertIsInstance(nuboard_path_name, Path)
 
     def test_read_nuboard_file_paths(self) -> None:
-        """ Test if read_nuboard_file_paths works. """
-
+        """Test if read_nuboard_file_paths works."""
         nuboard_paths: List[Path] = []
 
         # Save nuboard files
         for nuboard_file, nuboard_path in zip(self.nuboard_files, self.nuboard_paths):
-            main_path = Path(nuboard_file.main_path)
+            main_path = Path(nuboard_file.simulation_main_path)
             main_path.mkdir(parents=True, exist_ok=True)
             file = Path(nuboard_path)
             nuboard_file.save_nuboard_file(file)
@@ -74,6 +75,9 @@ class TestNuBoardUtils(unittest.TestCase):
             self.assertIsInstance(nuboard_file, NuBoardFile)
 
     def tearDown(self) -> None:
-        """ Remove and clean up the tmp folder. """
-
+        """Remove and clean up the tmp folder."""
         self.tmp_dir.cleanup()
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -3,3 +3,5 @@ ego_lon_jerk_statistics:
   _convert_: 'all'
   name: 'ego_lon_jerk_statistics'
   category: 'Dynamics'
+
+  max_abs_lon_jerk: 4.13

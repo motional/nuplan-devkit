@@ -1,0 +1,6 @@
+ego_expert_l2_error_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_expert_l2_error.EgoExpertL2ErrorStatistics
+  _convert_: 'all'
+  name: 'ego_expert_L2_error'
+  category: 'Planning'
+  discount_factor: 1

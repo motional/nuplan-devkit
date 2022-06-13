@@ -1,36 +1,33 @@
-import os
-
-import hydra
 import pytest
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.planning.metrics.utils.testing_utils import setup_history
 
-CONFIG_PATH = os.path.join('..', '..', '..', '..', 'script/config/common/simulation_metric/common/')
-CONFIG_NAME = 'time_to_collision_statistics'
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.planning.metrics.evaluation_metrics.common.ego_at_fault_collisions import EgoAtFaultCollisionStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.time_to_collision import TimeToCollisionStatistics
+from nuplan.planning.metrics.utils.testing_utils import metric_statistic_test
 
 
 @nuplan_test(path='json/time_to_collision/time_to_collision.json')
 def test_time_to_collision(scene) -> None:  # type: ignore
     """
     Test predicted time to collision
-
     :param scene: the json scene
     """
+    ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
 
-    history = setup_history(scene)
+    ego_at_fault_collisions_metric = EgoAtFaultCollisionStatistics(
+        'ego_at_fault_collisions_statistics', 'Dynamics', ego_lane_change_metric, max_violation_threshold=0
+    )
 
-    # Metric
-    hydra.core.global_hydra.GlobalHydra.instance().clear()
-    hydra.initialize(config_path=CONFIG_PATH)
-    cfg = hydra.compose(config_name=CONFIG_NAME)
-    time_to_collision = hydra.utils.instantiate(cfg)['time_to_collision_statistics']
-
-    result = time_to_collision.compute(history)[0]
-    expected_times_to_collision = [float(t) for t in scene['expected']["times_to_collision"]]
-
-    for i, (actual_ttc, expected_ttc) in enumerate(zip(result.time_series.values, expected_times_to_collision)):
-        assert round(actual_ttc, 2) == expected_ttc, f"Wrong TTC for timestep {i}"
+    metric = TimeToCollisionStatistics(
+        'time_to_collision_statistics',
+        'Planning',
+        ego_lane_change_metric,
+        ego_at_fault_collisions_metric,
+        **scene['metric_parameters'],
+    )
+    metric_statistic_test(scene=scene, metric=metric)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(pytest.main([__file__], plugins=[NUPLAN_TEST_PLUGIN]))

@@ -1,38 +1,47 @@
-bokeh  # Used in the nuBoard dashboard
-boto3  # Used in s3_store.py to download data from S3.
+aiohttp==3.7.4.post0 # Never version is missing ray dashboard dependencies
+bokeh>=2.4.2  # Used in the nuBoard dashboard
+boto3==1.19.8  # Used in s3_store.py to download data from S3.
 cachetools  # Used widely
+casadi  # Used for optimization solving
+control  # Used for LQR controller synthesis
 coverage  # Used in computing code coverage
 descartes  # Used in map_explorer.py
+docker  # To run remote submissions
 Fiona  # Used in GpkgMapsDB.py
 geopandas  # Used to read maps
-hydra-core  # Used for configs
+grpcio  # Used for communication with submission container
+grpcio-tools  # Used for communication with submission container
+hydra-core==1.1.0rc1  # Used for configs
+joblib
 jupyter  # Used to show the notebook
 matplotlib  # Used for rendering
+mock
 numpy>=1.21.1  # Used widely, only from this version numpy.typing.NDArray is supported
-opencv_python  # Used widely
+opencv-python<=4.5.1.48  # Used widely
 pandas    # Used widely
 Pillow    # Used widely to render images
 pre-commit  # Used in pre-commit hooks
 psutil  # Used widely to get the number of CPUs
+pyarrow # For parquet
+pygeos
 pyinstrument    # Used widely as profiler
 pyquaternion>=0.9.5  # Used widely, avoid known bug with quaternion slerp
 pytest    # Used widely
 pytorch-lightning==1.3.8    # Used widely
 rasterio  # Used in GpkgMapsDB.py
 ray[default]  # Used widely
-requests  # Used in BlobStore clsases
-rtree  # Used in IDM agents
+requests  # Used in BlobStore classes
+rtree # Used in occupancy maps
 scipy  # Used widely
-setuptools  # Used in setup.py
+selenium # Used in bokeh export png
+setuptools==59.5.0  # Used in setup.py, pinned to not break pytorch
 Shapely  # Used widely
-SQLAlchemy<=1.3.19  # Newer version may break current database queries
+SQLAlchemy>=1.4.27  # older versions don't work with some table definitions
+sympy  # Use for symbolic algebra
 testbook  # Used in testing jupyter notebooks
 timm  # Used in model_raster
-torch==1.9.0+cu111; platform_system == "Linux" or platform_system == "Windows"  # Used widely
-torch==1.9.0; platform_system == "Darwin"  # Used widely
-torchvision==0.10.0+cu111; platform_system == "Linux" or platform_system == "Windows"  # Used widely
-torchvision==0.10.0; platform_system == "Darwin"  # Used widely
 tornado  # Used in nuboard.py
 tqdm  # Used widely
+typer # Used for cli
 ujson  # Used in serialiation_callback.py
 urllib3  # Used in s3_store.py

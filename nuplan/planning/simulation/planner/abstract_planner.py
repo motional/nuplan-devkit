@@ -1,59 +1,131 @@
-from abc import ABCMeta, abstractmethod
-from typing import Type
+import abc
+from abc import abstractmethod
+from dataclasses import dataclass
+from typing import List, Optional, Type, Union
 
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.observation.observation_type import Observation
-from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
-from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory
+from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 
 
-class AbstractPlanner(metaclass=ABCMeta):
+@dataclass(frozen=True)
+class PlannerInitialization:
+    """
+    This class represents required data to initialize a planner.
+    """
+
+    expert_goal_state: StateSE2  # The state which was achieved by expert driver in a scenario
+    route_roadblock_ids: List[str]  # Roadblock ids comprising goal route
+    mission_goal: StateSE2  # The mission goal which commonly is not achievable in a single scenario
+    map_api: AbstractMap  # The API towards maps.
+
+
+@dataclass(frozen=True)
+class PlannerInput:
+    """
+    Input to a planner for which a trajectory should be computed.
+    """
+
+    iteration: SimulationIteration  # Iteration and time in a simulation progress
+    history: SimulationHistoryBuffer  # Rolling buffer containing past observations and states.
+    traffic_light_data: Optional[List[TrafficLightStatusData]] = None  # The traffic light status data
+
+
+class AbstractPlanner(abc.ABC):
     """
     Interface for a generic ego vehicle planner.
     """
 
-    @abstractmethod
-    def initialize(self,
-                   expert_goal_state: StateSE2,
-                   mission_goal: StateSE2,
-                   map_name: str,
-                   map_api: AbstractMap) -> None:
-        """
-        Initialize planner
+    # Whether this planner can consume multiple scenarios at once during inference.
+    # If this is false, only one simulation scenario will be run at a time.
+    consume_batched_inputs: bool = False
 
-        :param expert_goal_state: desired state which was achieved by an expert within an scenario
-        :param mission_goal: mission goal far along desired long-term route, not achievable within scenario length
-        :param map_name: name of a map used for the scenario
-        :param map_api: abstract map api for accessing the maps
-        """
-        pass
+    # Whether the planner requires the scenario object to be passed at construction time.
+    # This can be set to true only for oracle planners and cannot be used for submissions.
+    requires_scenario: bool = False
 
     @abstractmethod
     def name(self) -> str:
         """
-        Name of a planner
-
-        :return string describing name of this planner
+        :return string describing name of this planner.
         """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
+    def initialize(self, initialization: List[PlannerInitialization]) -> None:
+        """
+        Initialize planner
+        :param initialization: List of initialization classes.
+            This is a list only on case consume_batched_inputs is True, otherwise it has a single entry in list
+            In this case the list represents batched simulations.
+        """
+        pass
+
+    @abc.abstractmethod
     def observation_type(self) -> Type[Observation]:
         """
-        Type of observation that is expected in compute_trajectory.
+        :return Type of observation that is expected in compute_trajectory.
         """
         pass
 
-    @abstractmethod
-    def compute_trajectory(self, iteration: SimulationIteration,
-                           history: SimulationHistoryBuffer) -> AbstractTrajectory:
+    @abc.abstractmethod
+    def compute_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
         """
         Computes the ego vehicle trajectory.
-        :param iteration: Current iteration of a simulation for which trajectory should be computed.
-        :param history: Past simulation states including the state at the current time step [t_-N, ..., t_-1, t_0]
-                        The buffer contains the past ego trajectory and past observations.
-        :return: Trajectory representing the desired ego's position in future.
+        :param current_input: List of planner inputs for where for each of them trajectory should be computed
+            In this case the list represents batched simulations. In case consume_batched_inputs is False
+            the list has only single element
+        :return: Trajectories representing the predicted ego's position in future for every input iteration
+            In case consume_batched_inputs is False, return only a single trajectory in a list.
         """
         pass
+
+    def compute_single_trajectory(self, current_input: PlannerInput) -> AbstractTrajectory:
+        """
+        Compute trajectory only for a single planner input
+        :param current_input: input to the planner
+        :return: Trajectories representing the predicted ego's position in future for every input iteration
+            In case consume_batched_inputs is False, return only a single trajectory in a list.
+        """
+        return self.compute_trajectory([current_input])[0]
+
+    def compute_trajectory_with_check(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+        """
+        Computes the ego vehicle trajectory, where we check that if planner can not consume batched inputs,
+            we require that the input list has exactly one element
+        :param current_input: List of planner inputs for where for each of them trajectory should be computed
+            In this case the list represents batched simulations. In case consume_batched_inputs is False
+            the list has only single element
+        :return: Trajectories representing the predicted ego's position in future for every input iteration
+            In case consume_batched_inputs is False, return only a single trajectory in a list.
+        """
+        self.validate_inputs(current_input)
+        return self.compute_trajectory(current_input)
+
+    def initialize_with_check(self, initialization: List[PlannerInitialization]) -> None:
+        """
+        Initialize planner where we check that if planner can not consume batched inputs, we require that the input
+            list has exactly one element
+        :param initialization: List of initialization classes.
+            This is a list only in case consume_batched_inputs is True, otherwise it has a single entry in list
+            In this case the list represents batched simulations.
+        """
+        self.validate_inputs(initialization)
+        return self.initialize(initialization)
+
+    def validate_inputs(self, data: Union[List[PlannerInput], List[PlannerInitialization]]) -> None:
+        """
+        Validate that the size of the input data correspond the the fact whether this planner can consume batched inputs
+            This function will raise in case length of data and consume_batched_inputs does not match.
+        :param data: input data.
+        """
+        if len(data) == 0:
+            raise RuntimeError("The inputs to the planner can not be an empty list!")
+        if not self.consume_batched_inputs and len(data) > 1:
+            raise RuntimeError(
+                f"Planner: {self.name()} can not consume batched inputs, but {len(data)} inputs was provided!"
+            )

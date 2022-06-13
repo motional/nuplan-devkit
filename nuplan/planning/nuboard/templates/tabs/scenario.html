@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <div class="tab-content" id="scenario">
+    <div class="scenario-search-section">
+        <div class="scenario-search-grid-item-text">
+          <b> Scenario Type: </b>
+        </div>
+        <div class="scenario-search-grid-item-widget margin-left-5">
+          {{ embed(roots.scenario_scalar_scenario_type_select) }}
+        </div>
+        <div class="scenario-search-grid-item-text margin-left-5">
+          <b> Log: </b>
+        </div>
+        <div class="scenario-search-grid-item-widget">
+          {{ embed(roots.scenario_scalar_log_name_select) }}
+        </div>
+    </div>
+      <div class="scenario-search-section">
+        <div class="scenario-search-grid-item-text">
+          <b> Scenario Name: </b>
+        </div>
+        <div class="scenario-search-grid-item-widget">
+         {{ embed(roots.scenario_scalar_scenario_name_select) }}
+        </div>
+    </div>
+    <div class="loading loading-lg" id="scenario-loading"></div>
+    <table class="scenario-plot-section" id="scenario-plot-section">
+          <tr>
+              <th class="section-table-title"> Simulation </th>
+          </tr>
+          <tr class="planner-search-row">
+              <td>{{ embed(roots.scenario_planner_checkbox_group) }}</td>
+          </tr>
+          <tr class="scenario-table-simulation-row">
+              <td>
+                  {{ embed(roots.simulation_tile_layout) }}
+              </td>
+          </tr>
+          <tr>
+              <th class="section-table-title">
+                  Time Series Metrics
+                  <svg class="scenario-table-timeseries-row-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                      <a href="#" onclick="toggleTimeSeriesMetrics()">
+                          <path id="scenario-table-timeseries-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+
+                          </path>
+                      </a>
+
+                  </svg>
+              </th>
+          </tr>
+          <tr class="scenario-table-timeseries-row">
+            <td>
+              {{ embed(roots.time_series_layout) }}
+            </td>
+          </tr>
+      </table>
+  </div>
+</html>

@@ -6,7 +6,7 @@ py_library(
     name = "abstract_scenario_builder",
     srcs = ["abstract_scenario_builder.py"],
     deps = [
-        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:abstract_map_factory",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/utils/multithreading:worker_pool",

@@ -1,21 +1,26 @@
 import unittest
 
 import torch
-from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 from torch.utils.data.dataloader import default_collate
+
+from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 
 
 class TestTrajectory(unittest.TestCase):
+    """Test trajectory target representation."""
 
     def setUp(self) -> None:
-        self.data = torch.Tensor([
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [2.0, 0.0, 0.0],
-            [3.0, 0.0, 0.0],
-            [4.0, 0.0, 0.0],
-            [5.0, 0.0, 0.0],
-        ])
+        """Set up test case."""
+        self.data = torch.Tensor(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [3.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [5.0, 0.0, 0.0],
+            ]
+        )
         self.batched_data = default_collate([self.data, self.data])
         self.batched_trajectory = Trajectory(data=self.batched_data)
 

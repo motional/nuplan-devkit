@@ -18,6 +18,7 @@ py_test(
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
+        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/training/preprocessing/features:raster_utils",
         "//nuplan/planning/utils/multithreading:worker_sequential",
     ],

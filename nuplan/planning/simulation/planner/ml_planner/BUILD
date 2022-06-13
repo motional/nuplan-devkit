@@ -11,11 +11,12 @@ py_library(
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/planner/ml_planner:model_loader",
         "//nuplan/planning/simulation/planner/ml_planner:transform_utils",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
-        "//nuplan/planning/simulation/trajectory:interpolated",
-        "//nuplan/planning/training/modeling:nn_model",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
     ],
@@ -27,6 +28,18 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/actor_state:transform_state",
+        "//nuplan/common/geometry:convert",
+    ],
+)
+
+py_library(
+    name = "model_loader",
+    srcs = ["model_loader.py"],
+    deps = [
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
     ],
 )

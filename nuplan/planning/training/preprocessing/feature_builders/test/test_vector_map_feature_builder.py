@@ -1,25 +1,25 @@
 import unittest
 
 import numpy as np
-from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder import NuPlanScenarioBuilder, _create_scenario
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping
-from nuplan.planning.training.preprocessing.feature_builders.vector_map_feature_builder import FeatureBuilderMetaData, \
-    VectorMapFeatureBuilder
+
+from nuplan.common.actor_state.state_representation import TimePoint
+from nuplan.planning.scenario_builder.nuplan_db.test.nuplan_scenario_test_utils import get_test_nuplan_scenario
+from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
+from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
+from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
+from nuplan.planning.training.preprocessing.feature_builders.vector_map_feature_builder import VectorMapFeatureBuilder
 from nuplan.planning.training.preprocessing.features.vector_map import VectorMap
 
 
 class TestVectorMapFeatureBuilder(unittest.TestCase):
+    """Test feature builder that constructs map features in vectorized format."""
 
     def setUp(self) -> None:
         """
         Initializes DB
         """
-        self.scenario_builder = NuPlanScenarioBuilder(version="nuplan_v0.1_mini", data_root="/data/sets/nuplan")
-        self.scenario = _create_scenario(self.scenario_builder._db,
-                                         ("unknown", self.scenario_builder._db.lidar_pc[10000].token),
-                                         ScenarioMapping({}),
-                                         get_pacifica_parameters())
+        # TODO: Check for red light data when db is available
+        self.scenario = get_test_nuplan_scenario()
 
     def test_vector_map_feature_builder(self) -> None:
         """
@@ -32,16 +32,42 @@ class TestVectorMapFeatureBuilder(unittest.TestCase):
         self.assertEqual(type(features), VectorMap)
 
         ego_state = self.scenario.initial_ego_state
-        detections = self.scenario.initial_detections
-        meta_data = FeatureBuilderMetaData(self.scenario.map_api, self.scenario.get_mission_goal(), ego_state)
-        features_sim = feature_builder.get_features_from_simulation([ego_state], [detections], meta_data)
+        detections = self.scenario.initial_tracked_objects
+        meta_data = PlannerInitialization(
+            map_api=self.scenario.map_api,
+            mission_goal=self.scenario.get_mission_goal(),
+            expert_goal_state=ego_state.rear_axle,
+            route_roadblock_ids=self.scenario.get_route_roadblock_ids(),
+        )
+
+        history = SimulationHistoryBuffer.initialize_from_list(
+            1, [ego_state], [detections], self.scenario.database_interval
+        )
+        iteration = SimulationIteration(TimePoint(0), 0)
+        tl_data = self.scenario.get_traffic_light_status_at_iteration(iteration.index)
+        current_input = PlannerInput(iteration=iteration, history=history, traffic_light_data=tl_data)
+
+        features_sim = feature_builder.get_features_from_simulation(
+            current_input=current_input, initialization=meta_data
+        )
 
         self.assertEqual(type(features_sim), VectorMap)
         self.assertTrue(np.allclose(features_sim.coords[0], features.coords[0], atol=1e-4))
 
-        for connections, connections_simulation in zip(features_sim.multi_scale_connections[0].values(),
-                                                       features.multi_scale_connections[0].values()):
+        for connections, connections_simulation in zip(
+            features_sim.multi_scale_connections[0].values(), features.multi_scale_connections[0].values()
+        ):
             self.assertTrue(np.allclose(connections, connections_simulation))
+
+        for lane in range(len(features_sim.lane_groupings[0])):
+            for lane_groupings, lane_groupings_simulation in zip(
+                features_sim.lane_groupings[0][lane], features.lane_groupings[0][lane]
+            ):
+                self.assertTrue(np.allclose(lane_groupings, lane_groupings_simulation))
+
+        self.assertTrue(np.allclose(features_sim.on_route_status[0], features.on_route_status[0], atol=1e-4))
+
+        self.assertTrue(np.allclose(features_sim.traffic_light_data[0], features.traffic_light_data[0]))
 
 
 if __name__ == '__main__':

@@ -1,14 +1,11 @@
 import fcntl
 import glob
-import gzip
 import json
 import logging
 import os
 import time
 import warnings
 from functools import lru_cache
-from mmap import PROT_READ, mmap
-from tempfile import TemporaryDirectory
 from typing import List, Sequence
 
 import fiona
@@ -16,7 +13,9 @@ import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import rasterio
+
 from nuplan.database.common.blob_store.creator import BlobStoreCreator
+from nuplan.database.common.blob_store.local_store import LocalStore
 from nuplan.database.maps_db import layer_dataset_ops
 from nuplan.database.maps_db.imapsdb import IMapsDB
 from nuplan.database.maps_db.layer import MapLayer
@@ -27,8 +26,28 @@ logger = logging.getLogger(__name__)
 # To silence NotGeoreferencedWarning
 warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
 
+# Available map locations
+MAP_LOCATIONS = {'sg-one-north', 'us-ma-boston', 'us-nv-las-vegas-strip', 'us-pa-pittsburgh-hazelwood'}
+
+# Dimensions of raster layers for each location
+MAP_DIMENSIONS = {
+    'sg-one-north': (21070, 28060),
+    'us-ma-boston': (20380, 28730),
+    'us-nv-las-vegas-strip': (69820, 30120),
+    'us-pa-pittsburgh-hazelwood': (22760, 23090),
+}
+
+# S3 download params.
+MAX_ATTEMPTS = 360
+SECONDS_BETWEEN_ATTEMPTS = 5
+
+# Dummy layer to use for downloading the map package for the first time
+DUMMY_LOAD_LAYER = 'lane_connectors'
+
 
 class GPKGMapsDBException(Exception):
+    """GPKGMapsDB Exception Class."""
+
     def __init__(self, message: str) -> None:
         """
         Constructor.
@@ -38,7 +57,7 @@ class GPKGMapsDBException(Exception):
 
 
 class GPKGMapsDB(IMapsDB):
-    """ GPKG MapsDB implementation. """
+    """GPKG MapsDB implementation."""
 
     def __init__(self, map_version: str, map_root: str) -> None:
         """
@@ -50,30 +69,42 @@ class GPKGMapsDB(IMapsDB):
         self._map_root = map_root
 
         self._blob_store = BlobStoreCreator.create_mapsdb(map_root=self._map_root)
-        version_file = self._blob_store.get(f"{self._map_version}.json")
+        version_file = self._blob_store.get(f"{self._map_version}.json")  # get blob and save to disk
         self._metadata = json.load(version_file)
-        # The dimensions of the maps are hard-coded for the 4 locations.
-        self.maps_dimension = {'sg-one-north': (21070, 28060),
-                               'us-ma-boston': (20380, 28730),
-                               'us-nv-las-vegas-strip': (69820, 30120),
-                               'us-pa-pittsburgh-hazelwood': (22760, 23090)}
 
-    # Metadata accessors ######################################################
+        # The dimensions of the maps are hard-coded for the 4 locations.
+        self._map_dimensions = MAP_DIMENSIONS
+
+        # S3 file download parameters.
+        self._max_attempts = MAX_ATTEMPTS
+        self._seconds_between_attempts = SECONDS_BETWEEN_ATTEMPTS
+
+        self._map_lock_dir = os.path.join(self._map_root, '.maplocks')
+        os.makedirs(self._map_lock_dir, exist_ok=True)
+
+        # Load map data to trigger automatic downloading.
+        self._load_map_data()
+
+    def _load_map_data(self) -> None:
+        """Load all available maps once to trigger automatic downloading if the maps are loaded for the first time."""
+        # TODO: Spawn multiple threads for parallel downloading
+        for location in MAP_LOCATIONS:
+            self.load_vector_layer(location, DUMMY_LOAD_LAYER)
 
     @property
     def version_names(self) -> List[str]:
         """
         Lists the map version names for all valid map locations, e.g.
-        ['9.17.1964', '9.4.1630', '9.15.1915', '9.17.1937']
+        ['9.17.1964', '9.12.1817', '9.15.1915', '9.17.1937']
         """
         return [self._metadata[location]["version"] for location in self.get_locations()]
 
     def get_map_version(self) -> str:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return self._map_version
 
     def get_version(self, location: str) -> str:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return str(self._metadata[location]["version"])
 
     def _get_shape(self, location: str, layer_name: str) -> List[int]:
@@ -83,10 +114,10 @@ class GPKGMapsDB(IMapsDB):
         :param layer_name: Name of layer, e.g. `drivable_area`. Use self.layer_names(location) for complete list.
         """
         if layer_name == 'intensity':
-            return self._metadata[location]["layers"][layer_name]["shape"]  # type: ignore
+            return self._metadata[location]["layers"]["Intensity"]["shape"]  # type: ignore
         else:
             # The dimensions of other map layers are using the hard-coded values.
-            return list(self.maps_dimension[location])
+            return list(self._map_dimensions[location])
 
     def _get_transform_matrix(self, location: str, layer_name: str) -> npt.NDArray[np.float64]:
         """
@@ -94,7 +125,6 @@ class GPKGMapsDB(IMapsDB):
         :param location: Name of map location, e.g. "sg-one-north`. See `self.get_locations()`.
         :param layer_name: Name of layer, e.g. `drivable_area`. Use self.layer_names(location) for complete list.
         """
-
         return np.array(self._metadata[location]["layers"][layer_name]["transform_matrix"])
 
     @staticmethod
@@ -113,8 +143,6 @@ class GPKGMapsDB(IMapsDB):
         """
         return layer_name in ["drivable_area"]
 
-    # public interface #######################################################
-
     def get_locations(self) -> Sequence[str]:
         """
         Gets the list of available location in this GPKGMapsDB version.
@@ -122,12 +150,14 @@ class GPKGMapsDB(IMapsDB):
         return self._metadata.keys()  # type: ignore
 
     def layer_names(self, location: str) -> Sequence[str]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         gpkg_layers = self._metadata[location]["layers"].keys()
         return list(filter(lambda x: '_distance_px' not in x, gpkg_layers))
 
     def load_layer(self, location: str, layer_name: str) -> MapLayer:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
+        if layer_name == "intensity":
+            layer_name = "Intensity"
 
         is_bin = self.is_binary(layer_name)
         can_dilate = self._can_dilate(layer_name)
@@ -137,31 +167,75 @@ class GPKGMapsDB(IMapsDB):
         # We assume that the map's pixel-per-meter ratio is the same in the x and y directions,
         # since the MapLayer class requires that.
         precision = 1 / transform_matrix[0, 0]
-        layer_meta = MapLayerMeta(name=layer_name,
-                                  md5_hash="not_used_for_gpkg_mapsdb",
-                                  can_dilate=can_dilate,
-                                  is_binary=is_bin,
-                                  precision=precision)
+        layer_meta = MapLayerMeta(
+            name=layer_name,
+            md5_hash="not_used_for_gpkg_mapsdb",
+            can_dilate=can_dilate,
+            is_binary=is_bin,
+            precision=precision,
+        )
 
         distance_matrix = None
-        # if can_dilate:
-        #     distance_matrix = self._get_distance_matrix(location, layer_name)
 
-        return MapLayer(data=layer_data,
-                        metadata=layer_meta,
-                        joint_distance=distance_matrix,
-                        transform_matrix=transform_matrix)
+        return MapLayer(
+            data=layer_data, metadata=layer_meta, joint_distance=distance_matrix, transform_matrix=transform_matrix
+        )
+
+    def _wait_for_expected_filesize(self, path_on_disk: str, location: str) -> None:
+        """
+        Waits until the file at `path_on_disk` is exactly `expected_size` bytes.
+        :param path_on_disk: Path of the file being downloaded.
+        :param location: Location to which the file belongs.
+        """
+        if isinstance(self._blob_store, LocalStore):
+            return
+        s3_bucket = self._blob_store._remote._bucket
+        s3_key = os.path.join(self._blob_store._remote._prefix, self._get_gpkg_file_path(location))
+        map_file_size = self._blob_store._remote._client.head_object(Bucket=s3_bucket, Key=s3_key).get(
+            'ContentLength', 0
+        )
+
+        # Wait if file not downloaded.
+        for _ in range(self._max_attempts):
+            if os.path.getsize(path_on_disk) == map_file_size:
+                break
+
+            time.sleep(self._seconds_between_attempts)
+
+        if os.path.getsize(path_on_disk) != map_file_size:
+            raise GPKGMapsDBException(
+                f"Waited {self._max_attempts * self._seconds_between_attempts} seconds for "
+                f"file {path_on_disk} to reach {map_file_size}, "
+                f"but size is now {os.path.getsize(path_on_disk)}"
+            )
+
+    def _safe_save_layer(self, layer_lock_file: str, file_path: str) -> None:
+        """
+        Safely download the file.
+        :param layer_lock_file: Path to lock file.
+        :param file_path: Path of the file being downloaded.
+        """
+        fd = open(layer_lock_file, 'w')
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            _ = self._blob_store.save_to_disk(file_path, check_for_compressed=True)
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            fd.close()
 
     @lru_cache(maxsize=None)
     def load_vector_layer(self, location: str, layer_name: str) -> gpd.geodataframe:
-        """ Inherited, see superclass. """
-
+        """Inherited, see superclass."""
         # TODO: Remove temporary workaround once map_version is cleaned
         location = location.replace('.gpkg', '')
 
         rel_path = self._get_gpkg_file_path(location)
         path_on_disk = os.path.join(self._map_root, rel_path)
-        self._blob_store.save_to_disk(rel_path)
+
+        if not os.path.exists(path_on_disk):
+            layer_lock_file = f'{self._map_lock_dir}/{location}_{layer_name}.lock'
+            self._safe_save_layer(layer_lock_file, rel_path)
+        self._wait_for_expected_filesize(path_on_disk, location)
 
         with warnings.catch_warnings():
             # Suppress the warnings from the GPKG operations below so that they don't spam the training logs.
@@ -182,8 +256,7 @@ class GPKGMapsDB(IMapsDB):
         return gdf_in_utm_coords
 
     def vector_layer_names(self, location: str) -> Sequence[str]:
-        """ Inherited, see superclass. """
-
+        """Inherited, see superclass."""
         # TODO: Remove temporary workaround once map_version is cleaned
         location = location.replace('.gpkg', '')
 
@@ -194,16 +267,13 @@ class GPKGMapsDB(IMapsDB):
         return fiona.listlayers(path_on_disk)  # type: ignore
 
     def purge_cache(self) -> None:
-        """ Inherited, see superclass. """
-
+        """Inherited, see superclass."""
         logger.debug("Purging cache...")
         for f in glob.glob(os.path.join(self._map_root, "gpkg", "*")):
             os.remove(f)
         logger.debug("Done purging cache.")
 
-    # Rasterio stuff ###########################################################
-
-    def _get_map_dataset(self, location: str):  # type: ignore
+    def _get_map_dataset(self, location: str) -> rasterio.DatasetReader:
         """
         Returns a *context manager* for the map dataset (includes all the layers).
         Extract the result in a "with ... as ...:" line.
@@ -218,7 +288,7 @@ class GPKGMapsDB(IMapsDB):
 
         return rasterio.open(path_on_disk)
 
-    def get_layer_dataset(self, location: str, layer_name: str):  # type: ignore
+    def get_layer_dataset(self, location: str, layer_name: str) -> rasterio.DatasetReader:
         """
         Returns a *context manager* for the layer dataset.
         Extract the result in a "with ... as ...:" line.
@@ -227,12 +297,13 @@ class GPKGMapsDB(IMapsDB):
         :return: A *context manager* for the layer dataset.
         """
         with self._get_map_dataset(location) as map_dataset:
-            layer_dataset_path = next((path for path in map_dataset.subdatasets
-                                       if path.endswith(":" + layer_name)),
-                                      None)
+            layer_dataset_path = next(
+                (path for path in map_dataset.subdatasets if path.endswith(":" + layer_name)), None
+            )
             if layer_dataset_path is None:
-                raise ValueError(f"Layer '{layer_name}' not found in map '{location}', "
-                                 f"version '{self.get_version(location)}'")
+                raise ValueError(
+                    f"Layer '{layer_name}' not found in map '{location}', " f"version '{self.get_version(location)}'"
+                )
 
             return rasterio.open(layer_dataset_path)
 
@@ -249,8 +320,6 @@ class GPKGMapsDB(IMapsDB):
         # The layer name is everything after the last colon.
 
         return [name.split(":")[-1] for name in fully_qualified_layer_names]
-
-    # Saving and loading. ###################################
 
     def get_gpkg_path_and_store_on_disk(self, location: str) -> str:
         """
@@ -305,54 +374,18 @@ class GPKGMapsDB(IMapsDB):
         """
         version = self.get_version(location)
 
-        return f"{location}/{version}/{layer_name}.npy"
-
-    def _get_distance_matrix_npy_path(self, location: str, layer_name: str) -> str:
-        """
-        Gets path to the distance file for the layer.
-        :param location: Location for which layer needs to be loaded.
-        :param layer_name: Which layer to load.
-        :return: Path to the numpy file.
-        """
-        version = self.get_version(location)
-
-        return f"{location}/{version}/{layer_name}_dist.npy"
+        return f"{location}/{version}/{layer_name}.npy.npz"
 
     @staticmethod
-    def _wait_for_expected_filesize(path_on_disk: str, expected_size: int) -> None:
-        """
-        Waits until the file at `path_on_disk` is exactly `expected_size` bytes.
-        We wait 15 minutes before throwing an exception in case the download is just slow.
-        :param path_on_disk: Path on disk to a file.
-        :param expected_size: Expected size in bytes.
-        """
-        max_attempts = 360
-        seconds_between_attempts = 5
-        attempts_so_far = 0
-        # Wait if file not downloaded.
-        while os.path.getsize(path_on_disk) != expected_size and attempts_so_far < max_attempts:
-            time.sleep(seconds_between_attempts)
-            attempts_so_far += 1
-
-        if os.path.getsize(path_on_disk) != expected_size:
-            raise GPKGMapsDBException(f"Waited {max_attempts * seconds_between_attempts} seconds for "
-                                      f"file {path_on_disk} to reach {expected_size}, "
-                                      f"but size is now {os.path.getsize(path_on_disk)}")
-
-    @staticmethod
-    def _get_np_array(path_on_disk: str, shape: List[int], dtype: np.dtype) -> np.ndarray:  # type: ignore
+    def _get_np_array(path_on_disk: str) -> np.ndarray:  # type: ignore
         """
         Gets numpy array from file.
         :param path_on_disk: Path to numpy file.
-        :param shape: Shape of layer.
-        :param dtype: Numpy Dtype to use for loading numpy file.
         :return: Numpy array containing the layer.
         """
-        with open(path_on_disk, "rb") as fp:
-            memory_map = mmap(fp.fileno(), 0, prot=PROT_READ)
-        np_data = np.ndarray(shape, dtype=dtype, buffer=memory_map)  # type: ignore
+        np_data = np.load(path_on_disk)
 
-        return np_data
+        return np_data['data']  # type: ignore
 
     def _get_expected_file_size(self, path: str, shape: List[int]) -> int:
         """
@@ -365,26 +398,6 @@ class GPKGMapsDB(IMapsDB):
             return shape[0] * shape[1] * 4  # float32 values take 4 bytes per pixel.
         return shape[0] * shape[1]
 
-    def _safe_save_layer(self, location: str, layer_name: str, npy_file_path: str) -> None:
-        """
-        The safe way to save a map layer.
-        :param location: Map location name.
-        :param layer_name: Map layer name.
-        :param npy_file_path: Path to the numpy file.
-        """
-
-        # Create a lock file
-        layer_lock_file = os.path.join(self._map_root, f"{location}_{layer_name}.lock")
-        fd = open(layer_lock_file, 'w')
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
-            _ = self._blob_store.save_to_disk(npy_file_path, check_for_compressed=True)
-        finally:
-            # Delete and release the lock
-            os.unlink(layer_lock_file)
-            fcntl.flock(fd, fcntl.LOCK_UN)
-            fd.close()
-
     def _get_layer_matrix(self, location: str, layer_name: str) -> npt.NDArray[np.uint8]:
         """
         Returns the map layer for `location` and `layer_name` as a numpy array.
@@ -392,60 +405,13 @@ class GPKGMapsDB(IMapsDB):
         :param layer_name: Name of layer, e.g. `drivable_area`. Use self.layer_names(location) for complete list.
         :return: Numpy representation of layer.
         """
-
         rel_path = self._get_layer_matrix_npy_path(location, layer_name)
         path_on_disk = os.path.join(self._map_root, rel_path)
-        shape = self._get_shape(location, layer_name)
 
-        if os.getenv('NUPLAN_DATA_STORE', 'local') != "local" and not os.path.exists(path_on_disk):
-            self._safe_save_layer(location=location, layer_name=layer_name, npy_file_path=rel_path)
-            expected_file_size = self._get_expected_file_size(rel_path, shape)
-            self._wait_for_expected_filesize(path_on_disk, expected_file_size)
+        if not os.path.exists(path_on_disk):
+            self._save_layer_matrix(location=location, layer_name=layer_name)
 
-        return self._get_np_array(path_on_disk, shape, dtype=np.uint8)  # type: ignore
-
-    def _get_distance_matrix(self, location: str, layer_name: str) -> npt.NDArray[np.float32]:
-        """
-        Returns the distance matrix for `location` and `layer_name` as a numpy array.
-        Downloads the data if not already present on disk.
-        :param location: Name of map location, e.g. "sg-one-north`. See `self.get_locations()`.
-        :param layer_name: Name of layer, e.g. `drivable_area`. Use self.layer_names(location) for complete list.
-        :return: Numpy representation of distance matrix.
-        """
-        rel_path = self._get_distance_matrix_npy_path(location, layer_name)
-        path_on_disk = os.path.join(self._map_root, rel_path)
-        shape = self._get_shape(location, layer_name)
-
-        if os.getenv('NUPLAN_DATA_STORE', 'local') != "local" and not os.path.exists(path_on_disk):
-            self._safe_save_layer(layer_name=layer_name, location=location, npy_file_path=rel_path)
-            expected_file_size = self._get_expected_file_size(rel_path, shape)
-            self._wait_for_expected_filesize(path_on_disk, expected_file_size)
-
-        return self._get_np_array(path_on_disk, shape, dtype=np.float32)  # type: ignore
-
-    @staticmethod
-    def _save_to_memmap_file(temp_file_name: str, np_arr: np.ndarray) -> None:  # type: ignore
-        """
-        Creates a memory-map to an array and stores in a binary file on disk.
-        :param temp_file_name: The temporary file name.
-        :param np_arr: The numpy array to be stored.
-        """
-
-        fp = np.memmap(temp_file_name, dtype=np_arr.dtype, mode='w+', shape=np_arr.shape)  # type: ignore
-        fp[:] = np_arr[:]
-        fp.flush()
-
-    @staticmethod
-    def _create_gzip_file(temp_file_name: str, gzip_file_name: str) -> None:
-        """
-        Stores the data in a gzip-compressed binary file.
-        :param temp_file_name: The original temporary file name.
-        :param gzip_file_name: The file name for gzip file.
-        """
-
-        with open(temp_file_name, 'rb') as orig_file:
-            with gzip.open(gzip_file_name, 'wb') as zipped_file:
-                zipped_file.writelines(orig_file)
+        return self._get_np_array(path_on_disk)
 
     def _save_layer_matrix(self, location: str, layer_name: str) -> None:
         """
@@ -464,15 +430,9 @@ class GPKGMapsDB(IMapsDB):
             precision = 1 / transform_matrix[0, 0]
 
             layer_data = np.negative(layer_data / precision).astype('float32')
-            layer_name = layer_name.replace('_distance_px', '_dist')
 
-        with TemporaryDirectory() as tmp_dir:
-            temp_memmap_file = os.path.join(tmp_dir, f"{layer_name}.npy")
-            self._save_to_memmap_file(temp_memmap_file, layer_data)
-
-            gzip_file = os.path.join(self._map_root,
-                                     f"{location}/{self.get_version(location)}/{layer_name}.npy.gzip")
-            self._create_gzip_file(temp_memmap_file, gzip_file)
+        npy_file_path = os.path.join(self._map_root, f"{location}/{self.get_version(location)}/{layer_name}.npy")
+        np.savez_compressed(npy_file_path, data=layer_data)
 
     def _save_all_layers(self, location: str) -> None:
         """

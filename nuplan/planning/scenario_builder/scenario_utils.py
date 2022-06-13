@@ -13,7 +13,8 @@ def sample_indices_with_time_horizon(num_samples: int, time_horizon: float, time
     if time_horizon <= 0 or time_interval <= 0 or time_horizon < time_interval:
         raise ValueError(
             f'Time horizon {time_horizon} must be smaller than target time interval {time_interval}'
-            'and both must be positive')
+            'and both must be positive'
+        )
 
     # Compute step size and number of intervals to sample from
     num_intervals = int(time_horizon / time_interval) + 1

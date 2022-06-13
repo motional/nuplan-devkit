@@ -6,13 +6,15 @@ from nuplan.database.utils.label.utils import parse_labelmap_dataclass
 
 
 class TestParseLabelmap(unittest.TestCase):
+    """Test Parsing LabMap."""
+
     def setUp(self) -> None:
+        """Setup function."""
         self.label1 = Label('label1', (1, 1, 1, 1))
         self.label2 = Label('label2', (2, 2, 2, 2))
 
     def test_empty(self) -> None:
-        """ Tests empty label map case. """
-
+        """Tests empty label map case."""
         id2name, id2color = parse_labelmap_dataclass({})
 
         # Check it returns ordered dicts.
@@ -24,7 +26,7 @@ class TestParseLabelmap(unittest.TestCase):
         self.assertEqual(len(id2color), 0)
 
     def test_one(self) -> None:
-        """ Tests one label case. """
+        """Tests one label case."""
         num = 1
         mapping = {num: self.label1}
         id2name, id2color = parse_labelmap_dataclass(mapping)
@@ -34,7 +36,7 @@ class TestParseLabelmap(unittest.TestCase):
         self.assertEqual(id2color[num], self.label1.color)
 
     def test_multiple(self) -> None:
-        """ Tests multiple labels case. """
+        """Tests multiple labels case."""
         num1, num2 = 1, 2
         mapping = {num1: self.label1, num2: self.label2}
         id2name, id2color = parse_labelmap_dataclass(mapping)

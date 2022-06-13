@@ -1,17 +1,26 @@
-from typing import Any, Callable, Dict, Type, cast
+from typing import Any, Callable, Dict, Type, Union, cast
 
-from hydra._internal.instantiate._instantiate2 import _resolve_target
+from hydra._internal.utils import _locate
 from omegaconf import DictConfig
 
 
-def is_target_type(cfg: DictConfig, target_type: Callable[..., Any]) -> bool:
+def is_TorchModuleWrapper_config(cfg: DictConfig) -> bool:
     """
-    Check whether desired constructed data type is of type
+    Check whether the config is meant for a TorchModuleWrapper
     :param cfg: config
-    :param target_type: type to check against
-    :return: True if cfg._target_ desired to construct is_type, False otherwise
+    :return: True if model_config and checkpoint_path is in the cfg, False otherwise
     """
-    return _resolve_target(cfg._target_) == target_type  # type: ignore
+    return "model_config" in cfg and "checkpoint_path" in cfg
+
+
+def is_target_type(cfg: DictConfig, target_type: Union[Type[Any], Callable[..., Any]]) -> bool:
+    """
+    Check whether the config's resolved type matches the target type or callable.
+    :param cfg: config
+    :param target_type: Type or callable to check against.
+    :return: Whether cfg._target_ matches the target_type.
+    """
+    return bool(_locate(cfg._target_) == target_type)
 
 
 def validate_type(instantiated_class: Any, desired_type: Type[Any]) -> None:
@@ -20,8 +29,9 @@ def validate_type(instantiated_class: Any, desired_type: Type[Any]) -> None:
     :param instantiated_class: class that was created
     :param desired_type: type that the created class should have
     """
-    assert isinstance(instantiated_class,
-                      desired_type), f"Class to be of type {desired_type}, but is {type(instantiated_class)}!"
+    assert isinstance(
+        instantiated_class, desired_type
+    ), f"Class to be of type {desired_type}, but is {type(instantiated_class)}!"
 
 
 def are_the_same_type(lhs: Any, rhs: Any) -> None:
@@ -56,7 +66,8 @@ def find_builder_in_config(cfg: DictConfig, desired_type: Type[Any]) -> DictConf
     :return: found config
     @raise ValueError if the config cannot be found for the builder
     """
-    for key, cfg_builder in cfg.items():
+    for cfg_builder in cfg.values():
         if is_target_type(cfg_builder, desired_type):
             return cast(DictConfig, cfg_builder)
+
     raise ValueError(f"Config does not exist for builder type: {desired_type}!")

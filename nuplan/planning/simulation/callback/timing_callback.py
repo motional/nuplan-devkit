@@ -3,17 +3,23 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
+
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
-from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory
-from torch.utils.tensorboard import SummaryWriter
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 
 
 class TimingCallback(AbstractCallback):
+    """Callback to log timing information to Tensorboard as the simulation runs."""
 
     def __init__(self, writer: SummaryWriter):
+        """
+        Constructor for TimingCallback.
+        :param writer: handler for writing to tensorboard.
+        """
         # Tensorboard
         self._writer = writer
 
@@ -33,21 +39,21 @@ class TimingCallback(AbstractCallback):
         self._tensorboard_global_step = 0
 
     def on_planner_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         self._planner_start = self._get_time()
 
     def on_planner_end(self, setup: SimulationSetup, planner: AbstractPlanner, trajectory: AbstractTrajectory) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         assert self._planner_start, "Start time has to be set: on_planner_end!"
         self._planner_step_duration.append(self._get_time() - self._planner_start)
 
     def on_simulation_start(self, setup: SimulationSetup) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         self._scenarios_captured[setup.scenario.token] = None
         self._simulation_start = self._get_time()
 
     def on_simulation_end(self, setup: SimulationSetup, planner: AbstractPlanner, history: SimulationHistory) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         assert self._simulation_start, "Start time has to be set: on_simulation_end!"
         elapsed_time = self._get_time() - self._simulation_start
 
@@ -56,7 +62,7 @@ class TimingCallback(AbstractCallback):
             "mean_step_time": np.mean(self._step_duration),
             "max_step_time": np.max(self._step_duration),
             "max_planner_step_time": np.max(self._planner_step_duration),
-            "mean_planner_step_time": np.mean(self._planner_step_duration)
+            "mean_planner_step_time": np.mean(self._planner_step_duration),
         }
 
         # Publish timings
@@ -76,11 +82,11 @@ class TimingCallback(AbstractCallback):
         self._planner_step_duration = []
 
     def on_step_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         self._step_start = self._get_time()
 
     def on_step_end(self, setup: SimulationSetup, planner: AbstractPlanner, sample: SimulationHistorySample) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         assert self._step_start, "Start time has to be set: on_step_end!"
         elapsed_time = self._get_time() - self._step_start
         self._step_duration.append(elapsed_time)

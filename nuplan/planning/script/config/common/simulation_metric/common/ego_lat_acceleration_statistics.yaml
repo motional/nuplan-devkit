@@ -3,3 +3,5 @@ ego_lat_acceleration_statistics:
   _convert_: 'all'
   name: 'ego_lat_acceleration_statistics'
   category: 'Dynamics'
+
+  max_abs_lat_accel: 4.89

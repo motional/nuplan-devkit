@@ -7,9 +7,25 @@ py_library(
     srcs = ["__init__.py"],
 )
 
+py_library(
+    name = "nuplan_db_test_utils",
+    srcs = ["nuplan_db_test_utils.py"],
+    deps = [
+        "//nuplan/database/maps_db:gpkg_mapsdb",
+        "//nuplan/database/maps_db:imapsdb",
+        "//nuplan/database/nuplan_db:lidar",
+        "//nuplan/database/nuplan_db:models",
+        "//nuplan/database/nuplan_db:nuplandb",
+        "//nuplan/database/nuplan_db:nuplandb_wrapper",
+    ],
+)
+
 py_test(
     name = "test_nuplan",
     size = "small",
     srcs = ["test_nuplan.py"],
-    deps = ["//nuplan/database/nuplan_db:nuplandb"],
+    deps = [
+        "//nuplan/database/nuplan_db:nuplandb",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
 )

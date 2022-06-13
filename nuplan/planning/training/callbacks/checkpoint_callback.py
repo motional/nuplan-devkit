@@ -5,14 +5,18 @@ import pytorch_lightning as pl
 
 
 class ModelCheckpointAtEpochEnd(pl.callbacks.ModelCheckpoint):
-    def __init__(self,
-                 save_top_k: int = -1,
-                 save_last: bool = False,
-                 dirpath: Optional[str] = None,
-                 monitor: Optional[str] = None,
-                 mode: str = 'max'):
+    """Customized callback for saving Lightning checkpoint for every epoch."""
+
+    def __init__(
+        self,
+        save_top_k: int = -1,
+        save_last: bool = False,
+        dirpath: Optional[str] = None,
+        monitor: Optional[str] = None,
+        mode: str = 'max',
+    ):
         """
-        Customized callback for saving Lightning checkpoint for every epoch.
+        Initialize the callback
         :param save_top_k: Choose how many best checkpoints we want to save:
             save_top_k == 0 means no models are saved.
             save_top_k == -1 means all models are saved.
@@ -29,15 +33,18 @@ class ModelCheckpointAtEpochEnd(pl.callbacks.ModelCheckpoint):
         :param trainer: Pytorch lightning trainer instance.
         :param pl_module: LightningModule.
         """
+        checkpoint_dir = Path(trainer.checkpoint_callback.dirpath).parent / 'checkpoints'
         checkpoint_name = f'epoch={trainer.current_epoch}.ckpt'
-        trainer.save_checkpoint(str(Path(trainer.checkpoint_callback.dirpath).parent / 'checkpoints' / checkpoint_name))
+        checkpoint_path = checkpoint_dir / checkpoint_name
+        trainer.save_checkpoint(str(checkpoint_path))
 
 
 class EvaluationResumeCallback(pl.Callback):
-    """ Resumes evaluation at the specified epoch number. """
+    """Resumes evaluation at the specified epoch number."""
 
     def __init__(self, epoch_to_resume: int):
         """
+        Initialize the callback.
         :param epoch_to_resume: The epoch count of previous evaluation.
         """
         self.epoch_to_resume = epoch_to_resume
@@ -53,8 +60,8 @@ class EvaluationResumeCallback(pl.Callback):
         # Inject evaluation epoch to trainer and start evaluation logging
         if self._run_eval:
             if trainer.current_epoch == 0:
-                # Restore training states from the checkpoint. trainer.validate() doesn't load the checkpoint when a
-                # model is provided.
+                # Restore training states from the checkpoint.
+                # trainer.validate() doesn't load the checkpoint when a model is provided.
                 trainer.checkpoint_connector.restore_weights()
             trainer.current_epoch = self.epoch_to_resume
 
@@ -73,7 +80,6 @@ class EvaluationResumeCallback(pl.Callback):
         Called when starting testing.
         :param trainer: The current pytorch_lightning.trainer.Trainer instance.
         :param pl_module: The current pytorch_lightning.core.lightning.LightningModule instance.
-        :return: None.
         """
         self.on_validation_start(trainer, pl_module)
 
@@ -82,6 +88,5 @@ class EvaluationResumeCallback(pl.Callback):
         Called when finishing testing.
         :param trainer: The current pytorch_lightning.trainer.Trainer instance.
         :param pl_module: The current pytorch_lightning.core.lightning.LightningModule instance.
-        :return: None.
         """
         self.on_validation_end(trainer, pl_module)

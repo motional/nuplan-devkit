@@ -1,6 +1,7 @@
 from typing import List, cast
 
 import torch
+
 from nuplan.planning.training.modeling.objectives.abstract_objective import AbstractObjective
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
@@ -30,7 +31,7 @@ class ImitationObjective(AbstractObjective):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return ["trajectory"]
 
     def compute(self, predictions: FeaturesType, targets: TargetsType) -> torch.Tensor:
@@ -46,5 +47,6 @@ class ImitationObjective(AbstractObjective):
         targets_trajectory = cast(Trajectory, targets["trajectory"])
 
         return self._weight * (
-            self._fn_xy(predicted_trajectory.xy, targets_trajectory.xy) +
-            self._fn_heading(predicted_trajectory.heading, targets_trajectory.heading))
+            self._fn_xy(predicted_trajectory.xy, targets_trajectory.xy)
+            + self._fn_heading(predicted_trajectory.heading, targets_trajectory.heading)
+        )

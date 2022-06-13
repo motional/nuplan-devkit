@@ -1,0 +1,120 @@
+{
+    "camera": {
+        "bearing": 0.5345000000000002,
+        "lookat": [
+            664751.662199684,
+            3999461.989363281,
+            -2.0085689660475055
+        ],
+        "pitch": 1.6,
+        "scale": 821598.6255879829
+    },
+    "ego": {
+        "acceleration": [
+            0.0,
+            0.0
+        ],
+        "pose": [
+            664751.662199684,
+            3999461.989363281,
+            -2.0085689660475055
+        ],
+        "velocity": [
+            1.0,
+            0.0
+        ],
+        "time_us": 1000000
+    },
+    "ego_future_states": [
+        {
+            "acceleration": [
+                0.0,
+                0.0
+            ],
+            "pose": [
+                664753.5883774936,
+                3999463.2951032147,
+                -2.0894044289663976
+            ],
+            "velocity": [
+                1.0,
+                0.0
+            ],
+            "time_us": 2000000
+        },
+        {
+            "acceleration": [
+                0.0,
+                0.0
+            ],
+            "pose": [
+                664755.5883774936,
+                3999465.2951032147,
+                -2.0894044289663976
+            ],
+            "velocity": [
+                1.0,
+                0.0
+            ],
+            "time_us": 3000000
+        },
+        {
+            "acceleration": [
+                0.0,
+                0.0
+            ],
+            "pose": [
+                664757.5883774936,
+                3999467.2951032147,
+                -2.3894044289663976
+            ],
+            "velocity": [
+                1.0,
+                0.0
+            ],
+            "time_us": 4000000
+        }
+    ],
+    "expected": {
+        "statistics": {
+            "MAX": 2.0,
+            "COUNT": 1
+        },
+        "time_series": {}
+    },
+    "goal": {
+        "pose": []
+    },
+    "map": {
+        "area": "us-nv-las-vegas-strip"
+    },
+    "meta": {
+        "version": "3.0.0"
+    },
+    "world": {
+        "bicycles": [],
+        "genericobjects": [],
+        "pedestrians": [],
+        "vehicles": []
+    },
+    "world_future_states": [
+        {
+            "bicycles": [],
+            "genericobjects": [],
+            "pedestrians": [],
+            "vehicles": []
+        },
+        {
+            "bicycles": [],
+            "genericobjects": [],
+            "pedestrians": [],
+            "vehicles": []
+        },
+        {
+            "bicycles": [],
+            "genericobjects": [],
+            "pedestrians": [],
+            "vehicles": []
+        }
+    ]
+}

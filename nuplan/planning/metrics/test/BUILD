@@ -14,6 +14,7 @@ py_test(
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/metrics:metric_result",
@@ -23,7 +24,7 @@ py_test(
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory:interpolated",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )

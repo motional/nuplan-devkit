@@ -1,120 +1,45 @@
-import os
-import unittest
+from typing import Any, Dict
 
-import hydra
-from nuplan.common.actor_state.ego_state import EgoState
-from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.database.utils.boxes.box3d import Box3D
-from nuplan.planning.metrics.metric_result import MetricStatisticsType
-from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
-from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
-from nuplan.planning.simulation.observation.observation_type import Detections
-from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
-from nuplan.planning.simulation.trajectory.interpolated import InterpolatedTrajectory
-from pyquaternion import Quaternion
+import pytest
 
-CONFIG_PATH = os.path.join('..', '..', '..', '..', 'script/config/common/simulation_metric/common/')
-CONFIG_NAME = 'ego_is_comfortable_statistics'
+from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.planning.metrics.evaluation_metrics.common.ego_is_comfortable import EgoIsComfortableStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_jerk import EgoJerkStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_lat_acceleration import EgoLatAccelerationStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_lon_acceleration import EgoLonAccelerationStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_lon_jerk import EgoLonJerkStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_yaw_acceleration import EgoYawAccelerationStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_yaw_rate import EgoYawRateStatistics
+from nuplan.planning.metrics.utils.testing_utils import metric_statistic_test
 
 
-class TestEgoIsComfortable(unittest.TestCase):
-    """ Run ego is comfortable unit tests. """
+@nuplan_test(path='json/ego_is_comfortable/ego_is_comfortable.json')
+def test_ego_is_comfortable(scene: Dict[str, Any]) -> None:
+    """
+    Tests ego is comfortable by checking if it is the expected comfortable.
+    :param scene: the json scene
+    """
+    ego_jerk_metric = EgoJerkStatistics('ego_jerk', 'Dynamics', max_abs_mag_jerk=8.37)
+    ego_lat_accel_metric = EgoLatAccelerationStatistics('ego_lat_accel', 'Dynamics', max_abs_lat_accel=4.89)
+    ego_lon_accel_metric = EgoLonAccelerationStatistics(
+        'ego_lon_accel', 'Dynamics', min_lon_accel=-4.05, max_lon_accel=2.40
+    )
+    ego_lon_jerk_metric = EgoLonJerkStatistics('ego_lon_jerk', 'dynamic', max_abs_lon_jerk=4.13)
+    ego_yaw_accel_metric = EgoYawAccelerationStatistics('ego_yaw_accel', 'dynamic', max_abs_yaw_accel=1.93)
+    ego_yaw_rate_metric = EgoYawRateStatistics('ego_yaw_rate', 'dynamic', max_abs_yaw_rate=0.95)
+    metric = EgoIsComfortableStatistics(
+        name='ego_is_comfortable_statistics',
+        category='Dynamics',
+        ego_jerk_metric=ego_jerk_metric,
+        ego_lat_acceleration_metric=ego_lat_accel_metric,
+        ego_lon_acceleration_metric=ego_lon_accel_metric,
+        ego_lon_jerk_metric=ego_lon_jerk_metric,
+        ego_yaw_acceleration_metric=ego_yaw_accel_metric,
+        ego_yaw_rate_metric=ego_yaw_rate_metric,
+    )
 
-    def setUp(self) -> None:
-
-        self.metric_name = "ego_is_comfortable_statistics"
-
-        # Hydra
-        hydra.core.global_hydra.GlobalHydra.instance().clear()
-        hydra.initialize(config_path=CONFIG_PATH)
-        cfg = hydra.compose(config_name=CONFIG_NAME)
-
-        self.ego_abs_jerk_magnitude = hydra.utils.instantiate(cfg)['ego_is_comfortable_statistics']
-        self.history = self.setup_history()
-
-    def setup_history(self) -> SimulationHistory:
-        """ Set up a history. """
-
-        # Mock Data
-        scenario = MockAbstractScenario()
-        history = SimulationHistory(scenario.map_api, scenario.get_mission_goal())
-
-        # Dummy 3d boxes.
-        boxes = [Box3D(center=(664436.5810496865, 3997678.37696938, 0),
-                       size=(1.8634377032974847, 4.555735325993202, 1),
-                       orientation=Quaternion(axis=(0, 0, 1), angle=-1.50403628994573))]
-        ego_states = [
-            EgoState.from_raw_params(StateSE2(664430.3396621217, 3997673.373507501, -1.534863576938717),
-                                     velocity_2d=StateVector2D(x=0.0, y=0.0),
-                                     acceleration_2d=StateVector2D(x=0.0, y=0.0),
-                                     tire_steering_angle=0.0,
-                                     time_point=TimePoint(1000000)),
-            EgoState.from_raw_params(StateSE2(664431.1930625531, 3997675.37350750, -1.534863576938717),
-                                     velocity_2d=StateVector2D(x=1.0, y=0.0),
-                                     acceleration_2d=StateVector2D(x=0.5, y=0.0),
-                                     tire_steering_angle=0.0,
-                                     time_point=TimePoint(2000000)),
-            EgoState.from_raw_params(StateSE2(664432.1930625531, 3997678.37350750, -1.534863576938717),
-                                     velocity_2d=StateVector2D(x=0.5, y=0.0),
-                                     acceleration_2d=StateVector2D(x=0.0, y=0.0),
-                                     tire_steering_angle=0.0,
-                                     time_point=TimePoint(3000000)),
-            EgoState.from_raw_params(StateSE2(664434.1930625531, 3997679.37350750, -1.534863576938717),
-                                     velocity_2d=StateVector2D(x=0.5, y=0.0),
-                                     acceleration_2d=StateVector2D(x=1.0, y=0.0),
-                                     tire_steering_angle=0.0,
-                                     time_point=TimePoint(4000000)),
-            EgoState.from_raw_params(StateSE2(664434.1930625531, 3997679.37350750, -1.534863576938717),
-                                     velocity_2d=StateVector2D(x=0.0, y=0.0),
-                                     acceleration_2d=StateVector2D(x=2.0, y=0.0),
-                                     tire_steering_angle=0.0,
-                                     time_point=TimePoint(5000000)),
-        ]
-
-        simulation_iterations = [
-            SimulationIteration(TimePoint(1000000), 0),
-            SimulationIteration(TimePoint(2000000), 1),
-            SimulationIteration(TimePoint(3000000), 2),
-            SimulationIteration(TimePoint(4000000), 3),
-            SimulationIteration(TimePoint(5000000), 4),
-        ]
-
-        trajectories = [
-            InterpolatedTrajectory([ego_states[0], ego_states[1]]),
-            InterpolatedTrajectory([ego_states[1], ego_states[2]]),
-            InterpolatedTrajectory([ego_states[2], ego_states[2]]),
-            InterpolatedTrajectory([ego_states[3], ego_states[4]]),
-            InterpolatedTrajectory([ego_states[3], ego_states[4]]),
-        ]
-
-        for ego_state, simulation_iteration, trajectory in zip(ego_states, simulation_iterations, trajectories):
-            history.add_sample(SimulationHistorySample(
-                iteration=simulation_iteration,
-                ego_state=ego_state,
-                trajectory=trajectory,
-                observation=Detections(boxes=boxes)
-            ))
-
-        return history
-
-    def test_metric_name(self) -> None:
-        """ Test metric name. """
-
-        self.assertEqual(self.ego_abs_jerk_magnitude.name, self.metric_name)
-
-    def test_compute(self) -> None:
-        """ Test compute. """
-
-        results = self.ego_abs_jerk_magnitude.compute(self.history)
-
-        self.assertTrue(isinstance(results, list))
-        metric = results[0]
-        statistics = metric.statistics
-        self.assertTrue(statistics[MetricStatisticsType.BOOLEAN])
-
-        time_series = metric.time_series
-        self.assertIsNone(time_series)
+    metric_statistic_test(scene=scene, metric=metric)
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == '__main__':
+    raise SystemExit(pytest.main([__file__], plugins=[NUPLAN_TEST_PLUGIN]))

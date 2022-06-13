@@ -11,10 +11,22 @@ py_library(
     name = "training",
     srcs = ["training.py"],
     deps = [
-        "//nuplan/planning/scenario_builder:abstract_scenario_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:training_builder",
         "//nuplan/planning/training/callbacks:profile_callback",
         "//nuplan/planning/utils/multithreading:worker_pool",
+    ],
+)
+
+py_library(
+    name = "caching",
+    srcs = ["caching.py"],
+    deps = [
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/script/builders:model_builder",
+        "//nuplan/planning/script/builders:scenario_builder",
+        "//nuplan/planning/training/preprocessing:feature_preprocessor",
+        "//nuplan/planning/utils/multithreading:worker_pool",
+        "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )

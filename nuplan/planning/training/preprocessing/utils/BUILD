@@ -8,7 +8,8 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/database/utils/boxes:box3d",
+        "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
         "//nuplan/planning/training/preprocessing/features:trajectory_utils",
@@ -19,6 +20,8 @@ py_library(
     name = "feature_cache",
     srcs = ["feature_cache.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
+        "//nuplan/database/common/blob_store:s3_store",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
     ],
 )

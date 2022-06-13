@@ -8,7 +8,7 @@ import numpy.typing as npt
 
 
 class PointCloudHeader(NamedTuple):
-    """ Class for Point Cloud header. """
+    """Class for Point Cloud header."""
 
     version: str
     fields: List[str]
@@ -147,9 +147,9 @@ class PointCloud:
         if len(buff) != length:
             raise RuntimeError('Incomplete pointcloud stream: {} bytes expected, {} got'.format(length, len(buff)))
 
-        points = np.frombuffer(buff, row_type)  # type: ignore
+        points = np.frombuffer(buff, row_type)
 
-        return points  # type: ignore
+        return points
 
     @staticmethod
     def np_type(header: PointCloudHeader) -> np.dtype:  # type: ignore

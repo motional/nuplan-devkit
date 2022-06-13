@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from typing import Type
 
-from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.observation.observation_type import Observation
-from nuplan.planning.simulation.simulation_manager.simulation_iteration import SimulationIteration
+from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 
 
 class AbstractObservation(metaclass=ABCMeta):
@@ -19,18 +19,31 @@ class AbstractObservation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_observation(self) -> Observation:
+    def reset(self) -> None:
         """
-        Get the current observation object.
-        :return: Any type representing an observation, e.g., LidarPc, List[Box3D]
+        Reset the observation (all internal states should be reseted, if any).
         """
         pass
 
     @abstractmethod
-    def update_observation(self,
-                           iteration: SimulationIteration,
-                           next_iteration: SimulationIteration,
-                           ego_state: EgoState) -> None:
+    def get_observation(self) -> Observation:
+        """
+        Get the current observation object.
+        :return: Any type representing an observation, e.g., LidarPc, TrackedObjects
+        """
+        pass
+
+    @abstractmethod
+    def initialize(self) -> None:
+        """
+        Initialize observation if needed.
+        """
+        pass
+
+    @abstractmethod
+    def update_observation(
+        self, iteration: SimulationIteration, next_iteration: SimulationIteration, history: SimulationHistoryBuffer
+    ) -> None:
         """
         Propagate observation into the next simulation iteration.
         Depending on the type of observation this may mean:
@@ -39,6 +52,7 @@ class AbstractObservation(metaclass=ABCMeta):
 
         :param iteration: The current simulation iteration.
         :param next_iteration: the next simulation iteration that we update to.
-        :param ego_state: The current ego state.
+        :param history: Past simulation states including the state at the current time step [t_-N, ..., t_-1, t_0]
+                        The buffer contains the past ego trajectory and past observations.
         """
         pass

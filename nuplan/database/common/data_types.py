@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Tuple
 
 
 class RLE(Dict[Any, Any]):
+    """RLE Properties."""
+
     @property
     def size(self) -> Tuple[int, int]:
         """
@@ -26,6 +28,8 @@ class RLE(Dict[Any, Any]):
 
 
 class Translation(List[float]):
+    """Translation Properties."""
+
     @property
     def x(self) -> float:
         """
@@ -52,6 +56,8 @@ class Translation(List[float]):
 
 
 class Rotation(List[float]):
+    """Rotation Properties."""
+
     @property
     def w(self) -> float:
         """
@@ -86,7 +92,8 @@ class Rotation(List[float]):
 
 
 class Visibility(Enum):
-    """ Visibility enumerations. """
+    """Visibility enumerations."""
+
     v0_20 = 'v0-20'
     v20_40 = 'v20-40'
     v40_60 = 'v40-60'
@@ -96,6 +103,8 @@ class Visibility(Enum):
 
 
 class Bbox(List[int]):
+    """Bbox Properties."""
+
     @property
     def xmin(self) -> int:
         """
@@ -162,6 +171,8 @@ class Bbox(List[int]):
 
 
 class Size(List[float]):
+    """Size Properties."""
+
     @property
     def width(self) -> float:
         """
@@ -198,6 +209,7 @@ class CameraIntrinsic(List[List[float]]):
         px, py: principal point offset
         s: axis skew
     """
+
     @property
     def fx(self) -> float:
         """

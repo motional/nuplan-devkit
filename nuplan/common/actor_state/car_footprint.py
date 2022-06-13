@@ -1,90 +1,97 @@
-from enum import IntEnum
-from typing import Optional
+from __future__ import annotations
 
-from nuplan.common.actor_state.oriented_box import OrientedBox
+from functools import cached_property
+
+from nuplan.common.actor_state.oriented_box import OrientedBox, OrientedBoxPointType
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
-from nuplan.common.actor_state.transform_state import translate_longitudinally, translate_longitudinally_se2
-from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.geometry.transform import translate_longitudinally
 
 
-class CarPointType(IntEnum):
-    """ Enum for the point of interest in the car. """
-    FRONT_BUMPER = 1,
-    REAR_BUMPER = 2,
-    REAR_AXLE = 3,
-    FRONT_LEFT = 4,
-    FRONT_RIGHT = 5,
-    REAR_LEFT = 6,
-    REAR_RIGHT = 7,
-    CENTER = 8
+class CarFootprint(OrientedBox):
+    """Class that represent the car semantically, with geometry and relevant point of interest."""
 
-
-class CarFootprint:
-    """ Class that represent the car semantically, with geometry and relevant point of interest. """
-
-    def __init__(self, pose: StateSE2, vehicle_parameters: Optional[VehicleParameters] = None,
-                 reference_frame: CarPointType = CarPointType.REAR_AXLE):
+    def __init__(self, center: StateSE2, vehicle_parameters: VehicleParameters):
         """
-        :param pose: The pose of ego in the specified frame
+        :param center: The pose of ego in the specified frame
         :param vehicle_parameters: The parameters of ego
-        :param reference_frame: Reference frame for the given pose, by default the center of the rear axle
         """
+        super().__init__(
+            center=center,
+            width=vehicle_parameters.width,
+            length=vehicle_parameters.length,
+            height=vehicle_parameters.height,
+        )
+        self._vehicle_parameters = vehicle_parameters
 
-        if vehicle_parameters is None:
-            vehicle_parameters = get_pacifica_parameters()
+    @property
+    def vehicle_parameters(self) -> VehicleParameters:
+        """
+        :return: vehicle parameters corresponding to the footprint
+        """
+        return self._vehicle_parameters
 
-        self._rear_axle_to_center_dist = float(vehicle_parameters.rear_axle_to_center)
-
-        if reference_frame == CarPointType.REAR_AXLE:
-            center = translate_longitudinally_se2(pose, self._rear_axle_to_center_dist)
-        elif reference_frame == CarPointType.CENTER:
-            center = pose
-        else:
-            raise RuntimeError("Invalid reference frame")
-
-        self._oriented_box = OrientedBox(center, vehicle_parameters.length, vehicle_parameters.width,
-                                         vehicle_parameters.height)
-
-        self._points_of_interest = {
-            CarPointType.FRONT_BUMPER: translate_longitudinally(self._oriented_box.center,
-                                                                self._oriented_box.length / 2.0),
-            CarPointType.REAR_BUMPER: translate_longitudinally(self._oriented_box.center,
-                                                               - self._oriented_box.length / 2.0),
-            CarPointType.REAR_AXLE: translate_longitudinally(self._oriented_box.center,
-                                                             - self._rear_axle_to_center_dist),
-            CarPointType.FRONT_LEFT: Point2D(*self._oriented_box.geometry.exterior.coords[0]),
-            CarPointType.REAR_LEFT: Point2D(*self._oriented_box.geometry.exterior.coords[1]),
-            CarPointType.REAR_RIGHT: Point2D(*self._oriented_box.geometry.exterior.coords[2]),
-            CarPointType.FRONT_RIGHT: Point2D(*self._oriented_box.geometry.exterior.coords[3]),
-            CarPointType.CENTER: Point2D(self._oriented_box.center.x, self._oriented_box.center.y),
-        }
-        self._rear_axle = translate_longitudinally_se2(self.oriented_box.center, - self._rear_axle_to_center_dist)
-
-    def get_point_of_interest(self, point_of_interest: CarPointType) -> Point2D:
+    def get_point_of_interest(self, point_of_interest: OrientedBoxPointType) -> Point2D:
         """
         Getter for the point of interest of ego.
         :param point_of_interest: The query point of the car
         :return: The position of the query point.
         """
-        return self._points_of_interest[point_of_interest]
+        return self.corner(point_of_interest)
 
     @property
     def oriented_box(self) -> OrientedBox:
-        """ Getter for Ego's OrientedBox
+        """
+        Getter for Ego's OrientedBox
         :return: OrientedBox of Ego
         """
-        return self._oriented_box
+        return self
 
     @property
     def rear_axle_to_center_dist(self) -> float:
-        """ Getter for the distance from the rear axle to the center of mass of Ego.
+        """
+        Getter for the distance from the rear axle to the center of mass of Ego.
         :return: Distance from rear axle to COG
         """
-        return self._rear_axle_to_center_dist
+        return float(self._vehicle_parameters.rear_axle_to_center)
 
-    @property
+    @cached_property
     def rear_axle(self) -> StateSE2:
-        """ Getter for the pose at the middle of the rear axle
+        """
+        Getter for the pose at the middle of the rear axle
         :return: SE2 Pose of the rear axle.
         """
-        return self._rear_axle
+        return translate_longitudinally(self.oriented_box.center, -self.rear_axle_to_center_dist)
+
+    @classmethod
+    def build_from_rear_axle(cls, rear_axle_pose: StateSE2, vehicle_parameters: VehicleParameters) -> CarFootprint:
+        """
+        Construct Car Footprint from rear axle position
+        :param rear_axle_pose: SE2 position of rear axle
+        :param vehicle_parameters: parameters of vehicle
+        :return: CarFootprint
+        """
+        center = translate_longitudinally(rear_axle_pose, vehicle_parameters.rear_axle_to_center)
+        return cls(center=center, vehicle_parameters=vehicle_parameters)
+
+    @classmethod
+    def build_from_cog(cls, cog_pose: StateSE2, vehicle_parameters: VehicleParameters) -> CarFootprint:
+        """
+        Construct Car Footprint from COG position
+        :param cog_pose: SE2 position of COG
+        :param vehicle_parameters: parameters of vehicle
+        :return: CarFootprint
+        """
+        cog_to_center = vehicle_parameters.rear_axle_to_center - vehicle_parameters.cog_position_from_rear_axle
+        center = translate_longitudinally(cog_pose, cog_to_center)
+        return cls(center=center, vehicle_parameters=vehicle_parameters)
+
+    @classmethod
+    def build_from_center(cls, center: StateSE2, vehicle_parameters: VehicleParameters) -> CarFootprint:
+        """
+        Construct Car Footprint from geometric center of vehicle
+        :param center: SE2 position of geometric center of vehicle
+        :param vehicle_parameters: parameters of vehicle
+        :return: CarFootprint
+        """
+        return cls(center=center, vehicle_parameters=vehicle_parameters)

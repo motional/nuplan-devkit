@@ -1,19 +1,26 @@
-from typing import cast
+from typing import List, Optional, cast
 
 import torch
+from torch import nn
+
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
-from nuplan.planning.training.modeling.models.lanegcn_utils import Actor2ActorAttention, Lane2ActorAttention, LaneNet, \
-    LinearWithGroupNorm
-from nuplan.planning.training.modeling.nn_model import NNModule
+from nuplan.planning.training.modeling.models.lanegcn_utils import (
+    Actor2ActorAttention,
+    Actor2LaneAttention,
+    Lane2ActorAttention,
+    LaneNet,
+    LinearWithGroupNorm,
+)
+from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 from nuplan.planning.training.preprocessing.feature_builders.agents_feature_builder import AgentsFeatureBuilder
 from nuplan.planning.training.preprocessing.feature_builders.vector_map_feature_builder import VectorMapFeatureBuilder
-from nuplan.planning.training.preprocessing.features.agents import AgentsFeature
+from nuplan.planning.training.preprocessing.features.agents import Agents
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 from nuplan.planning.training.preprocessing.features.vector_map import VectorMap
-from nuplan.planning.training.preprocessing.target_builders.ego_trajectory_target_builder import \
-    EgoTrajectoryTargetBuilder
-from torch import nn
+from nuplan.planning.training.preprocessing.target_builders.ego_trajectory_target_builder import (
+    EgoTrajectoryTargetBuilder,
+)
 
 
 def convert_predictions_to_trajectory(predictions: torch.Tensor) -> torch.Tensor:
@@ -26,21 +33,29 @@ def convert_predictions_to_trajectory(predictions: torch.Tensor) -> torch.Tensor
     return predictions.view(num_batches, -1, Trajectory.state_size())
 
 
-class LaneGCN(NNModule):
+class LaneGCN(TorchModuleWrapper):
+    """
+    Vector-based model that uses a series of MLPs to encode ego and agent signals, a lane graph to encode vector-map
+    elements and a fusion network to capture lane & agent intra/inter-interactions through attention layers.
+    Dynamic map elements such as traffic light status and ego route information are also encoded in the fusion network.
 
-    def __init__(self,
-                 map_net_scales: int,
-                 num_res_blocks: int,
-                 num_attention_layers: int,
-                 a2a_dist_threshold: float,
-                 l2a_dist_threshold: float,
-                 num_output_features: int,
-                 feature_dim: int,
-                 # Parameters for Features
-                 vector_map_feature_radius: int,
-                 past_trajectory_sampling: TrajectorySampling,
-                 # Parameters for Targets
-                 future_trajectory_sampling: TrajectorySampling):
+    Implementation of the original LaneGCN paper ("Learning Lane Graph Representations for Motion Forecasting").
+    """
+
+    def __init__(
+        self,
+        map_net_scales: int,
+        num_res_blocks: int,
+        num_attention_layers: int,
+        a2a_dist_threshold: float,
+        l2a_dist_threshold: float,
+        num_output_features: int,
+        feature_dim: int,
+        vector_map_feature_radius: int,
+        vector_map_connection_scales: Optional[List[int]],
+        past_trajectory_sampling: TrajectorySampling,
+        future_trajectory_sampling: TrajectorySampling,
+    ):
         """
         :param map_net_scales: Number of scales to extend the predecessor and successor lane nodes.
         :param num_res_blocks: Number of residual blocks for the GCN (LaneGCN uses 4).
@@ -50,14 +65,21 @@ class LaneGCN(NNModule):
         :param num_output_features: number of target features
         :param feature_dim: hidden layer dimension
         :param vector_map_feature_radius: The query radius scope relative to the current ego-pose.
+        :param vector_map_connection_scales: The hops of lane neighbors to extract, default 1 hop
         :param past_trajectory_sampling: Sampling parameters for past trajectory
         :param future_trajectory_sampling: Sampling parameters for future trajectory
         """
-        super().__init__(feature_builders=[VectorMapFeatureBuilder(radius=vector_map_feature_radius),
-                                           AgentsFeatureBuilder(trajectory_sampling=past_trajectory_sampling)],
-                         target_builders=[
-                             EgoTrajectoryTargetBuilder(future_trajectory_sampling=future_trajectory_sampling)],
-                         future_trajectory_sampling=future_trajectory_sampling)
+        super().__init__(
+            feature_builders=[
+                VectorMapFeatureBuilder(
+                    radius=vector_map_feature_radius,
+                    connection_scales=vector_map_connection_scales,
+                ),
+                AgentsFeatureBuilder(trajectory_sampling=past_trajectory_sampling),
+            ],
+            target_builders=[EgoTrajectoryTargetBuilder(future_trajectory_sampling=future_trajectory_sampling)],
+            future_trajectory_sampling=future_trajectory_sampling,
+        )
 
         # LaneGCN components
         self.feature_dim = feature_dim
@@ -65,35 +87,40 @@ class LaneGCN(NNModule):
             lane_input_len=2,
             lane_feature_len=self.feature_dim,
             num_scales=map_net_scales,
-            num_res_blocks=num_res_blocks,
+            num_residual_blocks=num_res_blocks,
             is_map_feat=False,
         )
         self.ego_feature_extractor = torch.nn.Sequential(
-            nn.Linear((past_trajectory_sampling.num_poses + 1) * AgentsFeature.ego_state_dim(), self.feature_dim),
+            nn.Linear((past_trajectory_sampling.num_poses + 1) * Agents.ego_state_dim(), self.feature_dim),
             nn.ReLU(inplace=True),
             nn.Linear(self.feature_dim, self.feature_dim),
             nn.ReLU(inplace=True),
             LinearWithGroupNorm(self.feature_dim, self.feature_dim, num_groups=1, activation=False),
         )
         self.agent_feature_extractor = torch.nn.Sequential(
-            nn.Linear((past_trajectory_sampling.num_poses + 1) * AgentsFeature.agents_states_dim(), self.feature_dim),
+            nn.Linear((past_trajectory_sampling.num_poses + 1) * Agents.agents_states_dim(), self.feature_dim),
             nn.ReLU(inplace=True),
             nn.Linear(self.feature_dim, self.feature_dim),
             nn.ReLU(),
             LinearWithGroupNorm(self.feature_dim, self.feature_dim, num_groups=1, activation=False),
         )
+        self.actor2lane_attention = Actor2LaneAttention(
+            actor_feature_len=self.feature_dim,
+            lane_feature_len=self.feature_dim,
+            num_attention_layers=num_attention_layers,
+            dist_threshold_m=l2a_dist_threshold,
+        )
         self.lane2actor_attention = Lane2ActorAttention(
             lane_feature_len=self.feature_dim,
             actor_feature_len=self.feature_dim,
             num_attention_layers=num_attention_layers,
-            dist_threshold_m=l2a_dist_threshold
+            dist_threshold_m=l2a_dist_threshold,
         )
         self.actor2actor_attention = Actor2ActorAttention(
             actor_feature_len=self.feature_dim,
             num_attention_layers=num_attention_layers,
             dist_threshold_m=a2a_dist_threshold,
         )
-        # Final mlp
         self._mlp = nn.Sequential(
             nn.Linear(self.feature_dim, self.feature_dim),
             nn.ReLU(),
@@ -108,7 +135,7 @@ class LaneGCN(NNModule):
         :param features: input features containing
                         {
                             "vector_map": VectorMap,
-                            "agents": AgentsFeatures,
+                            "agents": Agents,
                         }
         :return: targets: predictions from network
                         {
@@ -117,7 +144,7 @@ class LaneGCN(NNModule):
         """
         # Recover features
         vector_map_data = cast(VectorMap, features["vector_map"])
-        ego_agent_features = cast(AgentsFeature, features["agents"])
+        ego_agent_features = cast(Agents, features["agents"])
         ego_past_trajectory = ego_agent_features.ego  # batch_size x num_frames x 3
 
         # Extract batches
@@ -125,13 +152,17 @@ class LaneGCN(NNModule):
 
         # Extract features
         ego_features = []
-        # map and agent feature have different size across batch so we use per sample feature extraction
+
+        # Map and agent features have different size across batch so we use per sample feature extraction
         for sample_idx in range(batch_size):
-            lane_graph_input = {}
-            lane_graph_input['coords'] = vector_map_data.coords[sample_idx]
-            lane_graph_input['connections'] = vector_map_data.multi_scale_connections[sample_idx][1]
-            lane_features = self.lane_net(lane_graph_input)
-            lane_centers = lane_graph_input['coords'].mean(axis=1)
+            coords = vector_map_data.coords[sample_idx]
+            connections = vector_map_data.multi_scale_connections[sample_idx]
+
+            lane_features = self.lane_net(coords, connections)
+            lane_centers = coords.mean(axis=1)
+            lane_meta_tl = vector_map_data.traffic_light_data[sample_idx]
+            lane_meta_route = vector_map_data.on_route_status[sample_idx]
+            lane_meta = torch.cat((lane_meta_tl, lane_meta_route), dim=1)
 
             sample_ego_feature = self.ego_feature_extractor(ego_past_trajectory[sample_idx].view(1, -1))
             sample_ego_center = ego_agent_features.get_ego_agents_center_in_sample(sample_idx)
@@ -147,14 +178,18 @@ class LaneGCN(NNModule):
                 ego_agents_feature = sample_ego_feature
                 ego_agents_center = sample_ego_center.unsqueeze(dim=0)
 
-            ego_agents_feature = self.lane2actor_attention(lane_features, lane_centers, ego_agents_feature,
-                                                           ego_agents_center)
+            lane_features = self.actor2lane_attention(
+                ego_agents_feature, ego_agents_center, lane_features, lane_meta, lane_centers
+            )
+            ego_agents_feature = self.lane2actor_attention(
+                lane_features, lane_centers, ego_agents_feature, ego_agents_center
+            )
             ego_agents_feature = self.actor2actor_attention(ego_agents_feature, ego_agents_center)
             ego_features.append(ego_agents_feature[0])
 
         ego_features = torch.cat(ego_features).view(batch_size, -1)
 
-        # Predict future
+        # Regress final future trajectory
         predictions = self._mlp(ego_features)
 
         return {"trajectory": Trajectory(data=convert_predictions_to_trajectory(predictions))}

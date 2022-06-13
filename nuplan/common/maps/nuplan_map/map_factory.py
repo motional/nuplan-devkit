@@ -9,12 +9,12 @@ from nuplan.database.maps_db.imapsdb import IMapsDB
 
 class NuPlanMapFactory(AbstractMapFactory):
     """
-    Factory creating maps from an IMapsDB interface
+    Factory creating maps from an IMapsDB interface.
     """
 
     def __init__(self, maps_db: IMapsDB):
         """
-        :param maps_db: An IMapsDB instance e.g. GPKGMapsDB
+        :param maps_db: An IMapsDB instance e.g. GPKGMapsDB.
         """
         self._maps_db = maps_db
 
@@ -30,6 +30,6 @@ class NuPlanMapFactory(AbstractMapFactory):
         Builds a map interface given a map name.
         Examples of names: 'sg-one-north', 'us-ma-boston', 'us-nv-las-vegas-strip', 'us-pa-pittsburgh-hazelwood'
         :param map_name: Name of the map.
-        :return: The constructed map interface
+        :return: The constructed map interface.
         """
         return NuPlanMap(self._maps_db, map_name.replace(".gpkg", ""))

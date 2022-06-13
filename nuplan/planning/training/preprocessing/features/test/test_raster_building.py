@@ -1,39 +1,24 @@
 import unittest
 
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder import NuPlanScenarioBuilder
-from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilters
-from nuplan.planning.training.preprocessing.features.raster_utils import get_agents_raster, get_baseline_paths_raster, \
-    get_ego_raster, get_roadmap_raster
-from nuplan.planning.utils.multithreading.worker_sequential import Sequential
+import numpy as np
+
+from nuplan.planning.scenario_builder.nuplan_db.test.nuplan_scenario_test_utils import get_test_nuplan_scenario
+from nuplan.planning.training.preprocessing.features.raster_utils import (
+    get_agents_raster,
+    get_baseline_paths_raster,
+    get_ego_raster,
+    get_roadmap_raster,
+)
 
 
 class TestRasterUtils(unittest.TestCase):
+    """Test raster building utility functions."""
 
     def setUp(self) -> None:
         """
         Initializes DB
         """
-        self.scenario_builder = NuPlanScenarioBuilder(
-            version='nuplan_v0.1_mini',
-            data_root='/data/sets/nuplan')
-
-        scenario_filter = ScenarioFilters(
-            log_names=None,
-            log_labels=None,
-            max_scenarios_per_log=None,
-            scenario_types=None,
-            scenario_tokens=None,
-            map_name=None,
-            shuffle=False,
-            limit_scenarios_per_type=None,
-            subsample_ratio=0.05,
-            flatten_scenarios=True,
-            remove_invalid_goals=True,
-            limit_total_scenarios=20)
-
-        # Extract scenarios
-        worker = Sequential()
-        scenarios = self.scenario_builder.get_scenarios(scenario_filter, worker=worker)
+        scenario = get_test_nuplan_scenario()
 
         self.x_range = [-56.0, 56.0]
         self.y_range = [-56.0, 56.0]
@@ -41,15 +26,10 @@ class TestRasterUtils(unittest.TestCase):
         self.resolution = 0.5
         self.thickness = 2
 
-        scenario = scenarios[0]
         self.ego_state = scenario.initial_ego_state
         self.map_api = scenario.map_api
-        self.detections = scenario.initial_detections
-        self.map_features = {
-            'LANE': 255,
-            'INTERSECTION': 255,
-            'STOP_LINE': 128,
-            'CROSSWALK': 128}
+        self.tracked_objects = scenario.initial_tracked_objects
+        self.map_features = {'LANE': 255, 'INTERSECTION': 255, 'STOP_LINE': 128, 'CROSSWALK': 128}
 
         ego_width = 2.297
         ego_front_length = 4.049
@@ -63,6 +43,9 @@ class TestRasterUtils(unittest.TestCase):
         """
         Test get_roadmap_raster / get_agents_raster / get_baseline_paths_raster
         """
+        # Check if there are tracks in the scene in the first place
+        self.assertGreater(len(self.tracked_objects.tracked_objects), 0)
+
         roadmap_raster = get_roadmap_raster(
             self.ego_state,
             self.map_api,
@@ -70,11 +53,12 @@ class TestRasterUtils(unittest.TestCase):
             self.x_range,
             self.y_range,
             self.raster_shape,
-            self.resolution)
+            self.resolution,
+        )
 
         agents_raster = get_agents_raster(
             self.ego_state,
-            self.detections,
+            self.tracked_objects,
             self.x_range,
             self.y_range,
             self.raster_shape,
@@ -85,22 +69,24 @@ class TestRasterUtils(unittest.TestCase):
             self.ego_longitudinal_offset,
             self.ego_width_pixels,
             self.ego_front_length_pixels,
-            self.ego_rear_length_pixels
+            self.ego_rear_length_pixels,
         )
 
         baseline_paths_raster = get_baseline_paths_raster(
-            self.ego_state,
-            self.map_api,
-            self.x_range,
-            self.y_range,
-            self.raster_shape,
-            self.resolution,
-            self.thickness)
+            self.ego_state, self.map_api, self.x_range, self.y_range, self.raster_shape, self.resolution, self.thickness
+        )
 
+        # Check dimensions
         self.assertEqual(roadmap_raster.shape, self.raster_shape)
         self.assertEqual(agents_raster.shape, self.raster_shape)
         self.assertEqual(ego_raster.shape, self.raster_shape)
         self.assertEqual(baseline_paths_raster.shape, self.raster_shape)
+
+        # Check if objects are drawn on to the raster
+        self.assertTrue(np.any(roadmap_raster))
+        self.assertTrue(np.any(agents_raster))
+        self.assertTrue(np.any(ego_raster))
+        self.assertTrue(np.any(baseline_paths_raster))
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ py_library(
         "//nuplan/planning/simulation:simulation_setup",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",
-        "//nuplan/planning/simulation/trajectory",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
 )
 
@@ -31,8 +31,6 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/actor_state:vehicle_parameters",
-        "//nuplan/database/utils/label:utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation:simulation_setup",
         "//nuplan/planning/simulation/callback:abstract_callback",
@@ -51,7 +49,7 @@ py_library(
         "//nuplan/planning/simulation/callback:abstract_callback",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",
-        "//nuplan/planning/simulation/trajectory",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
 )
 
@@ -64,5 +62,30 @@ py_library(
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/simulation/visualization:abstract_visualization",
+    ],
+)
+
+py_library(
+    name = "multi_callback",
+    srcs = ["multi_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation:simulation_setup",
+        "//nuplan/planning/simulation/callback:abstract_callback",
+        "//nuplan/planning/simulation/history:simulation_history",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+    ],
+)
+
+py_library(
+    name = "simulation_log_callback",
+    srcs = ["simulation_log_callback.py"],
+    deps = [
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation:simulation_log",
+        "//nuplan/planning/simulation:simulation_setup",
+        "//nuplan/planning/simulation/callback:abstract_callback",
+        "//nuplan/planning/simulation/history:simulation_history",
+        "//nuplan/planning/simulation/planner:abstract_planner",
     ],
 )

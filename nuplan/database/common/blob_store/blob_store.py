@@ -5,7 +5,7 @@ from typing import Any, BinaryIO
 
 
 class BlobStoreKeyNotFound(ValueError):
-    """ Error raised when blob store key is not found. """
+    """Error raised when blob store key is not found."""
 
     def __init__(self, *args: Any) -> None:
         """
@@ -18,6 +18,7 @@ class BlobStore(abc.ABC):
     """
     BlobStore interface, the idea is to abstract the way we load blob content.
     """
+
     @abc.abstractmethod
     def get(self, key: str, check_for_compressed: bool = False) -> BinaryIO:
         """

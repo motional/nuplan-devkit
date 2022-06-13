@@ -1,0 +1,14 @@
+scenario_scoring_callback:
+  _target_: nuplan.planning.training.callbacks.scenario_scoring_callback.ScenarioScoringCallback
+  _convert_: 'all'
+
+  # Use scenario to scene converter
+  scene_converter:
+    _target_: nuplan.planning.training.callbacks.utils.scenario_scene_converter.ScenarioSceneConverter
+    _convert_: 'all'
+    ego_trajectory_horizon: 10.0
+    ego_trajectory_poses: 20
+
+  num_store: 3  # number of scenarios to be stored per evaluation score
+  frequency: 0  # interval between epochs at which to perform the evaluation, set to 0 to skip callback
+  output_dir: ${output_dir}

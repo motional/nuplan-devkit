@@ -19,11 +19,13 @@ def parametrize_filebased(abspath: Optional[str], filename: str, relpath: Option
     """
     if filename.endswith(".json"):
         id_ = filename[:-5]
-        return pytest.param(None, id=id_,
-                            marks=[pytest.mark.nuplan_test(relpath=relpath, absdirpath=abspath, params=id_)])
+        return pytest.param(
+            None, id=id_, marks=[pytest.mark.nuplan_test(relpath=relpath, absdirpath=abspath, params=id_)]
+        )
     else:
-        return pytest.param(None, id="-",
-                            marks=[pytest.mark.nuplan_test(relpath=relpath, absdirpath=None, params=None)])
+        return pytest.param(
+            None, id="-", marks=[pytest.mark.nuplan_test(relpath=relpath, absdirpath=None, params=None)]
+        )
 
 
 def parametrize_dir(absdirpath: Optional[str], files: List[str], relpath: Optional[str]) -> List[Any]:
@@ -56,9 +58,10 @@ def nuplan_test(path: Optional[str] = None) -> Any:
     def impl_decorate(nuplan_test: Any) -> Any:
         if path is not None:
             name = sys.modules.get(nuplan_test.__module__).__file__  # type: ignore
-            abspath = join(dirname(name), path)
+            abspath = join(dirname(name), path)  # type: ignore
 
             if isdir(abspath):
+
                 @functools.wraps(nuplan_test)
                 @pytest.mark.usefixtures("scene")
                 @pytest.mark.parametrize(
@@ -69,6 +72,7 @@ def nuplan_test(path: Optional[str] = None) -> Any:
 
                 return testwrapper
             else:
+
                 @functools.wraps(nuplan_test)
                 @pytest.mark.usefixtures("scene")
                 @pytest.mark.parametrize(
@@ -79,6 +83,7 @@ def nuplan_test(path: Optional[str] = None) -> Any:
 
                 return testwrapper
         else:
+
             @functools.wraps(nuplan_test)
             @pytest.mark.nuplan_test(type="hardcoded", params=None, absdirpath=None, relpath=None)
             @pytest.mark.usefixtures("scene")

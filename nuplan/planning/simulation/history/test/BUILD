@@ -20,7 +20,7 @@ py_test(
     deps = [
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history_buffer",
-        "//nuplan/planning/simulation/observation:box",
         "//nuplan/planning/simulation/observation:lidar_pc",
+        "//nuplan/planning/simulation/observation:tracks_observation",
     ],
 )

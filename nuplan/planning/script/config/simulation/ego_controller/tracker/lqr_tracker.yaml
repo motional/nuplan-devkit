@@ -1,0 +1,12 @@
+_target_: nuplan.planning.simulation.controller.tracker.lqr.LQRTracker
+_convert_: 'all'
+
+# LQR tuning
+q_diag: [0.1, 0.1, 1.0, 10.0, 0.0, 1.0]   # Tuning for state variables [x, y, heading, velocity, steering_angle, velocity integral]
+r_diag: [1.0, 0.1]                        # Tuning for input variables [acceleration, steering rate]
+proportional_gain: 0.5                    # Proportional controller tuning for stopping controller
+
+# Lookahead logic: look_ahead = min(look_ahead_meters / velocity, look_ahead_seconds)
+look_ahead_seconds: 2.0             # [s] Look ahead time to sample reference trajectory state
+look_ahead_meters: 1.0              # [m] Look ahead distance to sample reference trajectory state
+stopping_velocity: 0.2              # [m/s] Velocity threshold for stopping

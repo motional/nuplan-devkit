@@ -1,0 +1,8 @@
+visualization_callback:
+  _target_: nuplan.planning.training.callbacks.visualization_callback.VisualizationCallback
+  _convert_: 'all'
+
+  images_per_tile: 8  # number of images per row
+  num_train_tiles: 5  # number of rows of training images
+  num_val_tiles: 5  # number of rows of validation images
+  pixel_size: 0.1  # [m] pixel size of image

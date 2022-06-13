@@ -35,9 +35,11 @@ py_test(
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
+        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
+        "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/data_loader:scenario_dataset",
-        "//nuplan/planning/training/preprocessing:feature_caching_preprocessor",
         "//nuplan/planning/training/preprocessing:feature_collate",
+        "//nuplan/planning/training/preprocessing:feature_preprocessor",
         "//nuplan/planning/training/preprocessing/feature_builders:raster_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_map_feature_builder",
         "//nuplan/planning/training/preprocessing/features:vector_map",
@@ -47,13 +49,15 @@ py_test(
 )
 
 py_test(
-    name = "test_feature_caching_preprocessor",
+    name = "test_feature_preprocessor",
     size = "medium",
-    srcs = ["test_feature_caching_preprocessor.py"],
+    srcs = ["test_feature_preprocessor.py"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/training/preprocessing:feature_caching_preprocessor",
+        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
+        "//nuplan/planning/training/preprocessing:feature_preprocessor",
+        "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:raster_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_map_feature_builder",
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
@@ -66,6 +70,7 @@ py_test(
     size = "medium",
     srcs = ["test_utils_cache.py"],
     deps = [
+        "//nuplan/database/common/blob_store/test:mock_s3_store",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
         "//nuplan/planning/training/preprocessing/features:raster",
         "//nuplan/planning/training/preprocessing/features:vector_map",

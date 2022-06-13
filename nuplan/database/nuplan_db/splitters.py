@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Any, DefaultDict, Dict, List, Optional, Set, Union
 
 from nuplan.database.common.db import DBSplitterInterface
-from nuplan.database.nuplan_db.models import Log
+from nuplan.database.nuplan_db.log import Log
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 
 Sample = Any  # TODO: replace with lidar_pc
@@ -15,7 +15,7 @@ def _get_logs(db: NuPlanDB, split2log: Dict[str, List[str]], split_name: str) ->
     For all the given split `split_name`, convert its corresponding log names into Log objects.
     :param db: NuPlanDB.
     :param split2log: Mapping from a split name to its corresponding data. The data is given as a list of log names
-        (example of log name: '2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5').
+        (example of log name: '2021.07.16.20.45.29_veh-35_01095_01486').
     :param split_name: The split in which we want to get the Log objects. (example of split_name: "val").
     :return: List of logs.
     """
@@ -47,11 +47,13 @@ def _get_samples_from_logs(logs: List[Log], broken_extractions: Set[str]) -> Lis
     return samples
 
 
-def _set_splits_samples(split2samples: DefaultDict[str, List[Sample]],
-                        db: NuPlanDB,
-                        split2log: Dict[str, List[str]],
-                        broken_extractions: Optional[Set[str]] = None,
-                        sort_train: bool = True) -> None:
+def _set_splits_samples(
+    split2samples: DefaultDict[str, List[Sample]],
+    db: NuPlanDB,
+    split2log: Dict[str, List[str]],
+    broken_extractions: Optional[Set[str]] = None,
+    sort_train: bool = True,
+) -> None:
     """
     Populates split2samples with all the main splits and the ones defined in split2log, converting log names into
     the list of non-broken samples they contain in the database.
@@ -83,10 +85,12 @@ def _set_splits_samples(split2samples: DefaultDict[str, List[Sample]],
         split2samples['train'].sort(key=lambda sample: str(sample.token))
 
 
-def _get_all_samples(db: NuPlanDB,
-                     vehicle_type: str,
-                     broken_extractions: Optional[Set[str]] = None,
-                     excluded_drive_log_tags: Optional[Set[str]] = None) -> List[Sample]:
+def _get_all_samples(
+    db: NuPlanDB,
+    vehicle_type: str,
+    broken_extractions: Optional[Set[str]] = None,
+    excluded_drive_log_tags: Optional[Set[str]] = None,
+) -> List[Sample]:
     """
     Returns all non-broken samples associated with one vehicle.
 
@@ -104,9 +108,9 @@ def _get_all_samples(db: NuPlanDB,
     return _get_samples_from_logs(logs, broken_extractions)
 
 
-def _set_location_splits(split2samples: DefaultDict[str, List[Sample]],
-                         db: NuPlanDB,
-                         core_splits_names: List[str]) -> None:
+def _set_location_splits(
+    split2samples: DefaultDict[str, List[Sample]], db: NuPlanDB, core_splits_names: List[str]
+) -> None:
     """
     Populates split2samples with splits by region and country done on top of core splits.
 
@@ -120,12 +124,13 @@ def _set_location_splits(split2samples: DefaultDict[str, List[Sample]],
     """
     for split_name in core_splits_names:
         region_accumulator = []
-        for region in db.regions:  # type: ignore
+        for region in db.regions:
             region_split_name = split_name + '.' + region
-            country_split_name = split_name + '.' + db.country(region)  # type: ignore
+            country_split_name = split_name + '.' + db.country(region)
 
-            split2samples[region_split_name] = [rec for rec in split2samples[split_name] if
-                                                rec.extraction.log.location in db.locations(region)]  # type: ignore
+            split2samples[region_split_name] = [
+                rec for rec in split2samples[split_name] if rec.extraction.log.location in db.locations(region)
+            ]
             if country_split_name not in split2samples:
                 split2samples[country_split_name] = []
             split2samples[country_split_name] += split2samples[region_split_name]
@@ -136,12 +141,14 @@ def _set_location_splits(split2samples: DefaultDict[str, List[Sample]],
         assert set(region_accumulator) == set(split2samples[split_name])
 
 
-def _set_subsampled_splits(split2samples: DefaultDict[str, List[Sample]],
-                           db: NuPlanDB,
-                           core_splits_names: List[str],
-                           random_seed: Union[str, int],
-                           n_samples_per_region: int,
-                           split_suffix: str) -> None:
+def _set_subsampled_splits(
+    split2samples: DefaultDict[str, List[Sample]],
+    db: NuPlanDB,
+    core_splits_names: List[str],
+    random_seed: Union[str, int],
+    n_samples_per_region: int,
+    split_suffix: str,
+) -> None:
     """
     Populates split2samples with core splits.
     :param split2samples: Main dictionary containing a mapping from split name to its corresponding data. The data is
@@ -155,16 +162,14 @@ def _set_subsampled_splits(split2samples: DefaultDict[str, List[Sample]],
     st0 = random.getstate()  # Store previous random state.
     random.seed(random_seed)
     for split_name in core_splits_names:
-        for region in db.regions:  # type: ignore
+        for region in db.regions:
             temp = split2samples[split_name + '.' + region].copy()
             random.shuffle(temp)
             split2samples[split_name + '.' + split_suffix] += temp[:n_samples_per_region]
     random.setstate(st0)  # Restore previous random state.
 
 
-def _set_mini_splits(split2samples: DefaultDict[str, List[Sample]],
-                     db: NuPlanDB,
-                     core_splits_names: List[str]) -> None:
+def _set_mini_splits(split2samples: DefaultDict[str, List[Sample]], db: NuPlanDB, core_splits_names: List[str]) -> None:
     """
     Populates split2samples with mini splits done on top of core splits.
 
@@ -178,13 +183,12 @@ def _set_mini_splits(split2samples: DefaultDict[str, List[Sample]],
     :param db: NuPlanDB.
     :param core_splits_names: Name of the core splits to be considered.
     """
-    return _set_subsampled_splits(split2samples, db, core_splits_names,
-                                  random_seed="42", n_samples_per_region=100, split_suffix="mini")
+    return _set_subsampled_splits(
+        split2samples, db, core_splits_names, random_seed="42", n_samples_per_region=100, split_suffix="mini"
+    )
 
 
-def _set_dev_splits(split2samples: DefaultDict[str, List[Sample]],
-                    db: NuPlanDB,
-                    core_splits_names: List[str]) -> None:
+def _set_dev_splits(split2samples: DefaultDict[str, List[Sample]], db: NuPlanDB, core_splits_names: List[str]) -> None:
     """
     Populates split2samples with smaller evaluation splits done on top of core splits, to use in dev. experiments.
     For example:
@@ -197,8 +201,9 @@ def _set_dev_splits(split2samples: DefaultDict[str, List[Sample]],
     :param db: NuPlanDB.
     :param core_splits_names: Name of the core splits to be considered.
     """
-    return _set_subsampled_splits(split2samples, db, core_splits_names,
-                                  random_seed="42", n_samples_per_region=250, split_suffix="dev")
+    return _set_subsampled_splits(
+        split2samples, db, core_splits_names, random_seed="42", n_samples_per_region=250, split_suffix="dev"
+    )
 
 
 def _convert_to_tokens(split2samples: DefaultDict[str, List[Sample]]) -> DefaultDict[str, List[str]]:
@@ -216,7 +221,7 @@ def _convert_to_tokens(split2samples: DefaultDict[str, List[Sample]]) -> Default
 
 
 class BaseNuPlanDBSplitter(DBSplitterInterface):
-    """ Base class for all NuPlanDB splitters. """
+    """Base class for all NuPlanDB splitters."""
 
     def __init__(self, db: NuPlanDB):
         """
@@ -229,7 +234,7 @@ class BaseNuPlanDBSplitter(DBSplitterInterface):
         Get the string representation.
         :return: The string representation.
         """
-        return "{}(NuPlanDB('{}'))".format(self.__class__.__name__, self._db.version)
+        return "{}(NuPlanDB('{}'))".format(self.__class__.__name__, self._db.name)
 
     def list(self) -> List[str]:
         """
@@ -251,7 +256,7 @@ class BaseNuPlanDBSplitter(DBSplitterInterface):
         :return: The list of logs for the split.
         """
         sample_tokens = self.split(split_name)
-        return list({self._db.sample[token].extraction.log.logfile for token in sample_tokens})  # type: ignore
+        return list({self._db.sample[token].extraction.log.logfile for token in sample_tokens})
 
     @property
     @abc.abstractmethod

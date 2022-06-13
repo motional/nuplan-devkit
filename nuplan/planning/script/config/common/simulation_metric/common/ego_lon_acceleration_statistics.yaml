@@ -3,3 +3,6 @@ ego_lon_acceleration_statistics:
   _convert_: 'all'
   name: 'ego_lon_acceleration_statistics'
   category: 'Dynamics'
+
+  min_lon_accel: -4.05
+  max_lon_accel: 2.40

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
 import torchvision
 from numpy import ndarray
+from torch import Tensor
+
 from nuplan.planning.script.builders.utils.utils_type import validate_type
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import AbstractModelFeature, FeatureDataType
-from torch import Tensor
 
 
 @dataclass
@@ -25,6 +26,12 @@ class Raster(AbstractModelFeature):
     data: FeatureDataType
 
     def __post_init__(self) -> None:
+        """Sanitize attributes of dataclass."""
+        self.num_map_channels = 2  # The number of map related channels (roadmap + baseline path)
+        # We assume the map related layers are the bottom, and the number of ego and agent layers (with
+        # hisotry frames) will be equal. The separation index between ego and agent layers will be
+        # (num_total_channels - num_map_channels)//2
+        self.ego_agent_sep_channel_num = int((self.num_channels() - self.num_map_channels) // 2)
         shape = self.data.shape
         array_dims = len(shape)
         if (array_dims != 3) and (array_dims != 4):
@@ -32,26 +39,31 @@ class Raster(AbstractModelFeature):
 
     @property
     def num_batches(self) -> Optional[int]:
+        """Number of batches in the feature."""
         return None if len(self.data.shape) < 4 else self.data.shape[0]
 
     def to_feature_tensor(self) -> AbstractModelFeature:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         to_tensor_torchvision = torchvision.transforms.ToTensor()
         return Raster(data=to_tensor_torchvision(np.asarray(self.data)))
 
     def to_device(self, device: torch.device) -> Raster:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         validate_type(self.data, torch.Tensor)
         return Raster(data=self.data.to(device=device))
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> Raster:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return Raster(data=data["data"])
+
+    def unpack(self) -> List[Raster]:
+        """Implemented. See interface."""
+        return [Raster(data[None]) for data in self.data]
 
     @staticmethod
     def from_feature_tensor(tensor: torch.Tensor) -> Raster:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         array = tensor.numpy()
 
         # So can assume that the torch tensor will always be channels first
@@ -90,7 +102,7 @@ class Raster(AbstractModelFeature):
         Get the 2D grid representing the ego layer
         located at channel 0.
         """
-        return self._get_data_channel(0)
+        return self._get_data_channel(range(0, self.ego_agent_sep_channel_num))
 
     @property
     def agents_layer(self) -> FeatureDataType:
@@ -98,7 +110,9 @@ class Raster(AbstractModelFeature):
         Get the 2D grid representing the agents layer
         located at channel 1.
         """
-        return self._get_data_channel(1)
+        start_channel = self.ego_agent_sep_channel_num
+        end_channel = self.num_channels() - self.num_map_channels
+        return self._get_data_channel(range(start_channel, end_channel))
 
     @property
     def roadmap_layer(self) -> FeatureDataType:
@@ -106,7 +120,7 @@ class Raster(AbstractModelFeature):
         Get the 2D grid representing the map layer
         located at channel 2.
         """
-        return self._get_data_channel(2)
+        return self._get_data_channel(-2)
 
     @property
     def baseline_paths_layer(self) -> FeatureDataType:
@@ -114,7 +128,7 @@ class Raster(AbstractModelFeature):
         Get the 2D grid representing the baseline paths layer
         located at channel 3.
         """
-        return self._get_data_channel(3)
+        return self._get_data_channel(-1)
 
     def _is_channels_last(self) -> bool:
         """
@@ -130,10 +144,10 @@ class Raster(AbstractModelFeature):
             return True
         else:
             raise RuntimeError(
-                f'The data needs to be either numpy array or torch Tensor.'
-                f'But got type(data) : {type(self.data)}')
+                f'The data needs to be either numpy array or torch Tensor, but got type(data): {type(self.data)}'
+            )
 
-    def _get_data_channel(self, index: int) -> FeatureDataType:
+    def _get_data_channel(self, index: Union[int, range]) -> FeatureDataType:
         """
         Extract channel data
         :param index: of layer

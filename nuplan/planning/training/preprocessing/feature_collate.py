@@ -3,8 +3,9 @@ from typing import List, Tuple
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
-def _batch_abstract_features(initial_not_batched_features: FeaturesType,
-                             to_be_batched_features: List[FeaturesType]) -> FeaturesType:
+def _batch_abstract_features(
+    initial_not_batched_features: FeaturesType, to_be_batched_features: List[FeaturesType]
+) -> FeaturesType:
     """
     Batch abstract feature with custom collate function
     :param initial_not_batched_features: features from initial batch which are used only for keys
@@ -20,6 +21,7 @@ def _batch_abstract_features(initial_not_batched_features: FeaturesType,
 
 
 class FeatureCollate:
+    """Wrapper class that collates together multiple samples into a batch."""
 
     def __call__(self, batch: List[Tuple[FeaturesType, TargetsType]]) -> Tuple[FeaturesType, TargetsType]:
         """

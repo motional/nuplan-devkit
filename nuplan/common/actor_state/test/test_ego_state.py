@@ -1,82 +1,80 @@
 import unittest
 
-import numpy as np
-from nuplan.common.actor_state.ego_state import EgoState, get_acceleration_shifted, get_velocity_shifted
-from nuplan.common.actor_state.state_representation import StateVector2D
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.test.test_utils import get_sample_dynamic_car_state, get_sample_ego_state
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.utils.split_state import SplitState
 
 
 class TestEgoState(unittest.TestCase):
+    """Tests EgoState class"""
+
     def setUp(self) -> None:
+        """Creates sample parameters for testing"""
         self.ego_state = get_sample_ego_state()
-        self.dynamic_car_state = get_sample_dynamic_car_state()
+        self.vehicle = get_pacifica_parameters()
+        self.dynamic_car_state = get_sample_dynamic_car_state(self.vehicle.rear_axle_to_center)
 
     def test_ego_state_extended_construction(self) -> None:
-        """ Tests that the ego state extended can be constructed from a pre-existing ego state. """
-        ego_state_ext = EgoState.from_raw_params(self.ego_state.rear_axle,
-                                                 self.dynamic_car_state.rear_axle_velocity_2d,
-                                                 self.dynamic_car_state.rear_axle_acceleration_2d,
-                                                 self.ego_state.tire_steering_angle,
-                                                 self.ego_state.time_point,
-                                                 self.dynamic_car_state.angular_velocity,
-                                                 self.dynamic_car_state.angular_acceleration)
+        """Tests that the ego state extended can be constructed from a pre-existing ego state."""
+        ego_state_ext = EgoState.build_from_rear_axle(
+            rear_axle_pose=self.ego_state.rear_axle,
+            rear_axle_velocity_2d=self.dynamic_car_state.rear_axle_velocity_2d,
+            rear_axle_acceleration_2d=self.dynamic_car_state.rear_axle_acceleration_2d,
+            tire_steering_angle=self.ego_state.tire_steering_angle,
+            time_point=self.ego_state.time_point,
+            angular_vel=self.dynamic_car_state.angular_velocity,
+            angular_accel=self.dynamic_car_state.angular_acceleration,
+            is_in_auto_mode=True,
+            vehicle_parameters=self.vehicle,
+        )
 
         self.assertTrue(ego_state_ext.dynamic_car_state == self.dynamic_car_state)
         self.assertTrue(ego_state_ext.center == self.ego_state.center)
 
     def test_cast_to_agent(self) -> None:
-        """ Tests that the ego state extended can be cast to an Agent object. """
-        ego_state_ext = EgoState.from_raw_params(self.ego_state.rear_axle,
-                                                 self.dynamic_car_state.rear_axle_velocity_2d,
-                                                 self.dynamic_car_state.rear_axle_acceleration_2d,
-                                                 self.ego_state.tire_steering_angle,
-                                                 self.ego_state.time_point,
-                                                 self.dynamic_car_state.angular_velocity,
-                                                 self.dynamic_car_state.angular_acceleration)
+        """Tests that the ego state extended can be cast to an Agent object."""
+        ego_state_ext = EgoState.build_from_rear_axle(
+            rear_axle_pose=self.ego_state.rear_axle,
+            rear_axle_velocity_2d=self.dynamic_car_state.rear_axle_velocity_2d,
+            rear_axle_acceleration_2d=self.dynamic_car_state.rear_axle_acceleration_2d,
+            tire_steering_angle=self.ego_state.tire_steering_angle,
+            time_point=self.ego_state.time_point,
+            angular_vel=self.dynamic_car_state.angular_velocity,
+            angular_accel=self.dynamic_car_state.angular_acceleration,
+            is_in_auto_mode=True,
+            vehicle_parameters=self.vehicle,
+        )
         ego_agent = ego_state_ext.agent
         self.assertEqual("ego", ego_agent.token)
         self.assertTrue(ego_state_ext.car_footprint.oriented_box is ego_agent.box)
         self.assertTrue(ego_state_ext.dynamic_car_state.center_velocity_2d is ego_agent.velocity)
 
+    def test_to_split_state(self) -> None:
+        """Tests that the state gets split as expected"""
+        split_state = self.ego_state.to_split_state()
+        self.assertEqual(len(split_state.linear_states), 8)
+        self.assertEqual(split_state.fixed_states, [self.ego_state.car_footprint.vehicle_parameters])
+        self.assertEqual(split_state.angular_states, [self.ego_state.rear_axle.heading])
 
-class TestKinematicTransferFunctions(unittest.TestCase):
-    def setUp(self) -> None:
-        self.displacement = StateVector2D(2.0, 2.0)
-        self.reference_vector = StateVector2D(2.3, 3.4)  # Can be used for both velocity and acceleration
-        self.angular_velocity = 0.2
+    def test_from_split_state(self) -> None:
+        """Tests that the object gets created as expected from the split state"""
+        split_state = SplitState([0, 1, 2, 3, 4, 5, 6, 7], [8], [self.ego_state.car_footprint.vehicle_parameters])
 
-    def test_velocity_transfer(self) -> None:
-        """ Tests behavior of velocity transfer formula for planar rigid bodies. """
-        # Nominal case
-        actual_velocity = get_velocity_shifted(self.displacement, self.reference_vector, self.angular_velocity)
-        expected_velocity_p2 = StateVector2D(1.9, 3.8)
-        np.testing.assert_array_almost_equal(expected_velocity_p2.array, actual_velocity.array, 6)  # type: ignore
+        ego_from_split = EgoState.from_split_state(split_state)
 
-        # No displacement
-        actual_velocity = get_velocity_shifted(StateVector2D(0.0, 0.0), self.reference_vector, self.angular_velocity)
-        np.testing.assert_array_almost_equal(self.reference_vector.array, actual_velocity.array, 6)  # type: ignore
-
-        # No rotation
-        actual_velocity = get_velocity_shifted(self.displacement, self.reference_vector, 0)
-        np.testing.assert_array_almost_equal(self.reference_vector.array, actual_velocity.array, 6)  # type: ignore
-
-    def test_acceleration_transfer(self) -> None:
-        """ Tests behavior of acceleration transfer formula for planar rigid bodies. """
-        # Nominal case
-        angular_acceleration = 0.234
-        actual_acceleration = get_acceleration_shifted(self.displacement, self.reference_vector, self.angular_velocity,
-                                                       angular_acceleration)
-        np.testing.assert_array_almost_equal(StateVector2D(2.848, 3.948).array,  # type: ignore
-                                             actual_acceleration.array, 6)
-
-        # No displacement
-        actual_acceleration = get_acceleration_shifted(StateVector2D(0.0, 0.0), self.reference_vector,
-                                                       self.angular_velocity, angular_acceleration)
-        np.testing.assert_array_almost_equal(self.reference_vector.array, actual_acceleration.array, 6)  # type: ignore
-
-        # No rotation and acceleration
-        actual_acceleration = get_acceleration_shifted(self.displacement, self.reference_vector, 0, 0)
-        np.testing.assert_array_almost_equal(self.reference_vector.array, actual_acceleration.array, 6)  # type: ignore
+        self.assertEqual(
+            self.ego_state.car_footprint.vehicle_parameters, ego_from_split.car_footprint.vehicle_parameters
+        )
+        self.assertAlmostEqual(ego_from_split.time_us, 0)
+        self.assertAlmostEqual(ego_from_split.rear_axle.x, 1)
+        self.assertAlmostEqual(ego_from_split.rear_axle.y, 2)
+        self.assertAlmostEqual(ego_from_split.rear_axle.heading, 8)
+        self.assertAlmostEqual(ego_from_split.dynamic_car_state.rear_axle_velocity_2d.x, 3)
+        self.assertAlmostEqual(ego_from_split.dynamic_car_state.rear_axle_velocity_2d.y, 4)
+        self.assertAlmostEqual(ego_from_split.dynamic_car_state.rear_axle_acceleration_2d.x, 5)
+        self.assertAlmostEqual(ego_from_split.dynamic_car_state.rear_axle_acceleration_2d.y, 6)
+        self.assertAlmostEqual(ego_from_split.tire_steering_angle, 7)
 
 
 if __name__ == '__main__':

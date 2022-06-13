@@ -21,11 +21,11 @@ py_test(
     deps = [
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/scenario_dependent:ego_stop_at_stop_line",
         "//nuplan/planning/metrics/utils:testing_utils",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation/smart_agents/idm_agents:utils",
+        "//nuplan/planning/simulation/observation/idm:utils",
     ],
 )

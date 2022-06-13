@@ -1,18 +1,17 @@
 defaults:
   - common:
-      - clearance_from_static_agents_statistics
-      - ego_acceleration_statistics
-      - ego_collisions_statistics
-      - ego_distance_to_goal_statistics
-      - ego_is_comfortable_statistics
+      - drivable_area_violation_statistics
+      - ego_lane_change_statistics
+      - ego_progress_along_expert_route_statistics
+      - ego_relative_progress_to_goal_statistics
       - ego_jerk_statistics
       - ego_lat_acceleration_statistics
-      - ego_lat_jerk_statistics
       - ego_lon_acceleration_statistics
       - ego_lon_jerk_statistics
-      - ego_min_distance_to_track_statistics
       - ego_yaw_acceleration_statistics
       - ego_yaw_rate_statistics
+  - high_level_common:  # High level common metric that depends on lower level metrics, they can also rely on the previously called high level metrics
+      - ego_at_fault_collisions_statistics
       - time_to_collision_statistics
-  - ego_in_stop_line:
-      - ego_stop_at_stop_line_statistics
+      - speed_limit_violation_statistics
+      - ego_is_comfortable_statistics

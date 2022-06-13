@@ -60,12 +60,12 @@ class CacheStore(BlobStore):
             self.save(key, content)
 
     async def get_async(self, key: str) -> BinaryIO:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         raise NotImplementedError('Not today.')
 
     def exists(self, key: str) -> bool:
         """
-        Tell if the blob exists.
+        Check if the blob exists.
         :param key: blob path or token.
         :return: True if the blob exists else False.
         """
@@ -80,7 +80,7 @@ class CacheStore(BlobStore):
 
     def put(self, key: str, value: BinaryIO) -> None:
         """
-        Writes content.
+        Write content.
         :param key: Blob path or token.
         :param value: Data to save.
         """
@@ -96,7 +96,9 @@ class CacheStore(BlobStore):
         :param content: Data to save.
         """
         assert os.access(self._cache_dir, os.W_OK), 'Can not write to %s' % self._cache_dir
+
         path = os.path.join(self._cache_dir, key)
         os.makedirs(os.path.dirname(path), exist_ok=True)
+
         with open(path, 'wb') as fp:
             fp.write(content.read())

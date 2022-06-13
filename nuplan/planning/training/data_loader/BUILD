@@ -10,8 +10,8 @@ py_library(
         "//nuplan/planning/training/data_loader:scenario_dataset",
         "//nuplan/planning/training/data_loader:splitter",
         "//nuplan/planning/training/modeling:types",
-        "//nuplan/planning/training/preprocessing:feature_caching_preprocessor",
         "//nuplan/planning/training/preprocessing:feature_collate",
+        "//nuplan/planning/training/preprocessing:feature_preprocessor",
     ],
 )
 
@@ -29,8 +29,9 @@ py_library(
     srcs = ["scenario_dataset.py"],
     deps = [
         "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",
         "//nuplan/planning/training/modeling:types",
-        "//nuplan/planning/training/preprocessing:feature_caching_preprocessor",
+        "//nuplan/planning/training/preprocessing:feature_preprocessor",
     ],
 )
 

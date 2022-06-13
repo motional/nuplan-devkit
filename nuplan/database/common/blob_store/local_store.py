@@ -53,7 +53,7 @@ class LocalStore(BlobStore):
         pass
 
     async def get_async(self, key: str) -> BinaryIO:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         raise NotImplementedError('Not today.')
 
     def exists(self, key: str) -> bool:

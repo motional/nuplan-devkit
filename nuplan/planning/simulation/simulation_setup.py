@@ -1,31 +1,43 @@
-import logging
 from dataclasses import dataclass
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.controller.abstract_controller import AbstractEgoController
 from nuplan.planning.simulation.observation.abstract_observation import AbstractObservation
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
-from nuplan.planning.simulation.simulation_manager.abstract_simulation_manager import AbstractSimulationManager
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from nuplan.planning.simulation.simulation_time_controller.abstract_simulation_time_controller import (
+    AbstractSimulationTimeController,
+)
 
 
 @dataclass
 class SimulationSetup:
-    simulation_manager: AbstractSimulationManager
+    """Setup class for contructing a Simulation."""
+
+    time_controller: AbstractSimulationTimeController
     observations: AbstractObservation
     ego_controller: AbstractEgoController
     scenario: AbstractScenario
 
     def __post_init__(self) -> None:
+        """Post-initialization sanity checks."""
         # Other checks
-        assert isinstance(self.simulation_manager, AbstractSimulationManager), \
-            'Error: simulation_manager must inherit from AbstractSimulationManager!'
-        assert isinstance(self.observations, AbstractObservation), \
-            'Error: observations must inherit from AbstractObservation!'
-        assert isinstance(self.ego_controller, AbstractEgoController), \
-            'Error: ego_controller must inherit from AbstractEgoController!'
+        assert isinstance(
+            self.time_controller, AbstractSimulationTimeController
+        ), 'Error: simulation_time_controller must inherit from AbstractSimulationTimeController!'
+        assert isinstance(
+            self.observations, AbstractObservation
+        ), 'Error: observations must inherit from AbstractObservation!'
+        assert isinstance(
+            self.ego_controller, AbstractEgoController
+        ), 'Error: ego_controller must inherit from AbstractEgoController!'
+
+    def reset(self) -> None:
+        """
+        Reset all simulation controllers
+        """
+        self.observations.reset()
+        self.ego_controller.reset()
+        self.time_controller.reset()
 
 
 def validate_planner_setup(setup: SimulationSetup, planner: AbstractPlanner) -> None:

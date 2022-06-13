@@ -7,6 +7,7 @@ import cv2
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
+
 from nuplan.database.maps_db.metadata import MapLayerMeta
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,6 @@ def load_mmap(path: str, size: Tuple[int, int], dtype: str) -> npt.NDArray[Union
     :param dtype: A string either 'int' or 'float'.
     :return: A mmap object.
     """
-
     assert dtype in {'int', 'float'}, f"Param dtype must be either int or float. Received {dtype}."
     if dtype == 'int':
         dtype = np.uint8  # type: ignore
@@ -30,7 +30,7 @@ def load_mmap(path: str, size: Tuple[int, int], dtype: str) -> npt.NDArray[Union
     with open(path, "rb") as fp:
         memory_map = mmap(fp.fileno(), 0, prot=PROT_READ)
 
-    return np.ndarray(shape=size, dtype=dtype, buffer=memory_map)  # type: ignore
+    return np.ndarray(shape=size, dtype=dtype, buffer=memory_map)
 
 
 def has_binary_masks(map_layer: MapLayerMeta, cache_dir: str) -> bool:
@@ -40,7 +40,6 @@ def has_binary_masks(map_layer: MapLayerMeta, cache_dir: str) -> bool:
     :param cache_dir: The directory to cache the binary mask.
     :return: True if binary masks are created, otherwise False.
     """
-
     binary_paths = [os.path.join(cache_dir, map_layer.binary_mask_name)]
     if map_layer.can_dilate:
         binary_paths.append(os.path.join(cache_dir, map_layer.binary_joint_dist_name))
@@ -77,7 +76,7 @@ def compute_joint_distance_matrix(array: npt.NDArray[np.uint8], precision: float
     # pixel values:                  0               1
     # distance from 0 to nearest 1:  |-------------->|
     # distance from 0 to boundary:   |------>|
-    distances_0_to_boundary = cv2.distanceTransform((1.0 - array).astype(np.uint8), cv2.DIST_L2, 5)  # type: ignore
+    distances_0_to_boundary = cv2.distanceTransform((1.0 - array).astype(np.uint8), cv2.DIST_L2, 5)
     distances_0_to_boundary[distances_0_to_boundary > 0] -= 0.5
     distances_0_to_boundary = (distances_0_to_boundary * precision).astype(np.float32)
 
@@ -96,7 +95,6 @@ def create_binary_masks(array: npt.NDArray[np.uint8], map_layer: MapLayerMeta, l
     :param map_layer: Map layer to create the masks for.
     :param layer_dir: Directory where binary masks will be stored.
     """
-
     # Keep only one channel as they are all the same for all layers.
     if len(array.shape) == 3:
         array = array[:, :, 0]
@@ -118,7 +116,8 @@ def create_binary_masks(array: npt.NDArray[np.uint8], map_layer: MapLayerMeta, l
     if map_layer.can_dilate:
         # Computing the distance from all points to the boundary
         logger.debug(
-            'Writing joint distance mask to {}...'.format(destination.format(map_layer.binary_joint_dist_name)))
+            'Writing joint distance mask to {}...'.format(destination.format(map_layer.binary_joint_dist_name))
+        )
         joint_distances = compute_joint_distance_matrix(array, map_layer.precision)
 
         with open(destination.format(map_layer.binary_joint_dist_name), "wb") as f:
@@ -126,13 +125,13 @@ def create_binary_masks(array: npt.NDArray[np.uint8], map_layer: MapLayerMeta, l
         del joint_distances
         del array
         logger.debug(
-            'Writing joint distance mask to {} done.'.format(destination.format(map_layer.binary_joint_dist_name)))
+            'Writing joint distance mask to {} done.'.format(destination.format(map_layer.binary_joint_dist_name))
+        )
 
 
-def connect_blp_predecessor(blp_id: str,
-                            lane_conn_info: gpd.geodataframe,
-                            cross_blp_conns: Dict[str, List[int]],
-                            ls_conns: List[List[int]]) -> None:
+def connect_blp_predecessor(
+    blp_id: str, lane_conn_info: gpd.geodataframe, cross_blp_conns: Dict[str, List[int]], ls_conns: List[List[int]]
+) -> None:
     """
     Given a specific baseline path id, find its predecessor and update info in ls_connections information.
     :param blp_id: a specific baseline path id to query
@@ -151,10 +150,9 @@ def connect_blp_predecessor(blp_id: str,
         ls_conns.append([predecessor_end, blp_start])
 
 
-def connect_blp_successor(blp_id: str,
-                          lane_conn_info: gpd.geodataframe,
-                          cross_blp_conns: Dict[str, List[int]],
-                          ls_conns: List[List[int]]) -> None:
+def connect_blp_successor(
+    blp_id: str, lane_conn_info: gpd.geodataframe, cross_blp_conns: Dict[str, List[int]], ls_conns: List[List[int]]
+) -> None:
     """
     Given a specific baseline path id, find its successor and update info in ls_connections information.
     :param blp_id: a specific baseline path id to query
@@ -173,15 +171,20 @@ def connect_blp_successor(blp_id: str,
         ls_conns.append([blp_end, successor_start])
 
 
-def build_lane_segments_from_blps(candidate_blps: gpd.geodataframe,
-                                  ls_coords: List[List[List[float]]],
-                                  ls_conns: List[List[int]],
-                                  cross_blp_conns: Dict[str, List[int]]) -> None:
+def build_lane_segments_from_blps(
+    candidate_blps: gpd.geodataframe,
+    ls_coords: List[List[List[float]]],
+    ls_conns: List[List[int]],
+    ls_groupings: List[List[int]],
+    cross_blp_conns: Dict[str, List[int]],
+) -> None:
     """
     Process candidate baseline paths to small portions of lane-segments with connection info recorded.
     :param candidate_blps: Candidate baseline paths to be cut to lane_segments
     :param ls_coords: Output data recording lane-segment coordinates in format of [N, 2, 2]
     :param ls_conns: Output data recording lane-segment connection relations in format of [M, 2]
+    :param ls_groupings: Output data recording lane-segment indices associated with each lane in format
+        [num_lanes, num_segments_in_lane]
     :param: cross_blp_conns: Output data recording start_idx/end_idx for each baseline path with id as key.
     """
     for _, blp in candidate_blps.iterrows():
@@ -190,10 +193,13 @@ def build_lane_segments_from_blps(candidate_blps: gpd.geodataframe,
         ls_num = len(px) - 1
         blp_start_ls = len(ls_coords)
         blp_end_ls = blp_start_ls + ls_num - 1
+        ls_grouping = []
         for idx in range(ls_num):
             curr_pt, next_pt = [px[idx], py[idx]], [px[idx + 1], py[idx + 1]]
-            if (idx > 0):
-                ls_idx = len(ls_coords)
+            ls_idx = len(ls_coords)
+            if idx > 0:
                 ls_conns.append([ls_idx - 1, ls_idx])
             ls_coords.append([curr_pt, next_pt])
+            ls_grouping.append(ls_idx)
+        ls_groupings.append(ls_grouping)
         cross_blp_conns[blp_id] = [blp_start_ls, blp_end_ls]

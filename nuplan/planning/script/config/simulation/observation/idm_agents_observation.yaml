@@ -1,4 +1,4 @@
-_target_: nuplan.planning.simulation.observation.idm_agents_observation.IDMAgentsObservation
+_target_: nuplan.planning.simulation.observation.idm_agents.IDMAgents
 _convert_: 'all'
 target_velocity: 10         # Desired velocity in free traffic [m/s]
 min_gap_to_lead_agent: 1.0  # Minimum relative distance to lead vehicle [m]

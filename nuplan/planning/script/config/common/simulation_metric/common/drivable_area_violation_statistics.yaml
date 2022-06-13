@@ -3,3 +3,4 @@ drivable_area_violation_statistics:
   _convert_: 'all'
   name: 'drivable_area_violation_statistics'
   category: 'Planning'
+  max_violation_threshold: 0.0

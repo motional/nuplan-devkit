@@ -5,12 +5,12 @@ import unittest
 import pytorch_lightning as pl
 import torch.utils.data
 from hydra import compose, initialize_config_dir
-from nuplan.planning.script.builders.model_builder import build_nn_model
-from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
+from omegaconf import DictConfig, OmegaConf
+
+from nuplan.planning.script.builders.model_builder import build_torch_module_wrapper
 from nuplan.planning.script.builders.training_builder import build_lightning_datamodule
 from nuplan.planning.script.builders.utils.utils_config import update_config_for_training
 from nuplan.planning.script.builders.worker_pool_builder import build_worker
-from omegaconf import DictConfig, OmegaConf
 
 CONFIG_NAME = 'default_training'
 
@@ -21,36 +21,33 @@ class TestDataLoader(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        """ Setup hydra config. """
-
+        """Setup hydra config."""
         seed = 10
         pl.seed_everything(seed, workers=True)
 
         main_path = os.path.dirname(os.path.realpath(__file__))
         self.config_path = os.path.join(main_path, '../config/training/')
 
-        # Todo: Investigate pkg in hydra
+        # TODO: Investigate pkg in hydra
         # Since we are not using the default config in this test, we need to specify the Hydra search path in the
         # compose API override, otherwise the Jenkins build fails because bazel cannot find the simulation config file.
-        common_dir = "file://" + os.path.join(main_path, '..', 'config', 'common')
-        experiment_dir = "file://" + os.path.join(main_path, '..', 'experiments')
+        common_dir = 'file://' + os.path.join(main_path, '..', 'config', 'common')
+        experiment_dir = 'file://' + os.path.join(main_path, '..', 'experiments')
         self.search_path = f'hydra.searchpath=[{common_dir}, {experiment_dir}]'
 
         self.group = tempfile.TemporaryDirectory()
-        self.cache_dir = os.path.join(self.group.name, 'cache_dir')
+        self.cache_path = os.path.join(self.group.name, 'cache_path')
 
     def tearDown(self) -> None:
-        """ Remove temporary folder. """
-
+        """Remove temporary folder."""
         self.group.cleanup()
 
     @staticmethod
     def validate_cfg(cfg: DictConfig) -> None:
-        """ validate hydra config. """
-
+        """Validate hydra config."""
         update_config_for_training(cfg)
         OmegaConf.set_struct(cfg, False)
-        cfg.scenario_filter.max_scenarios_per_log = 1
+        cfg.scenario_filter.limit_total_scenarios = 0.001
         cfg.data_loader.datamodule.train_fraction = 1.0
         cfg.data_loader.datamodule.val_fraction = 1.0
         cfg.data_loader.datamodule.test_fraction = 1.0
@@ -62,12 +59,11 @@ class TestDataLoader(unittest.TestCase):
     @staticmethod
     def _iterate_dataloader(dataloader: torch.utils.data.DataLoader) -> None:
         """
-        Iterate NUM_BATCHES of the dataloader
-        :param dataloader: Data loader.
+        Iterate a fixed number of batches of the dataloader.
+        :param dataloader: Data loader to iterate.
         """
-
-        dataloader_iter = iter(dataloader)
         num_batches = 5
+        dataloader_iter = iter(dataloader)
         iterations = min(len(dataloader), num_batches)
 
         for _ in range(iterations):
@@ -75,14 +71,12 @@ class TestDataLoader(unittest.TestCase):
 
     def _run_dataloader(self, cfg: DictConfig) -> None:
         """
-        Tests that the training dataloader can be iterated without errors.
+        Test that the training dataloader can be iterated without errors.
         :param cfg: Hydra config.
         """
-
         worker = build_worker(cfg)
-        scenario_builder = build_scenario_builder(cfg)
-        planning_module = build_nn_model(cfg.model)
-        datamodule = build_lightning_datamodule(cfg, scenario_builder, worker, planning_module)
+        lightning_module_wrapper = build_torch_module_wrapper(cfg.model)
+        datamodule = build_lightning_datamodule(cfg, worker, lightning_module_wrapper)
         datamodule.setup('fit')
         datamodule.setup('test')
 
@@ -97,23 +91,25 @@ class TestDataLoader(unittest.TestCase):
         self._iterate_dataloader(test_dataloader)
 
     def test_dataloader(self) -> None:
-        """ Test dataloader on nuPlan DB. """
-
-        log_names = ['2021.05.26.20.05.14_38_1622073985538950.8_1622074969538793.5',  # train
-                     '2021.07.21.02.32.00_26_1626834838399916.8_1626835894396760.2',  # train
-                     '2021.06.04.19.10.47_47_1622848319071793.5_1622849413071686.2',  # val
-                     '2021.05.28.21.56.29_24_1622239057169313.0_1622240664170207.2']  # test
+        """Test dataloader on nuPlan DB."""
+        log_names = [
+            '2021.07.16.20.45.29_veh-35_01095_01486',  # train
+            '2021.08.17.18.54.02_veh-45_00665_01065',  # train
+            '2021.08.31.14.40.58_veh-40_00285_00668',  # val
+            '2021.10.06.07.26.10_veh-52_00006_00398',  # test
+        ]
         overrides = [
-            "scenario_builder=nuplan_mini",
-            "splitter=nuplan",
-            "scenario_builder.nuplan.scenario_filter.log_labels=null",
-            f"scenario_builder.nuplan.scenario_filter.log_names={log_names}",
-            f"group={self.group.name}",
-            f"cache_dir={self.cache_dir}",
+            'scenario_builder=nuplan_mini',
+            'worker=sequential',
+            'splitter=nuplan',
+            f'scenario_filter.log_names={log_names}',
+            f'group={self.group.name}',
+            f'cache.cache_path={self.cache_path}',
         ]
         with initialize_config_dir(config_dir=self.config_path):
-            cfg = compose(config_name=CONFIG_NAME,
-                          overrides=[self.search_path, *overrides, '+training=training_raster_model'])
+            cfg = compose(
+                config_name=CONFIG_NAME, overrides=[self.search_path, *overrides, '+training=training_raster_model']
+            )
             self.validate_cfg(cfg)
             self._run_dataloader(cfg)
 

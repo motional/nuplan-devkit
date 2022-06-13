@@ -3,36 +3,41 @@ import pathlib
 from typing import Dict, List
 
 from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
+
+from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_engine import MetricsEngine
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from omegaconf import DictConfig
 
 logger = logging.getLogger(__name__)
 
 
-def build_metric_categories(cfg: DictConfig) -> List[str]:
+def build_high_level_metric(cfg: DictConfig, base_metrics: Dict[str, AbstractMetricBuilder]) -> AbstractMetricBuilder:
+    """
+    Build a high level metric.
+    :param cfg: High level metric config.
+    :param base_metrics: A dict of base metrics.
+    :return A high level metric.
+    """
+    # Make it editable
+    OmegaConf.set_struct(cfg, False)
+    required_metrics: Dict[str, str] = cfg.pop('required_metrics', {})
+    OmegaConf.set_struct(cfg, True)
 
-    logger.info("Building metric categories...")
-    categories = set()
-    for metric_type, metric in cfg.simulation_metric.items():
-        for metric_name, metric_config in metric.items():
-            categories.add(metric_config.category)
-    metric_categories: List[str] = list(categories)
+    metric_params = {}
+    for metric_param, metric_name in required_metrics.items():
+        metric_params[metric_param] = base_metrics[metric_name]
 
-    # Sort ascending
-    metric_categories.sort(reverse=False)
-    logger.info("Building metric categories...Done!")
-    return metric_categories
+    return instantiate(cfg, **metric_params)
 
 
 def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) -> Dict[str, MetricsEngine]:
     """
-    Build a metric engine for each differenct scenario type.
-    :param cfg: Config
-    :param scenarios: list of scenarios for which metrics should be build
-    :return Dict of scenario types to metric engines
+    Build a metric engine for each different scenario type.
+    :param cfg: Config.
+    :param scenarios: list of scenarios for which metrics should be build.
+    :return Dict of scenario types to metric engines.
     """
-
     main_save_path = pathlib.Path(cfg.output_dir) / cfg.metric_dir
 
     # Metrics selected by user
@@ -42,6 +47,7 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
 
     simulation_metrics = cfg.simulation_metric
     common_metrics: DictConfig = simulation_metrics.get('common', {})
+    high_level_common_metrics: DictConfig = simulation_metrics.get('high_level_common', {})
 
     metric_engines = {}
     for scenario in scenarios:
@@ -49,8 +55,7 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
         if scenario.scenario_type in metric_engines:
             continue
         # Metrics
-        metric_engine = MetricsEngine(scenario_type=scenario.scenario_type,
-                                      main_save_path=main_save_path, timestamp=cfg.experiment_time)
+        metric_engine = MetricsEngine(main_save_path=main_save_path, timestamp=cfg.experiment_time)
 
         # TODO: Add scope checks
         scenario_type = scenario.scenario_type
@@ -58,12 +63,33 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
         metrics_in_scope = common_metrics.copy()
         metrics_in_scope.update(scenario_metrics)
 
+        high_level_metric_in_scope = high_level_common_metrics.copy()
         # We either pick the selected metrics if any is specified, or all metrics
         if selected_metrics is not None:
-            metrics_in_scope = {metric_name: metrics_in_scope[metric_name] for metric_name in selected_metrics
-                                if metric_name in metrics_in_scope}
-        for metric_cfg in metrics_in_scope.values():
-            metric_engine.add_metric(instantiate(metric_cfg))
+            metrics_in_scope = {
+                metric_name: metrics_in_scope[metric_name]
+                for metric_name in selected_metrics
+                if metric_name in metrics_in_scope
+            }
+            high_level_metric_in_scope = {
+                metric_name: high_level_common_metrics[metric_name]
+                for metric_name in selected_metrics
+                if metric_name in high_level_metric_in_scope
+            }
+        base_metrics = {
+            metric_name: instantiate(metric_config) for metric_name, metric_config in metrics_in_scope.items()
+        }
+
+        for metric in base_metrics.values():
+            metric_engine.add_metric(metric)
+
+        # Add high level common metrics
+        for metric_name, metric in high_level_metric_in_scope.items():
+            high_level_common_metric = build_high_level_metric(cfg=metric, base_metrics=base_metrics)
+            metric_engine.add_metric(high_level_common_metric)
+
+            # Add the high-level metric to the base metrics, so that other high-level metrics can reuse it
+            base_metrics[metric_name] = high_level_common_metric
 
         metric_engines[scenario_type] = metric_engine
 

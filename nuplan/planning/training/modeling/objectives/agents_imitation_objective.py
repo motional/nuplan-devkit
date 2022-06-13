@@ -1,6 +1,7 @@
 from typing import List, cast
 
 import torch
+
 from nuplan.planning.training.modeling.objectives.abstract_objective import AbstractObjective
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 from nuplan.planning.training.preprocessing.features.agents_trajectories import AgentsTrajectories
@@ -29,8 +30,8 @@ class AgentsImitationObjective(AbstractObjective):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
-        return ["agents"]
+        """Implemented. See interface."""
+        return ["agents_trajectory"]
 
     def compute(self, predictions: FeaturesType, targets: TargetsType) -> torch.Tensor:
         """
@@ -41,8 +42,8 @@ class AgentsImitationObjective(AbstractObjective):
         :param targets: ground truth targets from the dataset
         :return: loss scalar tensor
         """
-        predicted_trajectory = cast(AgentsTrajectories, predictions["agents"])
-        targets_trajectory = cast(AgentsTrajectories, targets["agents"])
+        predicted_trajectory = cast(AgentsTrajectories, predictions["agents_trajectory"])
+        targets_trajectory = cast(AgentsTrajectories, targets["agents_trajectory"])
         batch_size = predicted_trajectory.batch_size
 
         loss = 0.0

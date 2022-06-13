@@ -4,6 +4,7 @@ import time
 from typing import BinaryIO
 
 import requests
+
 from nuplan.database.common.blob_store.blob_store import BlobStore
 
 logger = logging.getLogger(__name__)
@@ -39,8 +40,10 @@ class HttpStore(BlobStore):
             return io.BytesIO(response.content)
         else:
             logger.error("Can not load file from URL: {}".format(url))
-            raise RuntimeError('Can not load the file: %s from server, '
-                               'error: %d, msg: %s.' % (url, response.status_code, response.text))
+            raise RuntimeError(
+                'Can not load the file: %s from server, '
+                'error: %d, msg: %s.' % (url, response.status_code, response.text)
+            )
 
     def get(self, key: str, check_for_compressed: bool = False) -> BinaryIO:
         """
@@ -59,7 +62,7 @@ class HttpStore(BlobStore):
         return content
 
     async def get_async(self, key: str) -> BinaryIO:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         raise NotImplementedError('Not today.')
 
     def exists(self, key: str) -> bool:
@@ -74,9 +77,9 @@ class HttpStore(BlobStore):
         return response.status_code == 200
 
     def put(self, key: str, value: BinaryIO) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         raise NotImplementedError("'Put' operation not supported for legacy HttpStore class")
 
     def save_to_disk(self, key: str, check_for_compressed: bool = False) -> None:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         super().save_to_disk(key, check_for_compressed=check_for_compressed)

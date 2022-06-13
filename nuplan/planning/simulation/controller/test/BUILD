@@ -10,8 +10,8 @@ py_test(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/controller:log_playback",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
 )
 
@@ -23,7 +23,7 @@ py_test(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/controller:perfect_tracking",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory:interpolated",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )

@@ -1,10 +1,12 @@
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch.utils.data
+
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
-from nuplan.planning.training.preprocessing.feature_caching_preprocessor import FeatureCachingPreprocessor
+from nuplan.planning.training.preprocessing.feature_preprocessor import FeaturePreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -14,31 +16,42 @@ class ScenarioDataset(torch.utils.data.Dataset):
     Dataset responsible for consuming scenarios and producing pairs of model inputs/outputs.
     """
 
-    def __init__(self,
-                 scenarios: List[AbstractScenario],
-                 feature_caching_preprocessor: FeatureCachingPreprocessor) -> None:
+    def __init__(
+        self,
+        scenarios: List[AbstractScenario],
+        feature_preprocessor: FeaturePreprocessor,
+        augmentors: Optional[List[AbstractAugmentor]] = None,
+    ) -> None:
         """
-        Initializes the class.
-        :param scenarios: list of scenarios to use as dataset examples
-        :param feature_caching_preprocessor: feature and targets builder that converts samples to model features
+        Initializes the scenario dataset.
+        :param scenarios: List of scenarios to use as dataset examples.
+        :param feature_preprocessor: Feature and targets builder that converts samples to model features.
+        :param augmentors: Augmentor object for providing data augmentation to data samples.
         """
         super().__init__()
+
         if len(scenarios) == 0:
             logger.warning('The dataset has no samples')
 
         self._scenarios = scenarios
-        self._computator = feature_caching_preprocessor
+        self._feature_preprocessor = feature_preprocessor
+        self._augmentors = augmentors
 
     def __getitem__(self, idx: int) -> Tuple[FeaturesType, TargetsType]:
         """
         Retrieves the dataset examples corresponding to the input index
-
         :param idx: input index
         :return: model features and targets
         """
         scenario = self._scenarios[idx]
 
-        features, targets = self._computator.compute_features(scenario)
+        features, targets = self._feature_preprocessor.compute_features(scenario)
+
+        if self._augmentors is not None:
+            for augmentor in self._augmentors:
+                augmentor.validate(features, targets)
+                features, targets = augmentor.augment(features, targets)
+
         features = {key: value.to_feature_tensor() for key, value in features.items()}
         targets = {key: value.to_feature_tensor() for key, value in targets.items()}
 

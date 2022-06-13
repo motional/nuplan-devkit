@@ -1,17 +1,26 @@
 from __future__ import annotations
 
-from typing import Dict, List, Type
+from typing import Dict, Type
 
 import numpy as np
+import numpy.typing as npt
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.simulation.observation.observation_type import Detections, Observation
-from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractFeatureBuilder, \
-    AbstractModelFeature, FeatureBuilderMetaData
+from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
+from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
+from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import (
+    AbstractFeatureBuilder,
+    AbstractModelFeature,
+)
 from nuplan.planning.training.preprocessing.features.raster import Raster
-from nuplan.planning.training.preprocessing.features.raster_utils import get_agents_raster, get_baseline_paths_raster, \
-    get_ego_raster, get_roadmap_raster
+from nuplan.planning.training.preprocessing.features.raster_utils import (
+    get_agents_raster,
+    get_baseline_paths_raster,
+    get_ego_raster,
+    get_roadmap_raster,
+)
 
 
 class RasterFeatureBuilder(AbstractFeatureBuilder):
@@ -20,21 +29,20 @@ class RasterFeatureBuilder(AbstractFeatureBuilder):
     """
 
     def __init__(
-            self,
-            map_features: Dict[str, int],
-            num_input_channels: int,
-            target_width: int,
-            target_height: int,
-            target_pixel_size: float,
-            ego_width: float,
-            ego_front_length: float,
-            ego_rear_length: float,
-            ego_longitudinal_offset: float,
-            baseline_path_thickness: int,
+        self,
+        map_features: Dict[str, int],
+        num_input_channels: int,
+        target_width: int,
+        target_height: int,
+        target_pixel_size: float,
+        ego_width: float,
+        ego_front_length: float,
+        ego_rear_length: float,
+        ego_longitudinal_offset: float,
+        baseline_path_thickness: int,
     ) -> None:
         """
-        Initializes the class.
-
+        Initializes the builder.
         :param map_features: name of map features to be drawn and their color for encoding.
         :param num_input_channels: number of input channel of the raster model.
         :param target_width: [pixels] target width of the raster
@@ -70,39 +78,44 @@ class RasterFeatureBuilder(AbstractFeatureBuilder):
 
     @classmethod
     def get_feature_unique_name(cls) -> str:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return "raster"
 
     @classmethod
     def get_feature_type(cls) -> Type[AbstractModelFeature]:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         return Raster  # type: ignore
 
     def get_features_from_scenario(self, scenario: AbstractScenario) -> Raster:
-        """ Inherited, see superclass. """
+        """Inherited, see superclass."""
         ego_state = scenario.initial_ego_state
-        detections = scenario.initial_detections
+        detections = scenario.initial_tracked_objects
         map_api = scenario.map_api
 
         return self._compute_feature(ego_state, detections, map_api)
 
-    def get_features_from_simulation(self, ego_states: List[EgoState], observations: List[Observation],
-                                     meta_data: FeatureBuilderMetaData) -> Raster:
-        """ Inherited, see superclass. """
-        ego_state = ego_states[-1]
-        observation = observations[-1]
+    def get_features_from_simulation(
+        self, current_input: PlannerInput, initialization: PlannerInitialization
+    ) -> Raster:
+        """Inherited, see superclass."""
+        history = current_input.history
+        ego_state = history.ego_states[-1]
+        observation = history.observations[-1]
 
-        if isinstance(observation, Detections):
-            return self._compute_feature(ego_state, observation, meta_data.map_api)
+        if isinstance(observation, DetectionsTracks):
+            return self._compute_feature(ego_state, observation, initialization.map_api)
         else:
-            raise TypeError(f"Observation was type {observation.detection_type()}. Expected Detections")
+            raise TypeError(f"Observation was type {observation.detection_type()}. Expected DetectionsTracks")
 
-    def _compute_feature(self, ego_state: EgoState,
-                         detections: Detections,
-                         map_api: AbstractMap) -> Raster:
+    def _compute_feature(
+        self,
+        ego_state: EgoState,
+        detections: DetectionsTracks,
+        map_api: AbstractMap,
+    ) -> Raster:
         # Construct map, agents and ego layers
         roadmap_raster = get_roadmap_raster(
-            ego_state,
+            ego_state.agent,
             map_api,
             self.map_features,
             self.x_range,
@@ -128,23 +141,30 @@ class RasterFeatureBuilder(AbstractFeatureBuilder):
         )
 
         baseline_paths_raster = get_baseline_paths_raster(
-            ego_state,
+            ego_state.agent,
             map_api,
             self.x_range,
             self.y_range,
             self.raster_shape,
             self.target_pixel_size,
-            self.baseline_path_thickness
+            self.baseline_path_thickness,
         )
 
-        collated_layers = np.dstack([ego_raster, agents_raster, roadmap_raster,  # type: ignore
-                                     baseline_paths_raster]).astype(np.float32)
+        collated_layers: npt.NDArray[np.float32] = np.dstack(
+            [
+                ego_raster,
+                agents_raster,
+                roadmap_raster,
+                baseline_paths_raster,
+            ]
+        ).astype(np.float32)
 
-        # Ensures the last channel is the number of channel.
+        # Ensures channel is the last dimension.
         if collated_layers.shape[-1] != self.num_input_channels:
             raise RuntimeError(
                 f'Invalid raster numpy array. '
                 f'Expected {self.num_input_channels} channels, got {collated_layers.shape[-1]} '
-                f'Shape is {collated_layers.shape}')
+                f'Shape is {collated_layers.shape}'
+            )
 
         return Raster(data=collated_layers)

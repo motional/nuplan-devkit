@@ -12,6 +12,7 @@ py_library(
     srcs = ["abstract_metric.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
     ],
 )
@@ -23,6 +24,7 @@ py_library(
         "//nuplan/planning/metrics:abstract_metric",
         "//nuplan/planning/metrics:metric_file",
         "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
     ],
 )
@@ -30,10 +32,18 @@ py_library(
 py_library(
     name = "metric_file",
     srcs = ["metric_file.py"],
-    deps = ["//nuplan/planning/metrics:metric_result"],
+    deps = [
+        "//nuplan/planning/metrics:metric_result",
+    ],
 )
 
 py_library(
     name = "metric_result",
     srcs = ["metric_result.py"],
+    deps = ["//nuplan/planning/metrics:metric_dataframe"],
+)
+
+py_library(
+    name = "metric_dataframe",
+    srcs = ["metric_dataframe.py"],
 )

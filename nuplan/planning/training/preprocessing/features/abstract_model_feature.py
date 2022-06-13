@@ -79,3 +79,17 @@ class AbstractModelFeature(ABC):
         :return: Return dictionary of data that can be serialized
         """
         pass
+
+    @abstractmethod
+    def unpack(self) -> List[AbstractModelFeature]:
+        """
+        :return: Unpack a batched feature to a list of features.
+        """
+        pass
+
+    @property
+    def is_valid(self) -> bool:
+        """
+        :return: Whether the feature is valid (e.g. non empty). By default all features are valid unless overridden.
+        """
+        return True

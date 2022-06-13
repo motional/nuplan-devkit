@@ -14,6 +14,6 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/simulation_manager:simulation_iteration",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )

@@ -17,6 +17,9 @@ py_test(
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/base:plot_data",
+        "//nuplan/planning/simulation/main_callback:metric_file_callback",
     ],
 )
 
@@ -36,7 +39,9 @@ py_test(
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/base:plot_data",
         "//nuplan/planning/nuboard/base:simulation_tile",
-        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
     ],
 )

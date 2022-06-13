@@ -10,6 +10,7 @@ class LABEL_MAP(IntEnum):
     """
     Mapping of database's box labels to integers.
     """
+
     VEHICLE = 1
     BICYCLE = auto()
     PEDESTRIAN = auto()
@@ -25,10 +26,13 @@ class LabelMapping:
     Label mapping data class.
     TODO: Temporarily used only for compatibility with agent_state, to be removed!
     """
+
     local2id: Dict[str, int]
 
 
-def parse_labelmap_dataclass(labelmap: Dict[int, Label]) -> Tuple:  # type: ignore
+def parse_labelmap_dataclass(
+    labelmap: Dict[int, Label]
+) -> Tuple[OrderedDict[int, Any], OrderedDict[int, Tuple[Any, ...]]]:
     """
     A labelmap provides a map from integer ids to text and color labels. After loading a label map from json, this
     will parse the labelmap into commonly utilized mappings and fix the formatting issues caused by json.
@@ -36,7 +40,6 @@ def parse_labelmap_dataclass(labelmap: Dict[int, Label]) -> Tuple:  # type: igno
     :return: (id2name {id <int>: name <str>}, id2color {id <int>: color (R <int>, G <int>, B <int>, A <int>)}.
         Label id to name and label id to color mappings tuple.
     """
-
     id2name = OrderedDict()  # {integer ids : str name}
     id2color = OrderedDict()  # {integer ids: RGB or RGBA tuple}
 
@@ -84,6 +87,7 @@ local2agent_type = {
     "ped": "PEDESTRIAN",
     "bike": "BICYCLE",
     "traffic_cone": "TRAFFIC_CONE",
+    "trafficcone": "TRAFFIC_CONE",
     "barrier": "BARRIER",
     "czone_sign": "CZONE_SIGN",
 }

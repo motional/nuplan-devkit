@@ -1,0 +1,5 @@
+ego_mean_speed_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_mean_speed.EgoMeanSpeedStatistics
+  _convert_: 'all'
+  name: 'ego_mean_speed'
+  category: 'Dynamics'

@@ -1,6 +1,7 @@
 from typing import List
 
 import torch
+
 from nuplan.planning.training.modeling.metrics.abstract_training_metric import AbstractTrainingMetric
 from nuplan.planning.training.modeling.types import TargetsType
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
@@ -26,7 +27,7 @@ class AverageDisplacementError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return ["trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
@@ -63,7 +64,7 @@ class FinalDisplacementError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return ["trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
@@ -100,7 +101,7 @@ class AverageHeadingError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return ["trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:
@@ -138,7 +139,7 @@ class FinalHeadingError(AbstractTrainingMetric):
         return self._name
 
     def get_list_of_required_target_types(self) -> List[str]:
-        """ Implemented. See interface. """
+        """Implemented. See interface."""
         return ["trajectory"]
 
     def compute(self, predictions: TargetsType, targets: TargetsType) -> torch.Tensor:

@@ -12,6 +12,8 @@ TRAJECTORY = "test_trajectory"
 
 
 class TestVisualizationCallback(TestCase):
+    """Tests VisualizationCallback."""
+
     def setUp(self) -> None:
         """
         Setup mocks for the tests
@@ -20,16 +22,14 @@ class TestVisualizationCallback(TestCase):
         self.setup = Mock(spec=SimulationSetup)
         self.planner = Mock(spec=AbstractPlanner)
         self.history = Mock(spec=SimulationHistory, data=[7, 23, 42])
-        self.history_sample = Mock(
-            spec=SimulationHistorySample)
+        self.history_sample = Mock(spec=SimulationHistorySample)
 
         self.setup.scenario = "test_scenario"
         self.history_sample.ego_state = "test_ego_state"
         self.history_sample.observation = "test_observation"
         self.history_sample.iteration = "test_iteration"
         self.history_sample.trajectory = Mock()
-        self.history_sample.trajectory.get_sampled_trajectory = Mock(
-            return_value=TRAJECTORY)
+        self.history_sample.trajectory.get_sampled_trajectory = Mock(return_value=TRAJECTORY)
 
         self.vc = VisualizationCallback(self.visualization)
 
@@ -55,8 +55,7 @@ class TestVisualizationCallback(TestCase):
             self.vc.on_initialization_start(self.setup, self.planner)
 
             # Expectations check
-            visualization.render_scenario.assert_called_once_with(
-                self.setup.scenario, True)
+            visualization.render_scenario.assert_called_once_with(self.setup.scenario, True)
 
     def test_on_step_end(self) -> None:
         """
@@ -73,14 +72,10 @@ class TestVisualizationCallback(TestCase):
             self.vc.on_step_end(self.setup, self.planner, self.history_sample)
 
             # Expectations check
-            visualization.render_ego_state.assert_called_once_with(
-                self.history_sample.ego_state)
-            visualization.render_observations.assert_called_once_with(
-                self.history_sample.observation)
-            visualization.render_trajectory.assert_called_once_with(
-                TRAJECTORY)
-            visualization.render.assert_called_once_with(
-                self.history_sample.iteration)
+            visualization.render_ego_state.assert_called_once_with(self.history_sample.ego_state)
+            visualization.render_observations.assert_called_once_with(self.history_sample.observation)
+            visualization.render_trajectory.assert_called_once_with(TRAJECTORY)
+            visualization.render.assert_called_once_with(self.history_sample.iteration)
             self.history_sample.trajectory.get_sampled_trajectory.assert_called_once()
 
     @patch.object(VisualizationCallback, 'on_step_end')
@@ -92,8 +87,7 @@ class TestVisualizationCallback(TestCase):
         self.vc.on_simulation_end(self.setup, self.planner, self.history)
 
         # Expectations check
-        on_step_end.assert_called_once_with(
-            self.setup, self.planner, self.history.data[-1])
+        on_step_end.assert_called_once_with(self.setup, self.planner, self.history.data[-1])
 
 
 if __name__ == '__main__':

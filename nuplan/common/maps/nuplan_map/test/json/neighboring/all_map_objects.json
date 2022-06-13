@@ -48,6 +48,8 @@
         "expected_num_lane_connectors": 16,
         "expected_num_stop_lines": 4,
         "expected_num_cross_walks": 1,
-        "expected_num_intersections": 3
+        "expected_num_intersections": 3,
+        "expected_num_roadblocks": 6,
+        "expected_num_roadblock_connectors": 7
     }
 }

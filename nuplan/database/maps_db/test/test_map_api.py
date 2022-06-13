@@ -1,38 +1,29 @@
-import os
 import unittest
 
 import numpy as np
-from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
+from shapely.geometry import LineString, MultiPolygon, Polygon
+
 from nuplan.database.maps_db.map_api import NuPlanMapWrapper
 from nuplan.database.maps_db.map_explorer import NuPlanMapExplorer
-from shapely.geometry import LineString, MultiPolygon, Polygon
+from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
 
 
 class TestMapApi(unittest.TestCase):
-    """ Test NuPlanMapWrapper class. """
+    """Test NuPlanMapWrapper class."""
 
     def setUp(self) -> None:
         """
         Initialize the map for each location.
         """
-        self.map_version = os.getenv('NUPLAN_MAPS_VERSION', 'nuplan-maps-v0.1')
+        self.maps_db = get_test_maps_db()
         self.locations = ["sg-one-north", "us-ma-boston", "us-nv-las-vegas-strip", "us-pa-pittsburgh-hazelwood"]
-        self.maps_db = GPKGMapsDB(self.map_version,
-                                  map_root=os.path.join(os.getenv('NUPLAN_DATA_ROOT', "~/nuplan/dataset"),
-                                                        'maps'))
         self.available_locations = self.maps_db.get_locations()
         self.nuplan_maps = dict()
         for location in self.available_locations:
             self.nuplan_maps[location] = NuPlanMapWrapper(maps_db=self.maps_db, map_name=location)
 
-    def test_db_version(self) -> None:
-        """ Tests the maps db version are correct. """
-
-        assert self.maps_db.get_map_version() == self.map_version, "Incorrect maps db version"
-
     def test_version_names(self) -> None:
-        """ Tests the locations map version are correct. """
-
+        """Tests the locations map version are correct."""
         assert len(self.maps_db.version_names) == len(self.available_locations), "Incorrect number of version names"
 
     def test_locations(self) -> None:
@@ -48,9 +39,9 @@ class TestMapApi(unittest.TestCase):
         """
         path_center = [0, 0]
         path_dimension = [10, 10]
-        polygon_coords = self.nuplan_maps[self.locations[0]].get_patch_coord((path_center[0], path_center[1],
-                                                                              path_dimension[0], path_dimension[1]),
-                                                                             0.0)
+        polygon_coords = self.nuplan_maps[self.locations[0]].get_patch_coord(
+            (path_center[0], path_center[1], path_dimension[0], path_dimension[1]), 0.0
+        )
         expected_polygon_coords = Polygon([[5, -5], [5, 5], [-5, 5], [-5, -5], [5, -5]])
         self.assertEqual(polygon_coords, expected_polygon_coords)
 
@@ -60,9 +51,9 @@ class TestMapApi(unittest.TestCase):
         """
         path_center = [0, 0]
         path_dimension = [10, 20]
-        polygon_coords = self.nuplan_maps[self.locations[0]].get_patch_coord((path_center[0], path_center[1],
-                                                                              path_dimension[0], path_dimension[1]),
-                                                                             90.0)
+        polygon_coords = self.nuplan_maps[self.locations[0]].get_patch_coord(
+            (path_center[0], path_center[1], path_dimension[0], path_dimension[1]), 90.0
+        )
         expected_polygon_coords = Polygon([[5, 10], [-5, 10], [-5, -10], [5, -10], [5, 10]])
         self.assertEqual(polygon_coords, expected_polygon_coords)
 
@@ -82,56 +73,61 @@ class TestMapApi(unittest.TestCase):
         """
         Checks if the line inside patch.
         """
-        line_coords = LineString([(1., 1.), (10., 10.)])
-        box_coords = [0., 0., 11., 11.]
+        line_coords = LineString([(1.0, 1.0), (10.0, 10.0)])
+        box_coords = [0.0, 0.0, 11.0, 11.0]
         self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords))
 
-        box_coords = [0., 0., 8., 8.]
-        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(
-            np.array(line_coords), box_coords))
+        box_coords = [0.0, 0.0, 8.0, 8.0]
+        self.assertFalse(
+            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords)
+        )
 
     def test_line_intersects_patch(self) -> None:
         """
         Checks if line intersects the patch.
         """
-        line_coords = LineString([(0., 0.), (10., 10.)])
-        box_coords = [0., 0., 11., 11.]
-        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords,
-                                                                                     'intersect'))
+        line_coords = LineString([(0.0, 0.0), (10.0, 10.0)])
+        box_coords = [0.0, 0.0, 11.0, 11.0]
+        self.assertTrue(
+            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords, 'intersect')
+        )
 
-        box_coords = [11., 11., 16., 16.]
-        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords,
-                                                                                      'intersect'))
+        box_coords = [11.0, 11.0, 16.0, 16.0]
+        self.assertFalse(
+            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords, 'intersect')
+        )
 
     def test_polygon_in_patch(self) -> None:
         """
         Checks if polygon is inside patch.
         """
-        polygon_coords = Polygon([(1., 1.), (1., 10.), (10., 10.), (1., 1.)])
-        box_coords = [0., 0., 11., 11.]
+        polygon_coords = Polygon([(1.0, 1.0), (1.0, 10.0), (10.0, 10.0), (1.0, 1.0)])
+        box_coords = [0.0, 0.0, 11.0, 11.0]
         self.assertTrue(self.nuplan_maps[self.locations[0]]._is_polygon_record_in_patch(polygon_coords, box_coords))
 
-        box_coords = [0., 0., 8., 8.]
+        box_coords = [0.0, 0.0, 8.0, 8.0]
         self.assertFalse(self.nuplan_maps[self.locations[0]]._is_polygon_record_in_patch(polygon_coords, box_coords))
 
     def test_polygon_intersects_patch(self) -> None:
         """
         Check if polygon intersects patch.
         """
-        polygon_coords = Polygon([(1., 1.), (1., 10.), (10., 10.), (1., 1.)])
-        box_coords = [1., 1., 11., 11.]
-        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_polygon_record_in_patch(polygon_coords, box_coords,
-                                                                                        'intersect'))
+        polygon_coords = Polygon([(1.0, 1.0), (1.0, 10.0), (10.0, 10.0), (1.0, 1.0)])
+        box_coords = [1.0, 1.0, 11.0, 11.0]
+        self.assertTrue(
+            self.nuplan_maps[self.locations[0]]._is_polygon_record_in_patch(polygon_coords, box_coords, 'intersect')
+        )
 
-        box_coords = [12., 14., 15., 15.]
-        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_polygon_record_in_patch(polygon_coords, box_coords,
-                                                                                         'intersect'))
+        box_coords = [12.0, 14.0, 15.0, 15.0]
+        self.assertFalse(
+            self.nuplan_maps[self.locations[0]]._is_polygon_record_in_patch(polygon_coords, box_coords, 'intersect')
+        )
 
     def test_mask_for_polygons(self) -> None:
         """
         Checks the mask generated using polygons.
         """
-        polygon_coords = MultiPolygon([Polygon([(0., 0.), (0., 2.), (2., 2.), (2., 0.), (0., 0.)])])
+        polygon_coords = MultiPolygon([Polygon([(0.0, 0.0), (0.0, 2.0), (2.0, 2.0), (2.0, 0.0), (0.0, 0.0)])])
         mask = np.zeros((10, 10))
 
         map_explorer = NuPlanMapExplorer(self.nuplan_maps[self.locations[0]])
@@ -139,10 +135,10 @@ class TestMapApi(unittest.TestCase):
 
         expected_mask = np.zeros((10, 10))
         expected_mask[0:3, 0:3] = 1
-        np.testing.assert_array_equal(predicted_mask, expected_mask)  # type:ignore
+        np.testing.assert_array_equal(predicted_mask, expected_mask)
 
     def test_mask_for_lines(self) -> None:
-        """ Checks the mask generated using lines. """
+        """Checks the mask generated using lines."""
         line_coords = LineString([(0, 0), (0, 5), (5, 5), (5, 0), (0, 0)])
         mask = np.zeros((10, 10))
 
@@ -153,7 +149,7 @@ class TestMapApi(unittest.TestCase):
         expected_mask[0:7, 0:7] = 1
         expected_mask[2:4, 2:4] = 0
         expected_mask[6, 6] = 0
-        np.testing.assert_array_equal(predicted_mask, expected_mask)  # type:ignore
+        np.testing.assert_array_equal(predicted_mask, expected_mask)
 
     def test_layers_on_points(self) -> None:
         """
@@ -171,7 +167,7 @@ class TestMapApi(unittest.TestCase):
         self.assertEqual(layer['lanes_polygons'], ['63085'])
 
         # Test return 0 records for a point outside of the layer.
-        layer = self.nuplan_maps[self.locations[3]].layers_on_point(87488., 43600., ['lanes_polygons'])
+        layer = self.nuplan_maps[self.locations[3]].layers_on_point(87488.0, 43600.0, ['lanes_polygons'])
         self.assertFalse(layer['lanes_polygons'])
 
     def test_get_records_in_patch(self) -> None:
@@ -192,14 +188,13 @@ class TestMapApi(unittest.TestCase):
         self.assertTrue(tokens['lanes_polygons'])
 
     def test_get_layer_polygon(self) -> None:
-        """ Checks the function of retrieving the polygons of a particular layer within the specified patch. """
-
+        """Checks the function of retrieving the polygons of a particular layer within the specified patch."""
         # Raises for non vector layer.
         with self.assertRaises(Exception):
-            self.nuplan_maps[self.locations[3]].get_layer_polygon((0, 0, 0, 0), 0., 'drivable_area')
+            self.nuplan_maps[self.locations[3]].get_layer_polygon((0, 0, 0, 0), 0.0, 'drivable_area')
 
         # Test returning empty polygons in a empty patch.
-        self.assertFalse(self.nuplan_maps[self.locations[3]].get_layer_polygon((0, 0, 0, 0), 0., 'lanes_polygons'))
+        self.assertFalse(self.nuplan_maps[self.locations[3]].get_layer_polygon((0, 0, 0, 0), 0.0, 'lanes_polygons'))
 
         # Test returning polygons for a patch.
         xmin, ymin, xmax, ymax = self.nuplan_maps[self.locations[0]].get_bounds('lanes_polygons')
@@ -210,14 +205,13 @@ class TestMapApi(unittest.TestCase):
         self.assertTrue(self.nuplan_maps[self.locations[0]].get_layer_polygon(patch_box, patch_angle, 'lanes_polygons'))
 
     def test_get_layer_line(self) -> None:
-        """ Checks the function of retrieving the lines of a particular layer within the specified patch. """
-
+        """Checks the function of retrieving the lines of a particular layer within the specified patch."""
         # Raises for non vector layer.
         with self.assertRaises(Exception):
-            self.nuplan_maps[self.locations[3]].get_layer_line((0, 0, 0, 0), 0., 'drivable_area')
+            self.nuplan_maps[self.locations[3]].get_layer_line((0, 0, 0, 0), 0.0, 'drivable_area')
 
         # Test returning empty lines in an empty patch.
-        self.assertFalse(self.nuplan_maps[self.locations[3]].get_layer_line((0, 0, 0, 0), 0., 'lanes_polygons'))
+        self.assertFalse(self.nuplan_maps[self.locations[3]].get_layer_line((0, 0, 0, 0), 0.0, 'lanes_polygons'))
 
         xmin, ymin, xmax, ymax = self.nuplan_maps[self.locations[0]].get_bounds('lanes_polygons')
         width = xmax - xmin

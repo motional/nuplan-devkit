@@ -2,12 +2,13 @@ import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 
+from torch.utils.tensorboard import SummaryWriter
+
 from nuplan.planning.simulation.callback.timing_callback import TimingCallback
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
-from nuplan.planning.simulation.trajectory.trajectory import AbstractTrajectory
-from torch.utils.tensorboard import SummaryWriter
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 
 START_TIME = 123456789
 END_TIME = 987654321
@@ -15,7 +16,11 @@ TOKEN = "test_token"
 GLOBAL_STEP = 7
 
 
-class TestTimingCallBack(TestCase):
+class TestTimingCallback(TestCase):
+    """
+    Tests the simulation TimingCallback.
+    """
+
     def setUp(self) -> None:
         """
         Setup mocks for the tests
@@ -51,7 +56,7 @@ class TestTimingCallBack(TestCase):
     @patch.object(TimingCallback, '_get_time', autospec=True)
     def test_on_planner_start(self, get_time: MagicMock) -> None:
         """
-        Testst if the get_time method is called and the start time is set accordingly.
+        Tests if the get_time method is called and the start time is set accordingly.
         """
         # Code execution
         get_time.return_value = START_TIME
@@ -82,8 +87,7 @@ class TestTimingCallBack(TestCase):
             self.tc.on_planner_end(self.setup, self.planner, self.trajectory)
 
             # Expectations check
-            planner_step_duration.append.assert_called_once_with(
-                END_TIME - START_TIME)
+            planner_step_duration.append.assert_called_once_with(END_TIME - START_TIME)
 
             get_time.assert_called_once()
 
@@ -132,21 +136,26 @@ class TestTimingCallBack(TestCase):
         # Expectations check
         get_time.assert_called_once()
 
-        self.writer.add_scalar.assert_has_calls([
-            call("simulation_elapsed_time", END_TIME - START_TIME, 7),
-            call('mean_step_time', 452, 7),
-            call('max_step_time', 789, 7),
-            call('max_planner_step_time', 1011, 7),
-            call('mean_planner_step_time', 674, 7)
-        ])
+        self.writer.add_scalar.assert_has_calls(
+            [
+                call("simulation_elapsed_time", END_TIME - START_TIME, 7),
+                call('mean_step_time', 452, 7),
+                call('max_step_time', 789, 7),
+                call('max_planner_step_time', 1011, 7),
+                call('mean_planner_step_time', 674, 7),
+            ]
+        )
 
-        self.assertEqual(self.tc._scenarios_captured[TOKEN], {
-            "simulation_elapsed_time": END_TIME - START_TIME,
-            "mean_step_time": 452,
-            "max_step_time": 789,
-            "max_planner_step_time": 1011,
-            "mean_planner_step_time": 674
-        })
+        self.assertEqual(
+            self.tc._scenarios_captured[TOKEN],
+            {
+                "simulation_elapsed_time": END_TIME - START_TIME,
+                "mean_step_time": 452,
+                "max_step_time": 789,
+                "max_planner_step_time": 1011,
+                "mean_planner_step_time": 674,
+            },
+        )
 
         self.assertEqual(self.tc._tensorboard_global_step, GLOBAL_STEP + 1)
         self.assertFalse(self.tc._step_duration)
@@ -187,8 +196,7 @@ class TestTimingCallBack(TestCase):
             self.tc.on_step_end(self.setup, self.planner, self.history_sample)
 
             # Expectations check
-            step_duration.append.assert_called_once_with(
-                END_TIME - START_TIME)
+            step_duration.append.assert_called_once_with(END_TIME - START_TIME)
 
             get_time.assert_called_once()
 

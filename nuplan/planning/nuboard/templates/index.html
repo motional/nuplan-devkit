@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  {% extends base %} {% block head %}
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {% block inner_head %}
+    <link rel="stylesheet" type="text/css" href="resource/style.css" />
+    <link rel="stylesheet" href="resource/spectre.min.css" />
+    <link rel="stylesheet" href="resource/spectre-exp.min.css" />
+    <link rel="stylesheet" href="resource/spectre-icons.min.css" />
+    <link
+      rel="stylesheet"
+      href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.9/themes/base/jquery-ui.css"
+      type="text/css"
+      media="all"
+    />
+    <link rel="shortcut icon" href="#" />
+    <meta charset="UTF-8" />
+    <title>nuBoard</title>
+    {% block preamble %}{% endblock %} {% block resources %} {% block
+    js_resources %} {{ bokeh_js | indent(8) if bokeh_js }} {% endblock %} {{
+    script | safe }} {% endblock %} {% block postamble %}{% endblock %} {%
+    endblock %}
+    <script type="text/javascript" src="resource/scripts/utils.js"></script>
+  </head>
+  {% endblock %} {% block body %}
+  <body>
+    <div class="full-page">
+      <header class="navbar bg-secondary px-2">
+        <ul class="nav">
+          <li class="text-center">
+            <img src="resource/motional_logo.png" width="100%" />
+            <b class="navbar-brand navbar-title">nuBoard</b>
+          </li>
+          <li class="nav-item" style="font-weight: bold;">
+            <a href="#" onclick="openTab(event, 'overview')">Overview</a>
+          </li>
+          <li class="nav-item">
+            <a href="#" onclick="openTab(event, 'histogram')">Histograms</a>
+          </li>
+          <li class="nav-item" style="padding-bottom: 30px; border-bottom: 1px solid rgba(191, 191, 191, 0.6);">
+            <a href="#" onclick="openTab(event, 'scenario')">Scenarios</a>
+          </li>
+          <div id="file-header" class="file-header">
+            <label class="btn sidebar-file-path-input flex-1">
+              Upload file {{ embed(roots.file_path_input)}}
+            </label>
+          </div>
+          <div class="nav-item experiment-file-path-item flex-1">
+            <div style="font-size: 12px;">Experiments:</div>
+            {{ embed(roots.experiment_file_path_checkbox_group) }}
+          </div>
+          <cite class="text-center">v0.2</cite>
+        </ul>
+      </header>
+
+      <div id="main">
+        <div class="tab-container">
+          {% include 'tabs/overview.html' %} {% include 'tabs/histogram.html' %}
+          {% include 'tabs/scenario.html' %} {% for doc in docs %} {{ embed(doc)
+          if doc.elementid }} {% for root in doc.roots %} {{ embed(root) |
+          indent(10) }} {% endfor %} {% endfor %} {{ plot_script | indent(8) }}
+        </div>
+      </div>
+    </div>
+  </body>
+  {% endblock %}
+</html>
