@@ -16,6 +16,7 @@ from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 from nuplan.database.nuplan_db.nuplandb_wrapper import NuPlanDBWrapper
 from nuplan.planning.nuboard.base.data_class import NuBoardFile, SimulationScenarioKey
+from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
@@ -85,17 +86,54 @@ def save_scenes_to_dir(
     planner_name = "tutorial_planner"
     scenario_type = scenario.scenario_type
     scenario_name = scenario.scenario_name
+    log_name = scenario.log_name
 
     save_path = Path(save_dir)
-    file = save_path / planner_name / scenario_type / scenario_name / (scenario_name + ".msgpack.xz")
+    file = save_path / planner_name / scenario_type / log_name / scenario_name / (scenario_name + ".msgpack.xz")
     file.parent.mkdir(exist_ok=True, parents=True)
 
     with lzma.open(file, "wb", preset=0) as f:
         f.write(msgpack.packb(scenes))
 
     return SimulationScenarioKey(
-        planner_name=planner_name, scenario_name=scenario_name, scenario_type=scenario_type, files=[file]
+        planner_name=planner_name,
+        scenario_name=scenario_name,
+        scenario_type=scenario_type,
+        nuboard_file_index=0,
+        log_name=log_name,
+        files=[file],
     )
+
+
+def _create_dummy_simulation_history_buffer(
+    scenario: AbstractScenario, iteration: int = 0, time_horizon: int = 2, num_samples: int = 2, buffer_size: int = 2
+) -> SimulationHistoryBuffer:
+    """
+    Create dummy SimulationHistoryBuffer.
+    :param scenario: Scenario.
+    :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
+    :param num_samples: number of entries in the future.
+    :param time_horizon: the desired horizon to the future.
+    :param buffer_size: size of buffer.
+    :return: SimulationHistoryBuffer.
+    """
+    past_observation = scenario.get_past_tracked_objects(
+        iteration=iteration, time_horizon=time_horizon, num_samples=num_samples
+    )
+
+    past_ego_states = scenario.get_ego_past_trajectory(
+        iteration=iteration, time_horizon=time_horizon, num_samples=num_samples
+    )
+
+    # Dummy history buffer
+    history_buffer = SimulationHistoryBuffer.initialize_from_list(
+        buffer_size=buffer_size,
+        ego_states=past_ego_states,
+        observations=past_observation,
+        sample_interval=scenario.database_interval,
+    )
+
+    return history_buffer
 
 
 def serialize_scenario(
@@ -114,7 +152,7 @@ def serialize_scenario(
     observations = TracksObservation(scenario)
 
     # Dummy history buffer
-    history_buffer = SimulationHistoryBuffer([], [])
+    history_buffer = _create_dummy_simulation_history_buffer(scenario=scenario)
 
     # Get all states
     for _ in range(simulation_time_controller.number_of_iterations()):
@@ -183,22 +221,24 @@ def visualize_scenarios(
             aggregator_metric_folder='',
         )
 
+        experiment_file_data = ExperimentFileData(file_paths=[nuboard_file])
         # Create a simulation tile
         simulation_tile = SimulationTile(
             doc=doc,
             map_factory=map_factory,
-            nuboard_files=[nuboard_file],
+            experiment_file_data=experiment_file_data,
             vehicle_parameters=get_pacifica_parameters(),
         )
 
         # Render a simulation tile
-        layouts = simulation_tile.render_simulation_tiles(simulation_scenario_keys)
+        simulation_scenario_data = simulation_tile.render_simulation_tiles(simulation_scenario_keys)
 
         # Create layouts
-        layouts = column(layouts, width_policy='max', sizing_mode='scale_width')
+        simulation_figures = [data.plot for data in simulation_scenario_data]
+        simulation_layouts = column(simulation_figures)
 
         # Add the layouts to the bokeh document
-        doc.add_root(layouts)
+        doc.add_root(simulation_layouts)
 
     show(bokeh_app)
 
