@@ -111,10 +111,10 @@ def _create_dummy_simulation_history_buffer(
     """
     Create dummy SimulationHistoryBuffer.
     :param scenario: Scenario.
-    :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
+    :param iteration: The starting iteration 0 <= scenario_iteration < get_number_of_iterations.
     :param num_samples: number of entries in the future.
-    :param time_horizon: the desired horizon to the future.
-    :param buffer_size: size of buffer.
+    :param time_horizon: [s] The desired horizon to the future.
+    :param buffer_size: The size of buffer.
     :return: SimulationHistoryBuffer.
     """
     past_observation = scenario.get_past_tracked_objects(
