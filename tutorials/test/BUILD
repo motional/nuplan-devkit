@@ -52,3 +52,13 @@ py_test(
         "//tutorials/utils:tutorial_utils",
     ],
 )
+
+py_test(
+    name = "test_scenario_visualization_tutorial_notebook",
+    size = "small",
+    srcs = ["test_scenario_visualization_tutorial_notebook.py"],
+    deps = [
+        "//nuplan/database/nuplan_db:nuplandb_wrapper",
+        "//tutorials/utils:tutorial_utils",
+    ],
+)

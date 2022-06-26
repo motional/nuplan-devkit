@@ -5,10 +5,11 @@ from os import path
 from pathlib import Path
 
 import hydra
+import ray
+from tutorials.utils.tutorial_utils import construct_nuboard_hydra_paths, construct_simulation_hydra_paths
 
 from nuplan.planning.script.run_nuboard import main as main_nuboard
 from nuplan.planning.script.run_simulation import main as main_simulation
-from tutorials.utils.tutorial_utils import construct_nuboard_hydra_paths, construct_simulation_hydra_paths
 
 TEST_TIMEOUT = 10  # [s] timeout dashboard after this duration
 
@@ -32,6 +33,19 @@ class TestPlannerTutorialHydra(unittest.TestCase):
     Test planner tutorial Jupyter notebook hydra configuration.
     """
 
+    def setUp(self) -> None:
+        """Setup."""
+        self.tmp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self) -> None:
+        """Clean up."""
+        if Path(self.tmp_dir.name).exists():
+            self.tmp_dir.cleanup()
+
+        # Stop ray
+        if ray.is_initialized():
+            ray.shutdown()
+
     def test_hydra_paths_utils(self) -> None:
         """
         Test HydraConfigPaths utility functions for storing config paths for simulation and visualization.
@@ -39,29 +53,27 @@ class TestPlannerTutorialHydra(unittest.TestCase):
         # test simulation
         simulation_hydra_paths = construct_simulation_hydra_paths(BASE_CONFIG_PATH)
 
-        tmp_dir = tempfile.mkdtemp()
-
         with hydra.initialize_config_dir(config_dir=simulation_hydra_paths.config_path):
             cfg = hydra.compose(
                 config_name=simulation_hydra_paths.config_name,
                 overrides=[
                     f'hydra.searchpath=[{simulation_hydra_paths.common_dir}, {simulation_hydra_paths.experiment_dir}]',
+                    '+simulation=open_loop_boxes',
                     'log_config=false',
                     'scenario_builder=nuplan_mini',
                     'planner=simple_planner',
-                    'scenario_filter=one_hand_picked_scenario',
-                    'scenario_filter.limit_total_scenarios=1',
+                    'scenario_filter=one_of_each_scenario_type',
+                    'scenario_filter.limit_total_scenarios=2',
                     'exit_on_failure=true',
-                    f'group={tmp_dir}',
-                    'observation=box_observation',
-                    'ego_controller=log_play_back_controller',
+                    """selected_simulation_metrics='[ego_acceleration_statistics, ego_jerk_statistics]'""",
+                    f'group={self.tmp_dir.name}',
                     'experiment_name=hydra_paths_utils_test',
                 ],
             )
             main_simulation(cfg)
 
         # test nuboard
-        results_dir = list(list(Path(tmp_dir).iterdir())[0].iterdir())[0]  # get the child dir 2 levels in
+        results_dir = list(list(Path(self.tmp_dir.name).iterdir())[0].iterdir())[0]  # get the child dir 2 levels in
         simulation_file = [str(file) for file in results_dir.iterdir() if file.is_file() and file.suffix == '.nuboard'][
             0
         ]
