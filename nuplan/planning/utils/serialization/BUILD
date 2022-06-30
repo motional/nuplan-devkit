@@ -40,5 +40,6 @@ py_library(
         "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/planning/utils:color",
     ],
 )

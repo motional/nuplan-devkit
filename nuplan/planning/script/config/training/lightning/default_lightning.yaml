@@ -1,10 +1,5 @@
-hparams:  # passed directly to the lightning module
-  learning_rate: ${lightning.optimization.optimizer.learning_rate}  # learning rate of the optimizer
-  batch_size: ${data_loader.params.batch_size}  # batch size per GPU (not total)
-
-optimization:
-  optimizer:
-    learning_rate: 1e-5  # learning rate of the optimizer
+distributed_training:
+  lr_scaling_method: none #[none, linearly, equal_variance] method by which to scale lr using world size (number of GPUs)
 
 trainer:
   checkpoint:
@@ -27,6 +22,8 @@ trainer:
     gpus: -1  # number of GPUs to utilize (-1 means all available GPUs)
     accelerator: ddp  # distribution method
     precision: 16  # floating point precision
+    amp_level: O2  # AMP optimization level
+    num_nodes: 1 # Number of nodes used for training
 
     auto_scale_batch_size: false
     auto_lr_find: false  # tunes LR before beginning training

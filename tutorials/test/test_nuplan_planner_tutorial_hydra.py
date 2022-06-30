@@ -68,6 +68,7 @@ class TestPlannerTutorialHydra(unittest.TestCase):
                     """selected_simulation_metrics='[ego_acceleration_statistics, ego_jerk_statistics]'""",
                     f'group={self.tmp_dir.name}',
                     'experiment_name=hydra_paths_utils_test',
+                    'output_dir=${group}/${experiment}',
                 ],
             )
             main_simulation(cfg)

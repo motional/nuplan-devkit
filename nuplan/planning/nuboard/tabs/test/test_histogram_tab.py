@@ -1,4 +1,3 @@
-import json
 import os
 import tempfile
 import unittest
@@ -12,6 +11,7 @@ from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatis
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.nuboard.tabs.histogram_tab import HistogramTab
+from nuplan.planning.simulation.simulation_log import SimulationLog
 
 
 class TestHistogramTab(unittest.TestCase):
@@ -33,16 +33,16 @@ class TestHistogramTab(unittest.TestCase):
         :param scenario_type: Scenario type.
         :param scenario_name: Scenario name.
         """
-        json_file = Path(os.path.dirname(os.path.realpath(__file__))) / "json/test_simulation.json"
-        with open(json_file, "r") as f:
-            simulation_data = json.load(f)
+        simulation_file = (
+            Path(os.path.dirname(os.path.realpath(__file__))) / "simulation_log/test_simulation_log.msgpack.xz"
+        )
+        simulation_data = SimulationLog.load_data(simulation_file)
 
         # Save to a tmp folder
         save_path = simulation_path / planner_name / scenario_type / log_name / scenario_name
         save_path.mkdir(parents=True, exist_ok=True)
-        save_file = save_path / "1.json"
-        with open(save_file, "w") as f:
-            json.dump(simulation_data, f)
+        simulation_data.file_path = save_path / "1.msgpack.xz"
+        simulation_data.save_to_file()
 
     def set_up_dummy_metric(
         self, metric_path: Path, log_name: str, planner_name: str, scenario_type: str, scenario_name: str

@@ -1,0 +1,51 @@
+# Adapted from ml_products/map_lsn/map_lsn/experiments/config/lr_scheduler/one_cycle_lr.yaml
+
+_target_: torch.optim.lr_scheduler.OneCycleLR
+_convert_: 'all'
+
+# Complete details found here: https://pytorch.org/docs/master/generated/torch.optim.lr_scheduler.OneCycleLR.html
+# Either total_steps OR (epochs AND steps_per_epoch) must be provided.
+
+# Updated through code in the model with configure_optimizers()
+optimizer: null
+
+# Upper learning rate boundaries in the cycle for each parameter group.
+max_lr: 3e-2
+
+ #  The number of epochs to train for.
+epochs: ${lightning.trainer.params.max_epochs}
+
+# The number of steps per epoch to train for. This is used along with epochs in order to infer the total number of steps
+# in the cycle if a value for total_steps is not provided.
+# Updated through code in update_distributed_lr_scheduler_config().
+steps_per_epoch: null
+
+# The percentage of the cycle (in number of steps) spent increasing the learning rate.
+pct_start: 0.45
+
+# {‘cos’, ‘linear’} Specifies the annealing strategy: “cos” for cosine annealing, “linear” for linear annealing.
+anneal_strategy: 'cos'
+
+#  If True, momentum is cycled inversely to learning rate between ‘base_momentum’ and ‘max_momentum’.
+cycle_momentum: True
+
+# Lower momentum boundaries in the cycle for each parameter group. Note that momentum is cycled inversely to
+# learning rate; at the peak of a cycle, momentum is ‘base_momentum’ and learning rate is ‘max_lr’.
+base_momentum: 0.85
+
+# Upper momentum boundaries in the cycle for each parameter group. Functionally, it defines the cycle amplitude
+# (max_momentum - base_momentum). Note that momentum is cycled inversely to learning rate; at the start of a cycle,
+# momentum is ‘max_momentum’ and learning rate is ‘base_lr’
+max_momentum: 0.95
+
+# Determines the initial learning rate via initial_lr = max_lr/div_factor
+div_factor: 30
+
+# Determines the minimum learning rate via min_lr = initial_lr/final_div_factor
+final_div_factor: 10
+
+# The index of the last batch. This parameter is used when resuming a training job. Since step() should be invoked after
+# each batch instead of after each epoch, this number represents the total number of batches computed, not the total
+# number of epochs computed. When last_epoch=-1, the schedule is started from the beginning.
+
+last_epoch: -1  # Unclear if lightning uses for step-level checkpoint resume but kept for completion. KIV.

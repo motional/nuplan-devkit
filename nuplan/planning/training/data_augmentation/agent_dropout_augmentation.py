@@ -1,7 +1,8 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
@@ -18,7 +19,9 @@ class AgentDropoutAugmentor(AbstractAugmentor):
         self._augment_prob = augment_prob
         self._dropout_rate = dropout_rate
 
-    def augment(self, features: FeaturesType, targets: TargetsType) -> Tuple[FeaturesType, TargetsType]:
+    def augment(
+        self, features: FeaturesType, targets: TargetsType, scenario: Optional[AbstractScenario] = None
+    ) -> Tuple[FeaturesType, TargetsType]:
         """Inherited, see superclass."""
         if np.random.rand() >= self._augment_prob:
             return features, targets

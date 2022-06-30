@@ -31,6 +31,7 @@ py_test(
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
@@ -180,7 +181,7 @@ py_test(
     data = [":test_json"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/evaluation_metrics/common:speed_limit_violation",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
@@ -362,6 +363,68 @@ py_test(
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_min_distance_to_lead_agent",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_ego_collisions_pedestrian",
+    srcs = ["test_ego_collisions_pedestrian.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_pedestrians",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_ego_collisions_object",
+    srcs = ["test_ego_collisions_object.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_objects",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_ego_collisions_bicycle",
+    srcs = ["test_ego_collisions_bicycle.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_bicycles",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_ego_collisions_vehicle",
+    srcs = ["test_ego_collisions_vehicle.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_vehicles",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )

@@ -1,7 +1,7 @@
 hydra:
   run:
-    dir: .
-  output_subdir: '${group}/${experiment}/code/hydra'            # Store hydra's config breakdown here for debugging
+    dir: ${output_dir}
+  output_subdir: ${output_dir}/code/hydra                       # Store hydra's config breakdown here for debugging
   searchpath:                                                   # Only <exp_dir> in these paths are discoverable
     - pkg://nuplan.planning.script.config.common
     - pkg://nuplan.planning.script.experiments                  # Put experiments configs in script/experiments/<exp_dir>

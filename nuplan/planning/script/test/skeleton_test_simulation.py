@@ -15,7 +15,6 @@ class SkeletonTestSimulation(unittest.TestCase):
         """Set up basic configs."""
         main_path = os.path.dirname(os.path.realpath(__file__))
         self.config_path = os.path.join(main_path, '../config/simulation/')
-
         # Since we are not using the default config in this test, we need to specify the Hydra search path in the
         # compose API override, otherwise the Jenkins build fails because bazel cannot find the simulation config file.
         common_dir = 'file://' + os.path.join(main_path, '..', 'config', 'common')
@@ -31,6 +30,7 @@ class SkeletonTestSimulation(unittest.TestCase):
             'scenario_filter.limit_total_scenarios=2',
             'exit_on_failure=true',
             f'group={self.tmp_dir.name}',
+            'output_dir=${group}/${experiment}',
         ]
 
     def tearDown(self) -> None:

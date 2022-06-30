@@ -6,10 +6,10 @@ from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.database.maps_db.imapsdb import IMapsDB
 from nuplan.database.nuplan_db.camera import Camera
 from nuplan.database.nuplan_db.ego_pose import EgoPose
+from nuplan.database.nuplan_db.image import Image
 from nuplan.database.nuplan_db.lidar import Lidar
 from nuplan.database.nuplan_db.lidar_box import LidarBox
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
-from nuplan.database.nuplan_db.models import Image
 from nuplan.database.nuplan_db.nuplandb import NuPlanDB
 from nuplan.database.nuplan_db.nuplandb_wrapper import NuPlanDBWrapper, discover_log_dbs
 from nuplan.database.nuplan_db.track import Track
@@ -22,7 +22,7 @@ DEFAULT_TEST_LIDAR_PC_INDEX = 1000  # default lidar pc for testing
 DEFAULT_TEST_LIDAR_BOX_INDEX = 5000  # default lidar box for testing
 DEFAULT_TEST_TRACK_INDEX = 100  # default track for testing
 DEFAULT_TEST_LIDAR_PC_WITH_BLOB_TOKEN = 100  # default lidar pc with blob for testing - sensor blobs not yet supported
-DEFAULT_TEST_IMAGE_WITH_BLOB_TOKEN = None  # default image with blob for testing - sensor blobs not yet supported
+DEFAULT_TEST_IMAGE_WITH_BLOB_TOKEN = 0  # default image with blob for testing - sensor blobs not yet supported
 
 # Environment variables required to load the nuPlan dataset for testing
 NUPLAN_DATA_ROOT = os.environ["NUPLAN_DATA_ROOT"]

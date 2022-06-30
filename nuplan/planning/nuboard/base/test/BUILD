@@ -19,6 +19,7 @@ py_test(
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/base:plot_data",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
         "//nuplan/planning/simulation/main_callback:metric_file_callback",
     ],
 )

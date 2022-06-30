@@ -4,9 +4,6 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, cast
 
-from cachetools import LRUCache, cached
-from cachetools.keys import hashkey
-
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.tracked_objects import TrackedObjects
@@ -90,7 +87,8 @@ def lidarpc_to_state_se2(lidar_pc: LidarPc) -> StateSE2:
     return StateSE2(ego_pose.x, ego_pose.y, ego_pose.quaternion.yaw_pitch_roll[0])
 
 
-@cached(LRUCache(maxsize=LIDAR_PC_CACHE), key=lambda lidarpc: hashkey(lidarpc.token))  # type: ignore
+# Do not cache this method.
+# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
 def lidarpc_to_ego_state(lidar_pc: LidarPc) -> EgoState:
     """
     Converts a LidarPc to an EgoState object.
@@ -140,7 +138,8 @@ def extract_tracked_objects(
     )
 
 
-@cached(LRUCache(maxsize=LIDAR_PC_CACHE), key=lambda lidarpc: hashkey(lidarpc.token))  # type: ignore
+# Do not cache this method.
+# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
 def lidarpc_next(lidarpc: LidarPc) -> Optional[LidarPc]:
     """
     Retrieve the next LidarPc from the database.
@@ -156,7 +155,8 @@ def lidarpc_next(lidarpc: LidarPc) -> Optional[LidarPc]:
     return next_lidarpc
 
 
-@cached(LRUCache(maxsize=LIDAR_PC_CACHE), key=lambda lidarpc: hashkey(lidarpc.token))  # type: ignore
+# Do not cache this method.
+# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
 def lidarpc_prev(lidarpc: LidarPc) -> Optional[LidarPc]:
     """
     Retrieve the previous LidarPc from the database.
@@ -172,7 +172,8 @@ def lidarpc_prev(lidarpc: LidarPc) -> Optional[LidarPc]:
     return prev_lidarpc
 
 
-@cached(LRUCache(maxsize=8), key=lambda db, map_name: hashkey(map_name))  # type: ignore
+# Do not cache this method.
+# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
 def get_map_api(db: NuPlanDB, map_name: str) -> AbstractMap:
     """
     Retrieve the map API from a log.

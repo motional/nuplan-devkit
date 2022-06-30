@@ -50,7 +50,7 @@ class ScenarioDataset(torch.utils.data.Dataset):
         if self._augmentors is not None:
             for augmentor in self._augmentors:
                 augmentor.validate(features, targets)
-                features, targets = augmentor.augment(features, targets)
+                features, targets = augmentor.augment(features, targets, scenario)
 
         features = {key: value.to_feature_tensor() for key, value in features.items()}
         targets = {key: value.to_feature_tensor() for key, value in targets.items()}

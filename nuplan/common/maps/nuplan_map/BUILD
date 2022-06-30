@@ -3,8 +3,8 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "baseline_path",
-    srcs = ["baseline_path.py"],
+    name = "polyline_map_object",
+    srcs = ["polyline_map_object.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map_objects",
@@ -22,7 +22,7 @@ py_library(
     deps = [
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:maps_datatypes",
-        "//nuplan/common/maps/nuplan_map:baseline_path",
+        "//nuplan/common/maps/nuplan_map:polyline_map_object",
         "//nuplan/common/maps/nuplan_map:utils",
     ],
 )
@@ -34,9 +34,9 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:maps_datatypes",
-        "//nuplan/common/maps/nuplan_map:generic_polygon_map",
         "//nuplan/common/maps/nuplan_map:intersection",
         "//nuplan/common/maps/nuplan_map:map_objects",
+        "//nuplan/common/maps/nuplan_map:polygon_map_object",
         "//nuplan/common/maps/nuplan_map:stop_line",
         "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/database/maps_db:imapsdb",
@@ -88,8 +88,8 @@ py_library(
 )
 
 py_library(
-    name = "generic_polygon_map",
-    srcs = ["generic_polygon_map.py"],
+    name = "polygon_map_object",
+    srcs = ["polygon_map_object.py"],
     deps = [
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:maps_datatypes",

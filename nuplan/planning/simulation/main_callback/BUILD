@@ -46,3 +46,11 @@ py_library(
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
     ],
 )
+
+py_library(
+    name = "publisher_callback",
+    srcs = ["publisher_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+    ],
+)

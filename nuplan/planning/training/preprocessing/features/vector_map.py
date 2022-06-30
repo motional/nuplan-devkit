@@ -10,6 +10,7 @@ import torch
 from pyquaternion import Quaternion
 
 from nuplan.planning.script.builders.utils.utils_type import are_the_same_type, validate_type
+from nuplan.planning.training.preprocessing.feature_builders.vector_utils import LaneOnRouteStatusData
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import (
     AbstractModelFeature,
     FeatureDataType,
@@ -47,8 +48,8 @@ class VectorMap(AbstractModelFeature):
     multi_scale_connections: List[Dict[int, FeatureDataType]]
     on_route_status: List[FeatureDataType]
     traffic_light_data: List[FeatureDataType]
-    _lane_coord_dim = 2
-    _on_route_status_encoding_dim = 2
+    _lane_coord_dim: int = 2
+    _on_route_status_encoding_dim: int = LaneOnRouteStatusData.encoding_dim()
 
     def __post_init__(self) -> None:
         """Sanitize attributes of the dataclass."""

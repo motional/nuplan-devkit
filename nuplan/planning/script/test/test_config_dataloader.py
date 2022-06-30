@@ -105,6 +105,7 @@ class TestDataLoader(unittest.TestCase):
             f'scenario_filter.log_names={log_names}',
             f'group={self.group.name}',
             f'cache.cache_path={self.cache_path}',
+            'output_dir=${group}/${experiment}',
         ]
         with initialize_config_dir(config_dir=self.config_path):
             cfg = compose(

@@ -2,34 +2,25 @@ from typing import Any, Dict, List
 
 import pytest
 
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.actor_state.test.test_utils import get_sample_ego_state
 from nuplan.common.maps.abstract_map_objects import Lane, LaneConnector, RoadBlockGraphEdgeMapObject
-from nuplan.common.maps.maps_datatypes import (
-    LaneOnRouteStatusData,
-    LaneSegmentConnections,
-    LaneSegmentCoords,
-    LaneSegmentGroupings,
-    LaneSegmentLaneIDs,
-    LaneSegmentRoadBlockIDs,
-    OnRouteStatusType,
-    SemanticMapLayer,
-)
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.common.maps.nuplan_map.utils import (
     build_lane_segments_from_blps,
     connect_blp_lane_segments,
     connect_lane_conn_predecessor,
     connect_lane_conn_successor,
+    extract_polygon_from_map_object,
     extract_roadblock_objects,
-    get_neighbor_vector_map,
-    get_on_route_status,
     get_roadblock_ids_from_trajectory,
     group_blp_lane_segments,
     split_blp_lane_segments,
 )
 from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
-from nuplan.planning.scenario_builder.nuplan_db.test.nuplan_scenario_test_utils import get_test_nuplan_scenario
 
 maps_db = get_test_maps_db()
 map_factory = NuPlanMapFactory(maps_db)
@@ -71,7 +62,7 @@ def test_connect_blp_lane_segments() -> None:
 
 def test_group_blp_lane_segments() -> None:
     """
-    Test grouping lane indices beloning to same lane/lane connector.
+    Test grouping lane indices belonging to same lane/lane connector.
     """
     start_lane_seg_idx = 0
     lane_seg_num = 10
@@ -137,7 +128,7 @@ def test_connect_lane_conn_predecessor(scene: Dict[str, Any]) -> None:
 
         assert lane_connector is not None
 
-        incoming_edges = lane_connector.incoming_edges()
+        incoming_edges = lane_connector.incoming_edges
 
         assert len(incoming_edges) > 0
 
@@ -167,7 +158,7 @@ def test_connect_lane_conn_successor(scene: Dict[str, Any]) -> None:
 
         assert lane_connector is not None
 
-        outgoing_edges = lane_connector.outgoing_edges()
+        outgoing_edges = lane_connector.outgoing_edges
 
         assert len(outgoing_edges) > 0
 
@@ -182,36 +173,56 @@ def test_connect_lane_conn_successor(scene: Dict[str, Any]) -> None:
         assert isinstance(lane_seg_suc_conns[0][0], int)
 
 
-@nuplan_test(path='json/baseline/baseline_in_intersection.json')
-def test_get_neighbor_vector_map(scene: Dict[str, Any]) -> None:
+@nuplan_test(path='json/crosswalks/nearby.json')
+def test_extract_polygon_from_map_object_crosswalk(scene: Dict[str, Any]) -> None:
     """
-    Test constructing lane segment info from given map api.
+    Test extracting polygon from map object. Tests crosswalks.
     """
     nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+    radius = 20
 
     for marker in scene["markers"]:
         pose = marker["pose"]
-        radius = 20
 
-        (
-            lane_seg_coords,
-            lane_seg_conns,
-            lane_seg_groupings,
-            lane_seg_lane_ids,
-            lane_seg_roadblock_ids,
-        ) = get_neighbor_vector_map(nuplan_map, Point2D(pose[0], pose[1]), radius)
+        layers = nuplan_map.get_proximal_map_objects(Point2D(pose[0], pose[1]), radius, [SemanticMapLayer.CROSSWALK])
+        crosswalks = layers[SemanticMapLayer.CROSSWALK]
 
-        assert type(lane_seg_coords) == LaneSegmentCoords
-        assert type(lane_seg_conns) == LaneSegmentConnections
-        assert type(lane_seg_groupings) == LaneSegmentGroupings
-        assert type(lane_seg_lane_ids) == LaneSegmentLaneIDs
-        assert type(lane_seg_roadblock_ids) == LaneSegmentRoadBlockIDs
+        assert len(crosswalks) > 0
+
+        crosswalk_polygon = extract_polygon_from_map_object(crosswalks[0])
+
+        assert isinstance(crosswalk_polygon, List)
+        assert len(crosswalk_polygon) > 0
+        assert isinstance(crosswalk_polygon[0], Point2D)
 
 
-@nuplan_test(path='json/baseline/baseline_in_intersection.json')
-def test_extract_roadblock_objects(scene: Dict[str, Any]) -> None:
+@nuplan_test(path='json/stop_lines/nearby.json')
+def test_extract_polygon_from_map_object_stop_lines(scene: Dict[str, Any]) -> None:
     """
-    Test extract roadblock or roadblock connectors from map containing point.
+    Test extracting polygon from map object. Tests stop lines.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+    radius = 20
+
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+
+        layers = nuplan_map.get_proximal_map_objects(Point2D(pose[0], pose[1]), radius, [SemanticMapLayer.STOP_LINE])
+        stop_lines = layers[SemanticMapLayer.STOP_LINE]
+
+        assert len(stop_lines) > 0
+
+        stop_line_polygon = extract_polygon_from_map_object(stop_lines[0])
+
+        assert isinstance(stop_line_polygon, List)
+        assert len(stop_line_polygon) > 0
+        assert isinstance(stop_line_polygon[0], Point2D)
+
+
+@nuplan_test(path='json/baseline/baseline_in_lane.json')
+def test_extract_roadblock_objects_roadblocks(scene: Dict[str, Any]) -> None:
+    """
+    Test extract roadblock or roadblock connectors from map containing point. Tests roadblocks.
     """
     nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
 
@@ -221,38 +232,64 @@ def test_extract_roadblock_objects(scene: Dict[str, Any]) -> None:
         roadblock_objects = extract_roadblock_objects(nuplan_map, Point2D(pose[0], pose[1]))
 
         assert isinstance(roadblock_objects, List)
+        assert len(roadblock_objects) > 0
 
-        for roadblock_object in roadblock_objects:
-            assert isinstance(roadblock_object, RoadBlockGraphEdgeMapObject)
+        roadblock_object = roadblock_objects[0]
+        assert isinstance(roadblock_object, RoadBlockGraphEdgeMapObject)
+
+        roadblock_polygon = extract_polygon_from_map_object(roadblock_object)
+
+        assert isinstance(roadblock_polygon, List)
+        assert len(roadblock_polygon) > 0
+        assert isinstance(roadblock_polygon[0], Point2D)
 
 
-def test_get_roadblock_ids_from_trajectory() -> None:
+@nuplan_test(path='json/baseline/baseline_in_intersection.json')
+def test_extract_roadblock_objects_roadblock_connectors(scene: Dict[str, Any]) -> None:
+    """
+    Test extract roadblock or roadblock connectors from map containing point. Tests roadblock connectors.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+
+        roadblock_objects = extract_roadblock_objects(nuplan_map, Point2D(pose[0], pose[1]))
+
+        assert isinstance(roadblock_objects, List)
+        assert len(roadblock_objects) > 0
+
+        roadblock_object = roadblock_objects[0]
+        assert isinstance(roadblock_object, RoadBlockGraphEdgeMapObject)
+
+        roadblock_polygon = extract_polygon_from_map_object(roadblock_object)
+
+        assert isinstance(roadblock_polygon, List)
+        assert len(roadblock_polygon) > 0
+        assert isinstance(roadblock_polygon[0], Point2D)
+
+
+@nuplan_test(path='json/baseline/baseline_in_intersection.json')
+def test_get_roadblock_ids_from_trajectory(scene: Dict[str, Any]) -> None:
     """
     Test extracting ids of roadblocks and roadblock connectors containing points specified in trajectory.
     """
-    scenario = get_test_nuplan_scenario()
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
 
-    roadblock_ids = get_roadblock_ids_from_trajectory(scenario.map_api, scenario.get_expert_ego_trajectory())
+    # Trajectory to extract route from
+    trajectory: List[EgoState] = []
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+        ego_state = get_sample_ego_state()
+        ego_state.car_footprint.rear_axle = StateSE2(pose[0], pose[1], pose[2])
+        trajectory.append(ego_state)
+
+    roadblock_ids = get_roadblock_ids_from_trajectory(nuplan_map, trajectory)
 
     assert isinstance(roadblock_ids, List)
 
     for roadblock_id in roadblock_ids:
         assert isinstance(roadblock_id, str)
-
-
-def test_get_on_route_status() -> None:
-    """
-    Test identifying whether given roadblock lie within goal route.
-    """
-    route_roadblock_ids = ["0"]
-    roadblock_ids = LaneSegmentRoadBlockIDs(["0", "1"])
-
-    on_route_status = get_on_route_status(route_roadblock_ids, roadblock_ids)
-
-    assert type(on_route_status) == LaneOnRouteStatusData
-    assert len(on_route_status.on_route_status) == 2
-    assert on_route_status.on_route_status[0] == on_route_status.encode(OnRouteStatusType.ON_ROUTE)
-    assert on_route_status.on_route_status[1] == on_route_status.encode(OnRouteStatusType.OFF_ROUTE)
 
 
 if __name__ == "__main__":

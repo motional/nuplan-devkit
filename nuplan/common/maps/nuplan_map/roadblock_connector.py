@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import List
 
 import pandas as pd
@@ -21,9 +22,11 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         lanes_df: VectorLayer,
         lane_connectors_df: VectorLayer,
         baseline_paths_df: VectorLayer,
+        boundaries_df: VectorLayer,
         roadblocks_df: VectorLayer,
         roadblock_connectors_df: VectorLayer,
         stop_lines_df: VectorLayer,
+        lane_connector_polygon_df: VectorLayer,
     ):
         """
         Constructor of NuPlanLaneConnector.
@@ -31,20 +34,25 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         :param lanes_df: the geopandas GeoDataframe that contains all lanes in the map.
         :param lane_connectors_df: the geopandas GeoDataframe that contains all lane connectors in the map.
         :param baseline_paths_df: the geopandas GeoDataframe that contains all baselines in the map.
+        :param boundaries_df: the geopandas GeoDataframe that contains all boundaries in the map.
         :param roadblocks_df: the geopandas GeoDataframe that contains all roadblocks (lane groups) in the map.
         :param roadblock_connectors_df: the geopandas GeoDataframe that contains all roadblock connectors (lane group
             connectors) in the map.
         :param stop_lines_df: the geopandas GeoDataframe that contains all stop lines in the map.
+        :param lane_connector_polygon_df: the geopandas GeoDataframe that contains polygons for lane connectors.
         """
         super().__init__(roadblock_connector_id)
         self._lanes_df = lanes_df
         self._lane_connectors_df = lane_connectors_df
         self._baseline_paths_df = baseline_paths_df
+        self._boundaries_df = boundaries_df
         self._roadblocks_df = roadblocks_df
         self._roadblock_connectors_df = roadblock_connectors_df
         self._stop_lines_df = stop_lines_df
+        self._lane_connector_polygon_df = lane_connector_polygon_df
         self._roadblock_connector = None
 
+    @cached_property
     def incoming_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
         """Inherited from superclass."""
         incoming_roadblock_id = self._get_roadblock_connector()["from_lane_group_fid"]
@@ -55,12 +63,15 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._lanes_df,
                 self._lane_connectors_df,
                 self._baseline_paths_df,
+                self._boundaries_df,
                 self._roadblocks_df,
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
+                self._lane_connector_polygon_df,
             )
         ]
 
+    @cached_property
     def outgoing_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
         """Inherited from superclass."""
         outgoing_roadblock_id = self._get_roadblock_connector()["to_lane_group_fid"]
@@ -71,12 +82,15 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._lanes_df,
                 self._lane_connectors_df,
                 self._baseline_paths_df,
+                self._boundaries_df,
                 self._roadblocks_df,
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
+                self._lane_connector_polygon_df,
             )
         ]
 
+    @cached_property
     def interior_edges(self) -> List[LaneGraphEdgeMapObject]:
         """Inherited from superclass."""
         lane_connector_ids = get_all_rows_with_value(self._lane_connectors_df, "lane_group_connector_fid", self.id)[
@@ -89,12 +103,14 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._lanes_df,
                 self._lane_connectors_df,
                 self._baseline_paths_df,
+                self._boundaries_df,
                 self._stop_lines_df,
+                self._lane_connector_polygon_df,
             )
             for lane_connector_id in lane_connector_ids.to_list()
         ]
 
-    @property
+    @cached_property
     def polygon(self) -> Polygon:
         """Inherited from superclass."""
         return self._get_roadblock_connector().geometry

@@ -111,10 +111,10 @@ def _create_dummy_simulation_history_buffer(
     """
     Create dummy SimulationHistoryBuffer.
     :param scenario: Scenario.
-    :param iteration: The starting iteration 0 <= scenario_iteration < get_number_of_iterations.
+    :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
     :param num_samples: number of entries in the future.
-    :param time_horizon: [s] The desired horizon to the future.
-    :param buffer_size: The size of buffer.
+    :param time_horizon: the desired horizon to the future.
+    :param buffer_size: size of buffer.
     :return: SimulationHistoryBuffer.
     """
     past_observation = scenario.get_past_tracked_objects(
@@ -159,13 +159,16 @@ def serialize_scenario(
         iteration = simulation_time_controller.get_iteration()
         ego_state = ego_controller.get_state()
         observation = observations.get_observation()
+        traffic_light_status = scenario.get_traffic_light_status_at_iteration(iteration.index)
 
         # Log play back trajectory
         current_state = scenario.get_ego_state_at_iteration(iteration.index)
         states = scenario.get_ego_future_trajectory(iteration.index, future_time_horizon, num_poses)
         trajectory = InterpolatedTrajectory([current_state] + states)
 
-        simulation_history.add_sample(SimulationHistorySample(iteration, ego_state, trajectory, observation))
+        simulation_history.add_sample(
+            SimulationHistorySample(iteration, ego_state, trajectory, observation, traffic_light_status)
+        )
         next_iteration = simulation_time_controller.next_iteration()
 
         if next_iteration:

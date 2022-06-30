@@ -26,9 +26,11 @@ def build_simulation_logs(cfg: DictConfig) -> List[SimulationLog]:
     # Folder structure planner -> scenario_type -> scenario file
     for planner_dir_folder in simulation_log_path.iterdir():
         for scenario_type_folder in planner_dir_folder.iterdir():
-            for scenario_log_file in scenario_type_folder.iterdir():
-                simulation_log = SimulationLog.load_data(file_path=scenario_log_file)
-                simulation_logs.append(simulation_log)
+            for log_name_folder in scenario_type_folder.iterdir():
+                for scenario_name_folder in log_name_folder.iterdir():
+                    for scenario_log_file in scenario_name_folder.iterdir():
+                        simulation_log = SimulationLog.load_data(file_path=scenario_log_file)
+                        simulation_logs.append(simulation_log)
 
     logger.info(f'Building simulation logs: {len(simulation_logs)}...DONE!')
 

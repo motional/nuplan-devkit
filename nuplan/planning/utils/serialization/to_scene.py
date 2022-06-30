@@ -1,5 +1,5 @@
 import pathlib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -8,6 +8,46 @@ from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
 from nuplan.common.actor_state.tracked_objects_types import AGENT_TYPES, TrackedObjectType
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
+from nuplan.planning.utils.color import Color
+
+tracked_object_types = {
+    'vehicles': TrackedObjectType.VEHICLE,
+    'pedestrians': TrackedObjectType.PEDESTRIAN,
+    'bicycles': TrackedObjectType.BICYCLE,
+    'genericobjects': TrackedObjectType.GENERIC_OBJECT,
+    'traffic_cone': TrackedObjectType.TRAFFIC_CONE,
+    'barrier': TrackedObjectType.BARRIER,
+    'czone_sign': TrackedObjectType.CZONE_SIGN,
+}
+
+
+def to_scene_ego_pose(ego_pose: EgoState, ego_future: Optional[List[EgoState]]) -> Dict[str, Any]:
+    """
+    :param ego_pose: state of ego
+    :param ego_future: future ego position
+    :return serialized scene
+    """
+    predictions = (
+        {}
+        if not ego_future
+        else {
+            "color": Color(red=0.498, green=0.498, blue=0.498, alpha=1.0).to_list(),
+            "states": [
+                {
+                    "pose": [state.center.x, state.center.y, state.center.heading],
+                    "timestamp": state.time_point.time_s - ego_pose.time_point.time_s,
+                }
+                for state in ego_future
+            ],
+        }
+    )
+    rear_axle = ego_pose.rear_axle
+    return {
+        "acceleration": 0.0,
+        "pose": [rear_axle.x, rear_axle.y, rear_axle.heading],
+        "speed": ego_pose.dynamic_car_state.speed,
+        "prediction": predictions,
+    }
 
 
 def to_scene_from_states(trajectory: List[EgoState]) -> List[Dict[str, Any]]:
@@ -106,6 +146,7 @@ def to_scene_box(tracked_object: TrackedObject, track_id: str) -> Dict[str, Any]
         },
         'id': track_id,
         'type': tracked_object.tracked_object_type.fullname,
+        'tooltip': f"track_id: {track_id}\ntype: {tracked_object.tracked_object_type.fullname}",
     }
     if tracked_object.tracked_object_type == TrackedObjectType.PEDESTRIAN:
         scene['box']['radius'] = 0.5
@@ -118,15 +159,6 @@ def to_scene_boxes(tracked_objects: TrackedObjects) -> Dict[str, Any]:
     :param tracked_objects: List of boxes in global coordinates.
     :return dictionary which should be placed into scene["world"].
     """
-    tracked_object_types = {
-        'vehicles': TrackedObjectType.VEHICLE,
-        'pedestrians': TrackedObjectType.PEDESTRIAN,
-        'bicycles': TrackedObjectType.BICYCLE,
-        'genericobjects': TrackedObjectType.GENERIC_OBJECT,
-        'traffic_cone': TrackedObjectType.TRAFFIC_CONE,
-        'barrier': TrackedObjectType.BARRIER,
-        'czone_sign': TrackedObjectType.CZONE_SIGN,
-    }
     tracked_object_dictionaries = {}
     for track_object_type_name, tracked_object_type in tracked_object_types.items():
         objects = [

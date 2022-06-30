@@ -374,6 +374,7 @@ class TestLidarBox(unittest.TestCase):
         """Tests the tracked_object method"""
         # Setup
         future_waypoints = Mock()
+        predicted_trajectory_mock.return_value.probability = 1.0
 
         # Call the method under test
         result = self.lidar_box.tracked_object(future_waypoints)

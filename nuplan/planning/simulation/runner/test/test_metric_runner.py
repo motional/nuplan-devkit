@@ -47,6 +47,7 @@ class TestMetricRunner(unittest.TestCase):
                 ego_state=state_0,
                 trajectory=InterpolatedTrajectory(trajectory=[state_0, state_1]),
                 observation=DetectionsTracks(TrackedObjects()),
+                traffic_light_status=self.scenario.get_traffic_light_status_at_iteration(0),
             )
         )
         self.history.add_sample(
@@ -55,6 +56,7 @@ class TestMetricRunner(unittest.TestCase):
                 ego_state=state_1,
                 trajectory=InterpolatedTrajectory(trajectory=[state_0, state_1]),
                 observation=DetectionsTracks(TrackedObjects()),
+                traffic_light_status=self.scenario.get_traffic_light_status_at_iteration(0),
             )
         )
 

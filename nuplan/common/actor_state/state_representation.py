@@ -116,6 +116,10 @@ class Point2D:
         """
         return np.array([self.x, self.y], dtype=np.float64)
 
+    def __hash__(self) -> int:
+        """Hash method"""
+        return hash(astuple(self))
+
 
 @dataclass
 class StateSE2(Point2D):

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  <div class="tab-content" id="scenario">
+  <div class="tab-content external-height" id="scenario">
     <div class="scenario-search-section">
         <div class="scenario-search-grid-item-text">
           <b> Scenario Type: </b>
@@ -24,36 +24,32 @@
         </div>
     </div>
     <div class="loading loading-lg" id="scenario-loading"></div>
-    <table class="scenario-plot-section" id="scenario-plot-section">
-          <tr>
-              <th class="section-table-title"> Simulation </th>
-          </tr>
-          <tr class="planner-search-row">
-              <td>{{ embed(roots.scenario_planner_checkbox_group) }}</td>
-          </tr>
-          <tr class="scenario-table-simulation-row">
-              <td>
-                  {{ embed(roots.simulation_tile_layout) }}
-              </td>
-          </tr>
-          <tr>
-              <th class="section-table-title">
+    <div class="scenario-plot-section" id="scenario-plot-section">
+          <div class="row">
+              <div class="column section-table-title"> Simulation </div>
+          </div>
+          <div class="planner-search-row">
+              <div class="column">{{ embed(roots.scenario_planner_checkbox_group) }}</div>
+          </div>
+          <div class="scenario-table-simulation-row">
+              {{ embed(roots.simulation_tile_layout) }}
+          </div>
+          <div class="row">
+              <div class="section-table-title" title="Click to expand/collapse" style="cursor: pointer;" onclick="toggleTimeSeriesMetrics()">
                   Time Series Metrics
-                  <svg class="scenario-table-timeseries-row-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                      <a href="#" onclick="toggleTimeSeriesMetrics()">
-                          <path id="scenario-table-timeseries-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                  <svg class="scenario-table-time-series-row-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                      <a href="#">
+                          <path id="scenario-table-time-series-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
 
                           </path>
                       </a>
 
                   </svg>
-              </th>
-          </tr>
-          <tr class="scenario-table-timeseries-row">
-            <td>
+              </div>
+          </div>
+          <div class="scenario-table-time-series-row">
               {{ embed(roots.time_series_layout) }}
-            </td>
-          </tr>
-      </table>
+          </div>
+      </div>
   </div>
 </html>

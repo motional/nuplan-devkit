@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import ray
 from hydra import compose, initialize_config_dir
 
 from nuplan.planning.script.run_nuboard import CONFIG_NAME as NUBOARD_CONFIG_NAME
@@ -44,18 +45,24 @@ class TestRunNuBoard(unittest.TestCase):
         # Default hydra overrides for quick unit testing
         self.simulation_overrides = [
             'log_config=false',
-            'worker=sequential',
             'scenario_builder=nuplan_mini',
             'planner=simple_planner',
-            'scenario_filter=one_hand_picked_scenario',
+            'scenario_filter=one_of_each_scenario_type',
+            'scenario_filter.limit_total_scenarios=2',
+            'exit_on_failure=true',
             """selected_simulation_metrics='[ego_acceleration_statistics, ego_jerk_statistics]'""",
             f'group={self.tmp_dir.name}',
+            'output_dir=${group}/${experiment}',
         ]
 
     def tearDown(self) -> None:
         """Clean up."""
         if Path(self.tmp_dir.name).exists():
             self.tmp_dir.cleanup()
+
+        # Stop ray
+        if ray.is_initialized():
+            ray.shutdown()
 
     def test_nuboard_incorrect_file(self) -> None:
         """
@@ -84,7 +91,6 @@ class TestRunNuBoard(unittest.TestCase):
         log_dir = list(scenario_dir.iterdir())[0]
         scene_dir = list(log_dir.iterdir())[0]
         scene_file = list(scene_dir.iterdir())[0]
-        print(scene_file)
         nuboard_file = [file for file in results_dir.iterdir() if file.is_file() and file.suffix == '.nuboard'][0]
         self.assertTrue(scene_file.is_file())
         self.assertEqual(scene_file.suffix, '.xz')

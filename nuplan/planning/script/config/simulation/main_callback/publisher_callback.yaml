@@ -1,0 +1,18 @@
+publisher_callback:
+  _target_: nuplan.planning.simulation.main_callback.publisher_callback.PublisherCallback
+  _convert_: 'all'
+
+  user_id:          test_user            # Unique ID of the submitter
+  image_id:         none                 # Name of the image the simulation comes from
+
+  # Path to the directories
+  uploads:
+    metrics:
+        upload: True
+        save_path: ${output_dir}/${metric_dir}             # Path of a folder in which the metrics are saved
+    aggregator_metric:
+        upload: True
+        save_path: ${output_dir}/${aggregator_metric_dir}  # Path of a folder in which the aggregated metrics are saved
+    simulation:
+        upload: False
+        save_path: ${output_dir}/simulation             # Path of a folder in which the simulation output is saved

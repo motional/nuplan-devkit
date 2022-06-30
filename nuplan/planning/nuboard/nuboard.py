@@ -72,7 +72,7 @@ class NuBoard:
 
         # Add stopping signal
         # TODO: Extract profiler to a more general interface
-        if self._profiler is not None:
+        if self._profiler_path is not None:
             signal.signal(signal.SIGTERM, self.stop_handler)
             signal.signal(signal.SIGINT, self.stop_handler)
 

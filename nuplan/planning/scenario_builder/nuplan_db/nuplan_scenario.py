@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from functools import cached_property
+from functools import cached_property, lru_cache
 from typing import Any, List, Optional, Tuple, Type, cast
 
 from nuplan.common.actor_state.ego_state import EgoState
@@ -291,6 +291,7 @@ class NuPlanScenario(AbstractScenario):
             for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False)
         ]
 
+    @lru_cache
     def get_traffic_light_status_at_iteration(self, iteration: int) -> List[TrafficLightStatusData]:
         """Inherited, see superclass."""
         token = self._lidarpc_tokens[iteration]

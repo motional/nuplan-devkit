@@ -3,15 +3,15 @@ from typing import List, Optional, Tuple, Union, cast
 import numpy as np
 import numpy.typing as npt
 
-from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.agent_temporal_state import AgentTemporalState
 from nuplan.common.actor_state.state_representation import TimePoint
 from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
-from nuplan.common.actor_state.waypoint import Waypoint
+from nuplan.common.utils.interpolatable_state import InterpolatableState
 from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
 from nuplan.planning.simulation.trajectory.predicted_trajectory import PredictedTrajectory
 
 
-def _validate_waypoints(waypoints: List[Waypoint]) -> None:
+def _validate_waypoints(waypoints: List[InterpolatableState]) -> None:
     """
     Make sure that waypoints are valid for interpolation
         raise in case they are empty or they are not monotonically increasing
@@ -42,25 +42,30 @@ def _compute_desired_time_steps(
 
 
 def _interpolate_waypoints(
-    waypoints: List[Waypoint], target_timestamps: npt.NDArray[np.float64]
-) -> List[Optional[Waypoint]]:
+    waypoints: List[InterpolatableState], target_timestamps: npt.NDArray[np.float64], pad_with_none: bool = True
+) -> List[Optional[InterpolatableState]]:
     """
     Interpolate waypoints when required from target_timestamps
     :param waypoints: to be interpolated
     :param target_timestamps: desired sampling
+    :param pad_with_none: if True, the output will have None for states that can not be interpolated
     :return: list of existent interpolations, if an interpolation is not possible, it will be replaced with None
     """
     # Interpolate trajectory
     trajectory = InterpolatedTrajectory(waypoints)
+    if pad_with_none:
+        return [
+            trajectory.get_state_at_time(TimePoint(t)) if trajectory.is_in_range(TimePoint(t)) else None
+            for t in target_timestamps
+        ]
     return [
-        trajectory.get_state_at_time(TimePoint(t)) if trajectory.is_in_range(TimePoint(t)) else None
-        for t in target_timestamps
+        trajectory.get_state_at_time(TimePoint(t)) for t in target_timestamps if trajectory.is_in_range(TimePoint(t))
     ]
 
 
 def interpolate_future_waypoints(
-    waypoints: List[Waypoint], horizon_len_s: float, interval_s: float
-) -> List[Optional[Waypoint]]:
+    waypoints: List[InterpolatableState], horizon_len_s: float, interval_s: float
+) -> List[Optional[InterpolatableState]]:
     """
     Interpolate waypoints which are in the future. If not enough waypoints are provided, we append None
     :param waypoints: list of waypoints, there needs to be at least one
@@ -86,8 +91,8 @@ def interpolate_future_waypoints(
 
 
 def interpolate_past_waypoints(
-    waypoints: List[Waypoint], horizon_len_s: float, interval_s: float
-) -> List[Optional[Waypoint]]:
+    waypoints: List[InterpolatableState], horizon_len_s: float, interval_s: float
+) -> List[Optional[InterpolatableState]]:
     """
     Interpolate waypoints which are in the past. We assume that they are still monotonically increasing.
         If not enough waypoints are provided, we append None
@@ -117,7 +122,7 @@ def interpolate_past_waypoints(
     return sampled_trajectory
 
 
-def interpolate_agent(agent: Agent, horizon_len_s: float, interval_s: float) -> Agent:
+def interpolate_agent(agent: AgentTemporalState, horizon_len_s: float, interval_s: float) -> AgentTemporalState:
     """
     Interpolate agent's future predictions and past trajectory based on the predefined length and interval
     :param agent: to be interpolated

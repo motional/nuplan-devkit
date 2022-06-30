@@ -30,10 +30,13 @@ class TestMetricFileCallback(TestCase):
         Tests if all the properties are set to the expected values in constructor.
         """
         # Code execution
-        metric_file_callback = MetricFileCallback(self.path)
+        metric_file_callback = MetricFileCallback(
+            metric_file_output_path=self.tmp_dir.name, scenario_metric_paths=[self.tmp_dir.name]
+        )
 
         # Expectations check
-        self.assertEqual(metric_file_callback._metric_save_path, self.path)
+        self.assertEqual(metric_file_callback._metric_file_output_path, self.path)
+        self.assertEqual(metric_file_callback._scenario_metric_paths, [self.path])
 
     @patch('nuplan.planning.simulation.main_callback.metric_file_callback.logger')
     def test_on_run_simulation_end(self, logger: MagicMock) -> None:
@@ -41,7 +44,9 @@ class TestMetricFileCallback(TestCase):
         Tests if the callback is called with the correct parameters.
         """
         # Code execution
-        metric_file_callback = MetricFileCallback(self.path)
+        metric_file_callback = MetricFileCallback(
+            metric_file_output_path=self.tmp_dir.name, scenario_metric_paths=[self.tmp_dir.name]
+        )
         metric_file_callback.on_run_simulation_end()
 
         # Expectations check

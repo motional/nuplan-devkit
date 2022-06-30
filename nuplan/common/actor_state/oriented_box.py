@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from enum import IntEnum
 from functools import cached_property, lru_cache
 from typing import List
@@ -26,6 +27,17 @@ class OrientedBoxPointType(IntEnum):
     RIGHT = 9
 
 
+@dataclass
+class Dimension:
+    """
+    Dimensions of an oriented box
+    """
+
+    length: float  # [m] dimension
+    width: float  # [m] dimension
+    height: float  # [m] dimension
+
+
 class OrientedBox:
     """Represents the physical space occupied by agents on the plane."""
 
@@ -40,6 +52,13 @@ class OrientedBox:
         self._length = length
         self._width = width
         self._height = height
+
+    @property
+    def dimensions(self) -> Dimension:
+        """
+        :return: Dimensions of this oriented box in meters
+        """
+        return Dimension(length=self.length, width=self.width, height=self.height)
 
     @lru_cache()
     def corner(self, point: OrientedBoxPointType) -> Point2D:

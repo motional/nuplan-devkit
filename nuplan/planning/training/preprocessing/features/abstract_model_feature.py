@@ -12,7 +12,7 @@ from torch.utils.data.dataloader import default_collate
 
 logger = logging.getLogger(__name__)
 
-FeatureDataType = Union[npt.NDArray[np.float32], torch.Tensor]
+FeatureDataType = Union[npt.NDArray[np.float64], torch.Tensor]
 
 
 def to_tensor(data: FeatureDataType) -> torch.Tensor:

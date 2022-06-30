@@ -7,7 +7,7 @@ from bokeh.models import CheckboxGroup, MultiChoice
 
 from nuplan.planning.nuboard.base.data_class import SelectedMetricStatisticDataFrame, SimulationScenarioKey
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
-from nuplan.planning.nuboard.style import base_tab_style
+from nuplan.planning.nuboard.style import base_tab_style, simulation_tile_style
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,10 @@ class BaseTab:
         # UI.
         self.search_criteria_selection_size = base_tab_style["search_criteria_sizes"]
         self.plot_sizes = base_tab_style["plot_sizes"]
+        self.simulation_figure_sizes = simulation_tile_style["figure_sizes"]
         self.plot_frame_sizes = base_tab_style["plot_frame_sizes"]
-        self.plot_cols = 3
+        self.window_width = 0
+        self.window_height = 0
 
         self.planner_checkbox_group = CheckboxGroup(
             labels=[], active=[], inline=True, css_classes=["planner-checkbox-group"], sizing_mode="scale_both"
@@ -77,6 +79,22 @@ class BaseTab:
         ]
         return enable_planner_names
 
+    @property
+    def get_plot_cols(self) -> int:
+        """Return number of columns for a grid plot."""
+        if self.window_width <= 1024:
+            return 1
+        col_num = 1 + round((self.window_width - 1024) / self.plot_sizes[0])
+        return col_num
+
+    @property
+    def get_simulation_plot_cols(self) -> int:
+        """Return number of columns for a simulation grid plot."""
+        if self.window_width <= 1024:
+            return 1
+        col_num = 1 + round((self.window_width - 1024) / self.simulation_figure_sizes[0])
+        return col_num
+
     def get_file_path_last_name(self, index: int) -> str:
         """
         Get last name of a file path.
@@ -98,21 +116,28 @@ class BaseTab:
     def load_log_name(self, scenario_type: str) -> List[str]:
         """
         Load a list of log names based on the scenario type.
+        :param scenario_type: A selected scenario type.
         :return a list of log names.
         """
-        log_names = self._experiment_file_data.available_scenario_type_names.get(scenario_type, [])
+        log_names = self._experiment_file_data.available_scenarios.get(scenario_type, [])
 
         # Remove duplicates
         sorted_log_names: List[str] = sorted(list(set(log_names)), reverse=False)
 
         return sorted_log_names
 
-    def load_scenario_names(self, log_name: str) -> List[str]:
+    def load_scenario_names(self, scenario_type: str, log_name: str) -> List[str]:
         """
         Load a list of scenario names based on the log name.
+        :param scenario_type: A selected scenario type.
+        :param log_name: A selected log name.
         :return a list of scenario names.
         """
-        scenario_names = self._experiment_file_data.available_scenario_log_names.get(log_name, [])
+        log_dict = self._experiment_file_data.available_scenarios.get(scenario_type, [])
+        if not log_dict:
+            return []
+
+        scenario_names = log_dict.get(log_name, [])
 
         # Remove duplicates
         sorted_scenario_names: List[str] = sorted(list(set(scenario_names)), reverse=False)

@@ -28,17 +28,17 @@ default_multi_choice_style: Dict[str, Any] = {'option_limit': 10}
 default_spinner_style: Dict[str, Any] = {'width': 300, 'low': 1}
 default_div_style: Dict[str, Any] = {'margin': (5, 5, 5, 30)}
 base_tab_style: Dict[str, Any] = {
-    "plot_sizes": (350, 350),
+    "plot_sizes": (350, 300),
     "plot_frame_sizes": (1200, 1200),
     "search_criteria_sizes": (80, 80),
 }
 
 simulation_tile_style: Dict[str, Any] = {
-    "figure_sizes": (600, 600),
-    "figure_margins": [10, 20, 20, 50],
+    "figure_sizes": (550, 550),
+    "figure_margins": [5, 40, 0, 30],
     "figure_title_text_font_size": "10pt",
-    "video_button_margins": [10, 20, 20, 50],  # Top, right, bottom, left
-    "slider_margins": [10, 20, 10, 50],
+    "video_button_margins": [5, 40, 5, 35],  # Top, right, bottom, left
+    "slider_margins": [5, 40, 0, 30],
     "background_color": "#000000",
     "mission_goal_color": "#00FF00",
     "mission_goal_alpha": 0.0,
@@ -112,6 +112,7 @@ overview_tab_style: Dict[str, Any] = {
 }
 
 scenario_tab_style: Dict[str, Any] = {
+    "default_div_width": 800,
     "time_series_figure_margins": [10, 20, 20, 30],
     "time_series_figure_title_text_font_size": "8pt",
     "time_series_figure_xaxis_axis_label_text_font_size": "9pt",

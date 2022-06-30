@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import astuple, dataclass
 from typing import List, Optional, Set
 
 import numpy as np
 import numpy.typing as npt
+from shapely.geometry import Point
 
 from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.abstract_map_objects import BaselinePath, GraphEdgeMapObject, Lane, LaneGraphEdgeMapObject
+from nuplan.common.maps.abstract_map_objects import (
+    GraphEdgeMapObject,
+    Lane,
+    LaneConnector,
+    LaneGraphEdgeMapObject,
+    PolylineMapObject,
+)
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 
 logger = logging.getLogger(__name__)
@@ -24,7 +31,7 @@ class RouteBaselineRoadBlockPair:
     """
 
     road_block: LaneGraphEdgeMapObject
-    base_line: BaselinePath
+    base_line: PolylineMapObject
     next: Optional[RouteBaselineRoadBlockPair] = None
 
 
@@ -56,6 +63,37 @@ def get_curr_route_obj(map_api: AbstractMap, pose: Point2D) -> List[GraphEdgeMap
     return curr_route_obj  # type: ignore
 
 
+def remove_extra_lane_connectors(route_objs: List[List[GraphEdgeMapObject]]) -> List[List[GraphEdgeMapObject]]:
+    """
+    # This function iterate through route object and replace field with multiple lane_connectors
+    # with the one lane_connector ego ends up in.
+    :param route_objs: a list of route objects.
+    """
+    # start from last object in the route list
+    last_to_first_route_list = route_objs[::-1]
+    enum = enumerate(last_to_first_route_list)
+    for ind, curr_last_obj in enum:
+        # skip if ind = 0 or if there's a single object in current objects list
+        if ind == 0 or len(curr_last_obj) <= 1:
+            continue
+        # O.w cull down the curr_last_obj using the next obj (prev obj in the reversed list) if possible
+        if len(curr_last_obj) > len(last_to_first_route_list[ind - 1]):
+            curr_route_obj_ids = [obj.id for obj in curr_last_obj]
+            if all([(obj.id in curr_route_obj_ids) for obj in last_to_first_route_list[ind - 1]]):
+                last_to_first_route_list[ind] = last_to_first_route_list[ind - 1]
+        # Skip the rest if there's no more than one object left
+        if len(curr_last_obj) <= 1:
+            continue
+        # Otherwise try to see if you can cull down lane_connectors using the lane ego ends up in and its incoming_edges
+        if last_to_first_route_list[ind - 1] and isinstance(last_to_first_route_list[ind - 1][0], Lane):
+            next_lane_incoming_edge_ids = [obj.id for obj in last_to_first_route_list[ind - 1][0].incoming_edges]
+            objs_to_keep = [obj for obj in curr_last_obj if obj.id in next_lane_incoming_edge_ids]
+            if objs_to_keep:
+                last_to_first_route_list[ind] = objs_to_keep
+
+    return last_to_first_route_list[::-1]
+
+
 def get_route(map_api: AbstractMap, poses: List[Point2D]) -> List[List[GraphEdgeMapObject]]:
     """
     Returns and sets the sequence of lane and lane connectors corresponding to the trajectory
@@ -66,41 +104,46 @@ def get_route(map_api: AbstractMap, poses: List[Point2D]) -> List[List[GraphEdge
     route_objs: List[List[GraphEdgeMapObject]] = []
 
     if not len(poses):
-        logger.warning('Invalid poses passed to get_route()')
-        return route_objs
+        raise ValueError('invalid poses passed to get_route()')
 
     # Find the lane/lane_connector ego belongs to initially
     curr_route_obj = get_curr_route_obj(map_api, poses[0])
     route_objs.append(curr_route_obj)
 
-    # After finding the initial lane/lane_connector, for each pose first check if pose belongs to previously found
-    # lane/lane_connector, if it does not check wether it's in an outgoing_egde of the previous lane/lane_connector,
-    # otherwise find the lane/lane_connector ego belongs to
     for pose in poses[1:]:
+        # next, for each pose first check if pose belongs to previously found lane/lane_connector
         curr_route_obj = [one_route_obj for one_route_obj in curr_route_obj if one_route_obj.contains_point(pose)]
 
-        if (not curr_route_obj) and len(route_objs[-1]):
+        # if it does not, check wether it's in an outgoing_egde of the previous lane/lane_connector,
+        if not curr_route_obj and len(route_objs[-1]):
             curr_route_obj = [
                 next_route_obj
-                for next_route_obj in route_objs[-1][0].outgoing_edges()
+                for next_route_obj in route_objs[-1][0].outgoing_edges
                 if next_route_obj.contains_point(pose)
             ]
+
+        # If it is not, find the lane/lane_connector ego belongs to by re-searching the map
         if not curr_route_obj:
             curr_route_obj = get_curr_route_obj(map_api, pose)
+            # Ideally, two successive lane_connectors in the list shouldn't be distinct. However in some cases trajectory can slightly goes outside the
+            # associated lane_connector and lies inside an irrelevant lane_connector. Filter these cases if pose is still close to the previous lane_connector:
+            if (
+                route_objs[-1]
+                and isinstance(route_objs[-1][0], LaneConnector)
+                and (
+                    (curr_route_obj and isinstance(curr_route_obj[0], LaneConnector))
+                    or (not curr_route_obj and map_api.is_in_layer(pose, SemanticMapLayer.INTERSECTION))
+                )
+            ):
+                previous_proximal_route_obj = [obj for obj in route_objs[-1] if obj.polygon.distance(Point(*pose)) < 5]
+
+                if previous_proximal_route_obj:
+                    curr_route_obj = previous_proximal_route_obj
         route_objs.append(curr_route_obj)
 
-    # Iterate through route object and replace field with two lane_connectors with the one lane_connector ego ends up in
-    for ind, curr_route_obj in enumerate(route_objs):
-        if curr_route_obj:
-            future_ind = ind + 1
-            while future_ind < len(route_objs) - 1:
-                if len(route_objs[future_ind]) == 1:
-                    if route_objs[future_ind][0] in curr_route_obj:
-                        route_objs[ind:future_ind] = [route_objs[future_ind]] * (future_ind - ind)
-                    break
-                future_ind += 1
-            ind = future_ind
-    return route_objs
+    # iterate through route object and replace field with multiple lane_connectors with the one lane_connector ego ends up in.
+    improved_route_obj = remove_extra_lane_connectors(route_objs)
+    return improved_route_obj
 
 
 def get_route_simplified(route_list: List[List[LaneGraphEdgeMapObject]]) -> List[List[LaneGraphEdgeMapObject]]:
@@ -113,7 +156,12 @@ def get_route_simplified(route_list: List[List[LaneGraphEdgeMapObject]]) -> List
     assert len(route_list[0]), 'The first ego pose is not in a lane or lane_connector'
     route_simplified = [route_list[0]]
     for route_obj in route_list[1:]:
-        if route_obj and route_obj != route_simplified[-1]:
+        repeated_entries = [
+            obj_id
+            for obj_id in [prev_obj.id for prev_obj in route_simplified[-1]]
+            if obj_id in [one_route_obj.id for one_route_obj in route_obj]
+        ]
+        if route_obj and not repeated_entries:
             route_simplified.append(route_obj)
     return route_simplified
 
@@ -145,7 +193,7 @@ def get_route_baseline_roadblock_linkedlist(
                 else:
                     road_block = map_api.get_map_object(roadblock_id, SemanticMapLayer.ROADBLOCK_CONNECTOR)
 
-                ref_baseline_path = route_obj[0].baseline_path()
+                ref_baseline_path = route_obj[0].baseline_path
 
                 if route_baseline_roadblock_list.head is None:
                     prev_route_baseline_roadblock = RouteBaselineRoadBlockPair(
@@ -187,7 +235,7 @@ def get_all_route_objs(map_api: AbstractMap, poses: List[Point2D]) -> List[List[
             if (not curr_route_obj) and len(all_route_objs[-1]):
                 curr_route_obj = [
                     next_route_obj
-                    for next_route_obj in all_route_objs[-1][0].outgoing_edges()
+                    for next_route_obj in all_route_objs[-1][0].outgoing_edges
                     if next_route_obj.contains_point(pose)
                 ]
             if not curr_route_obj:
@@ -205,6 +253,12 @@ class CornersGraphEdgeMapObject:
     rear_left_map_objs: List[GraphEdgeMapObject]
     rear_right_map_objs: List[GraphEdgeMapObject]
     front_right_map_objs: List[GraphEdgeMapObject]
+
+    def __iter__(self) -> List[List[GraphEdgeMapObject]]:
+        """Returns an iterable list of the class attributes
+        :return : list of map objects for corners
+        """
+        return list(astuple(self))
 
 
 def extract_corners_route(map_api: AbstractMap, ego_corners: List[List[Point2D]]) -> List[CornersGraphEdgeMapObject]:
@@ -238,7 +292,7 @@ def get_outgoing_edges_obj_dict(corner_route_object: List[GraphEdgeMapObject]) -
     :param corner_route_object: List of lane/lane connectors
     :return dictionary of id and itscorresponding route object of outgoing edges of a given route object
     """
-    return {obj_edge.id: obj_edge for obj in corner_route_object for obj_edge in obj.outgoing_edges()}
+    return {obj_edge.id: obj_edge for obj in corner_route_object for obj_edge in obj.outgoing_edges}
 
 
 def get_incoming_edges_obj_dict(corner_route_object: List[GraphEdgeMapObject]) -> dict[str, GraphEdgeMapObject]:
@@ -246,7 +300,7 @@ def get_incoming_edges_obj_dict(corner_route_object: List[GraphEdgeMapObject]) -
     :param corner_route_object: List of lane/lane connectors
     :return dictionary of id and itscorresponding route object of incoming edges of a given route object
     """
-    return {obj_edge.id: obj_edge for obj in corner_route_object for obj_edge in obj.incoming_edges()}
+    return {obj_edge.id: obj_edge for obj in corner_route_object for obj_edge in obj.incoming_edges}
 
 
 def get_common_route_object(
@@ -375,25 +429,22 @@ def get_timestamps_in_common_or_connected_route_objs(
     common_or_connected_route_objs: List[Optional[Set[GraphEdgeMapObject]]], ego_timestamps: npt.NDArray[np.int32]
 ) -> List[int]:
     """
+    Extract timestamps when ego's corners are in common or connected lane/lane connectors.
     :param common_or_connected_route_objs: list of common or connected lane/lane connectors of corners if exist,
     empty list if all corners are in non_drivable area and None if corners are in different lane/lane connectors
     :param ego_timestamps: Array of times in time_us
     :return List of ego_timestamps where all corners of ego are in common or connected route objects
     """
-    return [
-        timestamp
-        for route_obj, timestamp in zip(common_or_connected_route_objs, ego_timestamps)
-        if route_obj is not None
-    ]
+    return [timestamp for route_obj, timestamp in zip(common_or_connected_route_objs, ego_timestamps) if route_obj]
 
 
 def get_common_or_connected_route_objs_of_corners(
     corners_route: List[CornersGraphEdgeMapObject],
 ) -> List[Optional[Set[GraphEdgeMapObject]]]:
     """
-    Extract timestamps when ego's corners are in different lane/lane connectors
+    Returns a list of common or connected lane/lane connectors of corners.
     :param corners_route: List of class conatining list of lane/lane connectors of corners of ego
-    :return list of common or connected lane/lane connectors of corners if exist, returns empty list if all corners are
+    :return list of common or connected lane/lane connectors of corners if exist, empty list if all corners are
     in non_drivable area and None if corners are in different lane/lane connectors.
     """
     history_common_or_connecting_route_objs: List[Optional[Set[GraphEdgeMapObject]]] = []

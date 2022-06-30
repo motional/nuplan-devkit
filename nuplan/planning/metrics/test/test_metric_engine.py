@@ -135,6 +135,9 @@ class TestMetricEngine(unittest.TestCase):
                     ego_state=ego_state,
                     trajectory=trajectory,
                     observation=DetectionsTracks(TrackedObjects(scene_objects)),
+                    traffic_light_status=self.scenario.get_traffic_light_status_at_iteration(
+                        simulation_iteration.index
+                    ),
                 )
             )
 

@@ -25,6 +25,8 @@ class SceneObjectMetadata:
     track_id: Optional[int]
     # Token of the object which is temporally consistent
     track_token: Optional[str]
+    # Human readable category name
+    category_name: Optional[str] = None
 
     @property
     def timestamp_s(self) -> float:

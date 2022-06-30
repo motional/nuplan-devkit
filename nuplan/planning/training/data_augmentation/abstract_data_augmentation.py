@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
@@ -28,11 +29,14 @@ class AbstractAugmentor(ABC):
         )
 
     @abstractmethod
-    def augment(self, features: FeaturesType, targets: TargetsType) -> Tuple[FeaturesType, TargetsType]:
+    def augment(
+        self, features: FeaturesType, targets: TargetsType, scenario: Optional[AbstractScenario] = None
+    ) -> Tuple[FeaturesType, TargetsType]:
         """
         Run augmentation against the input feature and target tensors.
         :param features: Input feature tensors to be augmented.
         :param targets: Input target tensors to be augmented.
+        :param scenario: The scenario where features and targets are generated from.
         :return: Augmented features and targets.
         """
         pass

@@ -28,9 +28,25 @@ py_library(
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
-        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        "//nuplan/planning/training/preprocessing/feature_builders:scriptable_feature_builder",
         "//nuplan/planning/training/preprocessing/features:agents",
         "//nuplan/planning/training/preprocessing/features:trajectory_utils",
+        "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
+    ],
+)
+
+py_library(
+    name = "dynamic_ego_feature_builder",
+    srcs = ["dynamic_ego_feature_builder.py"],
+    deps = [
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/scenario_builder:scenario_utils",
+        "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
+        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        "//nuplan/planning/training/preprocessing/features:dynamic_ego_feature",
         "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
     ],
 )
@@ -52,17 +68,35 @@ py_library(
 )
 
 py_library(
+    name = "scriptable_feature_builder",
+    srcs = ["scriptable_feature_builder.py"],
+    deps = [
+        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+    ],
+)
+
+py_library(
     name = "vector_map_feature_builder",
     srcs = ["vector_map_feature_builder.py"],
     deps = [
-        "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/maps:maps_datatypes",
-        "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/training/preprocessing/feature_builders:scriptable_feature_builder",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_utils",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
         "//nuplan/planning/training/preprocessing/features:vector_map",
+        "//nuplan/planning/training/preprocessing/utils:torch_geometry",
+    ],
+)
+
+py_library(
+    name = "vector_utils",
+    srcs = ["vector_utils.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/maps/nuplan_map:utils",
     ],
 )

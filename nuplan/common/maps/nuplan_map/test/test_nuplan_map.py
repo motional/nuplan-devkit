@@ -11,12 +11,16 @@ from nuplan.common.maps.test_utils import add_map_objects_to_scene
 from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
 
-maps_db = get_test_maps_db()
-map_factory = NuPlanMapFactory(maps_db)
+
+@pytest.fixture()
+def map_factory() -> NuPlanMapFactory:
+    """Fixture loading ta returning a map factory"""
+    maps_db = get_test_maps_db()
+    return NuPlanMapFactory(maps_db)
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
-def test_is_in_layer_lane(scene: Dict[str, Any]) -> None:
+def test_is_in_layer_lane(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test is in lane.
     """
@@ -28,7 +32,7 @@ def test_is_in_layer_lane(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/baseline/baseline_in_intersection.json')
-def test_is_in_layer_intersection(scene: Dict[str, Any]) -> None:
+def test_is_in_layer_intersection(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test is in intersection.
     """
@@ -40,7 +44,7 @@ def test_is_in_layer_intersection(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
-def test_get_lane(scene: Dict[str, Any]) -> None:
+def test_get_lane(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting one lane.
     """
@@ -59,7 +63,7 @@ def test_get_lane(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/baseline/no_baseline.json')
-def test_no_baseline(scene: Dict[str, Any]) -> None:
+def test_no_baseline(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test when there is no baseline.
     """
@@ -74,7 +78,7 @@ def test_no_baseline(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/baseline/baseline_in_intersection.json')
-def test_get_lane_connector(scene: Dict[str, Any]) -> None:
+def test_get_lane_connector(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting lane connectors.
     """
@@ -102,7 +106,7 @@ def test_get_lane_connector(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/get_nearest/lane.json')
-def test_get_nearest_lane(scene: Dict[str, Any]) -> None:
+def test_get_nearest_lane(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting nearest lane.
     """
@@ -125,7 +129,7 @@ def test_get_nearest_lane(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/get_nearest/lane_connector.json')
-def test_get_nearest_lane_connector(scene: Dict[str, Any]) -> None:
+def test_get_nearest_lane_connector(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting nearest lane connector.
     """
@@ -148,7 +152,7 @@ def test_get_nearest_lane_connector(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
-def test_get_roadblock(scene: Dict[str, Any]) -> None:
+def test_get_roadblock(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting one roadblock.
     """
@@ -166,7 +170,7 @@ def test_get_roadblock(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/baseline/baseline_in_intersection.json')
-def test_get_roadblock_connector(scene: Dict[str, Any]) -> None:
+def test_get_roadblock_connector(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting roadblock connectors.
     """
@@ -190,7 +194,7 @@ def test_get_roadblock_connector(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/get_nearest/lane.json')
-def test_get_nearest_roadblock(scene: Dict[str, Any]) -> None:
+def test_get_nearest_roadblock(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting nearest roadblock.
     """
@@ -210,7 +214,7 @@ def test_get_nearest_roadblock(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/get_nearest/lane_connector.json')
-def test_get_nearest_roadblock_connector(scene: Dict[str, Any]) -> None:
+def test_get_nearest_roadblock_connector(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test getting nearest roadblock connector.
     """
@@ -234,7 +238,7 @@ def test_get_nearest_roadblock_connector(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/neighboring/all_map_objects.json')
-def test_get_proximal_map_objects(scene: Dict[str, Any]) -> None:
+def test_get_proximal_map_objects(scene: Dict[str, Any], map_factory: NuPlanMapFactory) -> None:
     """
     Test get_neighbor_lanes.
     """
@@ -269,7 +273,7 @@ def test_get_proximal_map_objects(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test()
-def test_unsupported_neighbor_map_objects() -> None:
+def test_unsupported_neighbor_map_objects(map_factory: NuPlanMapFactory) -> None:
     """
     Test throw if unsupported layer is queried.
     """
@@ -293,7 +297,7 @@ def test_unsupported_neighbor_map_objects() -> None:
 
 
 @nuplan_test()
-def test_get_available_map_objects() -> None:
+def test_get_available_map_objects(map_factory: NuPlanMapFactory) -> None:
     """
     Test getting available map objects for all SemanticMapLayers.
     """
@@ -311,6 +315,21 @@ def test_get_available_map_objects() -> None:
         SemanticMapLayer.CARPARK_AREA,
         SemanticMapLayer.PUDO,
     }
+
+
+def test_get_drivable_area(map_factory: NuPlanMapFactory) -> None:
+    """Tests drivable area construction"""
+    nuplan_map = map_factory.build_map_from_name("us-nv-las-vegas-strip")
+
+    target_layer = "drivable_area"
+    base_layers = ["road_segments", "intersections", "generic_drivable_areas"]
+    all_layers = base_layers + [target_layer]
+    assert not any(layer in nuplan_map._vector_map.keys() for layer in all_layers)
+    nuplan_map._load_vector_map_layer(target_layer)
+    assert all(layer in nuplan_map._vector_map.keys() for layer in all_layers)
+    drivable_fids = nuplan_map._vector_map[target_layer]['fid'].to_list()
+    base_fids = [fid for layer in base_layers for fid in nuplan_map._vector_map[layer]['fid'].to_list()]
+    assert sorted(drivable_fids) == sorted(base_fids)
 
 
 if __name__ == "__main__":

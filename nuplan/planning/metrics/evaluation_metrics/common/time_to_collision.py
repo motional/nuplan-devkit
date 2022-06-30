@@ -13,13 +13,7 @@ from nuplan.planning.metrics.evaluation_metrics.common.ego_at_fault_collisions i
     EgoAtFaultCollisionStatistics,
 )
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
-from nuplan.planning.metrics.metric_result import (
-    MetricStatistics,
-    MetricStatisticsType,
-    MetricViolation,
-    Statistic,
-    TimeSeries,
-)
+from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
 from nuplan.planning.metrics.utils.state_extractors import extract_ego_time_point, extract_ego_velocity
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
@@ -34,7 +28,8 @@ def extract_tracks_info_excluding_collided_tracks(
     timestamps_in_common_or_connected_route_objs: List[int],
 ) -> TRACKS_POSE_SPEED_BOX:
     """
-    Extracts tracks pose, speed and oriented box for TTC: all lead tracks, plus lateral tracks if ego is in between lanes
+    Extracts tracks pose, speed and oriented box for TTC: all lead tracks, plus lateral tracks if ego is in between lanes or in nondrivable area.
+
     :param history: History from a simulation engine
     :param all_collisions: List of all collisions in the history
     :param timestamps_in_common_or_connected_route_objs: List of timestamps where ego is in same or connected
@@ -54,9 +49,9 @@ def extract_tracks_info_excluding_collided_tracks(
         timestamp = ego_state.time_point.time_us
         observation = sample.observation
 
-        # Check if ego is in a collision
+        # Check if ego is in a collision to have the collided tracks to be excluded from later timestamps
         ego_in_collision = timestamp in timestamps_in_collision
-        # Check if ego is in between lanes or between drivable and nondrivable area, in this case we consider all tracks (lead, lateral and lag) for TTC
+        # Check if ego is in between lanes or between/in nondrivable area, in this case we consider lead and lateral tracks for TTC
         ego_not_in_common_or_connected_route_objs = timestamp not in timestamps_in_common_or_connected_route_objs
 
         if ego_in_collision:
@@ -154,7 +149,7 @@ class TimeToCollisionStatistics(MetricBase):
         ego_timestamps: List[int],
         timestamps_in_common_or_connected_route_objs: List[int],
         all_collisions: List[Collisions],
-        all_violations: List[MetricViolation],
+        timestamps_at_fault_collisions: List[int],
         stopped_speed_threshhold: float = 5e-03,
     ) -> npt.NDArray[np.float32]:
         """
@@ -167,19 +162,14 @@ class TimeToCollisionStatistics(MetricBase):
         :param timestamps_in_common_or_connected_route_objs: List of timestamps where ego is in same or connected
         lanes/lane connectors
         :param all_collisions: List of all collisions in the history
-        :param all_violations: List of violations corresponding to at-fault-collisions in the history
+        :param timestamps_at_fault_collisions: List of timestamps corresponding to at-fault-collisions in the history
         :param stopped_speed_threshhold: Threshhold for 0 speed due to noise
         :return: The minimal TTC for each sample, inf if no collision is found within the projection horizon.
         """
         # Extract speed of ego from history.
         ego_velocities = extract_ego_velocity(history)
 
-        # Default TTC to be inf
-        time_to_collision: npt.NDArray[np.float32] = np.asarray([np.inf] * len(history))
-
-        timestamps_in_at_fault_collisions = [violation.start_timestamp for violation in all_violations]
-
-        # Extract tracks info, collided tracks ar removed from the analysis after the first timestamp of the collision
+        # Extract tracks info, collided tracks are removed from the analysis after the first timestamp of the collision
         (
             history_tracks_poses,
             history_tracks_speed,
@@ -187,6 +177,9 @@ class TimeToCollisionStatistics(MetricBase):
         ) = extract_tracks_info_excluding_collided_tracks(
             history, all_collisions, timestamps_in_common_or_connected_route_objs
         )
+
+        # Default TTC to be inf
+        time_to_collision: npt.NDArray[np.float32] = np.asarray([np.inf] * len(history))
 
         for i, (timestamp, ego_state, ego_speed, tracks_poses, tracks_speed, tracks_boxes) in enumerate(
             zip(
@@ -199,7 +192,7 @@ class TimeToCollisionStatistics(MetricBase):
             )
         ):
 
-            ego_in_at_fault_collision = timestamp in timestamps_in_at_fault_collisions
+            ego_in_at_fault_collision = timestamp in timestamps_at_fault_collisions
             # Set TTC to 0 if ego is in an at-fault collision
             if ego_in_at_fault_collision:
                 time_to_collision[i] = 0
@@ -251,9 +244,13 @@ class TimeToCollisionStatistics(MetricBase):
             int
         ] = self._ego_lane_change_metric.timestamps_in_common_or_connected_route_objs
 
-        # Load pre-calculated collisions and violations from ego_at_fault_collision metric
+        # Load pre-calculated results from ego_at_fault_collision metric
+        assert (
+            self._ego_at_fault_collisions_metric.results
+        ), "ego_at_fault_collisions metric must be run prior to calling {}".format(self.name)
+
         all_collisions = self._ego_at_fault_collisions_metric.all_collisions
-        all_violations = self._ego_at_fault_collisions_metric.all_violations
+        timestamps_at_fault_collisions = self._ego_at_fault_collisions_metric.timestamps_at_fault_collisions
 
         # Extract states of ego from history.
         ego_states = history.extract_ego_state
@@ -267,7 +264,7 @@ class TimeToCollisionStatistics(MetricBase):
             ego_timestamps,
             timestamps_in_common_or_connected_route_objs,
             all_collisions,
-            all_violations,
+            timestamps_at_fault_collisions,
         )
 
         time_series = TimeSeries(unit='seconds', time_stamps=list(ego_timestamps), values=list(time_to_collision))

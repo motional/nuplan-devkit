@@ -33,7 +33,8 @@
     ],
     "expected": {
         "statistics": {
-            "COUNT": 0
+            "Boolean": true,
+            "RATIO": 0
         }
     },
     "goal": {

@@ -3,14 +3,14 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
 import pandas
 from bokeh.document.document import Document
 from bokeh.layouts import column, gridplot, layout
-from bokeh.models import Div, HoverTool, Select
+from bokeh.models import ColumnDataSource, Div, HoverTool, Select
 from bokeh.models.callbacks import CustomJS
 from bokeh.plotting import figure
 
@@ -78,6 +78,7 @@ class ScenarioTab(BaseTab):
             code="""
             document.getElementById('scenario-loading').style.visibility = 'visible';
             document.getElementById('scenario-plot-section').style.visibility = 'hidden';
+            cb_obj.tags = [window.outerWidth, window.outerHeight];
         """,
         )
         self._scalar_scenario_name_select.js_on_change("value", self._loading_js)
@@ -122,6 +123,7 @@ class ScenarioTab(BaseTab):
         self._time_series_data: Dict[str, List[ScenarioTimeSeriesData]] = {}
         self._simulation_figure_data: List[Any] = []
         self._available_scenario_names: List[str] = []
+        self._simulation_plots: Optional[column] = None
         self._init_selection()
 
     @property
@@ -160,7 +162,7 @@ class ScenarioTab(BaseTab):
         self._experiment_file_data = experiment_file_data
         self._experiment_file_active_index = experiment_file_active_index
 
-        self.simulation_tile.init_simulations()
+        self.simulation_tile.init_simulations(figure_sizes=self.simulation_figure_sizes)
         self._init_selection()
         self._update_scenario_plot()
 
@@ -187,13 +189,19 @@ class ScenarioTab(BaseTab):
         if not filtered_simulation_figures:
             simulation_layouts = column(
                 self._default_simulation_div,
-                width=800,
+                width=scenario_tab_style["default_div_width"],
                 css_classes=["scenario-simulation-layout"],
                 name="simulation_tile_layout",
             )
         else:
-            simulation_layouts = column(filtered_simulation_figures)
+            simulation_layouts = gridplot(
+                filtered_simulation_figures, ncols=self.get_simulation_plot_cols, toolbar_location=None
+            )
         self._simulation_tile_layout.children[0] = layout(simulation_layouts)
+
+    def _update_simulation_layouts(self) -> None:
+        """Update simulation layouts."""
+        self._simulation_tile_layout.children[0] = layout(self._simulation_plots)
 
     def _update_scenario_plot(self) -> None:
         """Update scenario plots when selection is made."""
@@ -205,8 +213,10 @@ class ScenarioTab(BaseTab):
         self._time_series_layout.children[0] = layout(time_series_plots)
 
         # Render simulations.
-        simulation_plots = self._render_simulations()
-        self._simulation_tile_layout.children[0] = layout(simulation_plots)
+        self._simulation_plots = self._render_simulations()
+
+        # Make sure the simulation plot upgrades at the last
+        self._doc.add_next_tick_callback(self._update_simulation_layouts)
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         logger.debug(f"Rending scenario plot takes {elapsed_time:.4f} seconds.")
@@ -249,7 +259,9 @@ class ScenarioTab(BaseTab):
         if new == "":
             return
 
-        available_scenario_names = self.load_scenario_names(log_name=self._scalar_log_name_select.value)
+        available_scenario_names = self.load_scenario_names(
+            scenario_type=self._scalar_scenario_type_select.value, log_name=self._scalar_log_name_select.value
+        )
         self._scalar_scenario_name_select.options = [""] + available_scenario_names
         self._scalar_scenario_name_select.value = ""
 
@@ -260,10 +272,9 @@ class ScenarioTab(BaseTab):
         :param old: Old value.
         :param new: New value.
         """
-        # Do nothing
-        if new == "":
-            return
-
+        if self._scalar_scenario_name_select.tags:
+            self.window_width = self._scalar_scenario_name_select.tags[0]
+            self.window_height = self._scalar_scenario_name_select.tags[1]
         self._update_planner_names()
         self._update_scenario_plot()
 
@@ -282,8 +293,7 @@ class ScenarioTab(BaseTab):
             self._scalar_scenario_type_select.value = self._scalar_scenario_type_select.options[0]
         self._update_planner_names()
 
-    @staticmethod
-    def _render_time_series_plot(title: str, y_axis_label: str) -> figure:
+    def _render_time_series_plot(self, title: str, y_axis_label: str) -> figure:
         """
         Render a time series plot.
         :param title: Plot title.
@@ -295,11 +305,14 @@ class ScenarioTab(BaseTab):
             title=title,
             css_classes=["time-series-figure"],
             margin=scenario_tab_style["time_series_figure_margins"],
-            width=350,
-            height=350,
+            width=self.plot_sizes[0],
+            height=self.plot_sizes[1],
+            active_scroll="wheel_zoom",
             output_backend="webgl",
         )
-        hover = HoverTool(tooltips=[("Frame", "@x"), ("Value", "@y{0.0000}"), ("Planner", "$name")])
+        hover = HoverTool(
+            tooltips=[("Frame", "@x"), ("Time_us", "@time_us"), ("Value", "@y{0.0000}"), ("Planner", "$name")]
+        )
         time_series_figure.add_tools(hover)
 
         time_series_figure.title.text_font_size = scenario_tab_style["time_series_figure_title_text_font_size"]
@@ -336,7 +349,7 @@ class ScenarioTab(BaseTab):
             time_series_figure.legend.label_text_font_size = scenario_tab_style["plot_legend_label_text_font_size"]
             figures.append(time_series_figure)
 
-        grid_plot = gridplot(figures, ncols=self.plot_cols, toolbar_location="left")
+        grid_plot = gridplot(figures, ncols=self.get_plot_cols, toolbar_location="left")
         time_series_layout = column(grid_plot)
 
         return time_series_layout
@@ -425,18 +438,21 @@ class ScenarioTab(BaseTab):
                 planner_name = data.planner_name + f" ({self.get_file_path_last_name(data.experiment_index)})"
                 color = self.experiment_file_data.file_path_colors[data.experiment_index][data.planner_name]
                 time_series_figure = time_series_figures[metric_statistic_name]
+                data_source = ColumnDataSource(
+                    dict(
+                        x=list(range(len(data.time_series_values))),
+                        y=data.time_series_values,
+                        time_us=data.time_series_timestamps,
+                    )
+                )
                 time_series_figure.line(
-                    x=list(range(len(data.time_series_values))),
-                    y=data.time_series_values,
-                    color=color,
-                    legend_label=planner_name,
-                    name=planner_name,
+                    x="x", y="y", name=planner_name, color=color, legend_label=planner_name, source=data_source
                 )
 
         if not time_series_figures:
             time_series_column = column(
                 self._default_time_series_div,
-                width=800,
+                width=scenario_tab_style["default_div_width"],
                 css_classes=["scenario-simulation-layout"],
                 name="simulation_tile_layout",
             )
@@ -466,9 +482,11 @@ class ScenarioTab(BaseTab):
             )
         else:
             self._simulation_figure_data = self.simulation_tile.render_simulation_tiles(
-                selected_scenario_keys=selected_keys
+                selected_scenario_keys=selected_keys, figure_sizes=self.simulation_figure_sizes
             )
             simulation_figures = [data.plot for data in self._simulation_figure_data]
-            simulation_layouts = column(simulation_figures)
+            simulation_layouts = gridplot(
+                simulation_figures, ncols=self.get_simulation_plot_cols, toolbar_location=None
+            )
 
         return simulation_layouts

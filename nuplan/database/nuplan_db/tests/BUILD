@@ -30,7 +30,15 @@ py_test(
     size = "small",
     srcs = ["test_ego_pose.py"],
     deps = [
-        "//nuplan/database/nuplan_db:ego_pose",
+        "//nuplan/database/tests:nuplan_db_test_utils",
+    ],
+)
+
+py_test(
+    name = "test_image",
+    size = "small",
+    srcs = ["test_image.py"],
+    deps = [
         "//nuplan/database/tests:nuplan_db_test_utils",
     ],
 )
@@ -72,18 +80,6 @@ py_test(
     srcs = ["test_log.py"],
     deps = [
         "//nuplan/database/nuplan_db:log",
-    ],
-)
-
-py_test(
-    name = "test_models",
-    size = "small",
-    srcs = ["test_models.py"],
-    deps = [
-        "//nuplan/database/nuplan_db:models",
-        "//nuplan/database/nuplan_db:nuplandb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
-        "//nuplan/database/utils:geometry",
     ],
 )
 
@@ -130,6 +126,7 @@ py_test(
     srcs = ["test_utils.py"],
     deps = [
         "//nuplan/database/nuplan_db:frame",
+        "//nuplan/database/nuplan_db:lidar_box",
         "//nuplan/database/nuplan_db:lidar_pc",
         "//nuplan/database/nuplan_db:nuplandb",
         "//nuplan/database/nuplan_db:utils",

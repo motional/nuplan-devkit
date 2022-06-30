@@ -1,46 +1,31 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set, Type, cast
+from typing import Dict, List, Optional, Tuple, Type
 
-import numpy as np
-import numpy.typing as npt
+import torch
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
-from nuplan.common.maps.maps_datatypes import (
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
+from nuplan.planning.training.preprocessing.feature_builders.scriptable_feature_builder import ScriptableFeatureBuilder
+from nuplan.planning.training.preprocessing.feature_builders.vector_utils import (
     LaneOnRouteStatusData,
     LaneSegmentConnections,
     LaneSegmentCoords,
     LaneSegmentGroupings,
     LaneSegmentTrafficLightData,
+    get_neighbor_vector_map,
+    get_on_route_status,
+    get_traffic_light_encoding,
 )
-from nuplan.common.maps.nuplan_map.utils import get_neighbor_vector_map, get_on_route_status, get_traffic_light_encoding
-from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
-from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractFeatureBuilder
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import AbstractModelFeature
 from nuplan.planning.training.preprocessing.features.vector_map import VectorMap
-
-
-def _transform_to_relative_frame(coords: npt.NDArray[np.float32], anchor_state: StateSE2) -> npt.NDArray[np.float32]:
-    """
-    Transform a set of coordinates to the the given frame.
-    :param coords: <np.ndarray: num_coords, 2> Coordinates to be transformed.
-    :param anchor_state: The coordinate frame to transform to.
-    :return: <np.ndarray: num_coords, 2> Transformed coordinates.
-    """
-    # Extract transform
-    transform = np.linalg.inv(anchor_state.as_matrix())
-
-    # Homogenous Coordinates
-    coords = np.pad(coords, ((0, 0), (0, 1)), 'constant', constant_values=1.0)
-    coords = transform @ coords.transpose()
-
-    return cast(npt.NDArray[np.float32], coords.transpose()[:, :2])
+from nuplan.planning.training.preprocessing.utils.torch_geometry import coordinates_to_local_frame
 
 
 def _accumulate_connections(
-    node_idx_to_neighbor_dict: Dict[int, Dict[str, Set[int]]], scales: List[int]
-) -> Dict[int, npt.NDArray[np.float32]]:
+    node_idx_to_neighbor_dict: Dict[int, Dict[str, Dict[int, int]]], scales: List[int]
+) -> Dict[int, torch.Tensor]:
     """
     Accumulate the connections over multiple scales
     :param node_idx_to_neighbor_dict: {node_idx: neighbor_dict} where each neighbor_dict
@@ -49,57 +34,64 @@ def _accumulate_connections(
     :return: Multi-scale connections as a dict of {scale: connections_of_scale}.
     """
     # Get the connections of each scale.
-    multi_scale_connections: Dict[int, npt.NDArray[np.float32]] = {}
+    multi_scale_connections: Dict[int, torch.Tensor] = {}
     for scale in scales:
-        scale_connections = []
+        scale_connections: List[List[int]] = []
         for node_idx, neighbor_dict in node_idx_to_neighbor_dict.items():
             for n_hop_neighbor in neighbor_dict[f"{scale}_hop_neighbors"]:
                 scale_connections.append([node_idx, n_hop_neighbor])
 
         # if cannot find n-hop neighbors, return empty connection with size [0,2]
         if len(scale_connections) == 0:
-            scale_connections = np.empty([0, 2], dtype=np.int64)  # type: ignore
-
-        multi_scale_connections[scale] = np.array(scale_connections)
+            multi_scale_connections[scale] = torch.empty((0, 2), dtype=torch.int64)
+        else:
+            multi_scale_connections[scale] = torch.tensor(scale_connections, dtype=torch.int64)
 
     return multi_scale_connections
 
 
-def _generate_multi_scale_connections(
-    connections: npt.NDArray[np.int64], scales: List[int]
-) -> Dict[int, npt.NDArray[np.float32]]:
+def _generate_multi_scale_connections(connections: torch.Tensor, scales: List[int]) -> Dict[int, torch.Tensor]:
     """
     Generate multi-scale connections by finding the neighbors up to max(scales) hops away for each node.
-    :param connections: <np.ndarray: num_connections, 2>. A 1-hop connection is represented by [start_idx, end_idx]
+    :param connections: <torch.Tensor: num_connections, 2>. A 1-hop connection is represented by [start_idx, end_idx]
     :param scales: Connections scales to generate.
     :return: Multi-scale connections as a dict of {scale: connections_of_scale}.
              Each connections_of_scale is represented by an array of <np.ndarray: num_connections, 2>,
     """
+    if len(connections.shape) != 2 or connections.shape[1] != 2:
+        raise ValueError(f"Unexpected connections shape: {connections.shape}")
+
     # This dict will have format {node_idx: neighbor_dict},
     # where each neighbor_dict will have format {'i_hop_neighbors': set_of_i_hop_neighbors}.
-    node_idx_to_neighbor_dict: Dict[int, Dict[str, Set[int]]] = {}
+    # The final Dict is actually a set. But Set isn't supported by torchscript,
+    #    so a filler is used for the dict's value
+    node_idx_to_neighbor_dict: Dict[int, Dict[str, Dict[int, int]]] = {}
+    dummy_value: int = 0
 
     # Initialize the data structure for each node with its 1-hop neighbors.
     for connection in connections:
-        start_idx, end_idx = list(connection)
+        start_idx, end_idx = connection[0].item(), connection[1].item()
         if start_idx not in node_idx_to_neighbor_dict:
-            node_idx_to_neighbor_dict[start_idx] = {"1_hop_neighbors": set()}
+            start_empty: Dict[int, int] = {}
+            node_idx_to_neighbor_dict[start_idx] = {"1_hop_neighbors": start_empty}
         if end_idx not in node_idx_to_neighbor_dict:
-            node_idx_to_neighbor_dict[end_idx] = {"1_hop_neighbors": set()}
-        node_idx_to_neighbor_dict[start_idx]["1_hop_neighbors"].add(end_idx)
+            end_empty: Dict[int, int] = {}
+            node_idx_to_neighbor_dict[end_idx] = {"1_hop_neighbors": end_empty}
+        node_idx_to_neighbor_dict[start_idx]["1_hop_neighbors"][end_idx] = dummy_value
 
     # Find the neighbors up to max(scales) hops away for each node.
     for scale in range(2, max(scales) + 1):
         for neighbor_dict in node_idx_to_neighbor_dict.values():
-            neighbor_dict[f"{scale}_hop_neighbors"] = set()
+            empty: Dict[int, int] = {}
+            neighbor_dict[f"{scale}_hop_neighbors"] = empty
             for n_hop_neighbor in neighbor_dict[f"{scale - 1}_hop_neighbors"]:
                 for n_plus_1_hop_neighbor in node_idx_to_neighbor_dict[n_hop_neighbor]["1_hop_neighbors"]:
-                    neighbor_dict[f"{scale}_hop_neighbors"].add(n_plus_1_hop_neighbor)
+                    neighbor_dict[f"{scale}_hop_neighbors"][n_plus_1_hop_neighbor] = dummy_value
 
     return _accumulate_connections(node_idx_to_neighbor_dict, scales)
 
 
-class VectorMapFeatureBuilder(AbstractFeatureBuilder):
+class VectorMapFeatureBuilder(ScriptableFeatureBuilder):
     """
     Feature builder for constructing map features in a vector-representation.
     """
@@ -111,18 +103,22 @@ class VectorMapFeatureBuilder(AbstractFeatureBuilder):
         :param connection_scales: Connection scales to generate. Use the 1-hop connections if it's left empty.
         :return: Vector map data including lane segment coordinates and connections within the given range.
         """
+        super().__init__()
         self._radius = radius
         self._connection_scales = connection_scales
 
+    @torch.jit.unused
     def get_feature_type(self) -> Type[AbstractModelFeature]:
         """Inherited, see superclass."""
         return VectorMap  # type: ignore
 
+    @torch.jit.unused
     @classmethod
     def get_feature_unique_name(cls) -> str:
         """Inherited, see superclass."""
         return "vector_map"
 
+    @torch.jit.unused
     def get_features_from_scenario(self, scenario: AbstractScenario) -> VectorMap:
         """Inherited, see superclass."""
         ego_state = scenario.initial_ego_state
@@ -142,7 +138,7 @@ class VectorMapFeatureBuilder(AbstractFeatureBuilder):
         traffic_light_data = scenario.get_traffic_light_status_at_iteration(0)
         traffic_light_data = get_traffic_light_encoding(lane_seg_lane_ids, traffic_light_data)
 
-        return self._compute_feature(
+        tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(
             lane_seg_coords,
             lane_seg_conns,
             lane_seg_groupings,
@@ -151,6 +147,13 @@ class VectorMapFeatureBuilder(AbstractFeatureBuilder):
             ego_state.rear_axle,
         )
 
+        tensor_data, list_tensor_data, list_list_tensor_data = self.scriptable_forward(
+            tensors, list_tensors, list_list_tensors
+        )
+
+        return self._unpack_feature_from_tensor_dict(tensor_data, list_tensor_data, list_list_tensor_data)
+
+    @torch.jit.unused
     def get_features_from_simulation(
         self, current_input: PlannerInput, initialization: PlannerInitialization
     ) -> VectorMap:
@@ -175,7 +178,7 @@ class VectorMapFeatureBuilder(AbstractFeatureBuilder):
         traffic_light_data = current_input.traffic_light_data
         traffic_light_data = get_traffic_light_encoding(lane_seg_lane_ids, traffic_light_data)
 
-        return self._compute_feature(
+        tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(
             lane_seg_coords,
             lane_seg_conns,
             lane_seg_groupings,
@@ -184,7 +187,49 @@ class VectorMapFeatureBuilder(AbstractFeatureBuilder):
             ego_state.rear_axle,
         )
 
-    def _compute_feature(
+        tensor_data, list_tensor_data, list_list_tensor_data = self.scriptable_forward(
+            tensors, list_tensors, list_list_tensors
+        )
+
+        return self._unpack_feature_from_tensor_dict(tensor_data, list_tensor_data, list_list_tensor_data)
+
+    @torch.jit.ignore
+    def _unpack_feature_from_tensor_dict(
+        self,
+        tensor_data: Dict[str, torch.Tensor],
+        list_tensor_data: Dict[str, List[torch.Tensor]],
+        list_list_tensor_data: Dict[str, List[List[torch.Tensor]]],
+    ) -> VectorMap:
+        """
+        Unpacks the data returned from the scriptable portion of the method into a VectorMap object.
+        :param tensor_data: The tensor data to unpack.
+        :param list_tensor_data: The List[tensor] data to unpack.
+        :param list_list_tensor_data: The List[List[tensor]] data to unpack.
+        :return: The unpacked VectorMap.
+        """
+        # Rebuild the multi scale connections from the list data.
+        # Also convert tensors back to numpy arrays that are expected by other pipeline components
+        #   (augmentators, etc.)
+        # The feature builder outputs batch sizes of 1, so the batch dimension for the conversion is always [0].
+        multi_scale_connections: Dict[int, torch.Tensor] = {}
+        for key in list_tensor_data:
+            if key.startswith("vector_map.multi_scale_connections_"):
+                multi_scale_connections[int(key[len("vector_map.multi_scale_connections_") :])] = (
+                    list_tensor_data[key][0].detach().numpy()
+                )
+
+        lane_groupings = [t.detach().numpy() for t in list_list_tensor_data["vector_map.lane_groupings"][0]]
+
+        return VectorMap(
+            coords=[list_tensor_data["vector_map.coords"][0].detach().numpy()],
+            lane_groupings=[lane_groupings],
+            multi_scale_connections=[multi_scale_connections],
+            on_route_status=[list_tensor_data["vector_map.on_route_status"][0].detach().numpy()],
+            traffic_light_data=[list_tensor_data["vector_map.traffic_light_data"][0].detach().numpy()],
+        )
+
+    @torch.jit.ignore
+    def _pack_to_feature_tensor_dict(
         self,
         lane_coords: LaneSegmentCoords,
         lane_conns: LaneSegmentConnections,
@@ -192,43 +237,90 @@ class VectorMapFeatureBuilder(AbstractFeatureBuilder):
         lane_on_route_status: LaneOnRouteStatusData,
         traffic_light_data: LaneSegmentTrafficLightData,
         anchor_state: StateSE2,
-    ) -> VectorMap:
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, List[torch.Tensor]], Dict[str, List[List[torch.Tensor]]]]:
         """
-        :param lane_coords: A list of lane_segment coords in shape of [num_lane_segment, 2, 2].
-        :param lane_conns: A List of lane_segment connections [start_idx, end_idx] in shape of [num_connection, 2].
-        :param lane_groupings: A list of lane_segment indices in each lane in shape of
-            [num_lane, num_lane_segment_in_lane].
-        :param lane_on_route_status: A list of on route status binary encodings in shape of [num_lane_segment, 2]
-        :param traffic_light_data: A list of traffic light status one-hot encodings in shape of [num_lane_segment, 4]
-        :param anchor_state: The local frame to transform to.
-        :return: VectorMap.
+        Transforms the provided map and actor state primitives into scriptable types.
+        This is to prepare for the scriptable portion of the feature tranform.
+        :param lane_coords: The LaneSegmentCoords returned from `get_neighbor_vector_map` to transform.
+        :param lane_conns: The LaneSegmentConnections returned from `get_neighbor_vector_map` to transform.
+        :param lane_groupings: The LaneSegmentGroupings returned from `get_neighbor_vector_map` to transform.
+        :param lane_on_route_status: The LaneOnRouteStatusData returned from `get_neighbor_vector_map` to transform.
+        :param traffic_light_data: The LaneSegmentTrafficLightData returned from `get_neighbor_vector_map` to transform.
+        :param anchor_state: The ego state to transform to vector.
         """
-        lane_segment_coords: npt.NDArray[np.float32] = np.asarray(lane_coords.to_vector(), np.float32)
-        lane_segment_conns: npt.NDArray[np.int64] = np.asarray(lane_conns.to_vector(), np.int64)
-        on_route_status: npt.NDArray[np.float32] = np.asarray(lane_on_route_status.to_vector(), np.float32)
-        traffic_light_array: npt.NDArray[np.int64] = np.asarray(traffic_light_data.to_vector(), np.int64)
-        lane_segment_groupings: List[npt.NDArray[Any]] = []
+        lane_segment_coords: torch.tensor = torch.tensor(lane_coords.to_vector(), dtype=torch.float32)
+        lane_segment_conns: torch.tensor = torch.tensor(lane_conns.to_vector(), dtype=torch.int64)
+        on_route_status: torch.tensor = torch.tensor(lane_on_route_status.to_vector(), dtype=torch.float32)
+        traffic_light_array: torch.tensor = torch.tensor(traffic_light_data.to_vector(), dtype=torch.int64)
+        lane_segment_groupings: List[torch.tensor] = []
 
         for lane_grouping in lane_groupings.to_vector():
-            lane_segment_groupings.append(np.asarray(lane_grouping, np.int64))
+            lane_segment_groupings.append(torch.tensor(lane_grouping, dtype=torch.int64))
+
+        anchor_state_tensor = torch.tensor([anchor_state.x, anchor_state.y, anchor_state.heading], dtype=torch.float32)
+
+        return (
+            {
+                "lane_segment_coords": lane_segment_coords,
+                "lane_segment_conns": lane_segment_conns,
+                "on_route_status": on_route_status,
+                "traffic_light_array": traffic_light_array,
+                "anchor_state": anchor_state_tensor,
+            },
+            {"lane_segment_groupings": lane_segment_groupings},
+            {},
+        )
+
+    @torch.jit.export
+    def scriptable_forward(
+        self,
+        tensor_data: Dict[str, torch.Tensor],
+        list_tensor_data: Dict[str, List[torch.Tensor]],
+        list_list_tensor_data: Dict[str, List[List[torch.Tensor]]],
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, List[torch.Tensor]], Dict[str, List[List[torch.Tensor]]]]:
+        """
+        Implemented. See interface.
+        """
+        lane_segment_coords = tensor_data["lane_segment_coords"]
+        anchor_state = tensor_data["anchor_state"]
+        lane_segment_conns = tensor_data["lane_segment_conns"]
 
         # Transform the lane coordinates from global frame to ego vehicle frame.
         # Flatten lane_segment_coords from (num_lane_segment, 2, 2) to (num_lane_segment * 2, 2) for easier processing.
         lane_segment_coords = lane_segment_coords.reshape(-1, 2)
-        lane_segment_coords = _transform_to_relative_frame(lane_segment_coords, anchor_state)
-        lane_segment_coords = lane_segment_coords.reshape(-1, 2, 2).astype(np.float32)
+        lane_segment_coords = coordinates_to_local_frame(lane_segment_coords, anchor_state)
+        lane_segment_coords = lane_segment_coords.reshape(-1, 2, 2)
 
-        if self._connection_scales:
+        if self._connection_scales is not None:
             # Generate multi-scale connections.
             multi_scale_connections = _generate_multi_scale_connections(lane_segment_conns, self._connection_scales)
         else:
             # Use the 1-hop connections if connection_scales is not specified.
-            multi_scale_connections = {1: lane_segment_conns}  # type: ignore
+            multi_scale_connections = {1: lane_segment_conns}
 
-        return VectorMap(
-            coords=[lane_segment_coords],
-            lane_groupings=[lane_segment_groupings],
-            multi_scale_connections=[multi_scale_connections],
-            on_route_status=[on_route_status],
-            traffic_light_data=[traffic_light_array],
-        )
+        # Reshape all created tensors to match the dimensions and datatypes in VectorMap.
+        #  (e.g. all tensors are wrapped in an additional list for batch collation)
+        list_list_tensor_output: Dict[str, List[List[torch.Tensor]]] = {
+            "vector_map.lane_groupings": [list_tensor_data["lane_segment_groupings"]],
+        }
+
+        list_tensor_output: Dict[str, List[torch.Tensor]] = {
+            "vector_map.coords": [lane_segment_coords],
+            "vector_map.on_route_status": [tensor_data["on_route_status"]],
+            "vector_map.traffic_light_data": [tensor_data["traffic_light_array"]],
+        }
+
+        for key in multi_scale_connections:
+            list_tensor_output[f"vector_map.multi_scale_connections_{key}"] = [multi_scale_connections[key]]
+
+        tensor_output: Dict[str, torch.Tensor] = {}
+
+        return tensor_output, list_tensor_output, list_list_tensor_output
+
+    @torch.jit.export
+    def precomputed_feature_config(self) -> Dict[str, Dict[str, str]]:
+        """
+        Implemented. See Interface.
+        """
+        empty: Dict[str, str] = {}
+        return {"neighbor_vector_map": {"radius": str(self._radius)}, "initial_ego_state": empty}

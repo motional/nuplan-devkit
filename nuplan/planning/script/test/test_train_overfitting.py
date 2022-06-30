@@ -29,7 +29,7 @@ class TestTrain(SkeletonTestTrain):
                     'scenario_builder=nuplan_mini',
                     'scenario_filter.limit_total_scenarios=10',
                     'splitter=nuplan',
-                    'lightning.optimization.optimizer.learning_rate=0.1',
+                    'optimizer.lr=0.1',
                     'lightning.trainer.overfitting.enable=true',
                     'lightning.trainer.overfitting.params.max_epochs=200',
                     'data_loader.params.batch_size=2',
