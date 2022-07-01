@@ -252,8 +252,9 @@ class SimulationTile:
         return grid_layouts
 
     def render_simulation_tiles(
-        self, selected_scenario_keys: List[SimulationScenarioKey], figure_sizes: List[int]
-    ) -> List[SimulationData]:
+            self,
+            selected_scenario_keys: List[SimulationScenarioKey],
+            figure_sizes: List[int] = simulation_tile_style['figure_sizes']) -> List[SimulationData]:
         """
         Render simulation tiles.
         :param selected_scenario_keys: A list of selected scenario keys.
@@ -383,7 +384,9 @@ class SimulationTile:
 
         self._render_expert_trajectory(main_figure=main_figure)
 
-        main_figure.render_mission_goal(mission_goal_state=main_figure.scenario.get_mission_goal())
+        mission_goal = main_figure.scenario.get_mission_goal()
+        if mission_goal is not None:
+            main_figure.render_mission_goal(mission_goal_state=mission_goal)
 
         # Must be updated after drawing maps
         main_figure.update_data_sources()

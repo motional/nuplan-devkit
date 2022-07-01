@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import msgpack
+import numpy as np
+import numpy.typing as npt
 from bokeh.document.document import Document
 from bokeh.io import show
 from bokeh.layouts import column
@@ -32,6 +34,8 @@ from nuplan.planning.simulation.observation.tracks_observation import TracksObse
 from nuplan.planning.simulation.simulation_time_controller.step_simulation_time_controller import (
     StepSimulationTimeController,
 )
+from nuplan.planning.simulation.simulation_log import SimulationLog
+from nuplan.planning.simulation.planner.simple_planner import SimplePlanner
 from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
 
 
@@ -73,14 +77,14 @@ def construct_simulation_hydra_paths(base_config_path: str) -> HydraConfigPaths:
     return HydraConfigPaths(common_dir, config_name, config_path, experiment_dir)
 
 
-def save_scenes_to_dir(
-    scenes: List[Dict[str, Any]], scenario: AbstractScenario, save_dir: str
-) -> SimulationScenarioKey:
+def save_scenes_to_dir(scenario: AbstractScenario,
+                       save_dir: str,
+                       simulation_history: SimulationHistory) -> SimulationScenarioKey:
     """
     Save scenes to a directory.
-    :param scenes: A list of scene dicts.
     :param scenario: Scenario.
     :param save_dir: Save path.
+    :param simulation_history: Simulation history.
     :return Scenario key of simulation.
     """
     planner_name = "tutorial_planner"
@@ -92,8 +96,15 @@ def save_scenes_to_dir(
     file = save_path / planner_name / scenario_type / log_name / scenario_name / (scenario_name + ".msgpack.xz")
     file.parent.mkdir(exist_ok=True, parents=True)
 
-    with lzma.open(file, "wb", preset=0) as f:
-        f.write(msgpack.packb(scenes))
+    # Create a dummy planner
+    dummy_planner = _create_dummy_simple_planner(acceleration=[5.0, 5.0])
+    simulation_log = SimulationLog(
+        planner=dummy_planner,
+        scenario=scenario,
+        simulation_history=simulation_history,
+        file_path=file
+    )
+    simulation_log.save_to_file()
 
     return SimulationScenarioKey(
         planner_name=planner_name,
@@ -102,6 +113,23 @@ def save_scenes_to_dir(
         nuboard_file_index=0,
         log_name=log_name,
         files=[file],
+    )
+
+
+def _create_dummy_simple_planner(acceleration: List[float],
+                                 horizon_seconds: float = 10.0,
+                                 sampling_time: float = 20.0) -> SimplePlanner:
+    """
+    Create a dummy simple planner.
+    :param acceleration: [m/s^2] constant ego acceleration, till limited by max_velocity.
+    :param horizon_seconds: [s] time horizon being run.
+    :param sampling_time: [s] sampling timestep.
+    """
+    acceleration_np = np.asarray(acceleration)
+    return SimplePlanner(
+        horizon_seconds=horizon_seconds,
+        sampling_time=sampling_time,
+        acceleration=acceleration_np,
     )
 
 
@@ -138,7 +166,7 @@ def _create_dummy_simulation_history_buffer(
 
 def serialize_scenario(
     scenario: AbstractScenario, num_poses: int = 12, future_time_horizon: float = 6.0
-) -> List[Dict[str, Any]]:
+) -> SimulationHistory:
     """
     Serialize a scenario to a list of scene dicts.
     :param scenario: Scenario.
@@ -175,20 +203,7 @@ def serialize_scenario(
             ego_controller.update_state(iteration, next_iteration, ego_state, trajectory)
             observations.update_observation(iteration, next_iteration, history_buffer)
 
-    # Serialize to file
-    scenes = [
-        convert_sample_to_scene(
-            map_name=scenario.map_api.map_name,
-            database_interval=scenario.database_interval,
-            traffic_light_status=scenario.get_traffic_light_status_at_iteration(index),
-            expert_trajectory=scenario.get_expert_ego_trajectory(),
-            mission_goal=scenario.get_mission_goal(),
-            data=sample,
-            colors=SceneColors(),
-        )
-        for index, sample in enumerate(simulation_history.data)
-    ]
-    return scenes
+    return simulation_history
 
 
 def visualize_scenario(scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_visualization/') -> None:
@@ -198,8 +213,10 @@ def visualize_scenario(scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_
     :param save_dir: Dir to save serialization and visualization artifacts.
     """
     map_factory = NuPlanMapFactory(scenario._db.maps_db)
-    scenes = serialize_scenario(scenario)
-    simulation_scenario_key = save_scenes_to_dir(scenes=scenes, scenario=scenario, save_dir=save_dir)
+    simulation_history = serialize_scenario(scenario)
+    simulation_scenario_key = save_scenes_to_dir(scenario=scenario,
+                                                 save_dir=save_dir,
+                                                 simulation_history=simulation_history)
     visualize_scenarios([simulation_scenario_key], map_factory, Path(save_dir))
 
 
