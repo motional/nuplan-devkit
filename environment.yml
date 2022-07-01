@@ -1,0 +1,10 @@
+name: nuplan
+
+dependencies:
+  - python=3.9
+  - pip
+  - geopandas
+  - pip:
+    - -r requirements.txt
+    - -r requirements_torch.txt
+
