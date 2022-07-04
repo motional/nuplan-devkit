@@ -1,8 +1,12 @@
 name: nuplan
-
+channels:
+  - conda-forge
 dependencies:
   - python=3.9
+  - pip=21.2.4
+  - pygeos
+  - geopandas
+  - nb_conda_kernels
   - pip:
-    - -r requirements.txt
     - -r requirements_torch.txt
-
+    - -r requirements.txt

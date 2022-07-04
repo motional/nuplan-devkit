@@ -8,7 +8,6 @@ coverage  # Used in computing code coverage
 descartes  # Used in map_explorer.py
 docker  # To run remote submissions
 Fiona  # Used in GpkgMapsDB.py
-geopandas  # Used to read maps
 grpcio  # Used for communication with submission container
 grpcio-tools  # Used for communication with submission container
 hydra-core==1.1.0rc1  # Used for configs
@@ -23,7 +22,6 @@ Pillow    # Used widely to render images
 pre-commit  # Used in pre-commit hooks
 psutil  # Used widely to get the number of CPUs
 pyarrow # For parquet
-pygeos
 pyinstrument    # Used widely as profiler
 pyquaternion>=0.9.5  # Used widely, avoid known bug with quaternion slerp
 pytest    # Used widely
