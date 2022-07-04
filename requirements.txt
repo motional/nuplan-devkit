@@ -13,6 +13,7 @@ grpcio-tools  # Used for communication with submission container
 hydra-core==1.1.0rc1  # Used for configs
 joblib
 jupyter  # Used to show the notebook
+jupyterlab
 matplotlib  # Used for rendering
 mock
 numpy>=1.21.1  # Used widely, only from this version numpy.typing.NDArray is supported
