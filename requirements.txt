@@ -11,6 +11,7 @@ Fiona  # Used in GpkgMapsDB.py
 geopandas  # Used to read maps
 grpcio  # Used for communication with submission container
 grpcio-tools  # Used for communication with submission container
+guppy
 hydra-core==1.1.0rc1  # Used for configs
 joblib
 jupyter  # Used to show the notebook
