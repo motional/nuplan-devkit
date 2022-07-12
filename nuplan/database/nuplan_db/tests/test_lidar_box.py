@@ -1,3 +1,4 @@
+import math
 import unittest
 from copy import deepcopy
 from sys import maxsize
@@ -75,17 +76,18 @@ class TestLidarBox(unittest.TestCase):
     def test_distance_to_ego(self) -> None:
         """Tests the distance_to_ego property"""
         # Setup
-        lidar_box = self.lidar_box
-        lidar_box.x = 4
-        lidar_box.y = 1
-        lidar_box.lidar_pc.ego_pose.x = 1
-        lidar_box.lidar_pc.ego_pose.y = 1
+        x = self.lidar_box.x
+        y = self.lidar_box.y
+        x_ego = self.lidar_box.lidar_pc.ego_pose.x
+        y_ego = self.lidar_box.lidar_pc.ego_pose.y
+
+        expected_result = math.sqrt(((x - x_ego) * (x - x_ego)) + ((y - y_ego) * (y - y_ego)))
 
         # Call the method under test
-        result = lidar_box.distance_to_ego
+        actual_result = self.lidar_box.distance_to_ego
 
         # Assertions
-        self.assertEqual(result, 3)
+        self.assertEqual(expected_result, actual_result)
 
     def test_size(self) -> None:
         """Tests the size property"""
@@ -374,6 +376,7 @@ class TestLidarBox(unittest.TestCase):
         """Tests the tracked_object method"""
         # Setup
         future_waypoints = Mock()
+        predicted_trajectory_mock.return_value.probability = 1.0
 
         # Call the method under test
         result = self.lidar_box.tracked_object(future_waypoints)

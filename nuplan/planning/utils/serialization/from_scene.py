@@ -71,7 +71,7 @@ def to_agent_state_from_scene(
         acceleration_y = scene['acceleration_y']
 
     return EgoState.build_from_rear_axle(
-        StateSE2(x=ego_state2d.x, y=ego_state2d.y, heading=ego_state2d.heading),
+        rear_axle_pose=StateSE2(x=ego_state2d.x, y=ego_state2d.y, heading=ego_state2d.heading),
         time_point=TimePoint(time_us),
         rear_axle_velocity_2d=StateVector2D(x=velocity_x, y=velocity_y),
         rear_axle_acceleration_2d=StateVector2D(x=acceleration_x, y=acceleration_y),

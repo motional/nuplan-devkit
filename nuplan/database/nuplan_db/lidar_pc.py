@@ -7,18 +7,17 @@ from typing import TYPE_CHECKING, Any, BinaryIO, List, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
-from sqlalchemy import Column, func, inspect
+from sqlalchemy import Column, inspect
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.types import Integer, String
 
 from nuplan.database.common import sql_types
 from nuplan.database.common.utils import simple_repr
-from nuplan.database.nuplan_db.camera import Camera
 from nuplan.database.nuplan_db.ego_pose import EgoPose
 from nuplan.database.nuplan_db.frame import Frame
 from nuplan.database.nuplan_db.lidar_box import LidarBox
-from nuplan.database.nuplan_db.models import Base, Image
+from nuplan.database.nuplan_db.models import Base
 from nuplan.database.nuplan_db.scene import Scene
 from nuplan.database.nuplan_db.utils import get_boxes, get_future_box_sequence, pack_future_boxes, render_on_map
 from nuplan.database.utils.boxes.box3d import Box3D
@@ -238,30 +237,6 @@ class LidarPc(Base):
         )
 
         return boxes_with_future_waypoints
-
-    def closest_image(self, camera_channels: Optional[List[str]] = None) -> List[Image]:
-        """
-        Find the closest images to LidarPc.
-        :param camera_channels: List of image channels to find closest image of.
-        :return: List of Images from the provided channels closest to LidarPc.
-        """
-        if camera_channels is None:
-            camera_channels = ['CAM_F0', 'CAM_B0', 'CAM_L0', 'CAM_L1', 'CAM_R0', 'CAM_R1']
-
-        imgs = []
-        for channel in camera_channels:
-            img = (
-                self._session.query(Image)
-                .join(Camera)
-                .filter(Image.camera_token == Camera.token)
-                .filter(Camera.channel == channel)
-                .filter(Camera.log_token == self.lidar.log_token)
-                .order_by(func.abs(Image.timestamp - self.timestamp))
-                .first()
-            )
-            imgs.append(img)
-
-        return imgs
 
     def render(
         self,

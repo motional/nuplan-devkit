@@ -55,7 +55,7 @@ def get_closest_agent_in_position(
     observations: DetectionsTracks,
     is_in_position: Callable[[StateSE2, StateSE2], bool],
     collided_track_ids: Set[str] = set(),
-    lateral_distance_threshold: float = 8,
+    lateral_distance_threshold: float = 0.5,
 ) -> Tuple[Optional[Agent], float]:
     """
     Searches for the closest agent in a specified position
@@ -63,7 +63,7 @@ def get_closest_agent_in_position(
     :param observations: agents as DetectionTracks
     :param is_in_position: a function to determine the positional relationship to the ego
     :param collided_track_ids: Set of collided track tokens, default {}
-    :param lateral_distance_threshold: Agents laterally further away than this threshold are not considered, default 8 meters
+    :param lateral_distance_threshold: Agents laterally further away than this threshold are not considered, default 0.5 meters
     :return the closest agent in the position and the corresponding shortest distance.
     """
     closest_distance = np.inf

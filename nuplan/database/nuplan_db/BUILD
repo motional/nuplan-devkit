@@ -76,6 +76,7 @@ py_library(
         "//nuplan/database/common:utils",
         "//nuplan/database/nuplan_db:camera",
         "//nuplan/database/nuplan_db:ego_pose",
+        "//nuplan/database/nuplan_db:image",
         "//nuplan/database/nuplan_db:lidar",
         "//nuplan/database/nuplan_db:lidar_box",
         "//nuplan/database/nuplan_db:lidar_pc",
@@ -88,6 +89,20 @@ py_library(
     name = "vector_map_np",
     srcs = ["vector_map_np.py"],
     deps = [
+    ],
+)
+
+py_library(
+    name = "image",
+    srcs = ["image.py"],
+    deps = [
+        "//nuplan/database/common:sql_types",
+        "//nuplan/database/common:utils",
+        "//nuplan/database/nuplan_db:camera",
+        "//nuplan/database/nuplan_db:ego_pose",
+        "//nuplan/database/nuplan_db:frame",
+        "//nuplan/database/nuplan_db:utils",
+        "//nuplan/database/utils/boxes:box3d",
     ],
 )
 
@@ -209,9 +224,9 @@ py_library(
     srcs = ["rendering_utils.py"],
     deps = [
         "//nuplan/database/nuplan_db:camera",
+        "//nuplan/database/nuplan_db:image",
         "//nuplan/database/nuplan_db:lidar_box",
         "//nuplan/database/nuplan_db:lidar_pc",
-        "//nuplan/database/nuplan_db:models",
         "//nuplan/database/nuplan_db:nuplandb",
         "//nuplan/database/utils:geometry",
         "//nuplan/database/utils/boxes:box3d",
@@ -224,7 +239,6 @@ py_library(
     deps = [
         "//nuplan/database/common:db",
         "//nuplan/database/nuplan_db:log",
-        "//nuplan/database/nuplan_db:models",
         "//nuplan/database/nuplan_db:nuplandb",
     ],
 )
@@ -278,7 +292,6 @@ py_library(
         "//nuplan/common/actor_state:waypoint",
         "//nuplan/database/nuplan_db:lidar_box",
         "//nuplan/database/nuplan_db:lidar_pc",
-        "//nuplan/database/nuplan_db:models",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
     ],

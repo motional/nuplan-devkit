@@ -14,7 +14,7 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.oriented_box import OrientedBox
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
-from nuplan.common.maps.abstract_map_objects import BaselinePath, PolygonMapObject
+from nuplan.common.maps.abstract_map_objects import PolygonMapObject, PolylineMapObject
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusType
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 
@@ -28,14 +28,14 @@ BASELINE_TL_COLOR = {
 }
 
 
-def _linestring_to_coords(geometry: List[BaselinePath]) -> List[Tuple[array[float]]]:
+def _linestring_to_coords(geometry: List[PolylineMapObject]) -> List[Tuple[array[float]]]:
     """
     Get 2d coordinates of the endpoints of line segment string.
     The line segment string is a shapely.geometry.linestring.
     :param geometry: the line segment string.
     :return: 2d coordinates of the endpoints of line segment string.
     """
-    return [element.baseline_path().linestring.coords.xy for element in geometry]
+    return [element.baseline_path.linestring.coords.xy for element in geometry]
 
 
 def _polygon_to_coords(geometry: List[PolygonMapObject]) -> List[Tuple[array[float]]]:

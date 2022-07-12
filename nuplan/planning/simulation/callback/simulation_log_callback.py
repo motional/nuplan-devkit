@@ -86,4 +86,4 @@ class SimulationLogCallback(AbstractCallback):
         :param scenario: for which to compute directory name
         :return directory path
         """
-        return self._output_directory / planner_name / scenario.scenario_type  # type: ignore
+        return self._output_directory / planner_name / scenario.scenario_type / scenario.log_name / scenario.scenario_name  # type: ignore

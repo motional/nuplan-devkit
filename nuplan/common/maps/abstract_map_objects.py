@@ -49,6 +49,7 @@ class GraphEdgeMapObject(PolygonMapObject):
     A class to represent any map object that can be an edge as a part of the map graph connectivity.
     """
 
+    @property
     @abc.abstractmethod
     def incoming_edges(self) -> List[GraphEdgeMapObject]:
         """
@@ -57,6 +58,7 @@ class GraphEdgeMapObject(PolygonMapObject):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def outgoing_edges(self) -> List[GraphEdgeMapObject]:
         """
@@ -72,6 +74,7 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
     BaselinePath within it.
     """
 
+    @property
     @abc.abstractmethod
     def incoming_edges(self) -> List[LaneGraphEdgeMapObject]:  # type: ignore
         """
@@ -80,6 +83,7 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def outgoing_edges(self) -> List[LaneGraphEdgeMapObject]:  # type: ignore
         """
@@ -88,11 +92,30 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
+    @property
     @abc.abstractmethod
-    def baseline_path(self) -> BaselinePath:
+    def baseline_path(self) -> PolylineMapObject:
         """
         Getter function for obtaining the baseline path of the lane.
         :return: Baseline path of the lane.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def left_boundary(self) -> PolylineMapObject:
+        """
+        Getter function for obtaining the left boundary of the lane.
+        :return: Left boundary of the lane.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def right_boundary(self) -> PolylineMapObject:
+        """
+        Getter function for obtaining the right boundary of the lane.
+        :return: Right boundary of the lane.
         """
         pass
 
@@ -121,13 +144,48 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
+    @property
     @abc.abstractmethod
-    def get_stop_lines(self) -> List[StopLine]:
+    def stop_lines(self) -> List[StopLine]:
         """
         Returns a list of stop lines associated with this lane connector.
         :return: A list of stop lines associated with this lane connector.
         """
         pass
+
+    def is_same_roadblock(self, other: Lane) -> bool:
+        """
+        :param other: Lane to check if it is in the same roadblock as self
+        :return: True if lanes are in the same roadblock
+        """
+        return self.get_roadblock_id() == other.get_roadblock_id()
+
+    def is_other_adjacent(self, other: Lane) -> bool:
+        """
+        :param other: Lane to check if it is adjacent to self
+        :return: True if self and other are in the same roadblock and adjacent
+        """
+        return self.is_same_roadblock(other) and (self.is_left_of(other) or self.is_right_of(other))
+
+    def is_left_of(self, other: Lane) -> bool:
+        """
+        :param other: Lane to check if self is left of
+        :return: True if self is left of other
+        :raise AssertionError: if lanes are not in the same RoadBlock
+        """
+        assert self.is_same_roadblock(other)
+
+        return self.right_boundary.id == other.left_boundary.id
+
+    def is_right_of(self, other: Lane) -> bool:
+        """
+        :param other: Lane to check if self is right of
+        :return: True if self is right of other
+        :raise AssertionError: if lanes are not in the same RoadBlock
+        """
+        assert self.is_same_roadblock(other)
+
+        return self.left_boundary.id == other.right_boundary.id
 
 
 class Lane(LaneGraphEdgeMapObject):
@@ -146,7 +204,8 @@ class Lane(LaneGraphEdgeMapObject):
         """Inherited from superclass."""
         return False
 
-    def get_stop_lines(self) -> List[StopLine]:
+    @property
+    def stop_lines(self) -> List[StopLine]:
         """Inherited from superclass."""
         return []
 
@@ -164,15 +223,15 @@ class LaneConnector(LaneGraphEdgeMapObject):
         super().__init__(lane_connector_id)
 
 
-class BaselinePath(AbstractMapObject):
+class PolylineMapObject(AbstractMapObject):
     """
-    Class representing baseline paths.
+    A class to represent any map object that can be represented as a polyline.
     """
 
     def __init__(self, path_id: str):
         """
-        Constructor of the base lane connector type.
-        :param path_id: unique identifier of the baseline path.
+        Constructor of the PolylineMapObject type.
+        :param path_id: unique identifier of the polyline.
         """
         super().__init__(path_id)
 
@@ -180,8 +239,8 @@ class BaselinePath(AbstractMapObject):
     @abc.abstractmethod
     def linestring(self) -> LineString:
         """
-        Returns the baseline as a Linestring.
-        :return: The baseline as a Linestring.
+        Returns the polyline as a Linestring.
+        :return: The polyline as a Linestring.
         """
         pass
 
@@ -189,15 +248,16 @@ class BaselinePath(AbstractMapObject):
     @abc.abstractmethod
     def length(self) -> float:
         """
-        Returns the length of the baseline [m].
-        :return: the length of the baseline.
+        Returns the length of the polyline [m].
+        :return: the length of the polyline.
         """
         pass
 
+    @property
     @abc.abstractmethod
     def discrete_path(self) -> List[StateSE2]:
         """
-        Gets a discretized representation of the baseline path.
+        Gets a discretized representation of the polyline.
         :return: a list of StateSE2.
         """
         pass
@@ -205,29 +265,37 @@ class BaselinePath(AbstractMapObject):
     @abc.abstractmethod
     def get_nearest_arc_length_from_position(self, point: Point2D) -> float:
         """
-        Returns the arc length along the baseline where the given point is the closest.
+        Returns the arc length along the polyline where the given point is the closest.
         :param point: [m] x, y coordinates in global frame.
-        :return: [m] arc length along the baseline.
+        :return: [m] arc length along the polyline.
         """
         pass
 
     @abc.abstractmethod
     def get_nearest_pose_from_position(self, point: Point2D) -> StateSE2:
         """
-        Returns the pose along the baseline where the given point is the closest.
+        Returns the pose along the polyline where the given point is the closest.
         :param point: [m] x, y coordinates in global frame.
-        :return: nearest pose along the base line as StateSE2.
+        :return: nearest pose along the polyline as StateSE2.
         """
         pass
 
     @abc.abstractmethod
     def get_curvature_at_arc_length(self, arc_length: float) -> float:
         """
-        Return curvature at an arc length along the baseline.
-        :param arc_length: [m] arc length along the baseline. It has to be 0<= arc_length <=length.
-        :return: [1/m] curvature along a baseline.
+        Return curvature at an arc length along the polyline.
+        :param arc_length: [m] arc length along the polyline. It has to be 0<= arc_length <=length.
+        :return: [1/m] curvature along a polyline.
         """
         pass
+
+    def get_nearest_curvature_from_position(self, point: Point2D) -> float:
+        """
+        Returns the curvature along the polyline where the given point is the closest.
+        :param point: [m] x, y coordinates in global frame.
+        :return: [1/m] curvature along a polyline.
+        """
+        return self.get_curvature_at_arc_length(self.get_nearest_arc_length_from_position(point))
 
 
 class RoadBlockGraphEdgeMapObject(GraphEdgeMapObject):
@@ -236,6 +304,7 @@ class RoadBlockGraphEdgeMapObject(GraphEdgeMapObject):
     instances of LaneGraphEdgeMapObject within it.
     """
 
+    @property
     @abc.abstractmethod
     def incoming_edges(self) -> List[RoadBlockGraphEdgeMapObject]:  # type: ignore
         """
@@ -244,6 +313,7 @@ class RoadBlockGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def outgoing_edges(self) -> List[RoadBlockGraphEdgeMapObject]:  # type: ignore
         """
@@ -252,6 +322,7 @@ class RoadBlockGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def interior_edges(self) -> List[LaneGraphEdgeMapObject]:
         """

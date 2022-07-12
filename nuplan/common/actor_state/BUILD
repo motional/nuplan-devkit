@@ -84,6 +84,7 @@ py_library(
     name = "agent",
     srcs = ["agent.py"],
     deps = [
+        ":agent_temporal_state",
         ":oriented_box",
         ":scene_object",
         ":state_representation",
@@ -126,5 +127,27 @@ py_library(
         ":oriented_box",
         "//nuplan/common/utils:interpolatable_state",
         "//nuplan/common/utils:split_state",
+    ],
+)
+
+py_library(
+    name = "agent_temporal_state",
+    srcs = ["agent_temporal_state.py"],
+    deps = [
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:scene_object",
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/simulation/trajectory:predicted_trajectory",
+    ],
+)
+
+py_library(
+    name = "ego_temporal_state",
+    srcs = ["ego_temporal_state.py"],
+    deps = [
+        "//nuplan/common/actor_state:agent_temporal_state",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/simulation/trajectory:predicted_trajectory",
     ],
 )

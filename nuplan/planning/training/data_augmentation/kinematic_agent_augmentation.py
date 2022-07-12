@@ -1,9 +1,10 @@
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
 
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
 from nuplan.planning.training.data_augmentation.data_augmentation_util import (
     ConstrainedNonlinearSmoother,
@@ -43,7 +44,9 @@ class KinematicAgentAugmentor(AbstractAugmentor):
         self._augment_prob = augment_prob
         self._optimizer = ConstrainedNonlinearSmoother(trajectory_length, dt)
 
-    def augment(self, features: FeaturesType, targets: TargetsType) -> Tuple[FeaturesType, TargetsType]:
+    def augment(
+        self, features: FeaturesType, targets: TargetsType, scenario: Optional[AbstractScenario] = None
+    ) -> Tuple[FeaturesType, TargetsType]:
         """Inherited, see superclass."""
         if np.random.rand() >= self._augment_prob:
             return features, targets

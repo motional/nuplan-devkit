@@ -27,10 +27,11 @@ py_library(
     name = "drivable_area_violation",
     srcs = ["drivable_area_violation.py"],
     deps = [
-        "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:route_extractor",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -56,7 +57,7 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/metrics/utils:collision_utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation:observation_type",
@@ -198,7 +199,7 @@ py_library(
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -243,7 +244,7 @@ py_library(
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/metrics/utils:collision_utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation/idm:utils",
@@ -386,8 +387,9 @@ py_library(
         "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:collision_utils",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -407,5 +409,61 @@ py_library(
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation/idm:utils",
+    ],
+)
+
+py_library(
+    name = "ego_at_fault_collisions_with_pedestrians",
+    srcs = ["ego_at_fault_collisions_with_pedestrians.py"],
+    deps = [
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/utils:collision_utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "ego_at_fault_collisions_with_vehicles",
+    srcs = ["ego_at_fault_collisions_with_vehicles.py"],
+    deps = [
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/utils:collision_utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "ego_at_fault_collisions_with_bicycles",
+    srcs = ["ego_at_fault_collisions_with_bicycles.py"],
+    deps = [
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/utils:collision_utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "ego_at_fault_collisions_with_objects",
+    srcs = ["ego_at_fault_collisions_with_objects.py"],
+    deps = [
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/utils:collision_utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
     ],
 )

@@ -40,12 +40,12 @@ def get_starting_segment(agent: Agent, map_api: AbstractMap) -> Tuple[Optional[G
 
     # Get segment with the closest heading to the agent
     heading_diff = [
-        segment.baseline_path().get_nearest_pose_from_position(agent.center).heading - agent.center.heading
+        segment.baseline_path.get_nearest_pose_from_position(agent.center).heading - agent.center.heading
         for segment in segments
     ]
     closest_segment = segments[np.argmin(np.abs(heading_diff))]
 
-    progress = closest_segment.baseline_path().get_nearest_arc_length_from_position(agent.center)
+    progress = closest_segment.baseline_path.get_nearest_arc_length_from_position(agent.center)
     return closest_segment, progress
 
 
@@ -94,7 +94,7 @@ def build_idm_agents_on_map_rails(
                 continue
 
             # Snap agent to baseline path
-            state_on_path = route.baseline_path().get_nearest_pose_from_position(agent.center.point)
+            state_on_path = route.baseline_path.get_nearest_pose_from_position(agent.center.point)
             box_on_baseline = OrientedBox.from_new_pose(
                 agent.box, StateSE2(state_on_path.x, state_on_path.y, state_on_path.heading)
             )

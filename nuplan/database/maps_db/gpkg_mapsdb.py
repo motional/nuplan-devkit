@@ -223,7 +223,9 @@ class GPKGMapsDB(IMapsDB):
             fcntl.flock(fd, fcntl.LOCK_UN)
             fd.close()
 
-    @lru_cache(maxsize=None)
+    # The size of the cache was derived from testing with the Raster Model
+    #   on our cluster to balance memory usage and performance.
+    @lru_cache(maxsize=16)
     def load_vector_layer(self, location: str, layer_name: str) -> gpd.geodataframe:
         """Inherited, see superclass."""
         # TODO: Remove temporary workaround once map_version is cleaned

@@ -268,3 +268,27 @@ py_test(
         "//nuplan/planning/training/modeling/models:raster_model",
     ],
 )
+
+py_test(
+    name = "test_optimizer_lr_scheduler",
+    size = "enormous",
+    srcs = ["test_optimizer_lr_scheduler.py"],
+    data = [
+        "//nuplan/planning/script:yaml",
+    ],
+    deps = [
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
+        "//nuplan/planning/script:run_training",
+        "//nuplan/planning/script/builders:data_augmentation_builder",
+        "//nuplan/planning/script/builders:training_callback_builder",
+        "//nuplan/planning/script/builders:training_metrics_builder",
+        "//nuplan/planning/script/builders:worker_pool_builder",
+        "//nuplan/planning/script/builders/utils:utils_config",
+        "//nuplan/planning/script/test:skeleton_test_train",
+        "//nuplan/planning/training/callbacks:scenario_scoring_callback",
+        "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
+        "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
+        "//nuplan/planning/training/data_loader:log_splitter",
+        "//nuplan/planning/training/modeling/models:raster_model",
+    ],
+)

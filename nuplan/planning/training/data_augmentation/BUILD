@@ -6,6 +6,7 @@ py_library(
     name = "abstract_data_augmentation",
     srcs = ["abstract_data_augmentation.py"],
     deps = [
+        "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/training/modeling:types",
     ],
 )

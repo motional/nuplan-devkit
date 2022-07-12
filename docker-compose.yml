@@ -1,0 +1,33 @@
+version: "3.7"
+
+x-nuplan-volumes: &x-nuplan-volumes
+  volumes:
+    - "$NUPLAN_DATA_ROOT:/data/sets/nuplan:rw"
+
+
+services:
+  submission:
+    <<: *x-nuplan-volumes
+    container_name: "test-contestant_nuplan-test-submission"
+    image: ${SUBMISSION_IMAGE}
+    env_file:
+      - .env
+    ports:
+      - ${SUBMISSION_CONTAINER_PORT}:${SUBMISSION_CONTAINER_PORT}
+
+    tty: true
+
+  simulation:
+    <<: *x-nuplan-volumes
+    env_file:
+      - .env
+    environment:
+      'NUPLAN_CHALLENGE': $NUPLAN_CHALLENGE
+      'NUPLAN_PLANNER': $NUPLAN_PLANNER
+    image: ${SIMULATION_IMAGE}
+    ports:
+      - ${SIMULATION_CONTAINER_PORT}:${SIMULATION_CONTAINER_PORT}
+    tty: true
+    depends_on:
+      - submission
+    entrypoint: /nuplan_devkit/nuplan/entrypoint.sh

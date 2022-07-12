@@ -1,4 +1,5 @@
 import math
+from typing import Optional
 
 from nuplan.common.actor_state.agent import Agent
 from nuplan.common.actor_state.car_footprint import CarFootprint
@@ -26,12 +27,18 @@ def get_sample_oriented_box() -> OrientedBox:
     return OrientedBox(get_sample_pose(), 4.0, 2.0, 1.5)
 
 
-def get_sample_car_footprint() -> CarFootprint:
+def get_sample_car_footprint(center: Optional[StateSE2] = None) -> CarFootprint:
     """
     Creates a sample CarFootprint.
+    :param center: Vehicle's position. If none it uses the same position returned by get_sample_pose()
     :return: A sample CarFootprint with arbitrary parameters
     """
-    return CarFootprint.build_from_center(get_sample_oriented_box().center, get_pacifica_parameters())
+    if center:
+        return CarFootprint.build_from_center(center=center, vehicle_parameters=get_pacifica_parameters())
+    else:
+        return CarFootprint.build_from_center(
+            center=get_sample_oriented_box().center, vehicle_parameters=get_pacifica_parameters()
+        )
 
 
 def get_sample_dynamic_car_state(rear_axle_to_center_dist: float = 1.44) -> DynamicCarState:
@@ -45,16 +52,18 @@ def get_sample_dynamic_car_state(rear_axle_to_center_dist: float = 1.44) -> Dyna
     )
 
 
-def get_sample_ego_state() -> EgoState:
+def get_sample_ego_state(center: Optional[StateSE2] = None, time_us: Optional[int] = 0) -> EgoState:
     """
     Creates a sample EgoState.
+    :param center: Vehicle's position. If none it uses the same position returned by get_sample_pose()
+    :param time_us: Time in microseconds
     :return: A sample EgoState with arbitrary parameters
     """
     return EgoState(
-        car_footprint=get_sample_car_footprint(),
+        car_footprint=get_sample_car_footprint(center),
         dynamic_car_state=get_sample_dynamic_car_state(),
         tire_steering_angle=0.2,
-        time_point=TimePoint(0),
+        time_point=TimePoint(time_us),
         is_in_auto_mode=False,
     )
 

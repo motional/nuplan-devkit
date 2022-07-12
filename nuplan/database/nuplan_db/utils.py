@@ -4,7 +4,7 @@ import logging
 import math
 from bisect import bisect_right
 from functools import reduce
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import cv2
 import geopandas as gpd
@@ -22,14 +22,57 @@ from nuplan.database.utils.geometry import view_points
 from nuplan.database.utils.label.label import Label
 from nuplan.database.utils.pointclouds.lidar import LidarPointCloud
 
-# These records are in models.py. Importing directly would lead to circular imports.
-NuPlanDB = 'NuPlanDB'
-Image = 'Image'
-LidarPc = 'LidarPc'
-EgoPose = 'EgoPose'
-LidarBox = 'LidarBox'
+# Importing directly would lead to circular imports.
+NuPlanDB = "NuPlanDB"
+Image = "Image"
+LidarPc = "LidarPc"
+EgoPose = "EgoPose"
+LidarBox = "LidarBox"
 
 logger = logging.getLogger(__name__)
+
+
+def generate_multi_scale_connections(
+    connections: npt.NDArray[np.float64], scales: List[int]
+) -> Dict[int, npt.NDArray[np.float64]]:
+    """
+    Generate multi-scale connections by finding the neighors up to max(scales) hops away for each node.
+
+    :param connections: <np.float: num_connections, 2>. 1-hop connections.
+    :param scales: Connections scales to generate.
+    :return: Multi-scale connections as a dict of {scale: connections_of_scale}.
+    """
+    # This dict will have format {node_idx: neighbor_dict},
+    # where each neighbor_dict will have format {'i_hop_neighbors': set_of_i_hop_neighbors}.
+    node_idx_to_neighbor_dict: Dict[int, Dict[str, Set[int]]] = {}
+
+    # Initialize the data structure for each node with its 1-hop neighbors.
+    for connection in connections:
+        start_idx, end_idx = list(connection)
+        if start_idx not in node_idx_to_neighbor_dict:
+            node_idx_to_neighbor_dict[start_idx] = {"1_hop_neighbors": set()}
+        if end_idx not in node_idx_to_neighbor_dict:
+            node_idx_to_neighbor_dict[end_idx] = {"1_hop_neighbors": set()}
+        node_idx_to_neighbor_dict[start_idx]["1_hop_neighbors"].add(end_idx)
+
+    # Find the neighors up to max(scales) hops away for each node.
+    for scale in range(2, max(scales) + 1):
+        for neighbor_dict in node_idx_to_neighbor_dict.values():
+            neighbor_dict[f"{scale}_hop_neighbors"] = set()
+            for n_hop_neighbor in neighbor_dict[f"{scale - 1}_hop_neighbors"]:
+                for n_plus_1_hop_neighbor in node_idx_to_neighbor_dict[n_hop_neighbor]["1_hop_neighbors"]:
+                    neighbor_dict[f"{scale}_hop_neighbors"].add(n_plus_1_hop_neighbor)
+
+    # Get the connections of each scale.
+    multi_scale_connections: Dict[int, npt.NDArray[np.float64]] = {}
+    for scale in scales:
+        scale_connections = []
+        for node_idx, neighbor_dict in node_idx_to_neighbor_dict.items():
+            for n_hop_neighbor in neighbor_dict[f"{scale}_hop_neighbors"]:
+                scale_connections.append([node_idx, n_hop_neighbor])
+        multi_scale_connections[scale] = np.array(scale_connections)
+
+    return multi_scale_connections
 
 
 def get_boxes(
@@ -460,8 +503,8 @@ def get_candidates(
     y_min, y_max = position[1] + yrange[0], position[1] + yrange[1]
 
     patch = geometry.box(x_min, y_min, x_max, y_max)
-    candidate_lane_groups = lane_groups_gdf[lane_groups_gdf['geometry'].intersects(patch)]
-    candidate_intersections = intersections_gdf[intersections_gdf['geometry'].intersects(patch)]
+    candidate_lane_groups = lane_groups_gdf[lane_groups_gdf["geometry"].intersects(patch)]
+    candidate_intersections = intersections_gdf[intersections_gdf["geometry"].intersects(patch)]
 
     return candidate_lane_groups, candidate_intersections
 
@@ -495,7 +538,7 @@ def render_pc(
             ann_record = sample_data.lidar_box[box.payload]  # type: ignore
 
             if not ann_record.track:
-                logger.error('Wrong 3d instance mapping', ann_record)
+                logger.error("Wrong 3d instance mapping", ann_record)
                 c: npt.NDArray[np.float64] = np.array([128, 0, 128]) / 255.0
             else:
                 c = ann_record.track.category.color_np
@@ -503,7 +546,7 @@ def render_pc(
             box.render(ax, view=view_3d, colors=color)
     ax.set_xlim(-axes_limit, axes_limit)
     ax.set_ylim(-axes_limit, axes_limit)
-    ax.set_title('{}'.format(title))
+    ax.set_title("{}".format(title))
 
 
 def translate(inp: npt.NDArray[np.float64], x: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
@@ -563,14 +606,14 @@ def get_colors_marker(
     """
     if labelmap is not None:
         c = np.array(labelmap[box.label].color)[:-1] / 255.0
-        colors = (c, c, 'k')
+        colors = (c, c, "k")
     else:
         colors = None
 
     if box.label == 2:  # ped
         marker = None
     else:
-        marker = 'o'
+        marker = "o"
 
     return colors, marker
 
@@ -628,7 +671,7 @@ def draw_future_ego_poses(
             from_y=prev_y,
             to_y=next_y,
             color=color,
-            marker='o',
+            marker="o",
             linewidth=1.0,
             canvas=ax,
             alpha=alpha,
@@ -680,7 +723,7 @@ def render_on_map(
         _, ax = plt.subplots(1, 1, figsize=(9, 9))
 
     (intensity_map_crop, intensity_map_translation, intensity_map_scale,) = lidarpc_rec.ego_pose.get_map_crop(  # type: ignore
-        db.maps_db, xrange, yrange, 'intensity', rotate_face_up=True  # type: ignore
+        db.maps_db, xrange, yrange, "intensity", rotate_face_up=True  # type: ignore
     )
 
     map_translation = intensity_map_translation
@@ -696,7 +739,7 @@ def render_on_map(
 
     # Extract the rotation angle around 'z' axis. After this rotation, the points and boxes are oriented with
     # ego_vehicle facing right. To make it face up, we add extra pi/2 rotation.
-    map_align_rot_angle = map_align_rot.as_euler('zxy')[0] + (math.pi / 2)
+    map_align_rot_angle = map_align_rot.as_euler("zxy")[0] + (math.pi / 2)
     map_align_transform = Quaternion(axis=[0, 0, 1], angle=map_align_rot_angle).transformation_matrix
 
     if render_map_raster:
@@ -704,13 +747,13 @@ def render_on_map(
             maps_db=db.maps_db,  # type: ignore
             xrange=xrange,
             yrange=yrange,
-            map_layer_name='drivable_area',
+            map_layer_name="drivable_area",
             rotate_face_up=True,
         )
-        ax.imshow(map_raster[::-1, :], cmap='gray')
+        ax.imshow(map_raster[::-1, :], cmap="gray")
     else:
         if intensity_map_crop is not None:
-            ax.imshow(intensity_map_crop[::-1, :], cmap='gray')
+            ax.imshow(intensity_map_crop[::-1, :], cmap="gray")
 
     # Maps are mirrored compared to global coord-system, so we flip the maps.
     # We then flip the y-axis to return the maps to the right orientation.
@@ -761,7 +804,7 @@ def render_on_map(
     ego_box.translate(map_translation)
 
     color = (1.0, 0.0, 0.0)  # Ego car in red color.
-    colors: Optional[Tuple[Tuple[float, float, float], Tuple[float, float, float], str]] = (color, color, 'k')
+    colors: Optional[Tuple[Tuple[float, float, float], Tuple[float, float, float], str]] = (color, color, "k")
     ego_box.render(ax, colors=colors)
 
     if render_future_ego_poses:
@@ -801,13 +844,13 @@ def render_on_map(
             # converting back to 2D points.
             line = geometry.LineString([start[:-1], end[:-1]])
             xx, yy = line.coords.xy
-            ax.plot(xx, yy, color='y', alpha=0.3)
+            ax.plot(xx, yy, color="y", alpha=0.3)
 
     pointcloud.transform(lidar_to_crop)
-    ax.scatter(pointcloud.points[0, :], pointcloud.points[1, :], c='g', s=1, alpha=0.2)
+    ax.scatter(pointcloud.points[0, :], pointcloud.points[1, :], c="g", s=1, alpha=0.2)
 
     if track_token is None and with_random_color:
-        cmap = plt.cm.get_cmap('Dark2', len(boxes_lidar))
+        cmap = plt.cm.get_cmap("Dark2", len(boxes_lidar))
 
     for idx, box in enumerate(boxes_lidar):
         box_copy = box.copy()
@@ -818,7 +861,7 @@ def render_on_map(
             colors, marker = get_colors_marker(labelmap, box_copy)
             if track_token is None and with_random_color:
                 c = np.array(cmap(idx)[:3])  # type: ignore
-                colors = (c, c, 'k')  # type: ignore
+                colors = (c, c, "k")  # type: ignore
 
             box_copy.transform(map_align_transform)
             box_copy.transform(lidar_to_ego)
@@ -827,8 +870,8 @@ def render_on_map(
             box_copy.translate(map_translation)
             box_copy.render(ax, colors=colors, marker=marker, with_velocity=render_boxes_with_velocity)
 
-    ax.axis('off')
-    ax.set_aspect('equal')
+    ax.axis("off")
+    ax.set_aspect("equal")
     plt.tight_layout()
 
     return ax
@@ -883,7 +926,7 @@ def load_pointcloud_from_pc(
     use_lidar_index: bool = False,
     lidar_indices: Optional[Tuple[int, ...]] = None,
     sample_apillar_lidar_rings: bool = False,
-    sweep_map: str = 'time_lag',
+    sweep_map: str = "time_lag",
 ) -> LidarPointCloud:
     """
     Loads one or more sweeps of a LIDAR pointcloud from the database using a SampleData record of NuPlanDB.
@@ -910,14 +953,14 @@ def load_pointcloud_from_pc(
     :return: The pointcloud.
     """
     # Check inputs
-    assert sweep_map in ['time_lag', 'sweep_idx']
+    assert sweep_map in ["time_lag", "sweep_idx"]
     if isinstance(nsweeps, int):
         nsweeps = list(range(-nsweeps + 1, 0 + 1))  # Use present sweep and past (nsweeps-1) sweeps
     elif isinstance(nsweeps, list):
-        assert 0 in nsweeps, f'Error: Present sweep (0) must be included! nsweeps is: {nsweeps}'
+        assert 0 in nsweeps, f"Error: Present sweep (0) must be included! nsweeps is: {nsweeps}"
     else:
         raise TypeError("Invalid nsweeps type: {}".format(type(nsweeps)))
-    assert sorted(nsweeps) == nsweeps, 'Error: nsweeps must be sorted in ascending order!'
+    assert sorted(nsweeps) == nsweeps, "Error: nsweeps must be sorted in ascending order!"
 
     lidarpc_rec = nuplandb.lidar_pc[token]  # type: ignore
     time_current = lidarpc_rec.timestamp
@@ -972,11 +1015,11 @@ def load_pointcloud_from_pc(
         sweep_pc.radius_filter(max_distance)
 
         # Augment with sweep idx (Pixor) or time different (PointPillars)
-        if sweep_map == 'sweep_idx':
+        if sweep_map == "sweep_idx":
             rel_sweep_idx_pixor = np.array(rel_sweep_idx, dtype=np.float32) + 1
             assert rel_sweep_idx_pixor > 0  # Must be in [1, n] since pixor_cython uses unsigned ints
             sweep_vector = rel_sweep_idx_pixor * np.ones((1, sweep_pc.nbr_points()), dtype=np.float32)
-        elif sweep_map == 'time_lag':
+        elif sweep_map == "time_lag":
             # Positive difference for past sweeps. Do not change this or existing models will be affected!
             # noinspection PyUnboundLocalVariable
             time_lag = time_current - sweep_lidarpc_rec.timestamp if sweep_idx != 0 else 0

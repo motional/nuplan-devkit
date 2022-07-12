@@ -3,14 +3,15 @@ from __future__ import annotations
 import copy
 from typing import List, Optional
 
+from nuplan.common.actor_state.agent_temporal_state import AgentTemporalState
 from nuplan.common.actor_state.oriented_box import OrientedBox
 from nuplan.common.actor_state.scene_object import SceneObject, SceneObjectMetadata
-from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D
+from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.planning.simulation.trajectory.predicted_trajectory import PredictedTrajectory
 
 
-class Agent(SceneObject):
+class Agent(AgentTemporalState, SceneObject):
     """Class describing Agents in the scene, representing Vehicles, Bicycles and Pedestrians"""
 
     def __init__(
@@ -32,13 +33,17 @@ class Agent(SceneObject):
         :param angular_velocity: The scalar angular velocity of the agent, if available
         :param predictions: Optional list of (possibly multiple) predicted trajectories
         """
-        super().__init__(tracked_object_type, oriented_box, metadata)
+        AgentTemporalState.__init__(
+            self,
+            initial_time_stamp=TimePoint(metadata.timestamp_us),
+            predictions=predictions,
+            past_trajectory=past_trajectory,
+        )
+        SceneObject.__init__(
+            self, tracked_object_type=tracked_object_type, oriented_box=oriented_box, metadata=metadata
+        )
         self._velocity = velocity
         self._angular_velocity = angular_velocity
-
-        # Possible multiple predicted trajectories
-        self._predictions: List[PredictedTrajectory] = predictions if predictions is not None else []
-        self._past_trajectory = past_trajectory
 
     @property
     def velocity(self) -> StateVector2D:
@@ -55,57 +60,6 @@ class Agent(SceneObject):
         :return: The agent angular velocity
         """
         return self._angular_velocity
-
-    @property
-    def predictions(self) -> List[PredictedTrajectory]:
-        """
-        Getter for agents predicted trajectories
-        :return: Trajectories
-        """
-        return self._predictions
-
-    @predictions.setter
-    def predictions(self, predicted_trajectories: List[PredictedTrajectory]) -> None:
-        """
-        Setter for predicted trajectories, checks if the listed probabilities sum to one.
-        :param predicted_trajectories: List of Predicted trajectories
-        """
-        # Sanity check that if predictions are provided, probabilities sum to 1
-        probability_sum = sum(prediction.probability for prediction in predicted_trajectories)
-        if not abs(probability_sum - 1) < 1e-6 and predicted_trajectories:
-            raise ValueError(f"The provided trajectory probabilities did not sum to one, but to {probability_sum:.2f}!")
-        self._predictions = predicted_trajectories
-
-    @property
-    def past_trajectory(self) -> Optional[PredictedTrajectory]:
-        """
-        Getter for agents predicted trajectories
-        :return: Trajectories
-        """
-        return self._past_trajectory
-
-    @past_trajectory.setter
-    def past_trajectory(self, past_trajectory: Optional[PredictedTrajectory]) -> None:
-        """
-        Setter for predicted trajectories, checks if the listed probabilities sum to one.
-        :param past_trajectory: Driven Trajectory
-        """
-        if not past_trajectory:
-            # In case it is none, no check is needed
-            self._past_trajectory = past_trajectory
-            return
-
-        # Make sure that the current state is set!
-        last_waypoint = past_trajectory.waypoints[-1]
-        if not last_waypoint:
-            raise RuntimeError(
-                f"Last waypoint represents current agent's {self.metadata.track_id} state, this should not be None!"
-            )
-
-        # Sanity check that last waypoint is at the same time index as the current one
-        if last_waypoint.time_us != self.metadata.timestamp_us:
-            raise ValueError("The provided trajectory does not end at current agent state!")
-        self._past_trajectory = past_trajectory
 
     @classmethod
     def from_new_pose(cls, agent: Agent, pose: StateSE2) -> Agent:

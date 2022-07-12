@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 import numpy as np
@@ -20,18 +19,20 @@ from bokeh.models import (
 )
 from bokeh.plotting import figure
 
-from nuplan.common.actor_state.oriented_box import OrientedBox
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.geometry.transform import translate_longitudinally
 from nuplan.common.maps.abstract_map_objects import LaneConnector
-from nuplan.common.maps.maps_datatypes import SemanticMapLayer, TrafficLightStatusData
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.planning.nuboard.style import (
     simulation_map_layer_color,
     simulation_tile_agent_style,
     simulation_tile_style,
     simulation_tile_trajectory_style,
 )
+from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.simulation.history.simulation_history import SimulationHistory
+from nuplan.planning.utils.serialization.to_scene import tracked_object_types
 
 
 class BokehAgentStates(NamedTuple):
@@ -143,29 +144,29 @@ class TrafficLightPlot:
             else:
                 self.plot.data_source.data = data_sources
 
-    def update_data_sources(self, scenes: Dict[Path, Any], lane_connectors: Dict[str, LaneConnector]) -> None:
+    def update_data_sources(
+        self, scenario: AbstractScenario, history: SimulationHistory, lane_connectors: Dict[str, LaneConnector]
+    ) -> None:
         """
         Update traffic light status datasource of each frame.
-        :param scenes: A dictionary of scenes with Pathlib and tehir simulation data.
+        :param scenario: Scenario traffic light status information.
+        :param history: SimulationHistory time-series data.
         :param lane_connectors: Lane connectors.
         """
         if not self.condition:
             return
 
         with self.condition:
-            for frame_index, (scene_name, scene) in enumerate(scenes.items()):
-                if "traffic_light_status" not in scene:
-                    continue
-                traffic_light_status: List[Dict[str, Any]] = scene["traffic_light_status"]
+            for frame_index in range(len(history.data)):
+                traffic_light_status = history.data[frame_index].traffic_light_status
 
                 traffic_light_map_line = TrafficLightMapLine(point_2d=[], line_colors=[], line_color_alphas=[])
                 lane_connector_colors = simulation_map_layer_color[SemanticMapLayer.LANE_CONNECTOR]
-                for traffic_light_data in traffic_light_status:
-                    traffic_light: TrafficLightStatusData = TrafficLightStatusData.deserialize(data=traffic_light_data)
+                for traffic_light in traffic_light_status:
                     lane_connector = lane_connectors.get(str(traffic_light.lane_connector_id), None)
 
                     if lane_connector is not None:
-                        path = lane_connector.baseline_path().discrete_path()
+                        path = lane_connector.baseline_path.discrete_path
                         points = [Point2D(x=pose.x, y=pose.y) for pose in path]
                         traffic_light_map_line.line_colors.append(traffic_light.status.name)
                         traffic_light_map_line.line_color_alphas.append(lane_connector_colors["line_color_alpha"])
@@ -247,25 +248,17 @@ class EgoStatePlot:
                 main_figure.y_range.start = center_y - y_radius / 2
                 main_figure.y_range.end = center_y + y_radius / 2
 
-    def update_data_sources(self, scenes: Dict[Path, Any]) -> None:
+    def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update ego_pose state data sources.
-        :param scenes: A dictionary of scenes with Pathlib and tehir simulation data.
+        :param history: SimulationHistory time-series data.
         """
         if not self.condition:
             return
 
         with self.condition:
-            for frame_index, (scene_name, scene) in enumerate(scenes.items()):
-                ego_state: Dict[str, Any] = scene["ego"]
-                pose = ego_state["pose"]
-                ego_state_se: StateSE2 = StateSE2(x=pose[0], y=pose[1], heading=pose[2])
-                ego_pose = OrientedBox(
-                    center=ego_state_se,
-                    width=self.vehicle_parameters.width,
-                    length=self.vehicle_parameters.length,
-                    height=self.vehicle_parameters.height,
-                )
+            for frame_index, sample in enumerate(history.data):
+                ego_pose = sample.ego_state.car_footprint
                 ego_corners = ego_pose.all_corners()
 
                 corner_xs = [corner.x for corner in ego_corners]
@@ -275,7 +268,7 @@ class EgoStatePlot:
                 corner_xs.append(corner_xs[0])
                 corner_ys.append(corner_ys[0])
                 source = ColumnDataSource(
-                    dict(x=[ego_state_se.x], y=[ego_state_se.y], xs=[[[corner_xs]]], ys=[[[corner_ys]]])
+                    dict(x=[ego_pose.center.x], y=[ego_pose.center.y], xs=[[[corner_xs]]], ys=[[[corner_ys]]])
                 )
                 self.data_sources[frame_index] = source
                 self.condition.notify()
@@ -320,22 +313,24 @@ class EgoStateTrajectoryPlot:
             else:
                 self.plot.data_source.data = data_sources
 
-    def update_data_sources(self, scenes: Dict[Path, Any]) -> None:
+    def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update ego_pose trajectory data sources.
-        :param scenes: A dictionary of scenes with Pathlib and their simulation data.
+        :param history: SimulationHistory time-series data.
         """
         if not self.condition:
             return
 
         with self.condition:
-            for frame_index, (scene_name, scene) in enumerate(scenes.items()):
-                trajectory: List[Dict[str, Any]] = scene["trajectories"]["ego_predicted_trajectory"]["states"]
+            for frame_index, sample in enumerate(history.data):
+                trajectory = sample.trajectory.get_sampled_trajectory()
+
                 x_coords = []
                 y_coords = []
                 for state in trajectory:
-                    x_coords.append(state["pose"][0])
-                    y_coords.append(state["pose"][1])
+                    x_coords.append(state.rear_axle.x)
+                    y_coords.append(state.rear_axle.y)
+
                 source = ColumnDataSource(dict(xs=x_coords, ys=y_coords))
                 self.data_sources[frame_index] = source
                 self.condition.notify()
@@ -418,41 +413,37 @@ class AgentStatePlot:
                 else:
                     self.plots[category].data_source.data = data
 
-    def update_data_sources(self, scenes: Dict[Path, Any]) -> None:
+    def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update agents data sources.
-        :param scenes: A dictionary of scenes with Pathlib and their simulation data.
+        :param history: SimulationHistory time-series data.
         """
         if not self.condition:
             return
 
         with self.condition:
-            for frame_index, (scene_name, scene) in enumerate(scenes.items()):
-                observations: Dict[str, List[Dict[str, Any]]] = scene["world"]
+            for frame_index, sample in enumerate(history.data):
+                tracked_objects = sample.observation.tracked_objects
                 frame_dict = {}
-                for category, predictions in observations.items():
+                for tracked_object_type_name, tracked_object_type in tracked_object_types.items():
                     corner_xs = []
                     corner_ys = []
                     track_ids = []
                     track_tokens = []
                     agent_types = []
-                    for prediction in predictions:
-                        pose = prediction["box"]["pose"]
-                        sizes = prediction["box"]["size"]
-                        state = StateSE2(x=pose[0], y=pose[1], heading=pose[2])
-                        agent_types.append(prediction["type"])
-                        track_ids.append(self._get_track_id(prediction["id"]))
-                        track_tokens.append(prediction["id"])
 
-                        # Set the height to a NaN number since we don't need it
-                        oriented_box = OrientedBox(center=state, width=sizes[0], length=sizes[1], height=np.nan)
-                        agent_corners = oriented_box.all_corners()
+                    for tracked_object in tracked_objects.get_tracked_objects_of_type(tracked_object_type):
+                        agent_corners = tracked_object.box.all_corners()
                         corners_x = [corner.x for corner in agent_corners]
                         corners_y = [corner.y for corner in agent_corners]
                         corners_x.append(corners_x[0])
                         corners_y.append(corners_y[0])
                         corner_xs.append([[corners_x]])
                         corner_ys.append([[corners_y]])
+
+                        agent_types.append(tracked_object_type.fullname)
+                        track_ids.append(self._get_track_id(tracked_object.track_token))
+                        track_tokens.append(tracked_object.track_token)
 
                     agent_states = BokehAgentStates(
                         xs=corner_xs,
@@ -462,7 +453,7 @@ class AgentStatePlot:
                         agent_type=agent_types,
                     )
 
-                    frame_dict[category] = ColumnDataSource(agent_states._asdict())
+                    frame_dict[tracked_object_type_name] = ColumnDataSource(agent_states._asdict())
 
                 self.data_sources[frame_index] = frame_dict
                 self.condition.notify()
@@ -514,28 +505,28 @@ class AgentStateHeadingPlot:
                 else:
                     self.plots[category].data_source.data = data
 
-    def update_data_sources(self, scenes: Dict[Path, Any]) -> None:
+    def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update agent heading data sources.
-        :param scenes: A dictionary of scenes with Pathlib and their simulation data.
+        :param history: SimulationHistory time-series data.
         """
         if not self.condition:
             return
 
         with self.condition:
-            for frame_index, (scene_name, scene) in enumerate(scenes.items()):
-                observations: Dict[str, List[Dict[str, Any]]] = scene["world"]
+            for frame_index, sample in enumerate(history.data):
+                tracked_objects = sample.observation.tracked_objects
                 frame_dict: Dict[str, Any] = {}
-                for category, predictions in observations.items():
+                for tracked_object_type_name, tracked_object_type in tracked_object_types.items():
                     trajectory_xs = []
                     trajectory_ys = []
-                    for prediction in predictions:
-                        pose = prediction["box"]["pose"]
-                        sizes = prediction["box"]["size"]
-                        state = StateSE2(x=pose[0], y=pose[1], heading=pose[2])
-                        agent_trajectory = translate_longitudinally(state, distance=sizes[1] / 2 + 1)
-                        trajectory_xs.append([pose[0], agent_trajectory.x])
-                        trajectory_ys.append([pose[1], agent_trajectory.y])
+                    for tracked_object in tracked_objects.get_tracked_objects_of_type(tracked_object_type):
+                        object_box = tracked_object.box
+                        agent_trajectory = translate_longitudinally(
+                            object_box.center, distance=object_box.length / 2 + 1
+                        )
+                        trajectory_xs.append([object_box.center.x, agent_trajectory.x])
+                        trajectory_ys.append([object_box.center.y, agent_trajectory.y])
 
                     trajectories = ColumnDataSource(
                         dict(
@@ -543,7 +534,7 @@ class AgentStateHeadingPlot:
                             trajectory_y=trajectory_ys,
                         )
                     )
-                    frame_dict[category] = trajectories
+                    frame_dict[tracked_object_type_name] = trajectories
 
                 self.data_sources[frame_index] = frame_dict
                 self.condition.notify()
@@ -553,28 +544,39 @@ class AgentStateHeadingPlot:
 class SimulationFigure:
     """Simulation figure data."""
 
+    # Required simulation data
+    planner_name: str  # Planner name
+    scenario: AbstractScenario  # Scenario
+    simulation_history: SimulationHistory  # SimulationHistory
+    vehicle_parameters: VehicleParameters  # Ego parameters
+
+    # Rendering objects
     figure: figure  # Bokeh figure
-    planner_name: str  # Planenr name
     slider: Slider  # Bokeh slider to this figure
     video_button: Button  # Bokeh video button to this figure
-    vehicle_parameters: VehicleParameters  # Ego parameters
+    figure_title_name: str  # Figure title name
+    time_us: Optional[List[int]] = None  # Timestamp in microsecond
     mission_goal_plot: Optional[GlyphRenderer] = None  # Mission goal plot
     expert_trajectory_plot: Optional[GlyphRenderer] = None  # Expert trajectory plot
     legend_state: bool = False  # Legend states
-    scenes: Dict[Path, Any] = field(default_factory=dict)  # A dict of paths to the simulation data
     map_polygon_plots: Dict[str, GlyphRenderer] = field(default_factory=dict)  # Polygon plots for map layers
     map_line_plots: Dict[str, GlyphRenderer] = field(default_factory=dict)  # Line plots for map layers
-    lane_connectors: Optional[Dict[str, LaneConnector]] = None  # Lane connector id: lane connector
     traffic_light_plot: Optional[TrafficLightPlot] = None  # Traffic light plot
     ego_state_plot: Optional[EgoStatePlot] = None  # Ego state plot
     ego_state_trajectory_plot: Optional[EgoStateTrajectoryPlot] = None  # Ego state trajectory plot
     agent_state_plot: Optional[AgentStatePlot] = None  # Agent state plot
     agent_state_heading_plot: Optional[AgentStateHeadingPlot] = None  # Agent state heading plot
 
+    # Optional simulation data
+    lane_connectors: Optional[Dict[str, LaneConnector]] = None  # Lane connector id: lane connector
+
     def __post_init__(self) -> None:
         """Initialize all plots and data sources."""
         if self.lane_connectors is None:
             self.lane_connectors = {}
+
+        if self.time_us is None:
+            self.time_us = []
 
         if self.traffic_light_plot is None:
             self.traffic_light_plot = TrafficLightPlot()
@@ -591,12 +593,24 @@ class SimulationFigure:
         if self.agent_state_heading_plot is None:
             self.agent_state_heading_plot = AgentStateHeadingPlot()
 
+    def figure_title_name_with_timestamp(self, frame_index: int) -> str:
+        """
+        Return figure title with a timestamp.
+        :param frame_index: Frame index.
+        """
+        if self.time_us:
+            return f"{self.figure_title_name} (Frame: {frame_index}, Time_us: {self.time_us[frame_index]})"
+        else:
+            return self.figure_title_name
+
     def copy_datasources(self, other: SimulationFigure) -> None:
         """
         Copy data sources from another simulation figure.
         :param other: Another SimulationFigure object.
         """
-        self.scenes = other.scenes
+        self.time_us = other.time_us
+        self.scenario = other.scenario
+        self.simulation_history = other.simulation_history
         self.lane_connectors = other.lane_connectors
         self.traffic_light_plot.data_sources = other.traffic_light_plot.data_sources  # type: ignore
         self.ego_state_plot.data_sources = other.ego_state_plot.data_sources  # type: ignore
@@ -609,21 +623,28 @@ class SimulationFigure:
         Update data sources in a multi-threading manner to speed up loading and initialization in
         scenario rendering.
         """
+        assert self.simulation_history.data, "SimulationHistory cannot be empty!"
+
         # Update slider steps
-        self.slider.end = len(self.scenes) - 1
+        self.slider.end = len(self.simulation_history.data) - 1
+
+        # Update time_us
+        self.time_us = [sample.ego_state.time_us for sample in self.simulation_history.data]
 
         # Update ego pose states
         if not self.ego_state_plot:
             return
 
-        t1 = threading.Thread(target=self.ego_state_plot.update_data_sources, args=(self.scenes,))
+        t1 = threading.Thread(target=self.ego_state_plot.update_data_sources, args=(self.simulation_history,))
         t1.start()
 
         # Update ego pose trajectories
         if not self.ego_state_trajectory_plot:
             return
 
-        t2 = threading.Thread(target=self.ego_state_trajectory_plot.update_data_sources, args=(self.scenes,))
+        t2 = threading.Thread(
+            target=self.ego_state_trajectory_plot.update_data_sources, args=(self.simulation_history,)
+        )
         t2.start()
 
         # Update traffic light status
@@ -634,7 +655,8 @@ class SimulationFigure:
             t3 = threading.Thread(
                 target=self.traffic_light_plot.update_data_sources,
                 args=(
-                    self.scenes,
+                    self.scenario,
+                    self.simulation_history,
                     self.lane_connectors,
                 ),
             )
@@ -644,23 +666,24 @@ class SimulationFigure:
         if not self.agent_state_plot:
             return
 
-        t4 = threading.Thread(target=self.agent_state_plot.update_data_sources, args=(self.scenes,))
+        t4 = threading.Thread(target=self.agent_state_plot.update_data_sources, args=(self.simulation_history,))
         t4.start()
 
         # Update agent heading states
         if not self.agent_state_heading_plot:
             return
 
-        t5 = threading.Thread(target=self.agent_state_heading_plot.update_data_sources, args=(self.scenes,))
+        t5 = threading.Thread(target=self.agent_state_heading_plot.update_data_sources, args=(self.simulation_history,))
         t5.start()
 
-    def render_mission_goal(self, mission_goal_state: Dict[str, Any]) -> None:
+    def render_mission_goal(self, mission_goal_state: StateSE2) -> None:
         """
         Render the mission goal.
         :param mission_goal_state: Mission goal state.
         """
-        pose = mission_goal_state["pose"]
-        source = ColumnDataSource(dict(xs=[pose[0]], ys=[pose[1]], heading=[pose[2]]))
+        source = ColumnDataSource(
+            dict(xs=[mission_goal_state.x], ys=[mission_goal_state.y], heading=[mission_goal_state.heading])
+        )
         self.mission_goal_plot = self.figure.rect(
             x="xs",
             y="ys",
@@ -718,14 +741,16 @@ class SimulationFigure:
         for map_line_layer in selected_map_line_layers:
             map_line_legend_items.append((map_line_layer.capitalize(), [self.map_line_plots[map_line_layer]]))
 
-        if not self.ego_state_plot or not self.mission_goal_plot or not self.ego_state_trajectory_plot:
+        if not self.ego_state_plot or not self.ego_state_trajectory_plot:
             return
 
         legend_items = [
             ("Ego", [self.ego_state_plot.plot]),
-            ("Goal", [self.mission_goal_plot]),
             ("Ego traj", [self.ego_state_trajectory_plot.plot]),
         ]
+        if self.mission_goal_plot is not None:
+            legend_items.append(("Goal", [self.mission_goal_plot]))
+
         if self.expert_trajectory_plot is not None:
             legend_items.append(("Expert traj", [self.expert_trajectory_plot]))
 
@@ -740,6 +765,7 @@ class SimulationFigure:
 
         self.figure.add_layout(legend)
         self.legend_state = True
+        self.figure.legend.label_text_font_size = '0.8em'
 
 
 @dataclass

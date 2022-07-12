@@ -16,18 +16,18 @@
             3999461.989363281,
             -2.0085689660475055
         ],
-        "velocity": [1.0, 0.0],
+        "velocity": [10.0, 0.0],
         "time_us": 1000000
     },
     "expected": {
         "statistics": {
-            "MAX": 22.83,
-            "MIN": 22.83,
-            "P90": 22.83
+            "MAX": 0.94,
+            "MIN": 0.94,
+            "P90": 0.94
         },
         "time_series": {
             "time_stamps": [1000000],
-            "values": [22.83]
+            "values": [0.94]
         }
     },
     "goal": {
@@ -63,15 +63,15 @@
                 },
                 "id": 1,
                 "real": true,
-                "speed": 0.0,
+                "speed": 10.0,
                 "type": "Vehicle"
             },
             {
                 "active": true,
                 "box": {
                     "pose": [
-                        664760.4093684325,
-                        3999479.276646758,
+                        664755.4093684325,
+                        3999469.276646758,
                         -2.043391284140373
                     ],
                     "size": [
@@ -81,7 +81,7 @@
                 },
                 "id": 2,
                 "real": true,
-                "speed": 0.0,
+                "speed": 5.0,
                 "type": "Vehicle"
             },
             {
@@ -99,7 +99,7 @@
                 },
                 "id": 3,
                 "real": true,
-                "speed": 0.0,
+                "speed": 10.0,
                 "type": "Vehicle"
             },
             {
@@ -117,7 +117,7 @@
                 },
                 "id": 4,
                 "real": true,
-                "speed": 0.0,
+                "speed": 10.0,
                 "type": "Vehicle"
             }
         ]

@@ -32,7 +32,8 @@ class SkeletonTestTrain(unittest.TestCase):
         # compose API override, otherwise the Jenkins build fails because bazel cannot find the simulation config file.
         common_dir = 'file://' + os.path.join(main_path, '..', 'config', 'common')
         experiment_dir = 'file://' + os.path.join(main_path, '..', 'experiments')
-        self.search_path = f'hydra.searchpath=[{common_dir}, {experiment_dir}'
+        training_dir = "file://" + os.path.join(main_path, '..', 'config', 'training')
+        self.search_path = f'hydra.searchpath=[{common_dir}, {experiment_dir}, {training_dir}'
 
         # Append additional paths to the search path
         self.search_path += ', '.join(['', *self.additional_paths]) + ']'
@@ -56,6 +57,7 @@ class SkeletonTestTrain(unittest.TestCase):
             f'group={self.tmp_dir.name}',
             f'cache.cache_path={self.tmp_dir.name}/cache',
             'cache.cleanup_cache=True',
+            'output_dir=${group}/${experiment}',
         ]
 
     def tearDown(self) -> None:

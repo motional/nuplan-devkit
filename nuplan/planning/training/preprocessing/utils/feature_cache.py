@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import gzip
 import os
 import pathlib
 import pickle
@@ -69,19 +70,21 @@ class FeatureCachePickle(FeatureCache):
 
     def with_extension(self, feature_file: pathlib.Path) -> str:
         """Inherited, see superclass."""
-        return str(feature_file.with_suffix(".pkl"))
+        return str(feature_file.with_suffix(".gz"))
 
     def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> None:
         """Inherited, see superclass."""
         serializable_dict = feature.serialize()
-        with open(self.with_extension(feature_file), 'wb') as f:
+        # TODO (METENG-3992): Add profiling results for gzip compressor.
+        # Use compresslevel = 1 to compress the size but also has fast write and read.
+        with gzip.open(self.with_extension(feature_file), 'wb', compresslevel=1) as f:
             pickle.dump(serializable_dict, f)
 
     def load_computed_feature_from_folder(
         self, feature_file: pathlib.Path, feature_type: Type[AbstractModelFeature]
     ) -> AbstractModelFeature:
         """Inherited, see superclass."""
-        with open(self.with_extension(feature_file), 'rb') as f:
+        with gzip.open(self.with_extension(feature_file), 'rb') as f:
             data = pickle.load(f)
         return feature_type.deserialize(data)
 
@@ -118,7 +121,8 @@ class FeatureCacheS3(FeatureCache):
 
         # Put serialized feature in the remote feature store
         storage_key = self.with_extension(feature_file)
-        self._store.put(storage_key, serialized_feature)
+
+        self._store.put(storage_key, serialized_feature, ignore_if_client_error=True)
 
     def load_computed_feature_from_folder(
         self, feature_file: pathlib.Path, feature_type: Type[AbstractModelFeature]

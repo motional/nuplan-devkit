@@ -249,3 +249,137 @@ class Agents(AbstractModelFeature):
                 for half_width, half_length in zip(half_widths, half_lengths)
             ]
         )
+
+
+class EgoFeatureIndex:
+    """
+    A convenience class for assigning semantic meaning to the tensor index
+        in the final output ego feature.
+
+    It is intended to be used like an IntEnum, but supported by TorchScript.
+    """
+
+    def __init__(self) -> None:
+        """
+        Init method.
+        """
+        raise ValueError("This class is not to be instantiated.")
+
+    @staticmethod
+    def x() -> int:
+        """
+        The dimension corresponding to the x coordinate of the ego.
+        :return: index
+        """
+        return 0
+
+    @staticmethod
+    def y() -> int:
+        """
+        The dimension corresponding to the y coordinate of the ego.
+        :return: index
+        """
+        return 1
+
+    @staticmethod
+    def heading() -> int:
+        """
+        The dimension corresponding to the heading of the ego.
+        :return: index
+        """
+        return 2
+
+    @staticmethod
+    def dim() -> int:
+        """
+        The number of features present in the EgoFeature.
+        :return: number of features.
+        """
+        return 3
+
+
+class AgentFeatureIndex:
+    """
+    A convenience class for assigning semantic meaning to the tensor indexes
+        in the final output agents feature.
+
+    It is intended to be used like an IntEnum, but supported by TorchScript
+    """
+
+    def __init__(self) -> None:
+        """
+        Init method.
+        """
+        raise ValueError("This class is not to be instantiated.")
+
+    @staticmethod
+    def x() -> int:
+        """
+        The dimension corresponding to the x coordinate of the agent.
+        :return: index
+        """
+        return 0
+
+    @staticmethod
+    def y() -> int:
+        """
+        The dimension corresponding to the y coordinate of the agent.
+        :return: index
+        """
+        return 1
+
+    @staticmethod
+    def heading() -> int:
+        """
+        The dimension corresponding to the heading of the agent.
+        :return: index
+        """
+        return 2
+
+    @staticmethod
+    def vx() -> int:
+        """
+        The dimension corresponding to the x velocity of the agent.
+        :return: index
+        """
+        return 3
+
+    @staticmethod
+    def vy() -> int:
+        """
+        The dimension corresponding to the y velocity of the agent.
+        :return: index
+        """
+        return 4
+
+    @staticmethod
+    def yaw_rate() -> int:
+        """
+        The dimension corresponding to the yaw rate of the agent.
+        :return: index
+        """
+        return 5
+
+    @staticmethod
+    def width() -> int:
+        """
+        The dimension corresponding to the width of the agent.
+        :return: index
+        """
+        return 6
+
+    @staticmethod
+    def length() -> int:
+        """
+        The dimension corresponding to the height of the agent.
+        :return: index
+        """
+        return 7
+
+    @staticmethod
+    def dim() -> int:
+        """
+        The number of features present in the AgentsFeature.
+        :return: number of features.
+        """
+        return 8

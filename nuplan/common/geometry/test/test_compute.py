@@ -5,12 +5,15 @@ import numpy as np
 import numpy.typing as npt
 from shapely.geometry import Polygon
 
+from nuplan.common.actor_state.oriented_box import Dimension, OrientedBox
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.geometry.compute import (
     AngularInterpolator,
     compute_distance,
     compute_lateral_displacements,
+    l2_euclidean_corners_distance,
     principal_value,
+    se2_box_distances,
     signed_lateral_distance,
     signed_longitudinal_distance,
 )
@@ -130,6 +133,33 @@ class TestCompute(unittest.TestCase):
         # Assertions
         np.testing.assert_allclose(expected_wrapped_0_to_pi, actual_wrapped_0_to_pi)
         np.testing.assert_allclose(expected_wrapped_neg_pi_to_pi, actual_wrapped_neg_pi_to_pi)
+
+    def test_l2_euclidean_corners_distance(self) -> None:
+        """Tests computation of distances between"""
+        box_dimension = Dimension(4, 3, 1)
+
+        box1 = OrientedBox(StateSE2(0, 0, 0), box_dimension.length, box_dimension.width, box_dimension.height)
+        box2 = OrientedBox(StateSE2(2, 0, 0), box_dimension.length, box_dimension.width, box_dimension.height)
+        box3 = OrientedBox(StateSE2(0, 2, 0), box_dimension.length, box_dimension.width, box_dimension.height)
+        box4 = OrientedBox(StateSE2(3, 4, 0), box_dimension.length, box_dimension.width, box_dimension.height)
+        box1_rot = OrientedBox(StateSE2(0, 0, np.pi), box_dimension.length, box_dimension.width, box_dimension.height)
+        box5 = OrientedBox(StateSE2(1, 2, 3), box_dimension.length, box_dimension.width, box_dimension.height)
+
+        self.assertEqual(0, l2_euclidean_corners_distance(box1, box1))
+        self.assertEqual(4.0, l2_euclidean_corners_distance(box1, box2))
+        self.assertEqual(l2_euclidean_corners_distance(box1, box2), l2_euclidean_corners_distance(box1, box3))
+        self.assertEqual(10.0, l2_euclidean_corners_distance(box1, box4))
+        self.assertEqual(10.0, l2_euclidean_corners_distance(box1, box1_rot))
+        self.assertEqual(10.931588394648887, l2_euclidean_corners_distance(box1, box5))
+
+    def test_se2_box_distances(self) -> None:
+        """Tests computation of distances between SE2 poses using OrientedBox"""
+        box_dimension = Dimension(4, 3, 1)
+
+        query = StateSE2(0, 0, 0)
+        targets = [StateSE2(0, 0, 0), StateSE2(0, 0, np.pi), StateSE2(2, 0, 0)]
+
+        self.assertEqual([0, 0, 4.0], se2_box_distances(query, targets, box_dimension))
 
 
 class TestAngularInterpolator(unittest.TestCase):

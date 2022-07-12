@@ -32,6 +32,8 @@ Stay tuned for the upcoming nuPlan ML planning challenges!
 ______________________________________________________________________
 
 ## Changelog
+- Jul 15 2022
+  * v0.3 Devkit: Updates to the devit including but not limited to: nuBoard update, reduce RAM usage during caching and training, new map APIs, simulation and metrics runtime improvements. 
 - Jun 10 2022
   * v1.0 Dataset: Full nuPlan dataset release with over 1,300 hours of driving data (15,000+ logs) across 4 cities (Las Vegas, Pittsburgh, Boston, Singapore).
   * v0.2 Devkit: Multiple devkit updates with improvements across the whole framework (planning models, training, simulation, metrics, dashboard, tutorials and more).

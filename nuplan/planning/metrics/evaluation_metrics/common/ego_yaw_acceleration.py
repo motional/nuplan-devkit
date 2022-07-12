@@ -30,7 +30,7 @@ class EgoYawAccelerationStatistics(WithinBoundMetricBase):
         return self._compute_statistics(  # type: ignore
             history=history,
             scenario=scenario,
-            statistic_unit_name='radians_per_second',
+            statistic_unit_name='radians_per_second_squared',
             extract_function=extract_ego_yaw_rate,
             extract_function_params={'deriv_order': 2, 'poly_order': 3},
             max_within_bound_threshold=self._max_abs_yaw_accel,

@@ -143,7 +143,11 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
     ):
         history.add_sample(
             SimulationHistorySample(
-                iteration=simulation_iteration, ego_state=ego_state, trajectory=trajectory, observation=observation
+                iteration=simulation_iteration,
+                ego_state=ego_state,
+                trajectory=trajectory,
+                observation=observation,
+                traffic_light_status=scenario.get_traffic_light_status_at_iteration(simulation_iteration.index),
             )
         )
 

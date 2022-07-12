@@ -1,15 +1,14 @@
 import logging
 import statistics
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 import numpy as np
 
 from nuplan.common.actor_state.ego_state import EgoState
-from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject, Lane, LaneConnector
-from nuplan.common.maps.maps_datatypes import SemanticMapLayer
+from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject, Lane
 from nuplan.planning.metrics.evaluation_metrics.base.violation_metric_base import ViolationMetricBase
-from nuplan.planning.metrics.evaluation_metrics.common.drivable_area_violation import DrivableAreaViolationStatistics
+from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
 from nuplan.planning.metrics.metric_result import (
     MetricStatistics,
     MetricStatisticsType,
@@ -45,21 +44,21 @@ class SpeedLimitViolationExtractor:
         self.history = history
         self.open_violation: Optional[GenericViolation] = None
         self.violations: List[MetricViolation] = []
-        self.last_map_object: Optional[GraphEdgeMapObject] = None
         self.violation_depths: List[float] = []
         self.metric_name = metric_name
         self.category = category
 
-    def extract_metric(self, ego_distances_to_drivable_area: List[float]) -> None:
+    def extract_metric(self, ego_route: List[List[GraphEdgeMapObject]]) -> None:
         """Extracts the drivable area violations from the history of Ego poses."""
-        for sample, ego_distance_to_drivable_area in zip(self.history.data, ego_distances_to_drivable_area):
+        for sample, curr_ego_route in zip(self.history.data, ego_route):
             ego_state = sample.ego_state
-            timestamp = sample.iteration.time_us
+            timestamp = ego_state.time_point.time_us
 
-            if ego_distance_to_drivable_area > 0:
+            # If no lane or lane connector is associated with pose (such as when ego is outside the drivable area), we won't consider speed limit violation
+            if not curr_ego_route:
                 violation = None
             else:
-                violation = self._get_speed_limit_violation(ego_state, sample.iteration.time_us)
+                violation = self._get_speed_limit_violation(ego_state, timestamp, curr_ego_route)
 
             if violation:
                 if not self.open_violation:
@@ -73,7 +72,7 @@ class SpeedLimitViolationExtractor:
                     self.end_violation(timestamp, higher_is_worse=True)
         # End all violations
         if self.open_violation:
-            self.end_violation(self.history.data[-1].iteration.time_us)
+            self.end_violation(timestamp)
 
     def start_violation(self, violation: GenericViolation) -> None:
         """
@@ -115,54 +114,9 @@ class SpeedLimitViolationExtractor:
         )
         self.open_violation = None
 
-    def _get_speed_limit_no_prior(self, ego_state: EgoState) -> Optional[Union[Lane, LaneConnector]]:
-        """
-        Gets the current lane or lane connector, along with its speed limit
-        :param ego_state: State of ego
-        :return: An object with the current map element and speed limit, None if none is found.
-        """
-        if self.history.map_api.is_in_layer(ego_state.center, SemanticMapLayer.LANE):
-            layer = SemanticMapLayer.LANE
-        elif self.history.map_api.is_in_layer(ego_state.center, SemanticMapLayer.INTERSECTION):
-            layer = SemanticMapLayer.LANE_CONNECTOR
-        else:
-            return None
-
-        segments: List[Union[Lane, LaneConnector]] = self.history.map_api.get_all_map_objects(ego_state.center, layer)
-
-        # There are areas in intersections that are not covered by lane_connectors, if ego ends up in there, use previous speed limit
-        # This will not resolve the issue if ego starts in those areas, hence it's better to assign speed limits to intersections in future
-        if not len(segments) and self.last_map_object:
-            segments = [self.last_map_object]
-
-        if len(segments):
-            segment = segments[0]
-            return segment
-        else:
-            return None
-
-    def _get_speed_limit_with_prior(self, ego_state: EgoState) -> Optional[Union[Lane, LaneConnector]]:
-        """
-        Gets the current lane or lane connector, along with its speed limit, using an initial guess of where ego is
-        :param ego_state: State of ego
-        :return: An object with the current map element and speed limit, None if none is found.
-        """
-        assert isinstance(self.last_map_object, GraphEdgeMapObject)
-
-        # If we are in the same lane or lane connector, nothing to do
-        if self.last_map_object.contains_point(ego_state.center):
-            return self.last_map_object
-
-        # We check if the upcoming map elements contain the point
-        segments = self.last_map_object.outgoing_edges()
-        for segment in segments:
-            if segment.contains_point(ego_state.center):
-                return segment
-
-        # If everything else fails we resort to compute from scratch
-        return self._get_speed_limit_no_prior(ego_state)
-
-    def _get_speed_limit_violation(self, ego_state: EgoState, timestamp: int) -> Optional[GenericViolation]:
+    def _get_speed_limit_violation(
+        self, ego_state: EgoState, timestamp: int, ego_lane_or_laneconnector: List[GraphEdgeMapObject]
+    ) -> Optional[GenericViolation]:
         """
         Computes by how much ego is exceeding the speed limit
         :param ego_state: The current state of Ego
@@ -170,13 +124,19 @@ class SpeedLimitViolationExtractor:
         :return: By how much ego is exceeding the speed limit, none if not violation is present or unable to find
         the speed limit.
         """
-        if self.last_map_object:
-            self.last_map_object = self._get_speed_limit_with_prior(ego_state)
+        if isinstance(ego_lane_or_laneconnector[0], Lane):
+            assert len(ego_lane_or_laneconnector) == 1, 'Ego should can assigned to one lane only'
+            speed_limits = [ego_lane_or_laneconnector[0].speed_limit_mps]
         else:
-            self.last_map_object = self._get_speed_limit_no_prior(ego_state)
+            speed_limits = []
+            for map_obj in ego_lane_or_laneconnector:
+                edges = map_obj.outgoing_edges + map_obj.incoming_edges
+                speed_limits.extend([lane.speed_limit_mps for lane in edges])
 
-        if self.last_map_object is not None:
-            exceeding_speed = ego_state.dynamic_car_state.speed - self.last_map_object.speed_limit_mps
+        # new map can potentially return None if the GPKG does not contain speed limit data, make sure speed limits exist
+        if all(speed_limits):
+            max_speed_limit = max(speed_limits)
+            exceeding_speed = ego_state.dynamic_car_state.speed - max_speed_limit
             return GenericViolation(timestamp, violation_depths=[exceeding_speed]) if exceeding_speed > 0 else None
 
         return None
@@ -189,7 +149,7 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
         self,
         name: str,
         category: str,
-        drivable_area_violation_metric: DrivableAreaViolationStatistics,
+        lane_change_metric: EgoLaneChangeStatistics,
         max_violation_threshold: int,
         max_overspeed_value_threshold: float,
     ) -> None:
@@ -197,13 +157,13 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
         Initializes the SpeedLimitViolationStatistics class
         :param name: Metric name
         :param category: Metric category
-        :param drivable_area_violation_metric: drivable area violation metric
+        :param lane_change_metric: lane change metric
         :param max_violation_threshold: Maximum threshold for the number of violation
         :param max_overspeed_value_threshold: A threshold for overspeed value driving above which is considered more dangerous.
         """
         super().__init__(name=name, category=category, max_violation_threshold=max_violation_threshold)
         self._max_overspeed_value_threshold = max_overspeed_value_threshold
-        self._drivable_area_violation = drivable_area_violation_metric
+        self._lane_change_metric = lane_change_metric
 
     def _compute_violation_metric_score(self, time_series: TimeSeries) -> float:
         """
@@ -242,10 +202,10 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
         :param scenario: Scenario running this metric
         :return: the estimated metric.
         """
-        ego_distances_to_drivable_area = self._drivable_area_violation.results[0].time_series.values
+        ego_route = self._lane_change_metric.ego_route
         extractor = SpeedLimitViolationExtractor(history=history, metric_name=self._name, category=self._category)
 
-        extractor.extract_metric(ego_distances_to_drivable_area=ego_distances_to_drivable_area)
+        extractor.extract_metric(ego_route=ego_route)
 
         time_stamps = extract_ego_time_point(history.extract_ego_state)
         time_series = TimeSeries(unit='mps', time_stamps=list(time_stamps), values=extractor.violation_depths)

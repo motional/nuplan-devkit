@@ -4,7 +4,7 @@ import numpy as np
 from shapely.geometry import Point
 
 from nuplan.common.actor_state.state_representation import Point2D
-from nuplan.common.maps.abstract_map_objects import BaselinePath
+from nuplan.common.maps.abstract_map_objects import PolylineMapObject
 from nuplan.planning.metrics.evaluation_metrics.base.metric_base import MetricBase
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
 from nuplan.planning.metrics.utils.route_extractor import (
@@ -33,7 +33,7 @@ class PerFrameProgressAlongRouteComputer:
         self.skipped_roadblock_pair: Optional[RouteBaselineRoadBlockPair] = None
 
     @staticmethod
-    def get_distance_of_closest_baseline_point_to_its_start(base_line: BaselinePath, pose: Point2D) -> float:
+    def get_distance_of_closest_baseline_point_to_its_start(base_line: PolylineMapObject, pose: Point2D) -> float:
         """Computes distance of "closest point on the baseline to pose" to the beginning of the baseline
         :param base_line: A baseline path
         :param pose: An ego pose
@@ -42,7 +42,7 @@ class PerFrameProgressAlongRouteComputer:
         return float(base_line.linestring.project(Point(*pose)))
 
     @staticmethod
-    def get_some_baseline_point(baseline: BaselinePath, ind: str) -> Optional[Point2D]:
+    def get_some_baseline_point(baseline: PolylineMapObject, ind: str) -> Optional[Point2D]:
         """Gets the first or last point on a given baselinePath
         :param baseline: A baseline path
         :param ind: Either 'last' or 'first' strings to show which point function should return
@@ -215,8 +215,8 @@ class EgoProgressAlongExpertRouteStatistics(MetricBase):
         # Compute expert's progress as baseline for comparison.
         expert_progress_computer = PerFrameProgressAlongRouteComputer(route_roadblocks=route_baseline_roadblock_pairs)
         expert_progress = expert_progress_computer(ego_poses=expert_poses)
-        self._score_progress_threshold = np.sum(expert_progress)
-        ego_expert_progress_along_route_ratio = min(1.0, max(0.0, overall_progress / self._score_progress_threshold))
+        score_progress_threshold = max(np.sum(expert_progress), self._score_progress_threshold)
+        ego_expert_progress_along_route_ratio = min(1.0, max(0.0, overall_progress / score_progress_threshold))
 
         ego_timestamps = extract_ego_time_point(ego_states)
 

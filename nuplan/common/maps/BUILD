@@ -15,9 +15,7 @@ py_library(
 py_library(
     name = "maps_datatypes",
     srcs = ["maps_datatypes.py"],
-    deps = [
-        "//nuplan/common/actor_state:state_representation",
-    ],
+    deps = [],
 )
 
 py_library(

@@ -53,6 +53,14 @@ class Waypoint(InterpolatableState):
         )
 
     @property
+    def center(self) -> StateSE2:
+        """
+        Getter for center position of the waypoint
+        :return: StateSE2 referring to position of the waypoint
+        """
+        return self._oriented_box.center
+
+    @property
     def time_point(self) -> TimePoint:
         """
         Getter for time point corresponding to the waypoint

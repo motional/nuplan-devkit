@@ -9,7 +9,7 @@ pipeline{
     kubernetes(
       jnlp.nuplan_devkit(
         name: 'nuplan-devkit-tests',
-        tag: "v1.0.2",
+        tag: "v1.0.3",
         cpu: 8, maxcpu: 8,
         memory: "32G", maxmemory: "64G", yaml: """spec:
   containers:

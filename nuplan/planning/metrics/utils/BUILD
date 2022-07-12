@@ -36,6 +36,18 @@ py_library(
     ],
 )
 
+py_library(
+    name = "collision_utils",
+    srcs = ["collision_utils.py"],
+    deps = [
+        "//nuplan/common/actor_state:agent",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:scene_object",
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/metrics:metric_result",
+    ],
+)
+
 py_test(
     name = "testing_utils",
     size = "small",

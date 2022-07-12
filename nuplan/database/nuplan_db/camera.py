@@ -1,18 +1,17 @@
 from __future__ import annotations  # postpone evaluation of annotations
 
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 from pyquaternion import Quaternion
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.types import Integer, PickleType, String
 
 from nuplan.database.common import data_types, sql_types
 from nuplan.database.common.utils import simple_repr
-from nuplan.database.nuplan_db.models import Base, Image
+from nuplan.database.nuplan_db.models import Base
 
 
 class Camera(Base):
@@ -32,8 +31,6 @@ class Camera(Base):
     distortion = Column(PickleType)  # type: list[float]
     width = Column(Integer)  # type: int
     height = Column(Integer)  # type: int
-
-    images = relationship("Image", foreign_keys="Image.camera_token", back_populates="camera")  # type: List[Image]
 
     @property
     def _session(self) -> Any:
@@ -104,6 +101,3 @@ class Camera(Base):
         tm[:3, :3] = rot_inv
         tm[:3, 3] = rot_inv.dot(np.transpose(-self.translation_np))
         return tm
-
-
-Image.camera = relationship("Camera", foreign_keys=Image.camera_token, back_populates="images")

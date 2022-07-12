@@ -86,7 +86,9 @@ def build_lightning_module(cfg: DictConfig, torch_module_wrapper: TorchModuleWra
         model=torch_module_wrapper,
         objectives=objectives,
         metrics=metrics,
-        **cfg.lightning.hparams,
+        batch_size=cfg.data_loader.params.batch_size,
+        optimizer=cfg.optimizer,
+        lr_scheduler=cfg.lr_scheduler if 'lr_scheduler' in cfg else None,
     )
 
     return cast(pl.LightningModule, model)
@@ -106,7 +108,7 @@ def build_trainer(cfg: DictConfig) -> pl.Trainer:
         callbacks.append(pl.callbacks.GPUStatsMonitor(intra_step_time=True, inter_step_time=True))
 
     plugins = [
-        pl.plugins.DDPPlugin(find_unused_parameters=False),
+        pl.plugins.DDPPlugin(find_unused_parameters=False, num_nodes=params.num_nodes),
     ]
 
     loggers = [

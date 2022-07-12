@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import List, Optional
+import threading
+from typing import Any, Dict, List, Optional
 from urllib import parse
 
 import boto3
@@ -11,6 +12,13 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_S3_PROFILE = os.getenv('NUPLAN_S3_PROFILE', '')
 
+# In some scenarios, our codebase requests multiple copies of the S3 client with the same parameters
+# This can lead to large amounts of memory usage.
+#
+# Create a flyweight to re-use clients with matching parameters.
+S3_CLIENTS: Dict[str, Any] = {}
+S3_CLIENTS_LOCK_OBJ = threading.Lock()
+
 
 def get_s3_client(profile_name: Optional[str] = None, max_attempts: int = 10) -> boto3.client:
     """
@@ -19,20 +27,26 @@ def get_s3_client(profile_name: Optional[str] = None, max_attempts: int = 10) ->
     :param max_attemps: Maximum number of attempts in loading the client.
     :return: The instantiated client object.
     """
+    global S3_CLIENTS
+    global S3_CLIENTS_LOCK_OBJ
     profile_name = DEFAULT_S3_PROFILE if profile_name is None else profile_name
 
-    try:
-        session = boto3.Session(profile_name=profile_name)
-    except BotoCoreError as e:
-        logger.info(
-            "Trying default AWS credential chain, since we got this exception "
-            f"while trying to use AWS profile [{profile_name}]: {e}"
-        )
-        session = boto3.Session()
+    with S3_CLIENTS_LOCK_OBJ:
+        if profile_name not in S3_CLIENTS:
+            try:
+                session = boto3.Session(profile_name=profile_name)
+            except BotoCoreError as e:
+                logger.info(
+                    "Trying default AWS credential chain, since we got this exception "
+                    f"while trying to use AWS profile [{profile_name}]: {e}"
+                )
+                session = boto3.Session()
 
-    config = Config(retries={"max_attempts": max_attempts})
+            config = Config(retries={"max_attempts": max_attempts})
 
-    return session.client('s3', config=config)
+            S3_CLIENTS[profile_name] = session.client('s3', config=config)
+
+    return S3_CLIENTS[profile_name]
 
 
 def check_s3_path_exists(s3_path: str) -> bool:

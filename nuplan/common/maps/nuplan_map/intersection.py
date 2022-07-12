@@ -1,3 +1,5 @@
+from functools import cached_property
+
 from shapely.geometry import Polygon
 
 from nuplan.common.maps.abstract_map_objects import Intersection
@@ -20,7 +22,7 @@ class NuPlanIntersection(Intersection):
         self._intersection = get_row_with_value(self._intersections_df, "fid", intersection_id)
         super().__init__(intersection_id, IntersectionType.DEFAULT)  # GPKG does not support intersection types yet
 
-    @property
+    @cached_property
     def polygon(self) -> Polygon:
         """Inherited from superclass."""
         return self._intersection.geometry

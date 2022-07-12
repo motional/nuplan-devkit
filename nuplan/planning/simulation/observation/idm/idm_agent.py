@@ -199,7 +199,7 @@ class IDMAgent:
             self.get_progress_to_go()
             < self._minimum_path_length + self._policy.target_velocity * self._policy.headway_time
         ):
-            outgoing_edges = self.end_segment.outgoing_edges()
+            outgoing_edges = self.end_segment.outgoing_edges
             selected_outgoing_edges = []
 
             for edge in outgoing_edges:
@@ -214,14 +214,12 @@ class IDMAgent:
             if not selected_outgoing_edges:
                 break
             # Select edge with the lowest curvature (prefer going straight)
-            curvatures = [
-                abs(edge.baseline_path().get_curvature_at_arc_length(0.0)) for edge in selected_outgoing_edges
-            ]
+            curvatures = [abs(edge.baseline_path.get_curvature_at_arc_length(0.0)) for edge in selected_outgoing_edges]
             idx = np.argmin(curvatures)
             new_segment = selected_outgoing_edges[idx]
 
             self._route.append(new_segment)
-            self._path = create_path_from_se2(self.get_path_to_go() + new_segment.baseline_path().discrete_path())
+            self._path = create_path_from_se2(self.get_path_to_go() + new_segment.baseline_path.discrete_path)
             self._state.progress = 0
 
     def _get_agent_at_progress(
@@ -288,7 +286,7 @@ class IDMAgent:
         """
         blp: List[StateSE2] = []
         for segment in self._route:
-            blp.extend(segment.baseline_path().discrete_path())
+            blp.extend(segment.baseline_path.discrete_path)
         return create_path_from_se2(blp)
 
     def _velocity_to_global_frame(self, heading: float) -> StateVector2D:

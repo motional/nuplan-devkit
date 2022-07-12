@@ -10,21 +10,7 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap, MapObject
 from nuplan.common.maps.abstract_map_objects import Lane, LaneConnector, RoadBlockGraphEdgeMapObject
-from nuplan.common.maps.maps_datatypes import (
-    LaneOnRouteStatusData,
-    LaneSegmentConnections,
-    LaneSegmentCoords,
-    LaneSegmentGroupings,
-    LaneSegmentLaneIDs,
-    LaneSegmentRoadBlockIDs,
-    LaneSegmentTrafficLightData,
-    OnRouteStatusType,
-    RasterLayer,
-    SemanticMapLayer,
-    TrafficLightStatusData,
-    TrafficLightStatusType,
-    VectorLayer,
-)
+from nuplan.common.maps.maps_datatypes import RasterLayer, SemanticMapLayer, VectorLayer
 from nuplan.database.maps_db.layer import MapLayer
 
 
@@ -37,15 +23,7 @@ def raster_layer_from_map_layer(map_layer: MapLayer) -> RasterLayer:
     return RasterLayer(map_layer.data, map_layer.precision, map_layer.transform_matrix)
 
 
-def lane_segment_coords_from_lane_segment_vector(coords: List[List[List[float]]]) -> LaneSegmentCoords:
-    """
-    Convert lane segment coords [N, 2, 2] to nuPlan LaneSegmentCoords.
-    :param coords: lane segment coordinates in vector form.
-    :return: lane segment coordinates as LaneSegmentCoords.
-    """
-    return LaneSegmentCoords([(Point2D(start[0], start[1]), Point2D(end[0], end[1])) for start, end in coords])
-
-
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def split_blp_lane_segments(nodes: List[StateSE2], lane_seg_num: int) -> List[List[List[float]]]:
     """
     Split baseline path points into series of lane segment coordinate vectors.
@@ -64,6 +42,7 @@ def split_blp_lane_segments(nodes: List[StateSE2], lane_seg_num: int) -> List[Li
     return obj_coords
 
 
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[Tuple[int, int]]:
     """
     Add connection info for neighboring segments in baseline path.
@@ -79,6 +58,7 @@ def connect_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> Lis
     return obj_conns
 
 
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def group_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[List[int]]:
     """
     Collect lane segment indices across lane/lane connector baseline path.
@@ -94,6 +74,7 @@ def group_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[
     return [obj_grouping]
 
 
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def build_lane_segments_from_blps(
     map_obj: MapObject, start_lane_seg_idx: int
 ) -> Tuple[List[List[List[float]]], List[Tuple[int, int]], List[List[int]], List[str], List[str], Tuple[int, int]]:
@@ -113,7 +94,7 @@ def build_lane_segments_from_blps(
     """
     map_obj_id = map_obj.id
     roadblock_id = map_obj.get_roadblock_id()
-    nodes = map_obj.baseline_path().discrete_path()
+    nodes = map_obj.baseline_path.discrete_path
     lane_seg_num = len(nodes) - 1
     end_lane_seg_idx = start_lane_seg_idx + lane_seg_num - 1
 
@@ -130,6 +111,7 @@ def build_lane_segments_from_blps(
     return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
 
 
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_lane_conn_predecessor(
     lane_conn: LaneConnector, cross_blp_conns: Dict[str, Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -143,8 +125,7 @@ def connect_lane_conn_predecessor(
     """
     lane_seg_pred_conns: List[Tuple[int, int]] = []
     lane_conn_start_seg_idx, lane_conn_end_seg_idx = cross_blp_conns[lane_conn.id]
-    incoming_edges = lane_conn.incoming_edges()
-    incoming_lanes = [incoming_edge for incoming_edge in incoming_edges if isinstance(incoming_edge, Lane)]
+    incoming_lanes = [incoming_edge for incoming_edge in lane_conn.incoming_edges if isinstance(incoming_edge, Lane)]
 
     for incoming_lane in incoming_lanes:
         lane_id = incoming_lane.id
@@ -157,6 +138,7 @@ def connect_lane_conn_predecessor(
     return lane_seg_pred_conns
 
 
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_lane_conn_successor(
     lane_conn: LaneConnector, cross_blp_conns: Dict[str, Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -170,8 +152,7 @@ def connect_lane_conn_successor(
     """
     lane_seg_suc_conns: List[Tuple[int, int]] = []
     lane_conn_start_seg_idx, lane_conn_end_seg_idx = cross_blp_conns[lane_conn.id]
-    outgoing_edges = lane_conn.outgoing_edges()
-    outgoing_lanes = [outgoing_edge for outgoing_edge in outgoing_edges if isinstance(outgoing_edge, Lane)]
+    outgoing_lanes = [outgoing_edge for outgoing_edge in lane_conn.outgoing_edges if isinstance(outgoing_edge, Lane)]
 
     for outgoing_lane in outgoing_lanes:
         lane_id = outgoing_lane.id
@@ -184,68 +165,14 @@ def connect_lane_conn_successor(
     return lane_seg_suc_conns
 
 
-def get_neighbor_vector_map(
-    map_api: AbstractMap, point: Point2D, radius: float
-) -> Tuple[
-    LaneSegmentCoords, LaneSegmentConnections, LaneSegmentGroupings, LaneSegmentLaneIDs, LaneSegmentRoadBlockIDs
-]:
+def extract_polygon_from_map_object(map_object: MapObject) -> List[Point2D]:
     """
-    Extract neighbor vector map information around ego vehicle.
-    :param map_api: map to perform extraction on.
-    :param point: [m] x, y coordinates in global frame.
-    :param radius [m] floating number about vector map query range.
-    :return
-        lane_seg_coords: lane_segment coords in shape of [num_lane_segment, 2, 2].
-        lane_seg_conns: lane_segment connections [start_idx, end_idx] in shape of [num_connection, 2].
-        lane_seg_groupings: collection of lane_segment indices in each lane in shape of
-            [num_lane, num_lane_segment_in_lane].
-        lane_seg_lane_ids: lane ids of segments at given index in coords in shape of [num_lane_segment 1].
-        lane_seg_roadblock_ids: roadblock ids of segments at given index in coords in shape of [num_lane_segment 1].
+    Extract polygon from map object.
+    :param map_object: input MapObject.
+    :return: polygon as list of Point2D.
     """
-    lane_seg_coords: List[List[List[float]]] = []  # shape: [num_lane_segment, 2, 2]
-    lane_seg_conns: List[Tuple[int, int]] = []  # shape: [num_connection, 2]
-    lane_seg_groupings: List[List[int]] = []  # shape: [num_lanes]
-    lane_seg_lane_ids: List[str] = []  # shape: [num_lane_segment]
-    lane_seg_roadblock_ids: List[str] = []  # shape: [num_lane_segment]
-    cross_blp_conns: Dict[str, Tuple[int, int]] = dict()
-
-    layer_names = [SemanticMapLayer.LANE, SemanticMapLayer.LANE_CONNECTOR]
-    nearest_vector_map = map_api.get_proximal_map_objects(point, radius, layer_names)
-
-    # create lane segment vectors from baseline paths
-    for layer_name in layer_names:
-
-        for map_obj in nearest_vector_map[layer_name]:
-            # current number of coords needed for indexing lane segments
-            start_lane_seg_idx = len(lane_seg_coords)
-            # update lane segment info with info for given lane/lane connector
-            (
-                obj_coords,
-                obj_conns,
-                obj_groupings,
-                obj_lane_ids,
-                obj_roadblock_ids,
-                obj_cross_blp_conn,
-            ) = build_lane_segments_from_blps(map_obj, start_lane_seg_idx)
-            lane_seg_coords += obj_coords
-            lane_seg_conns += obj_conns
-            lane_seg_groupings += obj_groupings
-            lane_seg_lane_ids += obj_lane_ids
-            lane_seg_roadblock_ids += obj_roadblock_ids
-            cross_blp_conns[map_obj.id] = obj_cross_blp_conn
-
-    # create connections between adjoining lanes and lane connectors
-    for lane_conn in nearest_vector_map[SemanticMapLayer.LANE_CONNECTOR]:
-        lane_seg_conns += connect_lane_conn_predecessor(lane_conn, cross_blp_conns)
-        lane_seg_conns += connect_lane_conn_successor(lane_conn, cross_blp_conns)
-
-    return (
-        lane_segment_coords_from_lane_segment_vector(lane_seg_coords),
-        LaneSegmentConnections(lane_seg_conns),
-        LaneSegmentGroupings(lane_seg_groupings),
-        LaneSegmentLaneIDs(lane_seg_lane_ids),
-        LaneSegmentRoadBlockIDs(lane_seg_roadblock_ids),
-    )
+    x_coords, y_coords = map_object.polygon.exterior.coords.xy
+    return [Point2D(x, y) for x, y in zip(x_coords[:-1], y_coords[:-1])]  # ignore last point, same as the first
 
 
 def extract_roadblock_objects(map_api: AbstractMap, point: Point2D) -> List[RoadBlockGraphEdgeMapObject]:
@@ -265,6 +192,7 @@ def extract_roadblock_objects(map_api: AbstractMap, point: Point2D) -> List[Road
         return cast(List[RoadBlockGraphEdgeMapObject], roadblock_conns)
 
 
+# TODO: Update nuplan scenario to use route roadblock ids from db once available (@christopher.eriksen: PAC-2679)
 def get_roadblock_ids_from_trajectory(map_api: AbstractMap, ego_states: List[EgoState]) -> List[str]:
     """
     Extract ids of roadblocks and roadblock connectors containing points in specified trajectory.
@@ -285,7 +213,7 @@ def get_roadblock_ids_from_trajectory(map_api: AbstractMap, ego_states: List[Ego
 
         # if no candidates under consideration, use graph search from last element in route to find next candidates
         if last_roadblock and not roadblock_candidates:
-            roadblock_candidates = last_roadblock.outgoing_edges()
+            roadblock_candidates = last_roadblock.outgoing_edges
 
         # refine candidates if existing to those containing current point
         roadblock_candidates = [roadblock for roadblock in roadblock_candidates if roadblock.contains_point(point)]
@@ -305,76 +233,6 @@ def get_roadblock_ids_from_trajectory(map_api: AbstractMap, ego_states: List[Ego
                 roadblock_candidates = roadblock_objects
 
     return roadblock_ids
-
-
-def get_on_route_status(
-    route_roadblock_ids: List[str], roadblock_ids: LaneSegmentRoadBlockIDs
-) -> LaneOnRouteStatusData:
-    """
-    Identify whether given lane segments lie within goal route.
-    :param route_roadblock_ids: List of ids of roadblocks (lane groups) within goal route.
-    :param roadblock_ids: Roadblock ids (lane group associations) pertaining to associated lane segments.
-    :return on_route_status: binary encoding of on route status for each input roadblock id.
-    """
-    if route_roadblock_ids:
-
-        # initialize on route status as OFF_ROUTE
-        on_route_status = np.full(
-            (len(roadblock_ids.roadblock_ids), len(OnRouteStatusType) - 1),
-            LaneOnRouteStatusData.encode(OnRouteStatusType.OFF_ROUTE),
-        )
-
-        # Get indices of the segments that lie on the route
-        on_route_indices = np.arange(on_route_status.shape[0])[
-            np.in1d(roadblock_ids.roadblock_ids, route_roadblock_ids)
-        ]
-
-        #  Set segments on route to ON_ROUTE
-        on_route_status[on_route_indices] = LaneOnRouteStatusData.encode(OnRouteStatusType.ON_ROUTE)
-
-    else:
-        # set on route status to UNKNOWN if no route available
-        on_route_status = np.full(
-            (len(roadblock_ids.roadblock_ids), len(OnRouteStatusType) - 1),
-            LaneOnRouteStatusData.encode(OnRouteStatusType.UNKNOWN),
-        )
-
-    return LaneOnRouteStatusData(list(map(tuple, on_route_status)))
-
-
-def get_traffic_light_encoding(
-    lane_seg_ids: LaneSegmentLaneIDs, traffic_light_data: List[TrafficLightStatusData]
-) -> LaneSegmentTrafficLightData:
-    """
-    Encode the lane segments with traffic light data.
-    :param lane_seg_ids: The lane_segment ids [num_lane_segment].
-    :param traffic_light_data: A list of all available data at the current time step.
-    :returns: Encoded traffic light data per segment.
-    """
-    # Initialize with all segment labels with UNKNOWN status
-    traffic_light_encoding = np.full(
-        (len(lane_seg_ids.lane_ids), len(TrafficLightStatusType)),
-        LaneSegmentTrafficLightData.encode(TrafficLightStatusType.UNKNOWN),
-    )
-
-    # Extract ids of red and green lane connectors
-    green_lane_connectors = [
-        str(data.lane_connector_id) for data in traffic_light_data if data.status == TrafficLightStatusType.GREEN
-    ]
-    red_lane_connectors = [
-        str(data.lane_connector_id) for data in traffic_light_data if data.status == TrafficLightStatusType.RED
-    ]
-
-    # Assign segments with corresponding traffic light status
-    for tl_id in green_lane_connectors:
-        indices = np.argwhere(np.array(lane_seg_ids.lane_ids) == tl_id)
-        traffic_light_encoding[indices] = LaneSegmentTrafficLightData.encode(TrafficLightStatusType.GREEN)
-
-    for tl_id in red_lane_connectors:
-        indices = np.argwhere(np.array(lane_seg_ids.lane_ids) == tl_id)
-        traffic_light_encoding[indices] = LaneSegmentTrafficLightData.encode(TrafficLightStatusType.RED)
-
-    return LaneSegmentTrafficLightData(list(map(tuple, traffic_light_encoding)))
 
 
 def is_in_type(x: float, y: float, vector_layer: VectorLayer) -> bool:
@@ -425,14 +283,14 @@ def get_row_with_value(elements: gpd.geodataframe.GeoDataFrame, column_label: st
     return matching_rows.iloc[0]
 
 
-def compute_baseline_path_heading(baseline_path: geom.linestring.LineString) -> List[float]:
+def compute_linestring_heading(linestring: geom.linestring.LineString) -> List[float]:
     """
     Compute the heading of each coordinate to its successor coordinate. The last coordinate will have the same heading
         as the second last coordinate.
-    :param baseline_path: baseline path as a shapely LineString.
+    :param linestring: linestring as a shapely LineString.
     :return: a list of headings associated to each starting coordinate.
     """
-    coords: npt.NDArray[np.float64] = np.asarray(baseline_path.coords)
+    coords: npt.NDArray[np.float64] = np.asarray(linestring.coords)
     vectors = np.diff(coords, axis=0)
     angles = np.arctan2(vectors.T[1], vectors.T[0])
     angles = np.append(angles, angles[-1])  # pad end with duplicate heading
@@ -474,16 +332,16 @@ def compute_curvature(point1: geom.Point, point2: geom.Point, point3: geom.Point
     return float(position * curvature)
 
 
-def extract_discrete_baseline(baseline_path: geom.LineString) -> List[StateSE2]:
+def extract_discrete_polyline(polyline: geom.LineString) -> List[StateSE2]:
     """
-    Returns a discretized baseline composed of StateSE2 as nodes.
-    :param baseline_path: the baseline of interest.
-    :returns: baseline path as a list of waypoints represented by StateSE2.
+    Returns a discretized polyline composed of StateSE2 as nodes.
+    :param polyline: the polyline of interest.
+    :returns: linestring as a list of waypoints represented by StateSE2.
     """
-    assert baseline_path.length > 0.0, "The length of the path has to be greater than 0!"
+    assert polyline.length > 0.0, "The length of the polyline has to be greater than 0!"
 
-    headings = compute_baseline_path_heading(baseline_path)
-    x_coords, y_coords = baseline_path.coords.xy
+    headings = compute_linestring_heading(polyline)
+    x_coords, y_coords = polyline.coords.xy
 
     return [StateSE2(x, y, heading) for x, y, heading in zip(x_coords, y_coords, headings)]
 

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from nuplan.common.actor_state.ego_state import DynamicCarState, EgoState
-from nuplan.common.actor_state.state_representation import StateVector2D
+from nuplan.common.actor_state.state_representation import StateVector2D, TimePoint
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.simulation.controller.motion_model.kinematic_bicycle import KinematicBicycleModel
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Observation
@@ -34,8 +34,8 @@ class SimplePlanner(AbstractPlanner):
         :param max_velocity: [m/s] ego max velocity.
         :param steering_angle: [rad] ego steering angle.
         """
-        self.horizon_seconds = horizon_seconds
-        self.sampling_time = sampling_time
+        self.horizon_seconds = TimePoint(int(horizon_seconds * 1e6))
+        self.sampling_time = TimePoint(int(sampling_time * 1e6))
         self.acceleration = StateVector2D(acceleration[0], acceleration[1])
         self.max_velocity = max_velocity
         self.steering_angle = steering_angle
@@ -77,9 +77,9 @@ class SimplePlanner(AbstractPlanner):
         )
         trajectory: List[EgoState] = [state]
         for _ in np.arange(
-            iteration.time_us + self.sampling_time * 1e6,
-            iteration.time_us + self.horizon_seconds * 1e6,
-            self.sampling_time * 1e6,
+            iteration.time_us + self.sampling_time.time_us,
+            iteration.time_us + self.horizon_seconds.time_us,
+            self.sampling_time.time_us,
         ):
             if state.dynamic_car_state.speed > self.max_velocity:
                 accel = self.max_velocity - state.dynamic_car_state.speed
@@ -95,7 +95,7 @@ class SimplePlanner(AbstractPlanner):
                     angular_accel=state.dynamic_car_state.angular_acceleration,
                 )
 
-            state = self.motion_model.propagate_state(state, self.sampling_time)
+            state = self.motion_model.propagate_state(state, state.dynamic_car_state, self.sampling_time)
             trajectory.append(state)
 
         return [InterpolatedTrajectory(trajectory)]

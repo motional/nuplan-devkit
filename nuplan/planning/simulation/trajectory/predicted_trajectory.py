@@ -17,10 +17,24 @@ class PredictedTrajectory:
     # List of predicted waypoints, if None, we appended the predictions to have desired length
     waypoints: List[Optional[Waypoint]]
 
+    @property
+    def valid_waypoints(self) -> List[Waypoint]:
+        """
+        Interface to get only valid waypoints
+        :return: waypoints which are not None
+        """
+        return [w for w in self.waypoints if w]
+
     @cached_property
     def trajectory(self) -> AbstractTrajectory:
         """
         Interface to compute trajectory from waypoints
         :return: trajectory from waypoints
         """
-        return InterpolatedTrajectory([w for w in self.waypoints if w])
+        return InterpolatedTrajectory(self.valid_waypoints)
+
+    def __len__(self) -> int:
+        """
+        :return: number of waypoints in trajectory
+        """
+        return len(self.waypoints)
