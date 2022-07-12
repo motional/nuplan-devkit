@@ -12,6 +12,7 @@ from nuplan.planning.script.builders.scenario_building_builder import build_scen
 from nuplan.planning.script.builders.utils.utils_config import update_config_for_nuboard
 from nuplan.planning.script.utils import set_default_path
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # If set, use the env. variable to overwrite the default dataset and experiment paths

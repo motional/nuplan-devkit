@@ -53,18 +53,12 @@ class TwoStageController(AbstractEgoController):
         trajectory: AbstractTrajectory,
     ) -> None:
         """Inherited, see superclass."""
-        sampling_time = next_iteration.time_point.time_s - current_iteration.time_point.time_s
+        sampling_time = next_iteration.time_point - current_iteration.time_point
 
         # Compute the dynamic state to propagate the model
         dynamic_state = self._tracker.track_trajectory(current_iteration, next_iteration, ego_state, trajectory)
 
-        propagating_state = EgoState(
-            car_footprint=ego_state.car_footprint,
-            dynamic_car_state=dynamic_state,
-            tire_steering_angle=ego_state.tire_steering_angle,
-            is_in_auto_mode=True,
-            time_point=ego_state.time_point,
-        )
-
         # Propagate ego state using the motion model
-        self._current_state = self._motion_model.propagate_state(propagating_state, sampling_time)
+        self._current_state = self._motion_model.propagate_state(
+            state=ego_state, ideal_dynamic_state=dynamic_state, sampling_time=sampling_time
+        )

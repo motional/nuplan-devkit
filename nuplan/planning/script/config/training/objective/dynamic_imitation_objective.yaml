@@ -1,0 +1,20 @@
+
+imitation_objective:
+  _target_: nuplan.planning.training.modeling.objectives.dynamic_imitation_objective.DynamicImitationObjective
+  _convert_: 'all'
+
+  overall_weight: 1.0
+  x_position_weight: 1.0
+  y_position_weight: 1.0
+  heading_weight: 1.0
+  longitudinal_velocity_weight: 1.0
+  lateral_velocity_weight: 1.0
+  angular_velocity_weight: 1.0
+  longitudinal_acceleration_weight: 1.0
+  lateral_acceleration_weight: 1.0
+  angular_acceleration_weight: 1.0
+  steering_angle_weight: 1.0
+  steering_rate_weight: 1.0
+  loss_function:
+    _target_: torch.nn.modules.loss.L1Loss
+    reduction: mean

@@ -24,6 +24,7 @@ class TestTrainRasterModel(SkeletonTestTrain):
                     'py_func=train',
                     '+training=training_raster_model',
                     'scenario_builder=nuplan_mini',
+                    'scenario_filter.limit_total_scenarios=16',
                     'splitter=nuplan',
                     'model.model_name=resnet18',
                     'model.pretrained=false',

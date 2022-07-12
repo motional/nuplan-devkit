@@ -43,7 +43,7 @@ class DistanceToBaselineStatistics(MetricBase):
             if len(route_obj) == 0:
                 distances.append(np.inf)
                 continue
-            baseline_paths = [one_route_obj.baseline_path() for one_route_obj in route_obj]
+            baseline_paths = [one_route_obj.baseline_path for one_route_obj in route_obj]
             dist_to_route = min(
                 baseline_path.linestring.distance(Point(pose.x, pose.y)) for baseline_path in baseline_paths
             )

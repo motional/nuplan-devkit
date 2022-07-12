@@ -27,3 +27,13 @@ py_test(
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )
+
+py_test(
+    name = "test_utils",
+    size = "small",
+    srcs = ["test_utils.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/planning/simulation/controller:utils",
+    ],
+)

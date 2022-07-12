@@ -1,0 +1,11 @@
+ego_at_fault_collisions_with_bicycles_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_at_fault_collisions_with_bicycles.EgoAtFaultCollisionBicycleStatistics
+  _convert_: 'all'
+  name: 'ego_at_fault_collisions_with_bicycles_statistics'
+  category: 'Dynamics'
+
+  max_violation_threshold: 0
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    ego_at_fault_collisions_metric: ego_at_fault_collisions_statistics

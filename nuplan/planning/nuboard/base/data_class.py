@@ -37,10 +37,11 @@ class NuBoardFile:
     """Data class to save nuBoard file info."""
 
     simulation_main_path: str  # Simulation main path
-    simulation_folder: str  # Simulation folder
     metric_main_path: str  # Metric main path
     metric_folder: str  # Metric folder
     aggregator_metric_folder: str  # Aggregated metric folder
+
+    simulation_folder: Optional[str] = None  # Simulation folder, or None if the SimulationLog wasn't serialized
     current_path: Optional[pathlib.Path] = None  # Current path of the nuboard file
 
     @classmethod
@@ -90,13 +91,17 @@ class NuBoardFile:
         Serialization of NuBoardFile data class to dictionary.
         :return A serialized dictionary class.
         """
-        return {
+        as_dict = {
             "simulation_main_path": self.simulation_main_path,
-            "simulation_folder": self.simulation_folder,
             "metric_main_path": self.metric_main_path,
             "metric_folder": self.metric_folder,
             "aggregator_metric_folder": self.aggregator_metric_folder,
         }
+
+        if self.simulation_folder is not None:
+            as_dict["simulation_folder"] = self.simulation_folder
+
+        return as_dict
 
     @classmethod
     def deserialize(cls, data: Dict[str, str]) -> NuBoardFile:
@@ -109,7 +114,7 @@ class NuBoardFile:
         metric_main_path = data["metric_main_path"].replace("//", "/")
         return NuBoardFile(
             simulation_main_path=simulation_main_path,
-            simulation_folder=data["simulation_folder"],
+            simulation_folder=data.get("simulation_folder", None),
             metric_main_path=metric_main_path,
             metric_folder=data["metric_folder"],
             aggregator_metric_folder=data["aggregator_metric_folder"],

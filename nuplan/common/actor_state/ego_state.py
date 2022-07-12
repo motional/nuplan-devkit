@@ -10,6 +10,7 @@ from nuplan.common.actor_state.scene_object import SceneObjectMetadata
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
+from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.common.utils.interpolatable_state import InterpolatableState
 from nuplan.common.utils.split_state import SplitState
 
@@ -37,6 +38,17 @@ class EgoState(InterpolatableState):
         self._is_in_auto_mode = is_in_auto_mode
         self._time_point = time_point
         self._dynamic_car_state = dynamic_car_state
+
+    @cached_property
+    def waypoint(self) -> Waypoint:
+        """
+        :return: waypoint corresponding to this ego state
+        """
+        return Waypoint(
+            time_point=self.time_point,
+            oriented_box=self.car_footprint,
+            velocity=self.dynamic_car_state.rear_axle_velocity_2d,
+        )
 
     @staticmethod
     def deserialize(vector: List[Union[int, float]], vehicle: VehicleParameters) -> EgoState:
@@ -178,6 +190,13 @@ class EgoState(InterpolatableState):
         """
         return self._dynamic_car_state
 
+    @property
+    def scene_object_metadata(self) -> SceneObjectMetadata:
+        """
+        :return: create scene object metadata
+        """
+        return SceneObjectMetadata(token='ego', track_token="ego", track_id=-1, timestamp_us=self.time_us)
+
     @cached_property
     def agent(self) -> Agent:
         """
@@ -185,7 +204,7 @@ class EgoState(InterpolatableState):
         :return: An Agent object with the parameters of EgoState
         """
         return Agent(
-            metadata=SceneObjectMetadata(token='ego', track_token="ego", track_id=-1, timestamp_us=self.time_us),
+            metadata=self.scene_object_metadata,
             tracked_object_type=TrackedObjectType.EGO,
             oriented_box=self.car_footprint.oriented_box,
             velocity=self.dynamic_car_state.center_velocity_2d,
@@ -203,6 +222,7 @@ class EgoState(InterpolatableState):
         is_in_auto_mode: bool = True,
         angular_vel: float = 0.0,
         angular_accel: float = 0.0,
+        tire_steering_rate: float = 0.0,
     ) -> EgoState:
         """
         Initializer using raw parameters, assumes that the reference frame is CAR_POINT.REAR_AXLE
@@ -215,6 +235,7 @@ class EgoState(InterpolatableState):
         :param is_in_auto_mode: True if ego is in auto mode, false otherwise
         :param time_point: Timestamp of the ego state
         :param vehicle_parameters: Vehicle parameters
+        :param tire_steering_rate: Steering rate of tires [rad/s]
         :return: The initialized EgoState
         """
         car_footprint = CarFootprint.build_from_rear_axle(
@@ -226,6 +247,7 @@ class EgoState(InterpolatableState):
             rear_axle_acceleration_2d=rear_axle_acceleration_2d,
             angular_velocity=angular_vel,
             angular_acceleration=angular_accel,
+            tire_steering_rate=tire_steering_rate,
         )
 
         return cls(

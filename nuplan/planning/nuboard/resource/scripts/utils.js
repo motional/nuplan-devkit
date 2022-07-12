@@ -35,13 +35,26 @@ function toggleNav() {
 }
 
 function toggleTimeSeriesMetrics() {
-   const scenario_table_timeseries_row = document.getElementsByClassName("scenario-table-timeseries-row")[0];
-   const scenario_table_timeseries_svg_path = document.getElementById("scenario-table-timeseries-svg-path");
+   const scenario_table_timeseries_row = document.getElementsByClassName("scenario-table-time-series-row")[0];
+   const scenario_table_timeseries_svg_path = document.getElementById("scenario-table-time-series-svg-path");
    if (scenario_table_timeseries_row.style.display == "none" || scenario_table_timeseries_row.style.display == "") {
-        scenario_table_timeseries_row.style.display = "table-row";
+        scenario_table_timeseries_row.style.display = "block";
         scenario_table_timeseries_svg_path.setAttribute("d", "M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z");
    } else {
         scenario_table_timeseries_row.style.display = "none";
         scenario_table_timeseries_svg_path.setAttribute("d", "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z");
+   }
+}
+
+function toggleScenarioScore() {
+   const scenario_table_scenario_score_row = document.getElementsByClassName("scenario-table-scenario-score-row")[0];
+   const scenario_table_scenario_score_svg_path = document.getElementById("scenario-table-scenario-score-svg-path");
+   if (scenario_table_scenario_score_row.style.display == "none" ||
+   scenario_table_scenario_score_row.style.display == "") {
+        scenario_table_scenario_score_row.style.display = "block";
+        scenario_table_scenario_score_svg_path.setAttribute("d", "M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z");
+   } else {
+        scenario_table_scenario_score_row.style.display = "none";
+        scenario_table_scenario_score_svg_path.setAttribute("d", "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z");
    }
 }

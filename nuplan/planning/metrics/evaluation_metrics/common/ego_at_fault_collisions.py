@@ -1,29 +1,19 @@
+from collections import defaultdict
 from dataclasses import dataclass
-from enum import IntEnum
 from typing import Dict, List, Set, Tuple
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.oriented_box import in_collision
 from nuplan.common.actor_state.tracked_objects import TrackedObject
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
-from nuplan.planning.metrics.evaluation_metrics.base.violation_metric_base import ViolationMetricBase
+from nuplan.planning.metrics.evaluation_metrics.base.metric_base import MetricBase
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
-from nuplan.planning.metrics.metric_result import MetricStatistics, MetricViolation
-from nuplan.planning.metrics.utils.state_extractors import ego_delta_v_collision
+from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic
+from nuplan.planning.metrics.utils.collision_utils import AtFaultCollision, CollisionType, ego_delta_v_collision
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 from nuplan.planning.simulation.observation.idm.utils import is_agent_ahead, is_agent_behind, is_track_stopped
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
-
-
-class CollisionType(IntEnum):
-    """Enum for the types of collisions of interest."""
-
-    STOPPED_EGO_COLLISION = 0
-    STOPPED_TRACK_COLLISION = 1
-    ACTIVE_FRONT_COLLISION = 2
-    ACTIVE_REAR_COLLISION = 3
-    ACTIVE_LATERAL_COLLISION = 4
 
 
 @dataclass
@@ -43,7 +33,7 @@ class Collisions:
     Class to retain information about the collisions at a particular timestamp.
     """
 
-    timestamp: float  # The timestamp at time of collision
+    timestamp: int  # The timestamp at time of collision
     # Contains the ids of the tracks in collision and their mapped collision data
     collisions_id_data: Dict[str, CollisionData]
 
@@ -116,81 +106,75 @@ def _find_new_collisions(
     return collided_track_ids, collisions_id_data
 
 
-def _compute_violations(
-    timestamp: int,
-    collisions_id_data: Dict[str, CollisionData],
+def _classify_at_fault_collisions(
+    all_collisions: List[Collisions],
     timestamps_in_common_or_connected_route_objs: List[int],
-    metric_name: str,
-    metric_category: str,
-) -> List[MetricViolation]:
+) -> Dict[TrackedObjectType, List[AtFaultCollision]]:
     """
-    Computes the violation metric for collisions at current timestamp.
+    Returns a dictionary of track types and AtFaultCollision classes.
 
-    We consider the violation metric only for some specific collisions that could have been prevented if planner
+    We consider at_fault_collisions as collisions that could have been prevented if planner
     performed differently. For simplicity we call these collisions at fault although the proposed classification is
     not complete and there are more cases to be considered.
 
-    :param timestamp: The current timestamp
-    :param collisions_id_data: Dict of collision tracks and their CollisionData at current timestamp
+    :param all_collisions: List of all collisions in the history.
     :param timestamps_in_common_or_connected_route_objs: List of timestamps where ego is in same or connected
     lanes/lane connectors
-    :param metric_name: Metric name
-    :param metric_category: Metric category
-    :return: List of violations at the current timestamp.
+    :return: A dict of at fault collisions and their track types.
     """
-    violations: List[MetricViolation] = []
-    ego_in_multiple_lanes = timestamp not in timestamps_in_common_or_connected_route_objs
+    at_fault_collisions: Dict[TrackedObjectType, List[AtFaultCollision]] = defaultdict(lambda: [])
 
-    for _id, collisions_data in collisions_id_data.items():
-        # Include front collisions and collisions with stopped track in violation metric
-        collisions_at_stopped_track_or_active_front = collisions_data.collision_type in [
-            CollisionType.ACTIVE_FRONT_COLLISION,
-            CollisionType.STOPPED_TRACK_COLLISION,
-        ]
+    for collision in all_collisions:
+        timestamp = collision.timestamp
+        ego_in_multiple_lanes_or_nondrivable_area = timestamp not in timestamps_in_common_or_connected_route_objs
 
-        # Include lateral collisions if ego was in multiple lanes (e.g. during lane change) in violation metric
-        collision_at_lateral = collisions_data.collision_type == CollisionType.ACTIVE_LATERAL_COLLISION
+        for _id, collision_data in collision.collisions_id_data.items():
+            # Include front collisions and collisions with stopped track in violation metric
+            collisions_at_stopped_track_or_active_front = collision_data.collision_type in [
+                CollisionType.ACTIVE_FRONT_COLLISION,
+                CollisionType.STOPPED_TRACK_COLLISION,
+            ]
 
-        if collisions_at_stopped_track_or_active_front or (ego_in_multiple_lanes and collision_at_lateral):
+            # Include lateral collisions if ego was in multiple lanes (e.g. during lane change) in violation metric
+            collision_at_lateral = collision_data.collision_type == CollisionType.ACTIVE_LATERAL_COLLISION
 
-            violations.append(
-                MetricViolation(
-                    metric_computator=metric_name,
-                    name=metric_name,
-                    metric_category=metric_category,
-                    unit="meters per second",
-                    start_timestamp=timestamp,
-                    duration=1,
-                    extremum=collisions_data.collision_ego_delta_v,
-                    mean=collisions_data.collision_ego_delta_v,
+            if collisions_at_stopped_track_or_active_front or (
+                ego_in_multiple_lanes_or_nondrivable_area and collision_at_lateral
+            ):
+
+                at_fault_collisions[collision_data.tracked_object_type].append(
+                    AtFaultCollision(
+                        timestamp=timestamp,
+                        duration=1,
+                        collision_ego_delta_v=collision_data.collision_ego_delta_v,
+                        collision_type=collision_data.collision_type,
+                    )
                 )
-            )
-    return violations
+
+    return at_fault_collisions
 
 
-class EgoAtFaultCollisionStatistics(ViolationMetricBase):
+class EgoAtFaultCollisionStatistics(MetricBase):
     """
     Statistics on number and energy of collisions of ego.
     A collision is defined as the event of ego intersecting another bounding box. If the same collision lasts for
     multiple frames, it still counts as a single one and the first frame is evaluated for the violation metric.
     """
 
-    def __init__(
-        self, name: str, category: str, ego_lane_change_metric: EgoLaneChangeStatistics, max_violation_threshold: int
-    ) -> None:
+    def __init__(self, name: str, category: str, ego_lane_change_metric: EgoLaneChangeStatistics) -> None:
         """
         Initializes the EgoAtFaultCollisionStatistics class
         :param name: Metric name
         :param category: Metric category
         :param ego_lane_change_metric: Lane chang metric computed prior to calling the current metric
-        :param max_violation_threshold: Maximum threshold for the violation.
         """
-        super().__init__(name=name, category=category, max_violation_threshold=max_violation_threshold)
+        super().__init__(name=name, category=category)
 
         # Store results and all_collisions to re-use in high level metrics
         self.results: List[MetricStatistics] = []
         self.all_collisions: List[Collisions] = []
-        self.all_violations: List[MetricViolation] = []
+        self.all_at_fault_collisions: Dict[TrackedObjectType, List[AtFaultCollision]] = defaultdict(lambda: [])
+        self.timestamps_at_fault_collisions: List[int] = []
 
         # Initialize ego_lane_change_metric
         self._ego_lane_change_metric = ego_lane_change_metric
@@ -202,11 +186,14 @@ class EgoAtFaultCollisionStatistics(ViolationMetricBase):
         :param scenario: Scenario running this metric
         :return: the estimated collision energy and counts.
         """
+        # Load pre-calculated results from ego_lane_change metric
+        assert (
+            self._ego_lane_change_metric.results
+        ), "_ego_lane_change_metric metric must be run prior to calling {}".format(self.name)
         timestamps_in_common_or_connected_route_objs: List[
             int
         ] = self._ego_lane_change_metric.timestamps_in_common_or_connected_route_objs
 
-        all_violations: List[MetricViolation] = []
         all_collisions: List[Collisions] = []
         collided_track_ids: Set[str] = set()
 
@@ -217,24 +204,39 @@ class EgoAtFaultCollisionStatistics(ViolationMetricBase):
 
             collided_track_ids, collisions_id_data = _find_new_collisions(ego_state, observation, collided_track_ids)
 
-            # Update list of collisions and violations
+            # Update list of collisions
             if len(collisions_id_data):
                 all_collisions.append(Collisions(timestamp, collisions_id_data))
-                all_violations.extend(
-                    _compute_violations(
-                        timestamp,
-                        collisions_id_data,
-                        timestamps_in_common_or_connected_route_objs,
-                        self.name,
-                        self.category,
-                    )
-                )
 
-        violation_statistics = self.aggregate_metric_violations(all_violations, scenario=scenario)
+        # Create a dict of at_fault collisions based on their track types
+        all_at_fault_collisions = _classify_at_fault_collisions(
+            all_collisions, timestamps_in_common_or_connected_route_objs
+        )
+
+        number_of_at_fault_collisions = sum(
+            len(track_collisions) for track_collisions in all_at_fault_collisions.values()
+        )
+
+        timestamps_at_fault_collisions = [
+            collision.timestamp
+            for track_collisions in all_at_fault_collisions.values()
+            for collision in track_collisions
+        ]
+
+        statistics = {
+            MetricStatisticsType.COUNT: Statistic(
+                name=f'number_of_{self.name}',
+                unit='count',
+                value=number_of_at_fault_collisions,
+            ),
+        }
+
+        results = self._construct_metric_results(metric_statistics=statistics, time_series=None, scenario=scenario)
 
         # Save to re-use in high level metrics
-        self.results = violation_statistics
+        self.results = results
         self.all_collisions = all_collisions
-        self.all_violations = all_violations
+        self.all_at_fault_collisions = all_at_fault_collisions
+        self.timestamps_at_fault_collisions = timestamps_at_fault_collisions
 
-        return violation_statistics  # type: ignore
+        return results  # type: ignore

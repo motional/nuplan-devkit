@@ -19,7 +19,7 @@ class TestSimulationTile(unittest.TestCase):
         """Set up simulation tile with nuboard file."""
         self.tmp_dir = tempfile.TemporaryDirectory()
         vehicle_parameters = get_pacifica_parameters()
-        json_main_path = os.path.dirname(os.path.realpath(__file__))
+        simulation_main_path = os.path.dirname(os.path.realpath(__file__))
         nuboard_file = NuBoardFile(
             simulation_main_path=self.tmp_dir.name,
             metric_main_path=self.tmp_dir.name,
@@ -35,7 +35,7 @@ class TestSimulationTile(unittest.TestCase):
                 planner_name="SimplePlanner",
                 scenario_type="common",
                 scenario_name="test",
-                files=[Path(json_main_path) / "json/test_simulation_tile.json"],
+                files=[Path(simulation_main_path) / "simulation_log/test_simulation_log.msgpack.xz"],
             )
         ]
         doc = Document()
@@ -51,7 +51,9 @@ class TestSimulationTile(unittest.TestCase):
 
     def test_simulation_tile_layout(self) -> None:
         """Test layout design."""
-        layout = self.simulation_tile.render_simulation_tiles(selected_scenario_keys=self.scenario_keys)
+        layout = self.simulation_tile.render_simulation_tiles(
+            selected_scenario_keys=self.scenario_keys, figure_sizes=[550, 550]
+        )
         self.assertEqual(len(layout), 1)
 
     def tearDown(self) -> None:

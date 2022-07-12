@@ -4,7 +4,7 @@ from typing import Dict, List, Set
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.planning.metrics.evaluation_metrics.base.violation_metric_base import ViolationMetricBase
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricViolation
-from nuplan.planning.metrics.utils.state_extractors import ego_delta_v_collision
+from nuplan.planning.metrics.utils.collision_utils import ego_delta_v_collision
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks

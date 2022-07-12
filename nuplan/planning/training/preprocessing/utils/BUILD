@@ -12,7 +12,10 @@ py_library(
         "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+        "//nuplan/planning/training/preprocessing/features:agents",
         "//nuplan/planning/training/preprocessing/features:trajectory_utils",
+        "//nuplan/planning/training/preprocessing/utils:torch_geometry",
+        "//nuplan/planning/training/preprocessing/utils:torch_math",
     ],
 )
 
@@ -44,5 +47,19 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/training/preprocessing/features:trajectory",
+    ],
+)
+
+py_library(
+    name = "torch_math",
+    srcs = ["torch_math.py"],
+    deps = [
+    ],
+)
+
+py_library(
+    name = "torch_geometry",
+    srcs = ["torch_geometry.py"],
+    deps = [
     ],
 )

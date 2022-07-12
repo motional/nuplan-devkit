@@ -140,7 +140,7 @@ class IDMAgentManager:
         lane_connectors = [
             self._map_api.get_map_object(lc_id, SemanticMapLayer.LANE_CONNECTOR) for lc_id in lane_connector_ids
         ]
-        stop_lines = [stop_line for lc in lane_connectors if lc for stop_line in lc.get_stop_lines()]
+        stop_lines = [stop_line for lc in lane_connectors if lc for stop_line in lc.stop_lines]
         return stop_lines
 
     def _insert_stop_lines_into_occupancy_map(self, stop_lines: List[StopLine]) -> List[str]:

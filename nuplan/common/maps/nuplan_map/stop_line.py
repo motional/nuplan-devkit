@@ -1,3 +1,5 @@
+from functools import cached_property
+
 from shapely.geometry import Polygon
 
 from nuplan.common.maps.abstract_map_objects import StopLine
@@ -20,7 +22,7 @@ class NuPlanStopLine(StopLine):
         self._stop_line = get_row_with_value(self._stop_lines_df, "fid", stop_line_id)
         super().__init__(stop_line_id, self._stop_line["stop_polygon_type_fid"])
 
-    @property
+    @cached_property
     def polygon(self) -> Polygon:
         """Inherited from superclass."""
         return self._stop_line.geometry

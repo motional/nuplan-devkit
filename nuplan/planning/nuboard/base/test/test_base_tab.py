@@ -1,4 +1,3 @@
-import json
 import os
 import tempfile
 import unittest
@@ -14,6 +13,7 @@ from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.simulation.main_callback.metric_file_callback import MetricFileCallback
+from nuplan.planning.simulation.simulation_log import SimulationLog
 
 
 class TestBaseTab(unittest.TestCase):
@@ -35,16 +35,16 @@ class TestBaseTab(unittest.TestCase):
         :param scenario_type: Scenario type.
         :param scenario_name: Scenario name.
         """
-        json_file = Path(os.path.dirname(os.path.realpath(__file__))) / "json/test_simulation_tile.json"
-        with open(json_file, "r") as f:
-            simulation_data = json.load(f)
+        simulation_file = (
+            Path(os.path.dirname(os.path.realpath(__file__))) / "simulation_log/test_simulation_log.msgpack.xz"
+        )
+        simulation_data = SimulationLog.load_data(simulation_file)
 
         # Save to a tmp folder
         save_path = simulation_path / planner_name / scenario_type / log_name / scenario_name
         save_path.mkdir(parents=True, exist_ok=True)
-        save_file = save_path / "1.json"
-        with open(save_file, "w") as f:
-            json.dump(simulation_data, f)
+        simulation_data.file_path = save_path / "1.msgpack.xz"
+        simulation_data.save_to_file()
 
     def set_up_dummy_metric(
         self, metric_path: Path, log_name: str, planner_name: str, scenario_type: str, scenario_name: str
@@ -98,7 +98,9 @@ class TestBaseTab(unittest.TestCase):
         metric_engine.write_to_files(metric_files=metric_files)
 
         # Integrate to a metric file
-        metric_file_callback = MetricFileCallback(metric_save_path=str(metric_path))
+        metric_file_callback = MetricFileCallback(
+            metric_file_output_path=str(metric_path), scenario_metric_paths=[str(metric_path)]
+        )
         metric_file_callback.on_run_simulation_end()
 
     def setUp(self) -> None:

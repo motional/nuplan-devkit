@@ -20,7 +20,7 @@ class MockS3Store(BlobStore):
         """Inherited, see superclass."""
         return key in self.store
 
-    def put(self, key: str, value: BinaryIO) -> None:
+    def put(self, key: str, value: BinaryIO, ignore_if_client_error: bool = False) -> None:
         """Inherited, see superclass."""
         self.store[key] = value
 

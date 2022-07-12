@@ -24,9 +24,11 @@ py_library(
     deps = [
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/script/builders:model_builder",
-        "//nuplan/planning/script/builders:scenario_builder",
+        "//nuplan/planning/script/builders:scenario_building_builder",
+        "//nuplan/planning/script/builders:scenario_filter_builder",
         "//nuplan/planning/training/preprocessing:feature_preprocessor",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        "//nuplan/planning/utils/multithreading:worker_sequential",
         "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )

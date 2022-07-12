@@ -1,5 +1,5 @@
 import unittest
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 from unittest.mock import MagicMock, Mock
 
 import numpy as np
@@ -10,6 +10,7 @@ from nuplan.database.nuplan_db.frame import Frame
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
 from nuplan.database.nuplan_db.utils import (
     _get_past_future_sweep,
+    generate_multi_scale_connections,
     get_boxes,
     get_future_box_sequence,
     get_future_ego_trajectory,
@@ -26,6 +27,40 @@ from nuplan.database.tests.nuplan_db_test_utils import (
 )
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.pointclouds.lidar import LidarPointCloud
+
+
+class TestGenerateMultiScaleConnections(unittest.TestCase):
+    """
+    Test generation of multi-scale connections
+    """
+
+    def test_generate_multi_scale_connections(self) -> None:
+        """Test generate_multi_scale_connections()"""
+        connections = np.array(
+            [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [0, 3], [2, 4]], dtype=np.float64
+        )  # type: npt.NDArray[np.float64]
+        scales = [1, 2, 4]
+        expected_multi_scale_connections = {
+            1: connections,
+            2: np.array([[0, 2], [1, 3], [2, 4], [3, 5], [0, 4], [1, 4], [2, 5]]),
+            4: np.array([[0, 4], [0, 5], [1, 5]]),
+        }
+        multi_scale_connections = generate_multi_scale_connections(connections, scales)
+
+        def _convert_to_connection_set(connection_array: npt.NDArray[np.float64]) -> Set[Tuple[float, float]]:
+            """
+            Convert connections from array to set.
+
+            :param connection_array: <np.float: N, 2>. Connection in array format.
+            :return: Connection in set format.
+            """
+            return {(connection[0], connection[1]) for connection in connection_array}
+
+        self.assertEqual(multi_scale_connections.keys(), expected_multi_scale_connections.keys())
+        for key in multi_scale_connections:
+            connection_set = _convert_to_connection_set(multi_scale_connections[key])
+            expected_connection_set = _convert_to_connection_set(expected_multi_scale_connections[key])
+            self.assertEqual(connection_set, expected_connection_set)
 
 
 class TestGetBoxes(unittest.TestCase):
@@ -761,17 +796,17 @@ class TestLoadBoxes(unittest.TestCase):
         boxes = load_boxes_from_lidarpc(
             self.db,
             self.lidar_pc,
-            ['pedestrian', 'vehicle'],
+            ["pedestrian", "vehicle"],
             False,
             80.04,
             self.future_horizon_len_s,
             self.future_interval_s,
-            {'pedestrian': 0, 'vehicle': 1},
+            {"pedestrian": 0, "vehicle": 1},
         )
 
-        self.assertSetEqual({'pedestrian', 'vehicle'}, set(boxes.keys()))
-        self.assertEqual(len(boxes['pedestrian']), 70)
-        self.assertEqual(len(boxes['vehicle']), 29)
+        self.assertSetEqual({"pedestrian", "vehicle"}, set(boxes.keys()))
+        self.assertEqual(len(boxes["pedestrian"]), 70)
+        self.assertEqual(len(boxes["vehicle"]), 29)
 
 
 class TestGetFutureEgoTrajectory(unittest.TestCase):
@@ -829,5 +864,5 @@ class TestRenderOnMap(unittest.TestCase):
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

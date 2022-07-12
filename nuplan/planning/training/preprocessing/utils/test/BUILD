@@ -13,3 +13,21 @@ py_test(
         "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
     ],
 )
+
+py_test(
+    name = "test_torch_math",
+    size = "small",
+    srcs = ["test_torch_math.py"],
+    deps = [
+        "//nuplan/planning/training/preprocessing/utils:torch_math",
+    ],
+)
+
+py_test(
+    name = "test_torch_geometry",
+    size = "small",
+    srcs = ["test_torch_geometry.py"],
+    deps = [
+        "//nuplan/planning/training/preprocessing/utils:torch_geometry",
+    ],
+)

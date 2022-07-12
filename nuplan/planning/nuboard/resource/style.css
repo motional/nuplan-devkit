@@ -231,7 +231,7 @@ body {
 
 .histogram-default-div {
   width: 80% !important;
-  font-size: 14px !important;
+  font-size: 1.2em !important;
 }
 
 .histogram-plots {
@@ -243,52 +243,76 @@ body {
 }
 
 .scenario-plot-section {
-  background: #fff;
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #f0f0f0;
-  height: 90%;
+  height: 95%
 }
 
-.scenario-plot-section th {
+.scenario-plot-section .row {
   padding: 10px 24px;
   border-bottom: 1px solid #f0f0f0;
   text-align: left;
   background: #fafafa;
-  height: 5%;
+  height: 40px;
+  background: #fff;
+  font-size: 1.1em;
 }
 
-.scenario-plot-section .planner-search-row td {
+.scenario-plot-section .planner-search-row {
   text-align: right;
   padding: 5px 24px;
-  height: 5%;
+  height: 40px;
+  background: #fff;
 }
 
-.scenario-simulation-default-div {
+.scenario-default-div {
   width: 80% !important;
-  font-size: 14px !important;
-
+  font-size: 1.2em !important;
 }
 
-.scenario-time-series-default-div {
-  width: 80% !important;
-  font-size: 14px !important;
+.scenario-plot-section .scenario-table-simulation-row {
+  height: 60%;
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+  min-height: 650px;
 }
 
 .scenario-plot-section .scenario-table-simulation-row .bk-root {
   height: 100%;
+  background: #fff;
 }
 
-.scenario-plot-section .scenario-table-simulation-row td {
+.scenario-plot-section .scenario-table-scenario-score-row {
+  height: 10%;
+  background: #fff;
+  min-height: 400px;
+  display: none;
+}
+
+.scenario-plot-section .scenario-table-scenario-score-row .bk-root {
+  padding-top: 24px;
+  height: 100%;
+}
+
+.scenario-plot-section .scenario-table-time-series-row {
+  height: 20%;
+  background: #fff;
+  display: none;
+  min-height: 400px;
   border-bottom: 1px solid rgba(191, 191, 191, 0.6);
 }
 
-.scenario-plot-section .scenario-table-timeseries-row {
-  display: none;
-  height: 30%;
-}
-.scenario-plot-section .scenario-table-timeseries-row .bk-root {
+.scenario-plot-section .scenario-table-time-series-row .bk-root {
+  padding-top: 24px;
   height: 100%;
+}
+
+.scenario-score-layout {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .scenario-time-series-layout {
@@ -434,7 +458,22 @@ body {
   visibility: hidden;
 }
 
-.scenario-table-timeseries-row-svg {
+.scenario-table-time-series-row-svg {
+    fill: currentColor;
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    font-size: 1.5rem;
+    transition: fill 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+    flex-shrink: 0;
+    user-select: none;
+    vertical-align: middle;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+}
+
+.scenario-table-scenario-score-row-svg {
     fill: currentColor;
     width: 1em;
     height: 1em;
@@ -451,4 +490,17 @@ body {
 
 .margin-left-5{
   margin-left: 5px;
+}
+.bk-tooltip {
+  pointer-events: auto !important;
+}
+
+.bk-tooltip:hover {
+  display: block !important;
+}
+
+.histogram-plots .bk-tooltip {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 250px;
 }

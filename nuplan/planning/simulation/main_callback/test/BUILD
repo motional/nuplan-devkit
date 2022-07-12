@@ -18,3 +18,11 @@ py_test(
         "//nuplan/planning/simulation/main_callback:metric_aggregator_callback",
     ],
 )
+
+py_test(
+    name = "test_publisher_callback",
+    srcs = ["test_publisher_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation/main_callback:publisher_callback",
+    ],
+)

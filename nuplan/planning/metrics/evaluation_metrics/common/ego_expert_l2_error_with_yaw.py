@@ -47,7 +47,7 @@ class EgoExpertL2ErrorWithYawStatistics(MetricBase):
 
         statistics_type_list = [MetricStatisticsType.MAX, MetricStatisticsType.MEAN, MetricStatisticsType.P90]
 
-        time_series = TimeSeries(unit='meters', time_stamps=list(ego_timestamps), values=list(error))
+        time_series = TimeSeries(unit='None', time_stamps=list(ego_timestamps), values=list(error))
 
         metric_statistics = self._compute_time_series_statistic(
             time_series=time_series, statistics_type_list=statistics_type_list

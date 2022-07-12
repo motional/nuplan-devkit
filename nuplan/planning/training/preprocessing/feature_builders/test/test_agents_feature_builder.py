@@ -1,4 +1,8 @@
+import copy
 import unittest
+from typing import Dict, List
+
+import torch
 
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractMap, MockAbstractScenario
@@ -114,6 +118,60 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
         self.assertEqual(len(feature.agents[0]), self.num_total_past_poses)
         self.assertEqual(len(feature.agents[0][0]), self.num_agents)
         self.assertEqual(len(feature.agents[0][0][0]), Agents.agents_states_dim())
+
+    def test_agents_feature_builder_scripts_properly(self) -> None:
+        """
+        Tests that the Agents Feature Builder scripts properly
+        """
+        config = self.feature_builder.precomputed_feature_config()
+        for expected_key in ["past_ego_states", "past_time_stamps", "past_tracked_objects"]:
+            self.assertTrue(expected_key in config)
+
+            config_dict = config[expected_key]
+            self.assertTrue(len(config_dict) == 3)
+            self.assertEqual(0, int(config_dict["iteration"]))
+            self.assertEqual(self.num_past_poses, int(config_dict["num_samples"]))
+            self.assertEqual(self.past_time_horizon, int(float(config_dict["time_horizon"])))
+
+        # Create some mock data
+        num_frames = 5
+        num_agents = 3
+        past_ego_states = torch.zeros((num_frames, 5), dtype=torch.float32)
+        past_timestamps = torch.tensor([i * 50 for i in range(num_frames)], dtype=torch.int64)
+        past_tracked_objects = [torch.ones((num_agents, 8), dtype=torch.float32) for _ in range(num_frames)]
+        for i in range(num_frames):
+            for j in range(num_agents):
+                past_tracked_objects[i][j, :] *= j + 1
+
+        tensor_data = {"past_ego_states": past_ego_states, "past_time_stamps": past_timestamps}
+        list_tensor_data = {"past_tracked_objects": past_tracked_objects}
+        list_list_tensor_data: Dict[str, List[List[torch.Tensor]]] = {}
+
+        scripted_builder = torch.jit.script(self.feature_builder)
+
+        scripted_tensors, scripted_list_tensors, scripted_list_list_tensors = scripted_builder.scriptable_forward(
+            copy.deepcopy(tensor_data), copy.deepcopy(list_tensor_data), copy.deepcopy(list_list_tensor_data)
+        )
+
+        py_tensors, py_list_tensors, py_list_list_tensors = self.feature_builder.scriptable_forward(
+            copy.deepcopy(tensor_data), copy.deepcopy(list_tensor_data), copy.deepcopy(list_list_tensor_data)
+        )
+
+        self.assertEqual(0, len(scripted_tensors))
+        self.assertEqual(0, len(py_tensors))
+
+        self.assertEqual(len(scripted_list_tensors), len(py_list_tensors))
+        for key in py_list_tensors:
+            scripted_list = scripted_list_tensors[key]
+            py_list = py_list_tensors[key]
+            self.assertEqual(len(py_list), len(scripted_list))
+            for i in range(len(py_list)):
+                scripted = scripted_list[i]
+                py = py_list[i]
+                torch.testing.assert_allclose(py, scripted, atol=0.01, rtol=0.01)
+
+        self.assertEqual(0, len(scripted_list_list_tensors))
+        self.assertEqual(0, len(py_list_list_tensors))
 
 
 if __name__ == '__main__':

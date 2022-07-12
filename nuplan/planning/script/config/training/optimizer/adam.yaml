@@ -1,0 +1,6 @@
+# Adapted from ml_products/map_lsn/map_lsn/experiments/config/optimizer/adamw.yaml
+
+_target_: torch.optim.Adam
+_convert_: 'all'
+
+lr: 1e-3

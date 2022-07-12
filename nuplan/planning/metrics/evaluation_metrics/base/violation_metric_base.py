@@ -17,7 +17,7 @@ from nuplan.planning.simulation.history.simulation_history import SimulationHist
 class ViolationMetricBase(MetricBase):
     """Base class for evaluation of violation metrics."""
 
-    def __init__(self, name: str, category: str, max_violation_threshold: int) -> None:
+    def __init__(self, name: str, category: str, max_violation_threshold: int = 0) -> None:
         """
         Initializes the ViolationMetricBase class
         :param name: Metric name

@@ -31,8 +31,8 @@ def test_get_incoming_outgoing_roadblock_connectors(scene: Dict[str, Any]) -> No
 
         assert roadblock is not None
 
-        incoming_edges = roadblock.incoming_edges()
-        outgoing_edges = roadblock.outgoing_edges()
+        incoming_edges = roadblock.incoming_edges
+        outgoing_edges = roadblock.outgoing_edges
 
         assert len(incoming_edges) > 0
         assert len(outgoing_edges) > 0
@@ -57,8 +57,8 @@ def test_no_end_roadblock_connector(scene: Dict[str, Any]) -> None:
 
         assert roadblock is not None
 
-        incoming_edges = roadblock.incoming_edges()
-        outgoing_edges = roadblock.outgoing_edges()
+        incoming_edges = roadblock.incoming_edges
+        outgoing_edges = roadblock.outgoing_edges
 
         assert not outgoing_edges
 
@@ -81,8 +81,8 @@ def test_no_start_roadblock_connector(scene: Dict[str, Any]) -> None:
 
         assert roadblock is not None
 
-        incoming_edges = roadblock.incoming_edges()
-        outgoing_edges = roadblock.outgoing_edges()
+        incoming_edges = roadblock.incoming_edges
+        outgoing_edges = roadblock.outgoing_edges
 
         assert not incoming_edges
 
@@ -105,7 +105,7 @@ def test_get_roadblock_interior_edges(scene: Dict[str, Any]) -> None:
 
         assert roadblock is not None
 
-        interior_edges = roadblock.interior_edges()
+        interior_edges = roadblock.interior_edges
 
         assert len(interior_edges) > 0
 

@@ -14,6 +14,8 @@ defaults:
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging
 
-output_dir: ???                                                 # Main path for the existing simulation
-date_format: '%Y.%m.%d.%H.%M.%S'                                # Date format
-metric_folder_name: 'metrics'                                   # Metric folder name
+scenario_metric_paths: none                                # A list of existing scenario metric paths, e.g., scenario_metric_paths="[simulation_path_1/metrics, simulation_path_2/metrics]"
+delete_scenario_metric_files: false                        # Set True to delete scenario metric files after file integration
+output_dir: ???                                            # Output dir
+metric_folder_name: 'metrics'                              # Metric folder name
+date_format: '%Y.%m.%d.%H.%M.%S'                           # Date format

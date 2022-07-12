@@ -113,7 +113,9 @@ class SessionManager:
         t = threading.current_thread()
 
         if t not in self._session_pool[pid]:
-            self._session_pool[pid][t] = Session(bind=self.engine, autocommit=False, autoflush=False)
+            # Turn on autocommit and autoflush so that the DB transaction history gets flushed to disk.
+            # Otherwise, the transaction history will be saved only in memory, leading to unbounded memory growth.
+            self._session_pool[pid][t] = Session(bind=self.engine, autocommit=True, autoflush=True)
 
         return self._session_pool[pid][t]
 
@@ -238,6 +240,20 @@ class Table(Sequence[T]):
         """
         return self._session.query(self._table).all()  # type: ignore
 
+    def detach(self) -> None:
+        """
+        Performs any necessary cleanup of the table for destruction.
+        This function must be called once the table is ready to be destroyed to properly free resources.
+        Once this function is called, the table should no longer be queried.
+        """
+        # Any event listener registerd with event.load() must be removed manually.
+        # Otherwise, SQLAlchemy will keep a reference to the object alive.
+        #
+        # Unfortunately, this cannot go into __del__, because it will never be called
+        #  even if all references to it are removed, because SQLAlchemy will
+        #  still hold the reference.
+        event.remove(self._table, 'load', self._decorate_record)
+
     def __len__(self) -> int:
         """
         Return length of the records for the given queries. For example:
@@ -316,6 +332,15 @@ class DB:
         self._data_root = data_root
         self._blob_store = BlobStoreCreator.create_nuplandb(data_root)
         self._tables = {}
+        self._tables_detached = False
+
+        # We have circular references between the DB and the Tables.
+        # Because tables use the SqlAlchemy event hooks, they will never be destroyed until the hooks are destroyed.
+        #
+        # To detect when it is safe to remove the hooks and allow the GC to collect the tables, we must reference count manually.
+        # This variable is used by add_ref and remove_ref
+        self._refcount = 1
+        self._refcount_lock = threading.Lock()
 
         # Append the correct extension to the filename and prepend the data root if the file does not exist.
         db_path = db_path if db_path.endswith('.db') else f'{db_path}.db'
@@ -409,6 +434,7 @@ class DB:
         Get the list of table names.
         :return: The list of table names.
         """
+        self._assert_tables_attached()
         return self._table_names
 
     @property
@@ -417,6 +443,7 @@ class DB:
         Get the list of tables.
         :return: The list of tables.
         """
+        self._assert_tables_attached()
         return self._tables
 
     def load_blob(self, path: str) -> BinaryIO:
@@ -435,6 +462,7 @@ class DB:
         :return: The record. See "templates.py" for details.
         """
         warnings.warn("deprecated", DeprecationWarning)
+        self._assert_tables_attached()
         return getattr(self, table).get(token)
 
     def field2token(self, table: str, field: str, query: str) -> List[str]:
@@ -446,7 +474,65 @@ class DB:
         :return: Return a list of record tokens.
         """
         warnings.warn("deprecated", DeprecationWarning)
+        self._assert_tables_attached()
         return [rec.token for rec in getattr(self, table).search(**{field: query})]
+
+    def are_tables_detached(self) -> bool:
+        """
+        Returns true if the tables have been detached, false otherwise.
+        :returns: True if the tables have been detached, false otherwise.
+        """
+        return self._tables_detached
+
+    def detach_tables(self) -> None:
+        """
+        Prepares all tables for destruction.
+        This must be called when DB is ready to be released to reclaim used memory.
+        After calling this method, no further queries should be run from the db.
+
+        Placing this in __del__ is not sufficient, because without detaching tables,
+          SQLAlchemy will keep references to the tables alive.
+          Which contain references to the DB.
+          Which means that __del__ will never be called.
+        """
+        if not self._tables_detached:
+            for table_name in self.table_names:
+                self.tables[table_name].detach()
+            self._tables_detached = True
+
+    def _assert_tables_attached(self) -> None:
+        """
+        Checks to ensure that the tables are attached. If not, raises an error.
+        """
+        if self.are_tables_detached():
+            raise RuntimeError("Attempting to query from detached tables.")
+
+    def add_ref(self) -> None:
+        """
+        Add an external reference to this class to prevent it from being reclaimed by the GC.
+        This method should be called when any non-SqlAlchemy class takes a reference to the class.
+
+        See the comments in __init__ for explanation
+        """
+        with self._refcount_lock:
+            # We don't have a great way of reattaching tables.
+            # If someone really needs this, they should create a new db object entirely.
+            if self._refcount == 0:
+                raise ValueError(
+                    "Attempting to revive a database that has had its tables detached. This is likely due to a reference counting error."
+                )
+            self._refcount += 1
+
+    def remove_ref(self) -> None:
+        """
+        Removes an external reference to this class.
+        This should be called when any non-SqlAlchemy class is finished using the database (e.g. in their __del__ method).
+        If the reference count gets to zero, it will be prepared for collection by the GC.
+        """
+        with self._refcount_lock:
+            self._refcount -= 1
+            if self._refcount == 0:
+                self.detach_tables()
 
     def _create_db_instance(self) -> sqlite3.Connection:
         """

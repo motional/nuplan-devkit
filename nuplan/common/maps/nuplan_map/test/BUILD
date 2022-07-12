@@ -41,8 +41,8 @@ py_test(
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
-        "//nuplan/common/maps/nuplan_map:baseline_path",
         "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/common/maps/nuplan_map:polyline_map_object",
         "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
@@ -51,9 +51,9 @@ py_test(
 )
 
 py_test(
-    name = "test_generic_polygon_map",
+    name = "test_polygon_map_object",
     size = "large",
-    srcs = ["test_generic_polygon_map.py"],
+    srcs = ["test_polygon_map_object.py"],
     data = [":test_json"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
@@ -175,16 +175,14 @@ py_test(
     srcs = ["test_utils.py"],
     data = [":test_json"],
     deps = [
+        "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state/test:test_utils",
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:maps_datatypes",
-        "//nuplan/common/maps/nuplan_map",
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/tests:nuplan_db_test_utils",
-        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
-        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
     ],
 )

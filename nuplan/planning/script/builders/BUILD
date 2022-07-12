@@ -26,6 +26,10 @@ py_library(
         "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_acceleration",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_bicycles",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_objects",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_pedestrians",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_vehicles",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_distance_to_goal",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_expert_l2_error",
@@ -242,6 +246,7 @@ py_library(
         "//nuplan/planning/simulation/main_callback:metric_aggregator_callback",
         "//nuplan/planning/simulation/main_callback:metric_file_callback",
         "//nuplan/planning/simulation/main_callback:multi_main_callback",
+        "//nuplan/planning/simulation/main_callback:publisher_callback",
         "//nuplan/planning/simulation/main_callback:time_callback",
     ],
 )

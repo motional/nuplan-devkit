@@ -5,6 +5,7 @@ import numpy.typing as npt
 from scipy.interpolate import interp1d
 from shapely.geometry import Polygon
 
+from nuplan.common.actor_state.oriented_box import Dimension, OrientedBox
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.geometry.transform import translate_laterally, translate_longitudinally
@@ -103,6 +104,42 @@ def principal_value(
     lhs = (angle - min_) % (2 * np.pi) + min_
 
     return lhs
+
+
+def l2_euclidean_corners_distance(box1: OrientedBox, box2: OrientedBox) -> float:
+    """
+    Computes the L2 norm [m] of the euclidean distance between the corners of an OrientedBox in two configurations.
+    :param box1: The first box configuration.
+    :param box2: The second box configuration.
+    :return: [m] The norm of the euclidean distance.
+    """
+    distances = [
+        np.linalg.norm(box1_corner.array - box2_corner.array)
+        for box1_corner, box2_corner in zip(box1.all_corners(), box2.all_corners())
+    ]
+    return float(np.linalg.norm(distances))
+
+
+def se2_box_distances(query: StateSE2, targets: list[StateSE2], box_size: Dimension) -> List[float]:
+    """
+    Computes the minimal distance [m] from a query to a list of targets. The distance is computed using the norm of the
+    euclidean distances between the corners of a box spawned using the pose as center and given dimensions.
+    The query box is also rotated by 180deg and the minimum of the two distances is used.
+    :param query: The query pose.
+    :param targets: The targets to compute the distance.
+    :param box_size: The size of the box to be constructed.
+    :return: A list of distances [m] from query to targets
+    """
+    query_box = OrientedBox(query, box_size.length, box_size.width, box_size.height)
+    backwards_query_box = OrientedBox.from_new_pose(query_box, StateSE2(query.x, query.y, query.heading + np.pi))
+    target_boxes = [OrientedBox(target, box_size.length, box_size.width, box_size.height) for target in targets]
+    return [
+        min(
+            l2_euclidean_corners_distance(query_box, target_box),
+            l2_euclidean_corners_distance(backwards_query_box, target_box),
+        )
+        for target_box in target_boxes
+    ]
 
 
 class AngularInterpolator:

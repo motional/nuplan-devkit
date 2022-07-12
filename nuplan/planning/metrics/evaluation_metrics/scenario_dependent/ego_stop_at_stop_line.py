@@ -191,9 +191,9 @@ class EgoStopAtStopLineStatistics(ViolationMetricBase):
             lane = map_api.get_one_map_object(ego_pose, SemanticMapLayer.LANE)
 
             # Construct ego's path to go
-            ego_baseline = lane.baseline_path()
+            ego_baseline = lane.baseline_path
             ego_progress = ego_baseline.get_nearest_arc_length_from_position(ego_pose)
-            progress_path = create_path_from_se2(ego_baseline.discrete_path())
+            progress_path = create_path_from_se2(ego_baseline.discrete_path)
             ego_path_to_go = trim_path_up_to_progress(progress_path, ego_progress)
 
             # Check for intersection between the path and the any other agents

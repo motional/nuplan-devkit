@@ -57,5 +57,7 @@ py_library(
 py_library(
     name = "utils",
     srcs = ["utils.py"],
-    deps = [],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+    ],
 )

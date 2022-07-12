@@ -20,7 +20,7 @@ def test_ego_min_distance_to_lead_agent_metric(scene: Dict[str, Any]) -> None:
     ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     ego_at_fault_collisions_metric = EgoAtFaultCollisionStatistics(
-        'ego_at_fault_collisions_statistics', 'Dynamics', ego_lane_change_metric, max_violation_threshold=0
+        'ego_at_fault_collisions_statistics', 'Dynamics', ego_lane_change_metric
     )
     ego_at_fault_collisions_metric.compute(history, mock_abstract_scenario)[0]
 
@@ -29,7 +29,7 @@ def test_ego_min_distance_to_lead_agent_metric(scene: Dict[str, Any]) -> None:
         'Planning',
         ego_at_fault_collisions_metric,
         min_front_distance=1.5,
-        lateral_distance_threshold=4.0,
+        lateral_distance_threshold=0.3,
     )
 
     metric_statistic_test(scene=scene, metric=metric)

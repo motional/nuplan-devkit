@@ -73,9 +73,8 @@
     ],
     "expected": {
         "statistics": {
-            "COUNT": 2,
-            "MAX": 4.44,
-            "MEAN": 4.23
+            "Boolean": false,
+            "RATIO": 0.33
         }
     },
     "goal": {

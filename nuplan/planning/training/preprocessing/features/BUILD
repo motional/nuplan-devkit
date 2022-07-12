@@ -18,6 +18,14 @@ py_library(
 )
 
 py_library(
+    name = "dynamic_ego_feature",
+    srcs = ["dynamic_ego_feature.py"],
+    deps = [
+        "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+    ],
+)
+
+py_library(
     name = "agents_trajectories",
     srcs = ["agents_trajectories.py"],
     deps = [
@@ -66,6 +74,16 @@ py_library(
 )
 
 py_library(
+    name = "dynamic_ego_trajectory",
+    srcs = ["dynamic_ego_trajectory.py"],
+    deps = [
+        "//nuplan/planning/script/builders/utils:utils_type",
+        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+    ],
+)
+
+py_library(
     name = "trajectory_utils",
     srcs = ["trajectory_utils.py"],
     deps = [
@@ -78,6 +96,36 @@ py_library(
     srcs = ["vector_map.py"],
     deps = [
         "//nuplan/planning/script/builders/utils:utils_type",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
+        "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+        "//nuplan/planning/training/preprocessing/features:vector_utils",
+    ],
+)
+
+py_library(
+    name = "vector_set_map",
+    srcs = ["vector_set_map.py"],
+    deps = [
+        "//nuplan/planning/script/builders/utils:utils_type",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
+        "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+        "//nuplan/planning/training/preprocessing/features:vector_utils",
+    ],
+)
+
+py_library(
+    name = "vector_utils",
+    srcs = ["vector_utils.py"],
+    deps = [
+        "//nuplan/planning/script/builders/utils:utils_type",
+        "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+    ],
+)
+
+py_library(
+    name = "feature_math_utils",
+    srcs = ["feature_math_utils.py"],
+    deps = [
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
     ],
 )

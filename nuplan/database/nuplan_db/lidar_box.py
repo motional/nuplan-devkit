@@ -381,7 +381,11 @@ class LidarBox(Base):
                 else [],
                 angular_velocity=np.nan,
                 metadata=SceneObjectMetadata(
-                    token=self.token, track_token=self.track_token, track_id=None, timestamp_us=self.timestamp
+                    token=self.token,
+                    track_token=self.track_token,
+                    track_id=None,
+                    timestamp_us=self.timestamp,
+                    category_name=self.category.name,
                 ),
             )
         else:
@@ -389,6 +393,10 @@ class LidarBox(Base):
                 tracked_object_type=tracked_object_type,
                 oriented_box=oriented_box,
                 metadata=SceneObjectMetadata(
-                    token=self.token, track_token=self.track_token, track_id=None, timestamp_us=self.timestamp
+                    token=self.token,
+                    track_token=self.track_token,
+                    track_id=None,
+                    timestamp_us=self.timestamp,
+                    category_name=self.category.name,
                 ),
             )

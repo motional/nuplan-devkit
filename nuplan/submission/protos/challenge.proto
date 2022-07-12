@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package challenge_protocol;
+
+service DetectionTracksChallenge {
+  rpc InitializePlanner(MultiPlannerInitializationLight) returns (PlannerInitializationResponse) {}
+  rpc ComputeTrajectory(MultiPlannerInput) returns (MultiTrajectory) {}
+}
+
+message SimulationHistoryBuffer {
+  repeated bytes ego_states = 1;
+  repeated bytes observations = 2;
+  optional float sample_interval = 3;
+}
+
+message SimulationIteration {
+  int64 time_us = 1;
+  int32 index = 2;
+}
+
+message PlannerInput {
+  SimulationIteration simulation_iteration = 1;
+  SimulationHistoryBuffer simulation_history_buffer = 2;
+}
+
+message MultiPlannerInput {
+  repeated PlannerInput planner_inputs = 1;
+}
+
+message StateSE2 {
+  float x = 1;
+  float y = 2;
+  float heading = 3;
+}
+
+message StateVector2D {
+  float x = 1;
+  float y = 2;
+}
+
+message PlannerInitializationLight {
+  StateSE2 expert_goal_state = 1;
+  repeated string route_roadblock_ids = 2;
+  StateSE2 mission_goal = 3;
+  string map_name = 4;
+}
+
+message MultiPlannerInitializationLight {
+  repeated PlannerInitializationLight planner_initializations = 1;
+}
+
+message PlannerInitializationResponse {
+  bool consume_batched_inputs = 1;
+}
+
+message EgoState {
+  StateSE2 rear_axle_pose = 1;
+  StateVector2D rear_axle_velocity_2d = 2;
+  StateVector2D  rear_axle_acceleration_2d = 3;
+  float tire_steering_angle = 4;
+  int64 time_us = 5;
+  float angular_vel = 6;
+  float angular_accel = 7;
+}
+
+message Trajectory {
+  repeated EgoState ego_states = 1;
+}
+
+message MultiTrajectory {
+  repeated Trajectory trajectories = 1;
+}

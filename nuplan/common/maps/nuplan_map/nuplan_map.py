@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Optional, Tuple, cast
 import geopandas
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import shapely.geometry as geom
 
 from nuplan.common.actor_state.state_representation import Point2D
@@ -16,10 +17,10 @@ from nuplan.common.maps.abstract_map_objects import (
     StopLine,
 )
 from nuplan.common.maps.maps_datatypes import RasterLayer, RasterMap, SemanticMapLayer, StopLineType, VectorLayer
-from nuplan.common.maps.nuplan_map.generic_polygon_map import NuPlanGenericPolygonMap
 from nuplan.common.maps.nuplan_map.intersection import NuPlanIntersection
 from nuplan.common.maps.nuplan_map.lane import NuPlanLane
 from nuplan.common.maps.nuplan_map.lane_connector import NuPlanLaneConnector
+from nuplan.common.maps.nuplan_map.polygon_map_object import NuPlanPolygonMapObject
 from nuplan.common.maps.nuplan_map.roadblock import NuPlanRoadBlock
 from nuplan.common.maps.nuplan_map.roadblock_connector import NuPlanRoadBlockConnector
 from nuplan.common.maps.nuplan_map.stop_line import NuPlanStopLine
@@ -69,6 +70,7 @@ class NuPlanMap(AbstractMap):
             SemanticMapLayer.LANE_CONNECTOR: 'lane_connectors',
             SemanticMapLayer.ROADBLOCK_CONNECTOR: 'lane_group_connectors',
             SemanticMapLayer.BASELINE_PATHS: 'baseline_paths',
+            SemanticMapLayer.BOUNDARIES: 'boundaries',
             SemanticMapLayer.WALKWAYS: 'walkways',
             SemanticMapLayer.PUDO: 'pudo_zones',
             SemanticMapLayer.CARPARK_AREA: 'carpark_areas',
@@ -76,6 +78,9 @@ class NuPlanMap(AbstractMap):
         self._raster_layer_mapping = {
             SemanticMapLayer.DRIVABLE_AREA: 'drivable_area',
         }
+
+        # Special vector layer mapping for lane connector polygons.
+        self._LANE_CONNECTOR_POLYGON_LAYER = 'gen_lane_connectors_scaled_width_polygons'
 
     @property
     def map_name(self) -> str:
@@ -267,7 +272,7 @@ class NuPlanMap(AbstractMap):
         if layer_name not in self._vector_map:
 
             if layer_name == 'drivable_area':
-                self._intialize_drivable_area()
+                self._initialize_drivable_area()
             else:
                 self._vector_map[layer_name] = self._maps_db.load_vector_layer(self._map_name, layer_name).set_index(
                     'fid', drop=False
@@ -295,7 +300,7 @@ class NuPlanMap(AbstractMap):
         :param point: [m] x, y coordinates in global frame.
         :return: a list of lane connectors. An empty list if no lane connectors were found.
         """
-        lane_connectors_df = self._load_vector_map_layer('gen_lane_connectors_scaled_width_polygons')
+        lane_connectors_df = self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER)
         ids = lane_connectors_df.loc[lane_connectors_df.contains(geom.Point(point.x, point.y))][
             'lane_connector_fid'
         ].tolist()
@@ -327,7 +332,9 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.LANE),
                 self._get_vector_map_layer(SemanticMapLayer.LANE_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.BASELINE_PATHS),
+                self._get_vector_map_layer(SemanticMapLayer.BOUNDARIES),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
+                self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
             )
             if int(lane_id) in self._get_vector_map_layer(SemanticMapLayer.LANE)["lane_fid"].tolist()
             else None
@@ -345,7 +352,9 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.LANE),
                 self._get_vector_map_layer(SemanticMapLayer.LANE_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.BASELINE_PATHS),
+                self._get_vector_map_layer(SemanticMapLayer.BOUNDARIES),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
+                self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
             )
             if lane_connector_id in self._get_vector_map_layer(SemanticMapLayer.LANE_CONNECTOR)["fid"].tolist()
             else None
@@ -363,9 +372,11 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.LANE),
                 self._get_vector_map_layer(SemanticMapLayer.LANE_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.BASELINE_PATHS),
+                self._get_vector_map_layer(SemanticMapLayer.BOUNDARIES),
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK),
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
+                self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
             )
             if roadblock_id in self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK)["fid"].tolist()
             else None
@@ -383,16 +394,18 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.LANE),
                 self._get_vector_map_layer(SemanticMapLayer.LANE_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.BASELINE_PATHS),
+                self._get_vector_map_layer(SemanticMapLayer.BOUNDARIES),
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK),
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
+                self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
             )
             if roadblock_connector_id
             in self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR)["fid"].tolist()
             else None
         )
 
-    def _intialize_drivable_area(self) -> None:
+    def _initialize_drivable_area(self) -> None:
         """
         Drivable area is considered as the union of road_segments, intersections and generic_drivable_areas.
         Hence, the three layers has to be joined to cover all drivable areas.
@@ -400,7 +413,8 @@ class NuPlanMap(AbstractMap):
         road_segments = self._load_vector_map_layer('road_segments')
         intersections = self._load_vector_map_layer('intersections')
         generic_drivable_areas = self._load_vector_map_layer('generic_drivable_areas')
-        self._vector_map['drivable_area'] = road_segments.append(intersections.append(generic_drivable_areas)).dropna(
+
+        self._vector_map['drivable_area'] = pd.concat([road_segments, intersections, generic_drivable_areas]).dropna(
             axis=1, how='any'
         )
 
@@ -416,14 +430,14 @@ class NuPlanMap(AbstractMap):
             else None
         )
 
-    def _get_crosswalk(self, crosswalk_id: str) -> NuPlanGenericPolygonMap:
+    def _get_crosswalk(self, crosswalk_id: str) -> NuPlanPolygonMapObject:
         """
         Gets the stop line with the given crosswalk_id.
         :param crosswalk_id: desired unique id of a stop line that should be extracted.
         :return: NuPlanStopLine object.
         """
         return (
-            NuPlanGenericPolygonMap(crosswalk_id, self._get_vector_map_layer(SemanticMapLayer.CROSSWALK))
+            NuPlanPolygonMapObject(crosswalk_id, self._get_vector_map_layer(SemanticMapLayer.CROSSWALK))
             if crosswalk_id in self._get_vector_map_layer(SemanticMapLayer.CROSSWALK)["fid"].tolist()
             else None
         )
@@ -440,38 +454,38 @@ class NuPlanMap(AbstractMap):
             else None
         )
 
-    def _get_walkway(self, walkway_id: str) -> NuPlanGenericPolygonMap:
+    def _get_walkway(self, walkway_id: str) -> NuPlanPolygonMapObject:
         """
         Gets the walkway with the given walkway_id.
         :param walkway_id: desired unique id of a walkway that should be extracted.
-        :return: GenericPolygonArea object.
+        :return: NuPlanPolygonMapObject object.
         """
         return (
-            NuPlanGenericPolygonMap(walkway_id, self._get_vector_map_layer(SemanticMapLayer.WALKWAYS))
+            NuPlanPolygonMapObject(walkway_id, self._get_vector_map_layer(SemanticMapLayer.WALKWAYS))
             if walkway_id in self._get_vector_map_layer(SemanticMapLayer.WALKWAYS)["fid"].tolist()
             else None
         )
 
-    def _get_pudo(self, pudo_id: str) -> NuPlanGenericPolygonMap:
+    def _get_pudo(self, pudo_id: str) -> NuPlanPolygonMapObject:
         """
         Gets the pudo with the given pudo_id.
         :param pudo_id: desired unique id of an extended pudo that should be extracted.
-        :return: GenericPolygonArea object.
+        :return: NuPlanPolygonMapObject object.
         """
         return (
-            NuPlanGenericPolygonMap(pudo_id, self._get_vector_map_layer(SemanticMapLayer.PUDO))
+            NuPlanPolygonMapObject(pudo_id, self._get_vector_map_layer(SemanticMapLayer.PUDO))
             if pudo_id in self._get_vector_map_layer(SemanticMapLayer.PUDO)["fid"].tolist()
             else None
         )
 
-    def _get_carpark_area(self, carpark_area_id: str) -> NuPlanGenericPolygonMap:
+    def _get_carpark_area(self, carpark_area_id: str) -> NuPlanPolygonMapObject:
         """
         Gets the car park area with the given car_park_area_id.
         :param carpark_area_id: desired unique id of a car park that should be extracted.
-        :return: GenericPolygonArea object.
+        :return: NuPlanPolygonMapObject object.
         """
         return (
-            NuPlanGenericPolygonMap(carpark_area_id, self._get_vector_map_layer(SemanticMapLayer.CARPARK_AREA))
+            NuPlanPolygonMapObject(carpark_area_id, self._get_vector_map_layer(SemanticMapLayer.CARPARK_AREA))
             if carpark_area_id in self._get_vector_map_layer(SemanticMapLayer.CARPARK_AREA)["fid"].tolist()
             else None
         )

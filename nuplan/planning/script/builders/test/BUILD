@@ -10,3 +10,12 @@ py_test(
         "//nuplan/planning/script/builders:logging_builder",
     ],
 )
+
+py_test(
+    name = "test_builder_utils",
+    size = "medium",
+    srcs = ["test_builder_utils.py"],
+    deps = [
+        "//nuplan/planning/script/builders/utils:utils_config",
+    ],
+)
