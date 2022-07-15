@@ -6,7 +6,9 @@ py_library(
     name = "abstract_motion_model",
     srcs = ["abstract_motion_model.py"],
     deps = [
+        "//nuplan/common/actor_state:dynamic_car_state",
         "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
     ],
 )
 
@@ -14,6 +16,7 @@ py_library(
     name = "kinematic_bicycle",
     srcs = ["kinematic_bicycle.py"],
     deps = [
+        "//nuplan/common/actor_state:dynamic_car_state",
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",

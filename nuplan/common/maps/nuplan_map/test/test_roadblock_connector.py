@@ -30,8 +30,8 @@ def test_get_incoming_outgoing_roadblock(scene: Dict[str, Any]) -> None:
         )
         assert len(roadblock_connectors) > 0
 
-        incoming_edges = roadblock_connectors[0].incoming_edges()
-        outgoing_edges = roadblock_connectors[0].outgoing_edges()
+        incoming_edges = roadblock_connectors[0].incoming_edges
+        outgoing_edges = roadblock_connectors[0].outgoing_edges
 
         add_map_objects_to_scene(scene, incoming_edges)
         add_map_objects_to_scene(scene, outgoing_edges)
@@ -53,7 +53,7 @@ def test_get_roadblock_connector_interior_edges(scene: Dict[str, Any]) -> None:
 
         assert len(roadblock_connectors) > 0
 
-        interior_edges = roadblock_connectors[0].interior_edges()
+        interior_edges = roadblock_connectors[0].interior_edges
 
         assert len(interior_edges) > 0
 

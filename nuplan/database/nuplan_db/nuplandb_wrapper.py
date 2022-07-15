@@ -189,6 +189,14 @@ class NuPlanDBWrapper:
             self._verbose,
         )
 
+    def __del__(self) -> None:
+        """
+        Called when the object is being garbage collected.
+        """
+        # Remove this object's reference to the included tables.
+        for log_name in self.log_names:
+            self._log_db_mapping[log_name].remove_ref()
+
     @property
     def data_root(self) -> str:
         """Get the data root."""

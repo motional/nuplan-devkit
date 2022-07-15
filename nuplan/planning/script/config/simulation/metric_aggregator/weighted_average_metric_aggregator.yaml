@@ -1,15 +1,17 @@
 weighted_average_metric_aggregator:
   _target_: nuplan.planning.metrics.aggregator.weighted_average_metric_aggregator.WeightedAverageMetricAggregator
   name: 'weighted_average_metric_aggregator'
-  metric_weights:     # Weights for each metric, would be default if not specified
-    drivable_area_violation_statistics: 10.0
-    speed_limit_violation_statistics: 4.0
-    ego_progress_along_expert_route: 3.0
-    time_to_collision: 5.0
-    ego_at_fault_collisions_statistics: 10.0
-    ego_is_comfortable_statistics: 2.0
+  metric_weights:     # Weights for each metric to calculate a weighted average score for the chosen metrics, would be default if not specified.
+    time_to_collision: 5.0 # Highest weight with metric score 0 or 1 depending on TTC minimum threshhold
+    speed_limit_violation_statistics: 4.0 # Metric score in [0,1] depending on the amount and duration of over-speeding
+    ego_progress_along_expert_route: 3.0 # Metric score in [0,1] depending on the ratio of ego to expert progress
+    ego_is_comfortable_statistics: 2.0 # Lowest weight with metric score 0 or 1 depending on comfort threshholds
     default: 1.0
   file_name: weighted_average_metrics_${now:${date_format}}
+  # The total score is defined as the weighted average score for the metrics listed above, multiplied by the score of the multiple_metrics.
   multiple_metrics:
-    - ego_at_fault_collisions_statistics
-    - drivable_area_violation_statistics
+    - ego_at_fault_collisions_with_pedestrians_statistics  # Metric score 0 or 1 depending on whether there is a collision with pedestrians
+    - ego_at_fault_collisions_with_vehicles_statistics  # Metric score 0 or 1 depending on whether there is a collision with vehicles
+    - ego_at_fault_collisions_with_bicycles_statistics  # Metric score 0 or 1 depending on whether there is a collision with bicycles
+    - ego_at_fault_collisions_with_objects_statistics # Metric score 0, 0.5 or 1 depending on the number of collisions with objects
+    - drivable_area_violation_statistics # Metric score 0 or 1 depending on whether ego drives outside the drivable area

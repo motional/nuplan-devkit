@@ -30,6 +30,8 @@ py_test(
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/simulation:simulation_log",
     ],
 )
 
@@ -44,6 +46,8 @@ py_test(
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:overview_tab",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/simulation:simulation_log",
     ],
 )
 

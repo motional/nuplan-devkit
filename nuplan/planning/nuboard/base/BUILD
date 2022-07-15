@@ -46,6 +46,9 @@ py_library(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/nuboard:style",
+        "//nuplan/planning/simulation:simulation_log",
+        "//nuplan/planning/simulation/history:simulation_history",
+        "@nuplan_devkit//nuplan/planning/utils/serialization:to_scene",
     ],
 )
 

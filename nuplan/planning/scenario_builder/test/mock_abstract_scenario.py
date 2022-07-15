@@ -225,9 +225,9 @@ class MockAbstractScenario(AbstractScenario):
         """Implemented. See interface."""
         return self._mission_goal
 
-    def get_route_roadblock_ids(self) -> Optional[List[str]]:
+    def get_route_roadblock_ids(self) -> List[str]:
         """Implemented. See interface."""
-        return None
+        return []
 
     def get_expert_goal_state(self) -> StateSE2:
         """Implemented. See interface."""

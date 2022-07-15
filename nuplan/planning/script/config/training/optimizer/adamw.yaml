@@ -1,0 +1,8 @@
+# Adapted from ml_products/map_lsn/map_lsn/experiments/config/optimizer/adamw.yaml
+
+_target_: torch.optim.AdamW
+_convert_: 'all'
+
+lr: 1e-3
+weight_decay: 5e-4
+betas: [0.9, 0.999]

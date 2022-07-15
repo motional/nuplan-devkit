@@ -10,11 +10,11 @@ from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.database.nuplan_db.camera import Camera
 from nuplan.database.nuplan_db.category import Category
 from nuplan.database.nuplan_db.ego_pose import EgoPose
+from nuplan.database.nuplan_db.image import Image
 from nuplan.database.nuplan_db.lidar import Lidar
 from nuplan.database.nuplan_db.lidar_box import LidarBox
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
 from nuplan.database.nuplan_db.log import Log
-from nuplan.database.nuplan_db.models import Image
 from nuplan.database.nuplan_db.scenario_tag import ScenarioTag
 from nuplan.database.nuplan_db.scene import Scene
 from nuplan.database.nuplan_db.templates import tables as nuplandb_table_templates
@@ -67,6 +67,7 @@ class NuPlanDB(DB):
         nuplandb_models_dict["default"] = "models"
         nuplandb_models_dict["Camera"] = "camera"
         nuplandb_models_dict["Category"] = "category"
+        nuplandb_models_dict["Image"] = "image"
         nuplandb_models_dict["Lidar"] = "lidar"
         nuplandb_models_dict["Log"] = "log"
         nuplandb_models_dict["Track"] = "track"

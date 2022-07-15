@@ -16,18 +16,18 @@
             3999461.989363281,
             -2.0085689660475055
         ],
-        "velocity": [1.0, 0.0],
+        "velocity": [10.0, 0.0],
         "time_us": 1000000
     },
     "expected": {
         "statistics": {
-            "MAX": 5.97,
-            "MIN": 5.97,
-            "P90": 5.97
+            "MAX": 0.6,
+            "MIN": 0.6,
+            "P90": 0.6
         },
         "time_series": {
             "time_stamps": [1000000],
-            "values": [5.97]
+            "values": [0.6]
         }
     },
     "goal": {
@@ -63,7 +63,7 @@
                 },
                 "id": 1,
                 "real": true,
-                "speed": 0.0,
+                "speed": 5.0,
                 "type": "Vehicle"
             },
             {
@@ -81,7 +81,7 @@
                 },
                 "id": 2,
                 "real": true,
-                "speed": 0.0,
+                "speed": 10.0,
                 "type": "Vehicle"
             },
             {
@@ -99,7 +99,7 @@
                 },
                 "id": 3,
                 "real": true,
-                "speed": 0.0,
+                "speed": 10.0,
                 "type": "Vehicle"
             },
             {
@@ -117,7 +117,7 @@
                 },
                 "id": 4,
                 "real": true,
-                "speed": 0.0,
+                "speed": 10.0,
                 "type": "Vehicle"
             }
         ]

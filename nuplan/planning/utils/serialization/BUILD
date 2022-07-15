@@ -36,9 +36,11 @@ py_library(
     srcs = ["to_scene.py"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:ego_temporal_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/planning/utils:color",
     ],
 )

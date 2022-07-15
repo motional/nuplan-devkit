@@ -55,7 +55,11 @@ class TestSimulationLogCallback(unittest.TestCase):
 
         # Make sure the directory is correct
         directory = self.callback._get_scenario_folder(planner.name(), scenario)
-        self.assertEqual(str(directory), self.output_folder.name + "/simulation_log/SimplePlanner/mock_scenario_type")
+        self.assertEqual(
+            str(directory),
+            self.output_folder.name
+            + "/simulation_log/SimplePlanner/mock_scenario_type/mock_log_name/mock_scenario_name",
+        )
 
         # initialize callback
         self.callback.on_initialization_start(self.setup, planner)
@@ -84,6 +88,7 @@ class TestSimulationLogCallback(unittest.TestCase):
                 ego_state=state_0,
                 trajectory=InterpolatedTrajectory(trajectory=[state_0, state_1]),
                 observation=DetectionsTracks(TrackedObjects()),
+                traffic_light_status=scenario.get_traffic_light_status_at_iteration(0),
             )
         )
         history.add_sample(
@@ -92,6 +97,7 @@ class TestSimulationLogCallback(unittest.TestCase):
                 ego_state=state_1,
                 trajectory=InterpolatedTrajectory(trajectory=[state_0, state_1]),
                 observation=DetectionsTracks(TrackedObjects()),
+                traffic_light_status=scenario.get_traffic_light_status_at_iteration(0),
             )
         )
 
@@ -104,7 +110,8 @@ class TestSimulationLogCallback(unittest.TestCase):
 
         # Compressed path
         path = pathlib.Path(
-            self.output_folder.name + "/simulation_log/SimplePlanner/mock_scenario_type/mock_scenario_name.msgpack.xz"
+            self.output_folder.name
+            + "/simulation_log/SimplePlanner/mock_scenario_type/mock_log_name/mock_scenario_name/mock_scenario_name.msgpack.xz"
         )
 
         self.assertTrue(path.exists())

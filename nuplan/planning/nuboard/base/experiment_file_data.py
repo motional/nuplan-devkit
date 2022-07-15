@@ -28,14 +28,10 @@ class ExperimentFileData:
     )  # Metric aggregator dataframe
     simulation_files: Dict[str, Any] = field(default_factory=dict)  # Simulation files
     simulation_scenario_keys: List[SimulationScenarioKey] = field(default_factory=list)  # Simulation scenario keys
-    available_scenario_type_names: Dict[str, List[str]] = field(
-        default_factory=dict
-    )  # Available scenario types to scenario names in search
     available_scenario_types: List[str] = field(default_factory=list)  # Available scenario types in search
-    available_scenario_log_names: Dict[str, List[str]] = field(
+    available_scenarios: Dict[str, Dict[str, List[str]]] = field(
         default_factory=dict
-    )  # Available log names to scenario names in search
-    available_log_names: List[str] = field(default_factory=list)  # Available log names
+    )  # Scenario types -> scenario logs -> scenario names
     file_path_colors: Dict[int, Dict[str, str]] = field(default_factory=dict)  # Color for each experiment file
     color_index: int = 0  # Current color index
 
@@ -46,6 +42,10 @@ class ExperimentFileData:
 
         if not self.color_palettes:
             self.color_palettes = Set1[9] + Set2[8] + Set3[12]
+
+        if not self.available_scenarios:
+            # Scenario types -> scenario logs -> a list of scenario names
+            self.available_scenarios = defaultdict(lambda: defaultdict(list))
 
         if self.file_paths:
             # Reset file paths
@@ -191,6 +191,10 @@ class ExperimentFileData:
         :param starting_file_path_index: Starting file path index.
         """
         for index, file_path in enumerate(file_paths):
+            # If the SimulationLog wasn't serialized, skip because we don't have data to render a tile
+            if file_path.simulation_folder is None:
+                continue
+
             file_path_index = starting_file_path_index + index
             simulation_path = self._get_base_path(
                 current_path=file_path.current_path,
@@ -206,15 +210,9 @@ class ExperimentFileData:
                 for scenario_type_path in scenario_type_paths:
                     log_name_paths = scenario_type_path.iterdir()
                     scenario_type = scenario_type_path.name
-                    if scenario_type not in self.available_scenario_type_names:
-                        self.available_scenario_type_names[scenario_type] = []
                     for log_name_path in log_name_paths:
                         scenario_name_paths = log_name_path.iterdir()
                         log_name = log_name_path.name
-                        if log_name not in self.available_scenario_log_names:
-                            self.available_scenario_log_names[log_name] = []
-                        if log_name not in self.available_scenario_type_names[scenario_type]:
-                            self.available_scenario_type_names[scenario_type].append(log_name)
                         for scenario_name_path in scenario_name_paths:
                             scenario_name = scenario_name_path.name
                             scenario_key = (
@@ -223,26 +221,23 @@ class ExperimentFileData:
                             )
                             if scenario_key in self.simulation_files:
                                 continue
-                            if scenario_name not in self.available_scenario_log_names[log_name]:
-                                self.available_scenario_log_names[log_name].append(scenario_name)
                             files = scenario_name_path.iterdir()
                             for file in files:
                                 self.simulation_files[scenario_key].add(file)
-                            self.simulation_scenario_keys.append(
-                                SimulationScenarioKey(
-                                    nuboard_file_index=file_path_index,
-                                    log_name=log_name,
-                                    planner_name=planner_name,
-                                    scenario_type=scenario_type,
-                                    scenario_name=scenario_name,
-                                    files=list(self.simulation_files[scenario_key]),
+
+                            if scenario_key in self.simulation_files:
+                                self.available_scenarios[scenario_type][log_name].append(scenario_name)
+                                self.simulation_scenario_keys.append(
+                                    SimulationScenarioKey(
+                                        nuboard_file_index=file_path_index,
+                                        log_name=log_name,
+                                        planner_name=planner_name,
+                                        scenario_type=scenario_type,
+                                        scenario_name=scenario_name,
+                                        files=list(self.simulation_files[scenario_key]),
+                                    )
                                 )
-                            )
 
         # Add scenario types
-        available_scenario_types = list(set(self.available_scenario_type_names.keys()))
+        available_scenario_types = list(set(self.available_scenarios.keys()))
         self.available_scenario_types = sorted(available_scenario_types, reverse=False)
-
-        # Add log names
-        available_log_names = list(set(self.available_scenario_log_names.keys()))
-        self.available_log_names = sorted(available_log_names, reverse=False)

@@ -134,7 +134,7 @@ def find_lane_changes(
             # Check if an open lane change ends and store the data
             if curr_obj is not None:
                 lane_change_data = _ego_ends_lane_change(
-                    open_lane_change, final_lane=curr_obj, end_timestamp=ego_timestamps[prev_ind]
+                    open_lane_change, final_lane=curr_obj, end_timestamp=ego_timestamps[prev_ind + 1]
                 )
                 lane_changes.append(lane_change_data)
                 open_lane_change = None
@@ -168,6 +168,7 @@ class EgoLaneChangeStatistics(MetricBase):
         self.ego_route: List[List[Optional[GraphEdgeMapObject]]] = []
         self.corners_route: List[CornersGraphEdgeMapObject] = [CornersGraphEdgeMapObject([], [], [], [])]
         self.timestamps_in_common_or_connected_route_objs: List[int] = []
+        self.results: List[MetricStatistics] = []
 
     def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
@@ -180,7 +181,7 @@ class EgoLaneChangeStatistics(MetricBase):
         ego_states = history.extract_ego_state
         ego_poses = extract_ego_center(ego_states)
 
-        # Get the list of lane or lane_connectors that the center of ego belongs to.
+        # Get the list of lane or lane_connectors associated to ego at each time instance.
         ego_route = get_route(history.map_api, ego_poses)
         # Store ego_route to load in other metrics
         self.ego_route = ego_route
@@ -250,5 +251,7 @@ class EgoLaneChangeStatistics(MetricBase):
         results = self._construct_metric_results(
             metric_statistics=metric_statistics, time_series=None, scenario=scenario
         )
+
+        self.results = results
 
         return results  # type: ignore

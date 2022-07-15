@@ -38,6 +38,7 @@ class ScenarioSceneConverter(SceneConverter):
             ego_state=scenario.get_ego_state_at_iteration(index),
             trajectory=InterpolatedTrajectory(ego_trajectory),
             observation=scenario.get_tracked_objects_at_iteration(index),
+            traffic_light_status=scenario.get_traffic_light_status_at_iteration(index),
         )
 
         scene = convert_sample_to_scene(

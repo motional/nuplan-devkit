@@ -46,3 +46,19 @@ py_library(
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )
+
+py_library(
+    name = "remote_planner",
+    srcs = ["remote_planner.py"],
+    deps = [
+        "//nuplan/common/utils:helpers",
+        "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/submission:challenge_pb2",
+        "//nuplan/submission:challenge_pb2_grpc",
+        "//nuplan/submission:proto_converters",
+        "//nuplan/submission:submission_container_manager",
+        "//nuplan/submission:utils",
+    ],
+)

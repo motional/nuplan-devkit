@@ -32,6 +32,12 @@ class TestEgoState(unittest.TestCase):
         self.assertTrue(ego_state_ext.dynamic_car_state == self.dynamic_car_state)
         self.assertTrue(ego_state_ext.center == self.ego_state.center)
 
+        # Test Waypoint
+        wp = ego_state_ext.waypoint
+        self.assertEqual(wp.time_point, ego_state_ext.time_point)
+        self.assertEqual(wp.oriented_box, ego_state_ext.car_footprint)
+        self.assertEqual(wp.velocity, ego_state_ext.dynamic_car_state.rear_axle_velocity_2d)
+
     def test_cast_to_agent(self) -> None:
         """Tests that the ego state extended can be cast to an Agent object."""
         ego_state_ext = EgoState.build_from_rear_axle(

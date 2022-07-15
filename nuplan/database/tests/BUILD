@@ -13,8 +13,9 @@ py_library(
     deps = [
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:imapsdb",
+        "//nuplan/database/nuplan_db:camera",
+        "//nuplan/database/nuplan_db:image",
         "//nuplan/database/nuplan_db:lidar",
-        "//nuplan/database/nuplan_db:models",
         "//nuplan/database/nuplan_db:nuplandb",
         "//nuplan/database/nuplan_db:nuplandb_wrapper",
     ],

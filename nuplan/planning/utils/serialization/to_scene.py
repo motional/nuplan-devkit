@@ -1,13 +1,80 @@
 import pathlib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
 from nuplan.common.actor_state.ego_state import EgoState
+from nuplan.common.actor_state.ego_temporal_state import EgoTemporalState
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
 from nuplan.common.actor_state.tracked_objects_types import AGENT_TYPES, TrackedObjectType
+from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
+from nuplan.planning.utils.color import Color
+
+tracked_object_types = {
+    'vehicles': TrackedObjectType.VEHICLE,
+    'pedestrians': TrackedObjectType.PEDESTRIAN,
+    'bicycles': TrackedObjectType.BICYCLE,
+    'genericobjects': TrackedObjectType.GENERIC_OBJECT,
+    'traffic_cone': TrackedObjectType.TRAFFIC_CONE,
+    'barrier': TrackedObjectType.BARRIER,
+    'czone_sign': TrackedObjectType.CZONE_SIGN,
+}
+
+
+def to_scene_waypoint(waypoint: Waypoint, time_offset: Optional[float] = None) -> Dict[str, Any]:
+    """
+    Convert waypoint to scene object that can be visualized as predictions, and offset timestamp if desired
+    :param waypoint: to be converted
+    :param time_offset: if None, no offset will be done, otherwise offset time stamp by this number
+    :return: serialized scene
+    """
+    return {
+        "pose": [waypoint.center.x, waypoint.center.y, waypoint.center.heading],
+        "timestamp": waypoint.time_point.time_s + time_offset if time_offset else 0.0,
+    }
+
+
+def to_scene_ego_pose(ego_pose: Union[EgoState, EgoTemporalState]) -> Dict[str, Any]:
+    """
+    :param ego_pose: temporal state trajectory
+    :return serialized scene
+    """
+    ego_temporal_state = EgoTemporalState(ego_pose) if isinstance(ego_pose, EgoState) else ego_pose
+    current_state = ego_temporal_state.ego_current_state
+
+    # Future and past prediction
+    future = (
+        [
+            to_scene_waypoint(state, -current_state.time_point.time_s)
+            for prediction in ego_temporal_state.predictions
+            for state in prediction.valid_waypoints
+        ]
+        if ego_temporal_state.predictions
+        else []
+    )
+    past = (
+        [
+            to_scene_waypoint(state, -current_state.time_point.time_s)
+            for state in ego_temporal_state.past_trajectory.valid_waypoints
+        ]
+        if ego_temporal_state.past_trajectory
+        else []
+    )
+
+    predictions = {
+        "color": Color(red=255, green=0, blue=0, alpha=255).to_list(),
+        "states": past + future,
+    }
+
+    rear_axle = current_state.rear_axle
+    return {
+        "acceleration": 0.0,
+        "pose": [rear_axle.x, rear_axle.y, rear_axle.heading],
+        "speed": current_state.dynamic_car_state.speed,
+        "prediction": predictions,
+    }
 
 
 def to_scene_from_states(trajectory: List[EgoState]) -> List[Dict[str, Any]]:
@@ -52,6 +119,32 @@ def create_trajectory_structure(trajectory: List[EgoState], color: List[int]) ->
     :return: scene representing a trajectory
     """
     return {'color': color, 'states': to_scene_from_states(trajectory)}
+
+
+def create_waypoint_trajectory_structure(trajectory: List[Waypoint], color: List[int]) -> Dict[str, Any]:
+    """
+    Create scene json structure for a trajectory with a color.
+    :param trajectory: set of states.
+    :param color: color [R, G, B, A]
+    :return: scene representing a trajectory
+    """
+    return {
+        'color': color,
+        'states': [
+            {
+                'pose': [*state.center],
+                'speed': state.velocity.magnitude(),
+                'velocity_2d': [
+                    state.velocity.x,
+                    state.velocity.y,
+                ]
+                if state.velocity
+                else [0, 0],
+                'lateral': [0.0, 0.0],
+            }
+            for state in trajectory
+        ],
+    }
 
 
 def to_scene_ego_from_center_pose(state_center: StateSE2) -> Dict[str, Any]:
@@ -106,6 +199,7 @@ def to_scene_box(tracked_object: TrackedObject, track_id: str) -> Dict[str, Any]
         },
         'id': track_id,
         'type': tracked_object.tracked_object_type.fullname,
+        'tooltip': f"track_id: {track_id}\ntype: {tracked_object.tracked_object_type.fullname}",
     }
     if tracked_object.tracked_object_type == TrackedObjectType.PEDESTRIAN:
         scene['box']['radius'] = 0.5
@@ -118,15 +212,6 @@ def to_scene_boxes(tracked_objects: TrackedObjects) -> Dict[str, Any]:
     :param tracked_objects: List of boxes in global coordinates.
     :return dictionary which should be placed into scene["world"].
     """
-    tracked_object_types = {
-        'vehicles': TrackedObjectType.VEHICLE,
-        'pedestrians': TrackedObjectType.PEDESTRIAN,
-        'bicycles': TrackedObjectType.BICYCLE,
-        'genericobjects': TrackedObjectType.GENERIC_OBJECT,
-        'traffic_cone': TrackedObjectType.TRAFFIC_CONE,
-        'barrier': TrackedObjectType.BARRIER,
-        'czone_sign': TrackedObjectType.CZONE_SIGN,
-    }
     tracked_object_dictionaries = {}
     for track_object_type_name, tracked_object_type in tracked_object_types.items():
         objects = [

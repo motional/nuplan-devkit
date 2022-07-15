@@ -2,93 +2,103 @@
     "camera": {
         "bearing": 0.5345000000000002,
         "lookat": [
-            0.0,
-            0.0,
-            0.0
+            664751.662199684,
+            3999461.989363281,
+            -2.0085689660475055
         ],
         "pitch": 1.6,
-        "scale": 821598.6255879829
+        "scale": 1391384.486761813
     },
     "ego": {
-        "acceleration": [0.0, 0.0],
-        "pose": [
-            0.0,
-            0.0,
+        "acceleration": [
+            1.0,
             0.0
         ],
-        "velocity": [5.0, 0.0],
+        "pose": [
+            664751.662199684,
+            3999461.989363281,
+            -2.0085689660475055
+        ],
+        "velocity": [
+            5.0,
+            0.0
+        ],
         "time_us": 1000000
     },
     "ego_future_states": [
         {
-            "acceleration": [0.0, 0.0],
-            "pose": [
-                6.0,
+            "acceleration": [
                 0.0,
                 0.0
             ],
-            "velocity": [5.0, 0.0],
+            "pose": [
+                664749.662199684,
+                3999457.8245754833,
+                -2.0080825581755435
+            ],
+            "velocity": [
+                1.0,
+                0.0
+            ],
             "time_us": 2000000
         },
         {
-            "acceleration": [0.0, 0.0],
-            "pose": [
-                10.0,
+            "acceleration": [
                 0.0,
                 0.0
             ],
-            "velocity": [4.0, 0.0],
+            "pose": [
+                664748.662199684,
+                3999455.2951032147,
+                -2.0894044289663976
+            ],
+            "velocity": [
+                1.0,
+                0.0
+            ],
             "time_us": 3000000
-        },
-        {
-            "acceleration": [0.0, 0.0],
-            "pose": [
-                10.0,
-                0.0,
-                0.0
-            ],
-            "velocity": [0.0, 0.0],
-            "time_us": 4000000
         }
     ],
     "expected": {
         "statistics": {
-            "COUNT": 1,
-            "MAX": 2.5
+            "COUNT": 1
         },
-        "time_series": {
-        }
+        "time_series": {}
     },
     "goal": {
-        "pose": []
+        "pose": [
+            677712.774623,
+            4014741.306664,
+            0.0
+        ]
     },
     "map": {
         "area": "us-nv-las-vegas-strip"
     },
+    "markers": [],
     "meta": {
         "version": "3.0.0"
     },
     "world": {
         "bicycles": [],
-        "genericobjects": [],
         "pedestrians": [],
         "vehicles": [
-             {
+            {
                 "active": true,
                 "box": {
                     "pose": [
-                        10.0,
-                        0.0,
-                        0.0
+                        664747.455184,
+                        3999454.2055674633,
+                        -2.064083783361095
                     ],
                     "size": [
-                        1.5,
-                        4.0
+                        2.0,
+                        4.7
                     ]
                 },
-                "id": 0,
+                "id": 1,
                 "real": true,
-                "speed": 0.0,
+                "speed": 3.0,
                 "type": "Vehicle"
             }
         ]
@@ -99,20 +109,20 @@
             "genericobjects": [],
             "pedestrians": [],
             "vehicles": [
-                 {
+                {
                     "active": true,
                     "box": {
                         "pose": [
-                            10.0,
-                            0.0,
-                            0.0
+                            664745.455184,
+                            3999450.04055674633,
+                            -2.064083783361095
                         ],
                         "size": [
-                            1.5,
-                            4.0
+                            2.0,
+                            4.7
                         ]
                     },
-                    "id": 0,
+                    "id": 1,
                     "real": true,
                     "speed": 0.0,
                     "type": "Vehicle"
@@ -124,46 +134,20 @@
             "genericobjects": [],
             "pedestrians": [],
             "vehicles": [
-                 {
+                {
                     "active": true,
                     "box": {
                         "pose": [
-                            10.0,
-                            0.0,
-                            0.0
+                            664745.455184,
+                            3999450.04055674633,
+                            -2.064083783361095
                         ],
                         "size": [
-                            1.5,
-                            4.0
+                            2.0,
+                            4.7
                         ]
                     },
-                    "id": 0,
-                    "real": true,
-                    "speed": 0.0,
-                    "type": "Vehicle"
-                }
-            ]
-        },
-        {
-
-            "bicycles": [],
-            "genericobjects": [],
-            "pedestrians": [],
-            "vehicles": [
-                 {
-                    "active": true,
-                    "box": {
-                        "pose": [
-                            10.0,
-                            0.0,
-                            0.0
-                        ],
-                        "size": [
-                            1.5,
-                            4.0
-                        ]
-                    },
-                    "id": 0,
+                    "id": 1,
                     "real": true,
                     "speed": 0.0,
                     "type": "Vehicle"

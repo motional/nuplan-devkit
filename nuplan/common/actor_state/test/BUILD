@@ -111,3 +111,16 @@ py_test(
         "//nuplan/common/actor_state:waypoint",
     ],
 )
+
+py_test(
+    name = "test_actor_temporal_state",
+    size = "small",
+    srcs = ["test_actor_temporal_state.py"],
+    deps = [
+        "//nuplan/common/actor_state:agent",
+        "//nuplan/common/actor_state:agent_temporal_state",
+        "//nuplan/common/actor_state:scene_object",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:waypoint",
+    ],
+)

@@ -5,15 +5,22 @@ from functools import cached_property
 from typing import Any, Dict, List
 
 import numpy as np
-import numpy.typing as npt
 import torch
 from pyquaternion import Quaternion
 
 from nuplan.planning.script.builders.utils.utils_type import are_the_same_type, validate_type
+from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import LaneOnRouteStatusData
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import (
     AbstractModelFeature,
     FeatureDataType,
     to_tensor,
+)
+from nuplan.planning.training.preprocessing.features.vector_utils import (
+    rotate_coords,
+    scale_coords,
+    translate_coords,
+    xflip_coords,
+    yflip_coords,
 )
 
 
@@ -47,8 +54,8 @@ class VectorMap(AbstractModelFeature):
     multi_scale_connections: List[Dict[int, FeatureDataType]]
     on_route_status: List[FeatureDataType]
     traffic_light_data: List[FeatureDataType]
-    _lane_coord_dim = 2
-    _on_route_status_encoding_dim = 2
+    _lane_coord_dim: int = 2
+    _on_route_status_encoding_dim: int = LaneOnRouteStatusData.encoding_dim()
 
     def __post_init__(self) -> None:
         """Sanitize attributes of the dataclass."""
@@ -201,28 +208,14 @@ class VectorMap(AbstractModelFeature):
     def rotate(self, quaternion: Quaternion) -> VectorMap:
         """
         Rotate the vector map.
-
         :param quaternion: Rotation to apply.
         """
-        if not all(validate_type(coord, np.ndarray) for coord in self.coords):
-            raise RuntimeError("This function works only with numpy arrays!")
-
-        def rotate_coord(coords: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
-            # Flatten the first two dimensions to make the shape (num_lane_segments * 2, 2).
-            num_lane_segments, _, _ = coords.shape
-            coords = coords.reshape(num_lane_segments * 2, 2)
-
-            # Add zeros to the z dimension to make them 3D points.
-            coords = np.concatenate((coords, np.zeros_like(coords[:, 0:1])), axis=-1)
-
-            # Rotate.
-            coords = np.dot(quaternion.rotation_matrix.astype(coords.dtype), coords)
-
-            # Remove the z dimension and reshape it back to (num_lane_segments, 2, 2).
-            return coords[:, :2].reshape(num_lane_segments, 2, 2)  # type: ignore
+        # Function only works with numpy arrays
+        for coord in self.coords:
+            validate_type(coord, np.ndarray)
 
         return VectorMap(
-            coords=[rotate_coord(data) for data in self.coords],
+            coords=[rotate_coords(data, quaternion) for data in self.coords],
             lane_groupings=self.lane_groupings,
             multi_scale_connections=self.multi_scale_connections,
             on_route_status=self.on_route_status,
@@ -234,14 +227,11 @@ class VectorMap(AbstractModelFeature):
         Translate the vector map.
         :param translation_value: Translation in x, y, z.
         """
-        assert translation_value.ndim == 3, "Translation value must have dimension of 3 (x, y, z)"
+        assert translation_value.size == 3, "Translation value must have dimension of 3 (x, y, z)"
         are_the_same_type(translation_value, self.coords[0])
 
-        def translate_coord(coords: FeatureDataType) -> FeatureDataType:
-            return coords + translation_value[:2]
-
         return VectorMap(
-            coords=[translate_coord(coords) for coords in self.coords],
+            coords=[translate_coords(coords, translation_value) for coords in self.coords],
             lane_groupings=self.lane_groupings,
             multi_scale_connections=self.multi_scale_connections,
             on_route_status=self.on_route_status,
@@ -253,14 +243,11 @@ class VectorMap(AbstractModelFeature):
         Scale the vector map.
         :param scale_value: <np.float: 3,>. Scale in x, y, z.
         """
-        assert scale_value.ndim == 3, f"Scale value has incorrect dimension: {scale_value.ndim}!"
+        assert scale_value.size == 3, f"Scale value has incorrect dimension: {scale_value.size}!"
         are_the_same_type(scale_value, self.coords[0])
 
-        def scale_coord(coords: FeatureDataType) -> FeatureDataType:
-            return coords * scale_value[:2]
-
         return VectorMap(
-            coords=[scale_coord(coords) for coords in self.coords],
+            coords=[scale_coords(coords, scale_value) for coords in self.coords],
             lane_groupings=self.lane_groupings,
             multi_scale_connections=self.multi_scale_connections,
             on_route_status=self.on_route_status,
@@ -271,12 +258,8 @@ class VectorMap(AbstractModelFeature):
         """
         Flip the vector map along the X-axis.
         """
-
-        def xflip_coord(coords: FeatureDataType) -> FeatureDataType:
-            return coords[:, :, 0] * -1
-
         return VectorMap(
-            coords=[xflip_coord(coords) for coords in self.coords],
+            coords=[xflip_coords(coords) for coords in self.coords],
             lane_groupings=self.lane_groupings,
             multi_scale_connections=self.multi_scale_connections,
             on_route_status=self.on_route_status,
@@ -287,12 +270,8 @@ class VectorMap(AbstractModelFeature):
         """
         Flip the vector map along the Y-axis.
         """
-
-        def yflip_coord(coords: FeatureDataType) -> FeatureDataType:
-            return coords[:, :, 1] * -1
-
         return VectorMap(
-            coords=[yflip_coord(coords) for coords in self.coords],
+            coords=[yflip_coords(coords) for coords in self.coords],
             lane_groupings=self.lane_groupings,
             multi_scale_connections=self.multi_scale_connections,
             on_route_status=self.on_route_status,

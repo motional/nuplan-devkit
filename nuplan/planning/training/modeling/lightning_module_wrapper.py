@@ -1,13 +1,18 @@
-from typing import Any, Dict, List, Tuple, Union
+import logging
+from typing import Dict, List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 from nuplan.planning.training.modeling.metrics.planning_metrics import AbstractTrainingMetric
 from nuplan.planning.training.modeling.objectives.abstract_objective import aggregate_objectives
 from nuplan.planning.training.modeling.objectives.imitation_objective import AbstractObjective
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
+
+logger = logging.getLogger(__name__)
 
 
 class LightningModuleWrapper(pl.LightningModule):
@@ -20,7 +25,9 @@ class LightningModuleWrapper(pl.LightningModule):
         model: TorchModuleWrapper,
         objectives: List[AbstractObjective],
         metrics: List[AbstractTrainingMetric],
-        **kwargs: Dict[str, Any],
+        batch_size: Optional[int] = None,
+        optimizer: DictConfig = None,
+        lr_scheduler: DictConfig = None,
     ) -> None:
         """
         Initializes the class.
@@ -28,13 +35,18 @@ class LightningModuleWrapper(pl.LightningModule):
         :param model: pytorch model
         :param objectives: list of learning objectives used for supervision at each step
         :param metrics: list of planning metrics computed at each step
+        :param batch_size: batch_size taken from dataloader config
+        :param optimizer: config for instantiating optimizer
+        :param lr_scheduler: config for instantiating lr_scheduler
         """
         super().__init__()
-        self.save_hyperparameters(ignore="model")
+        self.save_hyperparameters(ignore=["model", "optimizer", "lr_scheduler"])
 
         self.model = model
         self.objectives = objectives
         self.metrics = metrics
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
 
         # Validate metrics objectives and model
         model_targets = {builder.get_feature_unique_name() for builder in model.get_list_of_computed_target()}
@@ -167,6 +179,24 @@ class LightningModuleWrapper(pl.LightningModule):
 
         :return: optimizer or dictionary of optimizers and schedules
         """
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+        optimizer_dict = {}
 
-        return optimizer
+        optimizer: torch.optim.Optimizer = instantiate(config=self.optimizer, params=self.parameters())
+        optimizer_dict['optimizer'] = optimizer
+
+        # Log the optimizer used
+        logger.info(f'Using optimizer: {self.optimizer._target_}')
+
+        # Instatiate a learning rate scheduler if it is provided
+        if self.lr_scheduler:  # instantiate lr_scheduler according to cfg provided
+            lr_scheduler: torch.optim.lr_scheduler._LRScheduler = instantiate(
+                config=self.lr_scheduler, optimizer=optimizer
+            )
+            optimizer_dict['lr_scheduler'] = {'scheduler': lr_scheduler}
+
+            # Log the learning rate scheduler used
+            logger.info(f'Using lr_scheduler provided: {self.lr_scheduler._target_}')
+        else:  # no lr_scheduler provided
+            logger.info('Not using any lr_schedulers')
+
+        return optimizer_dict['optimizer'] if 'lr_scheduler' not in optimizer_dict else optimizer_dict

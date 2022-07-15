@@ -80,6 +80,6 @@ class InterpolatedTrajectory(AbstractTrajectory):
 
         return self._trajectory_class.from_split_state(SplitState(linear_states, angular_states, self._fixed_state))
 
-    def get_sampled_trajectory(self) -> List[Any]:
+    def get_sampled_trajectory(self) -> List[InterpolatableState]:
         """Inherited, see superclass."""
         return self._trajectory

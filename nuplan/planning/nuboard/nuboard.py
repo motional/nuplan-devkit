@@ -72,7 +72,7 @@ class NuBoard:
 
         # Add stopping signal
         # TODO: Extract profiler to a more general interface
-        if self._profiler is not None:
+        if self._profiler_path is not None:
             signal.signal(signal.SIGTERM, self.stop_handler)
             signal.signal(signal.SIGINT, self.stop_handler)
 
@@ -90,7 +90,11 @@ class NuBoard:
         server.start()
 
         io_loop.add_callback(server.show, "/")
-        io_loop.start()
+        # Catch RuntimeError in jupyter notebook
+        try:
+            io_loop.start()
+        except RuntimeError as e:
+            logger.warning(f"{e}")
 
     def main_page(self, doc: Document) -> None:
         """
@@ -133,4 +137,5 @@ class NuBoard:
         self._doc.add_root(scenario_tab.scalar_log_name_select)
         self._doc.add_root(scenario_tab.scalar_scenario_name_select)
         self._doc.add_root(scenario_tab.time_series_layout)
+        self._doc.add_root(scenario_tab.scenario_score_layout)
         self._doc.add_root(scenario_tab.simulation_tile_layout)

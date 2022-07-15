@@ -243,15 +243,6 @@ class TestLidarPc(unittest.TestCase):
         )
         self.assertEqual(result, pack_future_boxes_mock.return_value)
 
-    def test_closest_image(self) -> None:
-        """Tests the closest_image method"""
-        # Call the method under test
-        result = self.lidar_pc.closest_image()
-
-        # Assertions
-        # Check if the resulting List is not empty, which it shouldn't be
-        self.assertTrue(result)
-
     @patch('nuplan.database.nuplan_db.lidar_pc.render_on_map', autospec=True)
     def test_render(self, render_on_map_mock: Mock) -> None:
         """Tests the render method"""

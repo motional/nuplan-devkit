@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from functools import cached_property
+from functools import cached_property, lru_cache
 from typing import Any, List, Optional, Tuple, Type, cast
 
 from nuplan.common.actor_state.ego_state import EgoState
@@ -33,7 +33,7 @@ class NuPlanScenario(AbstractScenario):
 
     def __init__(
         self,
-        db: NuPlanDB,
+        db: Optional[NuPlanDB],
         log_name: str,
         initial_lidar_token: str,
         scenario_type: str,
@@ -60,6 +60,11 @@ class NuPlanScenario(AbstractScenario):
         self._ego_vehicle_parameters = ego_vehicle_parameters
         self._ground_truth_predictions = ground_truth_predictions
 
+        # db can be None when reading from the cache
+        if self._db is not None:
+            # If we have a valid DB, add a reference to it to prevent tables from being detached
+            self._db.add_ref()
+
     def __reduce__(self) -> Tuple[Type[NuPlanScenario], Tuple[Any, ...]]:
         """
         Hints on how to reconstruct the object when pickling.
@@ -78,6 +83,15 @@ class NuPlanScenario(AbstractScenario):
             ),
         )
 
+    def __del__(self) -> None:
+        """
+        Called when the scenario is being destroyed.
+        """
+        # If we have a valid DB, remove the reference so it can be GC'd if no other components
+        #   are using it.
+        if self._db is not None:
+            self._db.remove_ref()
+
     @property
     def ego_vehicle_parameters(self) -> VehicleParameters:
         """Inherited, see superclass."""
@@ -90,6 +104,7 @@ class NuPlanScenario(AbstractScenario):
         :return: LidarPc
         """
         assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration: {iteration} is out of bounds!"
+        assert self._db is not None, "_get_lidar_pc_at_iteration called with db=None"
         token = self._lidarpc_tokens[iteration]
         return self._db.lidar_pc[token]
 
@@ -98,6 +113,7 @@ class NuPlanScenario(AbstractScenario):
         """
         :return: initial pointcloud
         """
+        assert self._db is not None, "_initial_lidarpc called with db=None"
         return self._db.lidar_pc[self._initial_lidar_token]
 
     @cached_property
@@ -148,6 +164,8 @@ class NuPlanScenario(AbstractScenario):
 
         if pose_token is None:
             return None
+
+        assert self._db is not None, "_mission_goal called with db=None"
 
         mission_pose = self._db.ego_pose[pose_token]
         return StateSE2(mission_pose.x, mission_pose.y, mission_pose.quaternion.yaw_pitch_roll[0])
@@ -291,9 +309,12 @@ class NuPlanScenario(AbstractScenario):
             for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False)
         ]
 
+    @lru_cache
     def get_traffic_light_status_at_iteration(self, iteration: int) -> List[TrafficLightStatusData]:
         """Inherited, see superclass."""
         token = self._lidarpc_tokens[iteration]
+
+        assert self._db is not None, "get_traffic_light_status_at_iteration called with db=None"
         traffic_light_status = self._db.traffic_light_status.select_many(lidar_pc_token=token)
 
         traffic_light_status_data = [

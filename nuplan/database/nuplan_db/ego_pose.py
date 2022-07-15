@@ -10,7 +10,6 @@ from pyquaternion import Quaternion
 from scipy import ndimage
 from scipy.spatial.transform import Rotation as R
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.types import Float, Integer
 
@@ -18,8 +17,8 @@ from nuplan.database.common import sql_types
 from nuplan.database.common.utils import simple_repr
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.database.maps_db.utils import build_lane_segments_from_blps, connect_blp_predecessor, connect_blp_successor
-from nuplan.database.nuplan_db.models import Base, Image, generate_multi_scale_connections
-from nuplan.database.nuplan_db.utils import crop_rect, get_candidates
+from nuplan.database.nuplan_db.models import Base
+from nuplan.database.nuplan_db.utils import crop_rect, generate_multi_scale_connections, get_candidates
 from nuplan.database.nuplan_db.vector_map_np import VectorMapNp
 
 logger = logging.getLogger()
@@ -52,10 +51,6 @@ class EgoPose(Base):
     angular_rate_z = Column(Float)  # type: float
     epsg = Column(Integer)  # type: int
     log_token = Column(sql_types.HexLen8, ForeignKey("log.token"), nullable=False)  # type: str
-
-    image = relationship(
-        "Image", foreign_keys="Image.ego_pose_token", back_populates="ego_pose", uselist=False
-    )  # type: Image
 
     @property
     def _session(self) -> Any:
@@ -410,6 +405,3 @@ class EgoPose(Base):
             coords=ls_coordinates,
             multi_scale_connections=multi_scale_connections,
         )
-
-
-Image.ego_pose = relationship("EgoPose", foreign_keys=[Image.ego_pose_token], back_populates="image")

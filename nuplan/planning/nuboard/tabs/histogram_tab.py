@@ -102,6 +102,7 @@ class HistogramTab(BaseTab):
             code="""
                     document.getElementById('histogram-loading').style.visibility = 'visible';
                     document.getElementById('histogram-plot-section').style.visibility = 'hidden';
+                    cb_obj.tags = [window.outerWidth, window.outerHeight];
                 """,
         )
         self._scenario_type_multi_choice.js_on_change("value", self._loading_js)
@@ -243,6 +244,10 @@ class HistogramTab(BaseTab):
         :param old: Old value.
         :param new: New value.
         """
+        # Set up window width and height
+        if self._metric_name_multi_choice.tags:
+            self.window_width = self._metric_name_multi_choice.tags[0]
+            self.window_height = self._metric_name_multi_choice.tags[1]
         self._update_histograms()
 
     def _scenario_type_multi_choice_on_change(self, attr: str, old: str, new: str) -> None:
@@ -252,6 +257,10 @@ class HistogramTab(BaseTab):
         :param old: Old value.
         :param new: New value.
         """
+        # Set up window width and height
+        if self._scenario_type_multi_choice.tags:
+            self.window_width = self._scenario_type_multi_choice.tags[0]
+            self.window_height = self.scenario_type_multi_choice.tags[1]
         self._update_histograms()
 
     def _init_selection(self) -> None:
@@ -465,7 +474,7 @@ class HistogramTab(BaseTab):
             figures = [histogram_figure.figure_plot for statistic_name, histogram_figure in statistics_data.items()]
             grid_plot = gridplot(
                 figures,
-                ncols=self.plot_cols,
+                ncols=self.get_plot_cols(plot_width=self.plot_sizes[0]),
                 height=self.plot_sizes[1],
                 toolbar_location="left",
             )

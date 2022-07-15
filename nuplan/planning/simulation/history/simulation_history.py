@@ -6,6 +6,7 @@ from typing import List, Optional
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData
 from nuplan.planning.simulation.observation.observation_type import Observation
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
@@ -21,6 +22,7 @@ class SimulationHistorySample:
     ego_state: EgoState  # The ego state
     trajectory: AbstractTrajectory  # The ego planned trajectory
     observation: Observation  # The observations (vehicles, pedestrians, cyclists)
+    traffic_light_status: List[TrafficLightStatusData]  # Traffic light status
 
 
 class SimulationHistory:

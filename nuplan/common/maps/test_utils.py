@@ -15,16 +15,18 @@ from nuplan.common.maps.abstract_map_objects import (
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 
 
-def add_baseline_path_to_scene(scene: Dict[str, Any], baseline_path: List[StateSE2]) -> None:
-    """
-    Serialize and append a baseline path to the scene.
-    :param scene: scene dict.
-    :param baseline_path: The baseline path to be added.
-    """
-    if "path_info" not in scene.keys():
-        scene["path_info"] = []
-
-    scene["path_info"].extend([[pose.x, pose.y, pose.heading] for pose in baseline_path])
+def _color_to_object_mapping(layer: SemanticMapLayer) -> List[float]:
+    color_mapping = {
+        SemanticMapLayer.STOP_LINE: [1.0, 0.0, 0.0, 1.0],
+        SemanticMapLayer.CROSSWALK: [0.0, 0.0, 1.0, 1.0],
+        SemanticMapLayer.INTERSECTION: [0.0, 1.0, 0.0, 1.0],
+        SemanticMapLayer.ROADBLOCK: [0.0, 1.0, 1.0, 1.0],
+        SemanticMapLayer.ROADBLOCK_CONNECTOR: [0.0, 1.0, 1.0, 1.0],
+    }
+    try:
+        return color_mapping[layer]
+    except KeyError:
+        return [1.0, 1.0, 1.0, 0.5]
 
 
 def add_marker_to_scene(scene: Dict[str, Any], marker_id: str, pose: StateSE2) -> None:
@@ -40,34 +42,16 @@ def add_marker_to_scene(scene: Dict[str, Any], marker_id: str, pose: StateSE2) -
     scene["markers"].append({"id": int(marker_id), "name": marker_id, "pose": pose.serialize(), "shape": "arrow"})
 
 
-def _color_to_object_mapping(layer: SemanticMapLayer) -> List[float]:
-    color_mapping = {
-        SemanticMapLayer.STOP_LINE: [1.0, 0.0, 0.0, 1.0],
-        SemanticMapLayer.CROSSWALK: [0.0, 0.0, 1.0, 1.0],
-        SemanticMapLayer.INTERSECTION: [0.0, 1.0, 0.0, 1.0],
-        SemanticMapLayer.ROADBLOCK: [0.0, 1.0, 1.0, 1.0],
-        SemanticMapLayer.ROADBLOCK_CONNECTOR: [0.0, 1.0, 1.0, 1.0],
-    }
-    try:
-        return color_mapping[layer]
-    except KeyError:
-        return [1.0, 1.0, 1.0, 0.5]
-
-
-def add_map_objects_to_scene(
-    scene: Dict[str, Any], map_object: List[AbstractMapObject], layer: Optional[SemanticMapLayer] = None
-) -> None:
+def add_polyline_to_scene(scene: Dict[str, Any], polyline: List[StateSE2]) -> None:
     """
-    Serialize and append map objects to the scene.
+    Serialize and append a polyline to the scene.
     :param scene: scene dict.
-    :param map_object: The map object to be added.
-    :param layer: SemanticMapLayer type.
+    :param polyline: The polyline to be added.
     """
-    for obj in map_object:
-        if isinstance(obj, (StopLine, PolygonMapObject, Intersection, RoadBlockGraphEdgeMapObject)):
-            add_polygon_to_scene(scene, obj.polygon, obj.id, _color_to_object_mapping(layer))
-        elif isinstance(obj, GraphEdgeMapObject):
-            add_baseline_path_to_scene(scene, obj.baseline_path().discrete_path())
+    if "path_info" not in scene.keys():
+        scene["path_info"] = []
+
+    scene["path_info"].extend([[pose.x, pose.y, pose.heading] for pose in polyline])
 
 
 def add_polygon_to_scene(scene: Dict[str, Any], polygon: Polygon, polygon_id: str, color: List[float]) -> None:
@@ -86,6 +70,22 @@ def add_polygon_to_scene(scene: Dict[str, Any], polygon: Polygon, polygon_id: st
         "filled": True,
         "objects": [[[x, y] for x, y in zip(*polygon.exterior.xy)]],
     }
+
+
+def add_map_objects_to_scene(
+    scene: Dict[str, Any], map_object: List[AbstractMapObject], layer: Optional[SemanticMapLayer] = None
+) -> None:
+    """
+    Serialize and append map objects to the scene.
+    :param scene: scene dict.
+    :param map_object: The map object to be added.
+    :param layer: SemanticMapLayer type.
+    """
+    for obj in map_object:
+        if isinstance(obj, (StopLine, PolygonMapObject, Intersection, RoadBlockGraphEdgeMapObject)):
+            add_polygon_to_scene(scene, obj.polygon, obj.id, _color_to_object_mapping(layer))
+        elif isinstance(obj, GraphEdgeMapObject):
+            add_polyline_to_scene(scene, obj.baseline_path.discrete_path)
 
 
 def compare_poses(pose1: StateSE2, pose2: StateSE2) -> None:
@@ -118,8 +118,8 @@ def compare_map_objects(map_objects_1: List[GraphEdgeMapObject], map_objects_2: 
         map_object_2 = map_object_2_dict[map_object_1.id]
 
         # Get discrete baseline path
-        blp_1 = map_object_1.baseline_path().discrete_path()
-        blp_2 = map_object_2.baseline_path().discrete_path()
+        blp_1 = map_object_1.baseline_path.discrete_path
+        blp_2 = map_object_2.baseline_path.discrete_path
 
         # Check correctness of baseline paths
         compare_poses(blp_1[0], blp_2[0])

@@ -5,7 +5,7 @@ ego_min_distance_to_lead_agent_statistics:
   category: 'Planning'
 
   min_front_distance: 1.5
-  lateral_distance_threshold: 2.0
+  lateral_distance_threshold: 0.3
 
   required_metrics:
     # Parameter: base metric name and other high level metrics used in this metric

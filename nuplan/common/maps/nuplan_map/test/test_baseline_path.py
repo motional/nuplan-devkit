@@ -4,8 +4,8 @@ import pytest
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.maps.abstract_map import SemanticMapLayer
-from nuplan.common.maps.nuplan_map.baseline_path import NuPlanBaselinePath
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
+from nuplan.common.maps.nuplan_map.polyline_map_object import NuPlanPolylineMapObject
 from nuplan.common.maps.nuplan_map.utils import get_row_with_value
 from nuplan.common.maps.test_utils import add_map_objects_to_scene, add_marker_to_scene
 from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
@@ -38,7 +38,7 @@ def test_baseline_queries_in_lane(scene: Dict[str, Any]) -> None:
         assert lane.contains_point(point)
 
         add_map_objects_to_scene(scene, [lane])
-        lane_blp = lane.baseline_path()
+        lane_blp = lane.baseline_path
 
         arc_length = lane_blp.get_nearest_arc_length_from_position(point)
         pose = lane_blp.get_nearest_pose_from_position(point)
@@ -51,7 +51,7 @@ def test_baseline_queries_in_lane(scene: Dict[str, Any]) -> None:
         assert curv == pytest.approx(exp_curv)
 
         # test baseline_path() calls constructor as expected
-        constructed_blp = NuPlanBaselinePath(get_row_with_value(lane._baseline_paths_df, "lane_fid", lane.id))
+        constructed_blp = NuPlanPolylineMapObject(get_row_with_value(lane._baseline_paths_df, "lane_fid", lane.id))
         constructed_blp_arc_length = constructed_blp.get_nearest_arc_length_from_position(point)
         constructed_blp_pose = constructed_blp.get_nearest_pose_from_position(point)
         constructed_blp_curv = constructed_blp.get_curvature_at_arc_length(constructed_blp_arc_length)

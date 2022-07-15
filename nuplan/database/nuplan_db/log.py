@@ -11,10 +11,11 @@ from nuplan.database.common import sql_types
 from nuplan.database.common.utils import simple_repr
 from nuplan.database.nuplan_db.camera import Camera
 from nuplan.database.nuplan_db.ego_pose import EgoPose
+from nuplan.database.nuplan_db.image import Image
 from nuplan.database.nuplan_db.lidar import Lidar
 from nuplan.database.nuplan_db.lidar_box import LidarBox
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
-from nuplan.database.nuplan_db.models import Base, Image
+from nuplan.database.nuplan_db.models import Base
 from nuplan.database.nuplan_db.scene import Scene
 
 logger = logging.getLogger()

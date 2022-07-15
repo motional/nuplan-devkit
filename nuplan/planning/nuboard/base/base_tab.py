@@ -4,10 +4,11 @@ from typing import Any, List, Optional
 
 from bokeh.document.document import Document
 from bokeh.models import CheckboxGroup, MultiChoice
+from bokeh.plotting.figure import Figure
 
 from nuplan.planning.nuboard.base.data_class import SelectedMetricStatisticDataFrame, SimulationScenarioKey
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
-from nuplan.planning.nuboard.style import base_tab_style
+from nuplan.planning.nuboard.style import base_tab_style, simulation_tile_style
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,25 @@ class BaseTab:
         self._simulation_scenario_keys: List[SimulationScenarioKey] = []
         self._experiment_file_active_index: List[int] = []
 
-        # UI.
+        # UI
+        self.scatter_signs = [
+            'circle',
+            'diamond',
+            'plus',
+            'square',
+            'triangle',
+            'inverted_triangle',
+            'star',
+            'asterisk',
+            'dot_circle',
+            'diamond_cross',
+        ]
         self.search_criteria_selection_size = base_tab_style["search_criteria_sizes"]
         self.plot_sizes = base_tab_style["plot_sizes"]
+        self.simulation_figure_sizes = simulation_tile_style["figure_sizes"]
         self.plot_frame_sizes = base_tab_style["plot_frame_sizes"]
-        self.plot_cols = 3
+        self.window_width = 0
+        self.window_height = 0
 
         self.planner_checkbox_group = CheckboxGroup(
             labels=[], active=[], inline=True, css_classes=["planner-checkbox-group"], sizing_mode="scale_both"
@@ -77,6 +92,56 @@ class BaseTab:
         ]
         return enable_planner_names
 
+    def get_plot_cols(self, plot_width: int, default_col_width: int = 1024) -> int:
+        """
+        Return number of columns for a grid plot.
+        :param plot_width: Plot width.
+        :param default_col_width: The number of columns would be 1 if window width is lower than this value.
+        :return: Get a number of columns for a grid plot.
+        """
+        if self.window_width <= default_col_width:
+            return 1
+        col_num = 1 + round((self.window_width - default_col_width) / plot_width)
+        return col_num
+
+    def get_scatter_sign(self, index: int) -> str:
+        """
+        Get scatter index sign based on the index.
+        :param index: Index for the scatter sign.
+        :return A scatter sign name.
+        """
+        index = index % len(self.scatter_signs)  # Repeat if out of the available scatter signs
+        return self.scatter_signs[index]
+
+    @staticmethod
+    def get_scatter_render_func(scatter_sign: str, scatter_figure: Figure) -> Any:
+        """
+        Render a scatter plot.
+        :param scatter_sign: Scatter sign.
+        :param scatter_figure: Scatter figure.
+        :return A scatter render function.
+        """
+        if scatter_sign == 'circle':
+            renderer = scatter_figure.circle
+        elif scatter_sign == 'diamond':
+            renderer = scatter_figure.diamond
+        elif scatter_sign == 'plus':
+            renderer = scatter_figure.square
+        elif scatter_sign == 'triangle':
+            renderer = scatter_figure.triangle
+        elif scatter_sign == 'inverted_triangle':
+            renderer = scatter_figure.inverted_triangle
+        elif scatter_sign == 'star':
+            renderer = scatter_figure.star
+        elif scatter_sign == 'asterisk':
+            renderer = scatter_figure.asterisk
+        elif scatter_sign == 'diamond_cross':
+            renderer = scatter_figure.diamond_cross
+        else:
+            raise NotImplementedError(f"{scatter_sign} is not a valid option for scatter plots!")
+
+        return renderer
+
     def get_file_path_last_name(self, index: int) -> str:
         """
         Get last name of a file path.
@@ -98,21 +163,28 @@ class BaseTab:
     def load_log_name(self, scenario_type: str) -> List[str]:
         """
         Load a list of log names based on the scenario type.
+        :param scenario_type: A selected scenario type.
         :return a list of log names.
         """
-        log_names = self._experiment_file_data.available_scenario_type_names.get(scenario_type, [])
+        log_names = self._experiment_file_data.available_scenarios.get(scenario_type, [])
 
         # Remove duplicates
         sorted_log_names: List[str] = sorted(list(set(log_names)), reverse=False)
 
         return sorted_log_names
 
-    def load_scenario_names(self, log_name: str) -> List[str]:
+    def load_scenario_names(self, scenario_type: str, log_name: str) -> List[str]:
         """
         Load a list of scenario names based on the log name.
+        :param scenario_type: A selected scenario type.
+        :param log_name: A selected log name.
         :return a list of scenario names.
         """
-        scenario_names = self._experiment_file_data.available_scenario_log_names.get(log_name, [])
+        log_dict = self._experiment_file_data.available_scenarios.get(scenario_type, [])
+        if not log_dict:
+            return []
+
+        scenario_names = log_dict.get(log_name, [])
 
         # Remove duplicates
         sorted_scenario_names: List[str] = sorted(list(set(scenario_names)), reverse=False)

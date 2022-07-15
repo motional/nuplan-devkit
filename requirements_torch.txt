@@ -3,7 +3,6 @@
 
 torch==1.9.0+cu111;      platform_system == "Linux"
 torch==1.9.0;            platform_system == "Darwin"
+torch-scatter==2.0.9;    platform_system == "Linux"
 torchmetrics==0.7.2
 torchvision==0.10.0+cu111
-torch-scatter==2.0.9;    platform_system == "Linux"
-

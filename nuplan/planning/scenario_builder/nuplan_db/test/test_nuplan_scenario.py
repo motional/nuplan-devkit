@@ -1,11 +1,18 @@
+import gc
 import unittest
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Union
 
+import guppy
 import numpy as np
 
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_db, get_test_nuplan_lidarpc
+from nuplan.database.tests.nuplan_db_test_utils import (
+    DEFAULT_TEST_LIDAR_PC_INDEX,
+    get_test_nuplan_db,
+    get_test_nuplan_db_nocache,
+    get_test_nuplan_lidarpc,
+)
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import (
     DEFAULT_SCENARIO_NAME,
@@ -24,6 +31,7 @@ class TestNuPlanScenario(unittest.TestCase):
         Initializes the hydra config
         """
         self.db = get_test_nuplan_db()
+        self.db.add_ref()
         self.lidarpc = get_test_nuplan_lidarpc()
 
         self.database_interval = 0.05  # 20Hz database
@@ -217,6 +225,68 @@ class TestNuPlanScenario(unittest.TestCase):
         for iteration in range(self.scenario.get_number_of_iterations()):
             traffic_light_status = self.scenario.get_traffic_light_status_at_iteration(iteration=iteration)
             self.assertGreaterEqual(len(traffic_light_status), 0)
+
+    def test_nuplan_scenario_memory_usage(self) -> None:
+        """
+        Test that repeatedly creating and destroying nuplan scenario does not cause memory leaks.
+        """
+
+        def spin_up_scenario() -> None:
+            db = get_test_nuplan_db_nocache()
+            lidarpc = db.lidar_pc[DEFAULT_TEST_LIDAR_PC_INDEX]
+
+            self.database_interval = 0.05  # 20Hz database
+            scenario_duration = 20.0  # 20s scenario duration
+            subsample_ratio = 0.5  # scenario sub-sample ratio
+
+            # This extraction token was experimentally figured out
+            scenario = NuPlanScenario(
+                db=db,
+                log_name=lidarpc.log.logfile,
+                initial_lidar_token=lidarpc.token,
+                scenario_extraction_info=ScenarioExtractionInfo(
+                    DEFAULT_SCENARIO_NAME, scenario_duration, 0.0, subsample_ratio
+                ),
+                scenario_type=DEFAULT_SCENARIO_NAME,
+                ego_vehicle_parameters=get_pacifica_parameters(),
+                ground_truth_predictions=TrajectorySampling(time_horizon=8, num_poses=16),
+            )
+
+            # Not strictly necessary, but needed to prevent linter from complaining about
+            #   unused variables
+            del scenario
+
+            db.remove_ref()
+
+        starting_usage = 0
+        ending_usage = 0
+        num_iterations = 5
+
+        hpy = guppy.hpy()
+        hpy.setrelheap()
+
+        for i in range(0, num_iterations, 1):
+            # Use nested function to ensure local handles go out of scope
+            spin_up_scenario()
+            gc.collect()
+
+            heap = hpy.heap()
+
+            # Force heapy to materialize the heap statistics
+            # This is done lasily, which can lead to noise if not forced.
+            _ = heap.size
+
+            # Skip the first few iterations - there can be noise as caches fill up
+            if i == num_iterations - 2:
+                starting_usage = heap.size
+            if i == num_iterations - 1:
+                ending_usage = heap.size
+
+        memory_difference_in_mb = (ending_usage - starting_usage) / (1024 * 1024)
+
+        # Alert on either 100 kb growth or 10 % of starting usage, whichever is bigger
+        max_allowable_growth_mb = max(0.1, 0.1 * starting_usage / (1024 * 1024))
+        self.assertGreater(max_allowable_growth_mb, memory_difference_in_mb)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,3 @@
+remote_planner:
+  _target_: nuplan.planning.simulation.planner.remote_planner.RemotePlanner
+  _convert_: 'all'

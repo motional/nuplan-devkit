@@ -229,6 +229,18 @@ class BaseNuPlanDBSplitter(DBSplitterInterface):
         """
         self._db = db
 
+        # Update the DB manual reference count to prevent tables from being detached
+        #   while the splitter is using it.
+        self._db.add_ref()
+
+    def __del__(self) -> None:
+        """
+        Called when the splitter is being destroyed.
+        """
+        # Splitter is no longer using the DB. Allow the tables to be detached and GC'd
+        #   no other classes are using it.
+        self._db.remove_ref()
+
     def __repr__(self) -> str:
         """
         Get the string representation.

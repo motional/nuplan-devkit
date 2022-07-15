@@ -44,7 +44,7 @@ py_library(
     name = "simple_vector_map_model",
     srcs = ["simple_vector_map_model.py"],
     deps = [
-        "//nuplan/planning/training/modeling:torch_module_wrapper",
+        "//nuplan/planning/training/modeling:scriptable_torch_module_wrapper",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_map_feature_builder",

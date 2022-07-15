@@ -38,9 +38,9 @@ Next we setup a virtual environment. We recommend Conda for this purpose.
 See the [official Miniconda page](https://conda.io/en/latest/miniconda.html).
 
 ### Create a Conda environment
-We create a new Conda environment named `nuplan`.
+We create a new Conda environment using environment.yml.
 ```
-conda create --name nuplan python=3.9
+conda env create -f environment.yml
 ```
 
 ### Activate the environment

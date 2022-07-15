@@ -41,11 +41,16 @@ def build_simulation_experiment_folder(cfg: DictConfig) -> str:
     else:
         exp_folder = main_exp_folder
 
+    if "simulation_log_callback" in cfg.callback:
+        simulation_folder = cfg.callback.simulation_log_callback.simulation_log_dir
+    else:
+        simulation_folder = None
+
     # Build nuboard event file.
     nuboard_filename = main_exp_folder / (f'nuboard_{int(time.time())}' + NuBoardFile.extension())
     nuboard_file = NuBoardFile(
         simulation_main_path=str(exp_folder),
-        simulation_folder=cfg.callback.serialization_callback.folder_name,
+        simulation_folder=simulation_folder,
         metric_main_path=str(main_exp_folder),
         metric_folder=cfg.metric_dir,
         aggregator_metric_folder=cfg.aggregator_metric_dir,
