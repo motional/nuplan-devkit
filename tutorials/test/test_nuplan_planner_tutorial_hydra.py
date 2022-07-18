@@ -6,10 +6,10 @@ from pathlib import Path
 
 import hydra
 import ray
-from tutorials.utils.tutorial_utils import construct_nuboard_hydra_paths, construct_simulation_hydra_paths
 
 from nuplan.planning.script.run_nuboard import main as main_nuboard
 from nuplan.planning.script.run_simulation import main as main_simulation
+from tutorials.utils.tutorial_utils import construct_nuboard_hydra_paths, construct_simulation_hydra_paths
 
 TEST_TIMEOUT = 10  # [s] timeout dashboard after this duration
 
