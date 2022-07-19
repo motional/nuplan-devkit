@@ -4,9 +4,8 @@ import logging
 import os
 from typing import Any
 
-from docker.errors import NotFound
-
 import docker
+from docker.errors import NotFound
 
 from nuplan.common.utils.helpers import keep_trying
 
