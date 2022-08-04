@@ -19,3 +19,16 @@ py_test(
         "//nuplan/planning/script/builders/utils:utils_config",
     ],
 )
+
+py_test(
+    name = "test_scenario_builder",
+    size = "medium",
+    srcs = ["test_scenario_builder.py"],
+    deps = [
+        "//nuplan/planning/script/builders:scenario_builder",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        "//nuplan/planning/utils/multithreading:worker_pool",
+    ],
+)

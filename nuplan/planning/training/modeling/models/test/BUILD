@@ -6,8 +6,15 @@ py_test(
     name = "test_lanegcn",
     size = "medium",
     srcs = ["test_lanegcn.py"],
+    flaky = True,
     deps = [
+        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/modeling/models:lanegcn_model",
         "//nuplan/planning/training/modeling/models:lanegcn_utils",
+        "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/features:trajectory",
+        "//nuplan/planning/training/preprocessing/features:vector_map",
     ],
 )
 

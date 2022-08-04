@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional
+import logging
+from typing import List, Optional
 
 import numpy as np
 from shapely.geometry import Point
@@ -17,6 +18,8 @@ from nuplan.planning.metrics.utils.route_extractor import (
 from nuplan.planning.metrics.utils.state_extractors import extract_ego_center, extract_ego_time_point
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
+
+logger = logging.getLogger(__name__)
 
 
 class PerFrameProgressAlongRouteComputer:
@@ -56,7 +59,8 @@ class PerFrameProgressAlongRouteComputer:
             raise ValueError('invalid position argument')
 
     def compute_progress_for_skipped_road_block(self) -> float:
-        """Computes progress for skipped road_blocks (when ego pose exits one road block in a route and it does not enter the next one)
+        """Computes progress for skipped road_blocks (when ego pose exits one road block in a route and it does not
+        enter the next one)
         :return: progress_for_skipped_roadblock
         """
         assert self.next_roadblock_pair is not None
@@ -81,15 +85,16 @@ class PerFrameProgressAlongRouteComputer:
     def get_progress_including_skipped_roadblocks(
         self, ego_pose: Point2D, progress_for_skipped_roadblock: float
     ) -> float:
-        """Computes ego's progress when it first enters a new road-block in the route by considering possible progress for roadblocks it has
-        skipped as multi_block_progress = (progress along the baseline of prev ego roadblock) + (progress along the
-        baseline of the roadblock ego is in now) + (progress along skipped roadblocks if any).
+        """Computes ego's progress when it first enters a new road-block in the route by considering possible progress
+        for roadblocks it has skipped as multi_block_progress = (progress along the baseline of prev ego roadblock)
+        + (progress along the baseline of the roadblock ego is in now) + (progress along skipped roadblocks if any).
         :param ego_pose: ego pose
         :param progress_for_skipped_roadblock: Prgoress for skipped road_blocks (zero if no roadblocks is skipped)
         :return: multi_block_progress
         """
         assert self.next_roadblock_pair is not None
-        # progress in previous roadblock compared to previous pose in that roadblock is equal to length of prev_baseline - distance of prev pose to start of baseline
+        # progress in previous roadblock compared to previous pose in that roadblock is equal
+        # to length of prev_baseline - distance of prev pose to start of baseline
         progress_in_prev_roadblock = self.curr_roadblock_pair.base_line.linestring.length - self.prev_distance_to_start
         prev_roadblock_last_point = self.get_some_baseline_point(self.curr_roadblock_pair.base_line, 'last')
 
@@ -110,9 +115,9 @@ class PerFrameProgressAlongRouteComputer:
         return float(multi_block_progress)
 
     def get_multi_block_progress(self, ego_pose: Point2D) -> float:
-        """When ego pose exits previous roadblock this function takes next road blocks in the expert route one by one until it finds
-        one (if any) that pose belongs to. Once found, ego progress for multiple roadblocks including possible skipped roadblocks is computed
-        and returned
+        """When ego pose exits previous roadblock this function takes next road blocks in the expert route one by one
+        until it finds one (if any) that pose belongs to. Once found, ego progress for multiple roadblocks including
+        possible skipped roadblocks is computed and returned
         :param ego_pose: ego pose
         :return: multi block progress
         """
@@ -147,8 +152,8 @@ class PerFrameProgressAlongRouteComputer:
         # For each pose if it's in the last taken road_block compute the new distance to the
         # beginning of the baseline and take progress as the difference with the previous distance.
         # O.w, take the next road blocks in the expert route to find one the pose belongs to and take
-        # progress as the multi_block_progress = (progress along the baseline of prev ego roadblock) + (progress along the
-        # baseline of the roadblock ego is in now) + (progress along skipped roadblocks if any).
+        # progress as the multi_block_progress = (progress along the baseline of prev ego roadblock) +
+        # (progress along the baseline of the roadblock ego is in now) + (progress along skipped roadblocks if any).
         for ego_pose in ego_poses[1:]:
             if self.curr_roadblock_pair.road_block.contains_point(ego_pose):
                 distance_to_start = self.get_distance_of_closest_baseline_point_to_its_start(
@@ -166,7 +171,7 @@ class PerFrameProgressAlongRouteComputer:
 class EgoProgressAlongExpertRouteStatistics(MetricBase):
     """Ego progress along the expert route metric."""
 
-    def __init__(self, name: str, category: str, score_progress_threshold: float = 10) -> None:
+    def __init__(self, name: str, category: str, score_progress_threshold: float = 0.1) -> None:
         """
         Initializes the EgoProgressAlongExpertRouteStatistics class
         :param name: Metric name
@@ -176,14 +181,17 @@ class EgoProgressAlongExpertRouteStatistics(MetricBase):
         super().__init__(name=name, category=category)
         self._score_progress_threshold = score_progress_threshold
 
+        # Store results to re-use in high level metrics
+        self.results: List[MetricStatistics] = []
+
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         time_series: Optional[TimeSeries] = None,
     ) -> float:
         """Inherited, see superclass."""
-        return float(metric_statistics[MetricStatisticsType.RATIO].value)
+        return float(metric_statistics[-1].value)
 
     def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
@@ -198,45 +206,86 @@ class EgoProgressAlongExpertRouteStatistics(MetricBase):
         expert_states = scenario.get_expert_ego_trajectory()
         expert_poses = extract_ego_center(expert_states)
 
-        # get expert's route and simplify it by removing repeated consequtive route objects
+        # Get expert's route and simplify it by removing repeated consequtive route objects
         expert_route = get_route(map_api=history.map_api, poses=expert_poses)
         expert_route_simplified = get_route_simplified(expert_route)
+        if not expert_route_simplified:
+            # If expert_route_simplified is empty (no lanes/lane_connectors could be assigned to expert, e.g. when expert is in car_park),
+            # and so no route info is available, planner gets the score for this metric:
+            statistics = [
+                Statistic(
+                    name='expert_total_progress_along_route',
+                    unit='meters',
+                    value=0.0,
+                    type=MetricStatisticsType.VALUE,
+                ),
+                Statistic(
+                    name='ego_expert_progress_along_route_ratio',
+                    unit=MetricStatisticsType.RATIO.unit,
+                    value=1.0,
+                    type=MetricStatisticsType.RATIO,
+                ),
+            ]
+            # Find results and save to re-use in high level metrics
+            self.results = self._construct_metric_results(metric_statistics=statistics, scenario=scenario)
+        else:
+            # Find route's baselines and roadblocks and generate a linked list of baseline-roadblock pairs
+            route_baseline_roadblock_pairs = get_route_baseline_roadblock_linkedlist(
+                history.map_api, expert_route_simplified
+            )
 
-        # Find route's baselines and roadblocks and generate a linked list of baseline-roadblock pairs
-        route_baseline_roadblock_pairs = get_route_baseline_roadblock_linkedlist(
-            history.map_api, expert_route_simplified
-        )
+            # Compute ego's progress along the route
+            ego_progress_computer = PerFrameProgressAlongRouteComputer(route_roadblocks=route_baseline_roadblock_pairs)
+            ego_progress = ego_progress_computer(ego_poses=ego_poses)
+            overall_ego_progress = np.sum(ego_progress)
 
-        # Compute progress along the route
-        ego_progress_computer = PerFrameProgressAlongRouteComputer(route_roadblocks=route_baseline_roadblock_pairs)
-        progress = ego_progress_computer(ego_poses=ego_poses)
-        overall_progress = np.sum(progress)
+            # Ego is not allowed to fully drive backwards in our scenarios. Due to noise in data, in some scenarios where ego is stopped during the scenario
+            # we may get a small negative value in overall_ego_progress up to -self._score_progress_threshold. We set ego's to expert progress ratio to 0 if
+            # overall_ego_progress is less than this negative progress threshold
+            if overall_ego_progress < -self._score_progress_threshold:
+                ego_expert_progress_along_route_ratio = 0
 
-        # Compute expert's progress as baseline for comparison.
-        expert_progress_computer = PerFrameProgressAlongRouteComputer(route_roadblocks=route_baseline_roadblock_pairs)
-        expert_progress = expert_progress_computer(ego_poses=expert_poses)
-        score_progress_threshold = max(np.sum(expert_progress), self._score_progress_threshold)
-        ego_expert_progress_along_route_ratio = min(1.0, max(0.0, overall_progress / score_progress_threshold))
+            else:
+                # Compute expert's progress as baseline for comparison.
+                expert_progress_computer = PerFrameProgressAlongRouteComputer(
+                    route_roadblocks=route_baseline_roadblock_pairs
+                )
+                expert_progress = expert_progress_computer(ego_poses=expert_poses)
+                overall_expert_progress = np.sum(expert_progress)
+                # Find the ratio of ego's to expert progress along the route and saturate it in [0,1]. We set this ratio to 1 if expert does not move
+                # more than some minimum progress threshold (e.g. expert is stopped for a red light for the entire scenario duration and so is the proposed ego trajectory)
+                ego_expert_progress_along_route_ratio = min(
+                    1.0,
+                    max(overall_ego_progress, self._score_progress_threshold)
+                    / max(overall_expert_progress, self._score_progress_threshold),
+                )
 
-        ego_timestamps = extract_ego_time_point(ego_states)
+            ego_timestamps = extract_ego_time_point(ego_states)
 
-        time_series = TimeSeries(unit='meters', time_stamps=list(ego_timestamps), values=list(progress))
-        statistics = {
-            MetricStatisticsType.MEAN: Statistic(
-                name='ego_per_frame_progress_along_route_mean', unit='meters', value=np.mean(progress)
-            ),
-            MetricStatisticsType.VALUE: Statistic(
-                name='ego_total_progress_along_route_value',
-                unit='meters',
-                value=overall_progress,
-            ),
-            MetricStatisticsType.RATIO: Statistic(
-                name='ego_expert_progress_along_route_ratio',
-                unit='ratio',
-                value=ego_expert_progress_along_route_ratio,
-            ),
-        }
-        results = self._construct_metric_results(
-            metric_statistics=statistics, scenario=scenario, time_series=time_series
-        )
-        return results  # type: ignore
+            time_series = TimeSeries(unit='meters', time_stamps=list(ego_timestamps), values=list(ego_progress))
+            statistics = [
+                Statistic(
+                    name='expert_total_progress_along_route',
+                    unit='meters',
+                    value=float(overall_expert_progress),
+                    type=MetricStatisticsType.VALUE,
+                ),
+                Statistic(
+                    name='ego_total_progress_along_route',
+                    unit='meters',
+                    value=float(overall_ego_progress),
+                    type=MetricStatisticsType.VALUE,
+                ),
+                Statistic(
+                    name='ego_expert_progress_along_route_ratio',
+                    unit=MetricStatisticsType.RATIO.unit,
+                    value=ego_expert_progress_along_route_ratio,
+                    type=MetricStatisticsType.RATIO,
+                ),
+            ]
+            # Find results and save to re-use in high level metrics
+            self.results = self._construct_metric_results(
+                metric_statistics=statistics, scenario=scenario, time_series=time_series
+            )
+
+        return self.results

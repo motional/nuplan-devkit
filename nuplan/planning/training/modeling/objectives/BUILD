@@ -29,13 +29,3 @@ py_library(
         "//nuplan/planning/training/preprocessing/features:trajectory",
     ],
 )
-
-py_library(
-    name = "dynamic_imitation_objective",
-    srcs = ["dynamic_imitation_objective.py"],
-    deps = [
-        "//nuplan/planning/training/modeling:types",
-        "//nuplan/planning/training/modeling/objectives:abstract_objective",
-        "//nuplan/planning/training/preprocessing/features:dynamic_ego_trajectory",
-    ],
-)

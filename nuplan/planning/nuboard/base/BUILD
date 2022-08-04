@@ -48,6 +48,7 @@ py_library(
         "//nuplan/planning/nuboard:style",
         "//nuplan/planning/simulation:simulation_log",
         "//nuplan/planning/simulation/history:simulation_history",
+        "//nuplan/planning/simulation/observation:observation_type",
         "@nuplan_devkit//nuplan/planning/utils/serialization:to_scene",
     ],
 )

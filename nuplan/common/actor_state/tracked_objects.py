@@ -4,12 +4,13 @@ from functools import cached_property
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.agent_temporal_state import AgentTemporalState
 from nuplan.common.actor_state.oriented_box import OrientedBox
 from nuplan.common.actor_state.scene_object import SceneObject, SceneObjectMetadata
 from nuplan.common.actor_state.static_object import StaticObject
 from nuplan.common.actor_state.tracked_objects_types import AGENT_TYPES, STATIC_OBJECT_TYPES, TrackedObjectType
 
-TrackedObject = Union[Agent, StaticObject, SceneObject]
+TrackedObject = Union[Agent, StaticObject, SceneObject, AgentTemporalState]
 
 
 class TrackedObjects:

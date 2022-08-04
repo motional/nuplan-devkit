@@ -29,9 +29,9 @@ class ScenarioSceneConverter(SceneConverter):
         """Inherited, see superclass."""
         index = 0  # Use initial index of the scenario
 
-        ego_trajectory = scenario.get_ego_future_trajectory(
-            index, self._ego_trajectory_horizon, self._ego_trajectory_poses
-        )
+        ego_trajectory = [scenario.get_ego_state_at_iteration(index)] + list(
+            scenario.get_ego_future_trajectory(index, self._ego_trajectory_horizon, self._ego_trajectory_poses)
+        )  # Ego trajectory including initial state
 
         sample = SimulationHistorySample(
             iteration=SimulationIteration(time_point=scenario.get_time_point(index), index=index),

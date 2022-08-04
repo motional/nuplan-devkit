@@ -23,7 +23,7 @@ class MetricStatisticsDataFrame:
     def __eq__(self, other: object) -> bool:
         """Compare equality."""
         if not isinstance(other, MetricStatisticsDataFrame):
-            raise NotImplementedError
+            return NotImplemented
 
         return self.metric_statistic_name == other.metric_statistic_name and self.metric_statistics_dataframe.equals(
             other.metric_statistics_dataframe

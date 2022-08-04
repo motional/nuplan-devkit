@@ -1,14 +1,13 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set, Type, cast
+from typing import Dict, List, Set, cast
 
-from hydra._internal.utils import _locate
 from omegaconf import DictConfig
 
 from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
+from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
 from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
@@ -29,16 +28,17 @@ def get_s3_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[Path
     s3_filenames = expand_s3_dir(cache_path)
     assert len(s3_filenames) > 0, 'No files found in the remote cache {cache_path}!'
 
-    # Create a 2-level hash with log names and scenario tokens as keys and the set of contained features as values.
-    cache_map: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
+    # Create a 3-level hash with log names, scenario types and scenario tokens as keys and the set of contained features as values.
+    cache_map: Dict[str, Dict[str, Dict[str, Set[str]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
     for s3_filename in s3_filenames:
         path = Path(s3_filename)
-        cache_map[path.parent.parent.name][path.parent.name].add(path.stem)
+        cache_map[path.parent.parent.parent.name][path.parent.parent.name][path.parent.name].add(path.stem)
 
     # Keep only dir paths that contain all required feature names
     scenario_cache_paths = [
-        Path(f'{log_name}/{scenario_token}')
-        for log_name, scenarios in cache_map.items()
+        Path(f'{log_name}/{scenario_type}/{scenario_token}')
+        for log_name, scenario_types in cache_map.items()
+        for scenario_type, scenarios in scenario_types.items()
         for scenario_token, features in scenarios.items()
         if not (feature_names - features)
     ]
@@ -93,27 +93,29 @@ def extract_scenarios_from_cache(
         else get_local_scenario_cache(cache_path, feature_names)
     )
 
-    # Get the scenario class and default arguments to use when instantiating a scenario.
-    scenario_builder_cls: Type[AbstractScenarioBuilder] = _locate(cfg.scenario_builder._target_)
-    scenario_cls = scenario_builder_cls.get_scenario_type()
-    scenario_args = {
-        'db': None,
-        'scenario_type': None,
-        'scenario_extraction_info': None,
-        'ego_vehicle_parameters': None,
-    }
-
-    def create_scenario_from_paths(paths: List[Path]) -> List[AbstractScenario]:
+    def filter_scenario_cache_paths_by_scenario_type(paths: List[Path]) -> List[Path]:
         """
-        Create scenario objects from a list of cache paths in the format of ".../log_name/scenario_token".
-        :param paths: List of paths to load scenarios from.
-        :return: List of created scenarios.
+        Filter the scenario cache paths by scenario type.
+        :param paths: Scenario cache paths
+        :return: Scenario cache paths filtered by desired scenario types
         """
-        scenarios = [
-            scenario_cls(log_name=path.parent.name, initial_lidar_token=path.name, **scenario_args) for path in paths
-        ]
+        scenario_types_to_include = cfg.scenario_filter.scenario_types
 
-        return scenarios
+        filtered_scenario_cache_paths = [path for path in paths if path.parent.name in scenario_types_to_include]
+        return filtered_scenario_cache_paths
+
+    # If user inputs desired scenario types and scenario_type is in cache path.
+    if cfg.scenario_filter.scenario_types:
+        validate_scenario_type_in_cache_path(scenario_cache_paths)
+        logger.info('Filtering by desired scenario types')
+        scenario_cache_paths = worker_map(
+            worker,
+            filter_scenario_cache_paths_by_scenario_type,
+            scenario_cache_paths,
+        )
+        assert (
+            len(scenario_cache_paths) > 0
+        ), f"Zero scenario cache paths after filtering by desired scenario types: {cfg.scenario_filter.scenario_types}. Please check if the cache contains the desired scenario type."
 
     scenarios = worker_map(worker, create_scenario_from_paths, scenario_cache_paths)
 
@@ -150,5 +152,35 @@ def build_scenarios(cfg: DictConfig, worker: WorkerPool, model: TorchModuleWrapp
 
     logger.info(f'Extracted {len(scenarios)} scenarios for training')
     assert len(scenarios) > 0, 'No scenarios were retrieved for training, check the scenario_filter parameters!'
+
+    return scenarios
+
+
+def validate_scenario_type_in_cache_path(paths: List[Path]) -> None:
+    """
+    Checks if scenario_type is in cache path.
+    :param path: Scenario cache path
+    :return: Whether scenario type is in cache path
+    """
+    sample_cache_path = paths[0]
+    assert all(
+        not char.isdigit() for char in sample_cache_path.parent.name
+    ), "Unable to filter cache by scenario types as it was generated without scenario type information. Please regenerate a new cache if scenario type filtering is required."
+
+
+def create_scenario_from_paths(paths: List[Path]) -> List[AbstractScenario]:
+    """
+    Create scenario objects from a list of cache paths in the format of ".../log_name/scenario_token".
+    :param paths: List of paths to load scenarios from.
+    :return: List of created scenarios.
+    """
+    scenarios = [
+        CachedScenario(
+            log_name=path.parent.parent.name,
+            token=path.name,
+            scenario_type=path.parent.name,
+        )
+        for path in paths
+    ]
 
     return scenarios

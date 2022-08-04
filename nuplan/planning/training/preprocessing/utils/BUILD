@@ -44,9 +44,15 @@ py_library(
     name = "utils_scene",
     srcs = ["utils_scene.py"],
     deps = [
-        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/training/preprocessing/features:trajectory",
+    ],
+)
+
+py_library(
+    name = "vector_preprocessing",
+    srcs = ["vector_preprocessing.py"],
+    deps = [
     ],
 )
 

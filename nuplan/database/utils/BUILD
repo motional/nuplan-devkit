@@ -8,6 +8,11 @@ py_library(
 )
 
 py_library(
+    name = "iterable_lidar_box",
+    srcs = ["iterable_lidar_box.py"],
+)
+
+py_library(
     name = "geometry",
     srcs = ["geometry.py"],
 )

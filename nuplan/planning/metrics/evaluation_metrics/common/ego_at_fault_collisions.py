@@ -223,15 +223,18 @@ class EgoAtFaultCollisionStatistics(MetricBase):
             for collision in track_collisions
         ]
 
-        statistics = {
-            MetricStatisticsType.COUNT: Statistic(
+        statistics = [
+            Statistic(
                 name=f'number_of_{self.name}',
-                unit='count',
+                unit=MetricStatisticsType.COUNT.unit,
                 value=number_of_at_fault_collisions,
-            ),
-        }
+                type=MetricStatisticsType.COUNT,
+            )
+        ]
 
-        results = self._construct_metric_results(metric_statistics=statistics, time_series=None, scenario=scenario)
+        results: List[MetricStatistics] = self._construct_metric_results(
+            metric_statistics=statistics, time_series=None, scenario=scenario
+        )
 
         # Save to re-use in high level metrics
         self.results = results
@@ -239,4 +242,4 @@ class EgoAtFaultCollisionStatistics(MetricBase):
         self.all_at_fault_collisions = all_at_fault_collisions
         self.timestamps_at_fault_collisions = timestamps_at_fault_collisions
 
-        return results  # type: ignore
+        return results

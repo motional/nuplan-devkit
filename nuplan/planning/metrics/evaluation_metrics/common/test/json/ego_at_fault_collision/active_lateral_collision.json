@@ -48,9 +48,9 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "COUNT": 1
-        },
+        "statistics": [
+            ["COUNT", 1]
+        ],
         "time_series": {}
     },
     "goal": {

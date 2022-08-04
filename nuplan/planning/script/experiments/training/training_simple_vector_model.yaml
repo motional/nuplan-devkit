@@ -1,6 +1,7 @@
 # @package _global_
 experiment_name: training_simple_vector_model
 py_func: train
+objective_aggregate_mode: mean
 
 defaults:
   - override /data_augmentation:

@@ -27,7 +27,7 @@ class EgoJerkStatistics(WithinBoundMetricBase):
         :param scenario: Scenario running this metric
         :return the estimated jerk metric.
         """
-        return self._compute_statistics(  # type: ignore
+        metric_statistics: List[MetricStatistics] = self._compute_statistics(
             history=history,
             scenario=scenario,
             statistic_unit_name='meters_per_second_cubed',
@@ -35,3 +35,4 @@ class EgoJerkStatistics(WithinBoundMetricBase):
             extract_function_params={'acceleration_coordinate': 'magnitude'},
             max_within_bound_threshold=self._max_abs_mag_jerk,
         )
+        return metric_statistics

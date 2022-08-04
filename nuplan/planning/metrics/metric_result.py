@@ -11,16 +11,15 @@ from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 class MetricStatisticsType(Enum):
     """Enum of different types for statistics."""
 
-    MAX: str = 'MAX'
-    MIN: str = 'MIN'
-    P90: str = 'P90'
-    MEAN: str = 'MEAN'
-    COUNT: str = 'COUNT'
-    VALUE: str = 'VALUE'
-    DISTANCE: str = 'DISTANCE'
-    VELOCITY: str = 'VELOCITY'
-    BOOLEAN: str = 'BOOLEAN'
-    RATIO: str = 'RATIO'
+    MAX = 'MAX'
+    MIN = 'MIN'
+    P90 = 'P90'
+    MEAN = 'MEAN'
+    VALUE = 'VALUE'
+    VELOCITY = 'VELOCITY'
+    BOOLEAN = 'BOOLEAN'
+    RATIO = 'RATIO'
+    COUNT = 'COUNT'
 
     def __str__(self) -> str:
         """Metric type string representation."""
@@ -29,6 +28,18 @@ class MetricStatisticsType(Enum):
     def __repr__(self) -> str:
         """Metric type string representation."""
         return str(self.value)
+
+    @property
+    def unit(self) -> str:
+        """Get a default unit with a type."""
+        if self.value == 'BOOLEAN':
+            return 'boolean'
+        elif self.value == 'RATIO':
+            return 'ratio'
+        elif self.value == 'COUNT':
+            return 'count'
+        else:
+            raise ValueError(f"{self.value} don't have a default unit!")
 
     def serialize(self) -> str:
         """Serialize the type when saving."""
@@ -78,11 +89,12 @@ class Statistic:
 
     name: str  # name of statistic
     unit: str  # unit of statistic
+    type: MetricStatisticsType  # Metric statistic type
     value: Union[float, bool]  # value of the statistic
 
     def serialize(self) -> Dict[str, Any]:
         """Serialization of TimeSeries."""
-        return {'name': self.name, 'unit': self.unit, 'value': self.value}
+        return {'name': self.name, 'unit': self.unit, 'value': self.value, 'type': self.type.serialize()}
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> Statistic:
@@ -91,7 +103,12 @@ class Statistic:
         :param data: A dictionary of data
         :return A Statistic data class.
         """
-        return Statistic(name=data['name'], unit=data['unit'], value=data['value'])
+        return Statistic(
+            name=data['name'],
+            unit=data['unit'],
+            value=data['value'],
+            type=MetricStatisticsType.deserialize(data['type']),
+        )
 
 
 @dataclass
@@ -130,8 +147,8 @@ class TimeSeries:
 class MetricStatistics(MetricResult):
     """Class to report results of metric statistics."""
 
-    statistics: Dict[MetricStatisticsType, Statistic]  # Collection of statistics
-    time_series: Optional[TimeSeries]  # time series data of the metric
+    statistics: List[Statistic]  # Collection of statistics
+    time_series: Optional[TimeSeries] = None  # Time series data of the metric
     metric_score: Optional[float] = None  # Final score of a metric in a scenario
 
     def serialize(self) -> Dict[str, Any]:
@@ -139,10 +156,7 @@ class MetricStatistics(MetricResult):
         return {
             'metric_computator': self.metric_computator,
             'name': self.name,
-            'statistics': {
-                statistic_type.serialize(): statistics.serialize()
-                for statistic_type, statistics in self.statistics.items()
-            },
+            'statistics': [statistic.serialize() for statistic in self.statistics],
             'time_series': self.time_series.serialize() if self.time_series is not None else None,
             'metric_category': self.metric_category,
             'metric_score': self.metric_score,
@@ -157,10 +171,7 @@ class MetricStatistics(MetricResult):
         return MetricStatistics(
             metric_computator=data['metric_computator'],
             name=data['name'],
-            statistics={
-                MetricStatisticsType.deserialize(statistic_type): Statistic.deserialize(statistics)
-                for statistic_type, statistics in data['statistics'].items()
-            },
+            statistics=[Statistic.deserialize(statistic) for statistic in data['statistics']],
             time_series=TimeSeries.deserialize(data['time_series']),
             metric_category=data['metric_category'],
             metric_score=data['metric_score'],
@@ -172,28 +183,34 @@ class MetricStatistics(MetricResult):
         :return a dictionary
         """
         columns: Dict[str, Any] = {'metric_score': self.metric_score, 'metric_category': self.metric_category}
-        for statistic_type, statistic in self.statistics.items():
+        for statistic in self.statistics:
             statistic_columns = {
-                f'{statistic.name}_stat_type': statistic_type.serialize(),
+                f'{statistic.name}_stat_type': statistic.type.serialize(),
                 f'{statistic.name}_stat_unit': [statistic.unit],
                 f'{statistic.name}_stat_value': [statistic.value],
             }
             columns.update(statistic_columns)
 
+        time_series_columns: Dict[str, List[Any]] = {}
         if self.time_series is None:
-            time_series_unit_column = [None]
-            time_series_timestamp_column = [None]
-            time_series_values_column = [None]
+            time_series_columns.update(
+                {
+                    MetricStatisticsDataFrame.time_series_unit_column: [None],
+                    MetricStatisticsDataFrame.time_series_timestamp_column: [None],
+                    MetricStatisticsDataFrame.time_series_values_column: [None],
+                }
+            )
         else:
-            time_series_unit_column = [self.time_series.unit]  # type: ignore
-            time_series_timestamp_column = [[int(timestamp) for timestamp in self.time_series.time_stamps]]  # type: ignore
-            time_series_values_column = [self.time_series.values]  # type: ignore
+            time_series_columns.update(
+                {
+                    MetricStatisticsDataFrame.time_series_unit_column: [self.time_series.unit],
+                    MetricStatisticsDataFrame.time_series_timestamp_column: [
+                        [int(timestamp) for timestamp in self.time_series.time_stamps]
+                    ],
+                    MetricStatisticsDataFrame.time_series_values_column: [self.time_series.values],
+                }
+            )
 
-        time_series_columns = {
-            MetricStatisticsDataFrame.time_series_unit_column: time_series_unit_column,
-            MetricStatisticsDataFrame.time_series_timestamp_column: time_series_timestamp_column,
-            MetricStatisticsDataFrame.time_series_values_column: time_series_values_column,
-        }
         columns.update(time_series_columns)
         return columns
 

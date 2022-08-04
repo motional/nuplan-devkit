@@ -1,6 +1,7 @@
 import concurrent
 import concurrent.futures
 import logging
+from concurrent.futures import Future
 from typing import Any, Iterable, List, Optional
 
 from tqdm import tqdm
@@ -52,3 +53,7 @@ class SingleMachineParallelExecutor(WorkerPool):
                 desc='ThreadPoolExecutor',
             )
         )
+
+    def submit(self, task: Task, *args: Any) -> Future[Any]:
+        """Inherited, see superclass."""
+        return self._executor.submit(task.fn, *args)

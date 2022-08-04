@@ -133,6 +133,9 @@ class NuBoard:
         self._doc.add_root(histogram_tab.bin_spinner)
 
         self._doc.add_root(scenario_tab.planner_checkbox_group)
+        self._doc.add_root(scenario_tab.object_checkbox_group)
+        self._doc.add_root(scenario_tab.traj_checkbox_group)
+        self._doc.add_root(scenario_tab.map_checkbox_group)
         self._doc.add_root(scenario_tab.scalar_scenario_type_select)
         self._doc.add_root(scenario_tab.scalar_log_name_select)
         self._doc.add_root(scenario_tab.scalar_scenario_name_select)

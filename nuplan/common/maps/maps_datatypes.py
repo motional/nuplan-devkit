@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Dict
 
-import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
+
+# Suppress pygeos warnings
+warnings.filterwarnings('ignore', '.*The Shapely GEOS version .* is incompatible with the GEOS version PyGEOS.*')
+
+import geopandas as gpd  # noqa: E402
 
 Transform = npt.NDArray[np.float32]  # 4x4 homogeneous transformation matrix
 

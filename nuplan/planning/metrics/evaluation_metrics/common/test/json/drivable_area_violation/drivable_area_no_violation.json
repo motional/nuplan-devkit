@@ -32,10 +32,10 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "Boolean": true,
-            "RATIO": 0
-        }
+        "statistics": [
+            ["BOOLEAN", true],
+            ["BOOLEAN", false]
+        ]
     },
     "goal": {
         "pose": []

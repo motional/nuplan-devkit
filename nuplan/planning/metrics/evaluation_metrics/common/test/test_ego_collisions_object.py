@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import pytest
 
 from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
@@ -10,19 +12,19 @@ from nuplan.planning.metrics.utils.testing_utils import build_mock_history_scena
 
 
 @nuplan_test(path='json/ego_at_fault_collision/collisions_with_object.json')
-def test_no_collision_with_object(scene) -> None:  # type: ignore
+def test_no_collision_with_object(scene: Dict[str, Any]) -> None:
     """
     Tests there is no collision as expected.
     :param scene: the json scene
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     ego_at_fault_collisions_metric = EgoAtFaultCollisionStatistics(
         'ego_at_fault_collisions_statistics', 'Dynamics', ego_lane_change_metric
     )
-    ego_at_fault_collisions_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_at_fault_collisions_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionObjectStatistics(
         'ego_at_fault_collisions_with_objects_statistics',

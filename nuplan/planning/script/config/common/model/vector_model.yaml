@@ -6,12 +6,12 @@ map_net_scales: 4
 num_res_blocks: 3
 num_attention_layers: 4
 a2a_dist_threshold: 20.0
-l2a_dist_threshold: 50.0
+l2a_dist_threshold: 30.0
 num_output_features: 36
 feature_dim: 128
 
 # VectorMapFeatureBuilder
-vector_map_feature_radius: 20    # [m] The query radius scope relative to the current ego-pose.
+vector_map_feature_radius: 50    # [m] The query radius scope relative to the current ego-pose.
 vector_map_connection_scales: [1, 2, 3, 4] # Use 4 scale connections which consider 1,2,3,4-hop neighbor lane
 
 # Parameters for past trajectory

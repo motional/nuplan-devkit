@@ -27,6 +27,7 @@ psutil  # Used widely to get the number of CPUs
 pyarrow # For parquet
 pygeos
 pyinstrument    # Used widely as profiler
+pyogrio # A performant backend for geopandas
 pyquaternion>=0.9.5  # Used widely, avoid known bug with quaternion slerp
 pytest    # Used widely
 pytorch-lightning==1.3.8    # Used widely

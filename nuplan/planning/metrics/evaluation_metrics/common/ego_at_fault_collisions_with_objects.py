@@ -60,6 +60,8 @@ class EgoAtFaultCollisionObjectStatistics(ViolationMetricBase):
             self.category,
         )
 
-        violation_statistics = self.aggregate_metric_violations(all_violations, scenario=scenario)
+        violation_statistics: List[MetricStatistics] = self.aggregate_metric_violations(
+            all_violations, scenario=scenario
+        )
 
-        return violation_statistics  # type: ignore
+        return violation_statistics

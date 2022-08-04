@@ -8,22 +8,6 @@ py_library(
 )
 
 py_library(
-    name = "clearance_from_static_agents",
-    srcs = ["clearance_from_static_agents.py"],
-    deps = [
-        "//nuplan/common/actor_state:agent",
-        "//nuplan/common/actor_state:ego_state",
-        "//nuplan/common/actor_state:vehicle_parameters",
-        "//nuplan/common/geometry:compute",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation:observation_type",
-    ],
-)
-
-py_library(
     name = "drivable_area_violation",
     srcs = ["drivable_area_violation.py"],
     deps = [
@@ -31,7 +15,6 @@ py_library(
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:route_extractor",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -44,32 +27,6 @@ py_library(
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:within_bound_metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
-    name = "ego_collisions",
-    srcs = ["ego_collisions.py"],
-    deps = [
-        "//nuplan/common/actor_state:ego_state",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/utils:collision_utils",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation:observation_type",
-    ],
-)
-
-py_library(
-    name = "ego_distance_to_goal",
-    srcs = ["ego_distance_to_goal.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -154,19 +111,6 @@ py_library(
 )
 
 py_library(
-    name = "ego_min_distance_to_track",
-    srcs = ["ego_min_distance_to_track.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation:observation_type",
-    ],
-)
-
-py_library(
     name = "ego_yaw_acceleration",
     srcs = ["ego_yaw_acceleration.py"],
     deps = [
@@ -203,32 +147,6 @@ py_library(
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
-    name = "time_gap_to_lead_agent",
-    srcs = ["time_gap_to_lead_agent.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation/idm:utils",
-    ],
-)
-
-py_library(
-    name = "time_gap_to_rear_agent",
-    srcs = ["time_gap_to_rear_agent.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation/idm:utils",
     ],
 )
 
@@ -278,18 +196,6 @@ py_library(
 )
 
 py_library(
-    name = "ego_progress_to_goal",
-    srcs = ["ego_progress_to_goal.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
     name = "ego_progress_along_expert_route",
     srcs = ["ego_progress_along_expert_route.py"],
     deps = [
@@ -304,56 +210,11 @@ py_library(
 )
 
 py_library(
-    name = "ego_relative_progress_to_goal",
-    srcs = ["ego_relative_progress_to_goal.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:expert_comparisons",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
     name = "ego_mean_speed",
     srcs = ["ego_mean_speed.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
-    name = "ego_safety_performance",
-    srcs = ["ego_safety_performance.py"],
-    deps = [
-        "//nuplan/common/actor_state:ego_state",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_min_distance_to_lead_agent",
-        "//nuplan/planning/metrics/evaluation_metrics/common:time_to_collision",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-        "//nuplan/planning/simulation/observation:observation_type",
-    ],
-)
-
-py_library(
-    name = "distance_to_baseline",
-    srcs = ["distance_to_baseline.py"],
-    deps = [
-        "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/maps:abstract_map",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/utils:route_extractor",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -394,20 +255,6 @@ py_library(
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation:observation_type",
-        "//nuplan/planning/simulation/observation/idm:utils",
-    ],
-)
-
-py_library(
-    name = "ego_min_distance_to_lead_agent",
-    srcs = ["ego_min_distance_to_lead_agent.py"],
-    deps = [
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/utils:state_extractors",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation/idm:utils",
     ],
 )
@@ -463,6 +310,18 @@ py_library(
         "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/utils:collision_utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "ego_is_making_progress",
+    srcs = ["ego_is_making_progress.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_progress_along_expert_route",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
     ],

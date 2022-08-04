@@ -60,9 +60,9 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "COUNT": 2
-        },
+        "statistics": [
+            ["COUNT", 2]
+        ],
         "time_series": {}
     },
     "goal": {

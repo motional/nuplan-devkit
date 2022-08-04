@@ -1,9 +1,9 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, List
 
 import numpy as np
 
 from nuplan.planning.metrics.evaluation_metrics.base.metric_base import MetricBase
-from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
+from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic
 from nuplan.planning.metrics.utils.state_extractors import extract_ego_velocity
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
@@ -32,16 +32,6 @@ class EgoMeanSpeedStatistics(MetricBase):
 
         return mean_speed
 
-    def compute_score(
-        self,
-        scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
-        time_series: Optional[TimeSeries] = None,
-    ) -> float:
-        """Inherited, see superclass."""
-        # TODO: Define the metric score
-        return 0.0
-
     def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
         Returns the mean of ego speed over the scenario duration
@@ -51,11 +41,13 @@ class EgoMeanSpeedStatistics(MetricBase):
         """
         mean_speed = self.ego_avg_speed(history=history)
 
-        statistics = {
-            MetricStatisticsType.VALUE: Statistic(
-                name='ego_mean_speed_value', unit='meters_per_second', value=mean_speed
+        statistics = [
+            Statistic(
+                name='ego_mean_speed_value', unit='meters_per_second', value=mean_speed, type=MetricStatisticsType.VALUE
             )
-        }
+        ]
 
-        results = self._construct_metric_results(metric_statistics=statistics, time_series=None, scenario=scenario)
-        return results  # type: ignore
+        results: List[MetricStatistics] = self._construct_metric_results(
+            metric_statistics=statistics, time_series=None, scenario=scenario
+        )
+        return results

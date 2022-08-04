@@ -322,7 +322,7 @@ def test_get_drivable_area(map_factory: NuPlanMapFactory) -> None:
     nuplan_map = map_factory.build_map_from_name("us-nv-las-vegas-strip")
 
     target_layer = "drivable_area"
-    base_layers = ["road_segments", "intersections", "generic_drivable_areas"]
+    base_layers = ["road_segments", "intersections", "generic_drivable_areas", "carpark_areas"]
     all_layers = base_layers + [target_layer]
     assert not any(layer in nuplan_map._vector_map.keys() for layer in all_layers)
     nuplan_map._load_vector_map_layer(target_layer)

@@ -14,3 +14,13 @@ py_test(
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )
+
+py_test(
+    name = "test_tracker_utils",
+    size = "small",
+    srcs = ["test_tracker_utils.py"],
+    deps = [
+        "//nuplan/common/geometry:compute",
+        "//nuplan/planning/simulation/controller/tracker:tracker_utils",
+    ],
+)

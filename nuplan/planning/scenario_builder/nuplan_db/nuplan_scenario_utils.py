@@ -1,19 +1,24 @@
 from __future__ import annotations
 
 import logging
+import os
+import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, Generator, List, Optional, Tuple, cast
 
-from nuplan.common.actor_state.ego_state import EgoState
-from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.common.actor_state.tracked_objects import TrackedObjects
-from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
-from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
-from nuplan.database.nuplan_db.lidar_pc import LidarPc
-from nuplan.database.nuplan_db.nuplandb import NuPlanDB
-from nuplan.database.nuplan_db.prediction_construction import get_interpolated_waypoints
-from nuplan.database.utils.boxes.box3d import Box3D
+from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
+from nuplan.common.actor_state.waypoint import Waypoint
+from nuplan.common.geometry.interpolate_state import interpolate_future_waypoints
+from nuplan.database.common.blob_store.creator import BlobStoreCreator
+from nuplan.database.common.blob_store.local_store import LocalStore
+from nuplan.database.nuplan_db.nuplan_scenario_queries import (
+    get_future_waypoints_for_agents_from_db,
+    get_lidarpc_token_timestamp_from_db,
+    get_sampled_lidarpc_tokens_in_time_window_from_db,
+    get_tracked_objects_for_lidarpc_token_from_db,
+)
+from nuplan.planning.simulation.trajectory.predicted_trajectory import PredictedTrajectory
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 logger = logging.getLogger(__name__)
@@ -68,55 +73,43 @@ class ScenarioMapping:
         return self.mapping[scenario_type] if scenario_type in self.mapping else ScenarioExtractionInfo()
 
 
-def get_time_stamp_from_lidar_pc(lidar_pc: LidarPc) -> int:
+def download_file_if_necessary(data_root: str, potentially_remote_path: str) -> str:
     """
-    Extracts the time stamp from a LidarPc.
-    :param lidar_pc: Input lidar pc.
-    :return: Timestamp in micro seconds.
+    Downloads the db file if necessary.
+    :param potentially_remote_path: The path from which to download the file.
+    :return: The local path for the file.
     """
-    return cast(int, lidar_pc.ego_pose.timestamp)
+    # If the file path is a local directory and exists, then return that.
+    # e.g. /data/sets/nuplan/nuplan-v1.0/file.db
+    if os.path.exists(potentially_remote_path):
+        return potentially_remote_path
 
+    log_name = absolute_path_to_log_name(potentially_remote_path)
+    download_name = log_name + ".db"
 
-def lidarpc_to_state_se2(lidar_pc: LidarPc) -> StateSE2:
-    """
-    Converts a LidarPc to an StateSE2 object.
-    :param lidar_pc: Input lidar pc.
-    :return: Instantiated state SE2.
-    """
-    ego_pose = lidar_pc.ego_pose
-    return StateSE2(ego_pose.x, ego_pose.y, ego_pose.quaternion.yaw_pitch_roll[0])
+    # TODO: CacheStore seems to be buggy.
+    # Behavior seems to be different on our cluster vs locally regarding downloaded file paths.
+    #
+    # Use the underlying stores manually.
+    blob_store = BlobStoreCreator.create_nuplandb(data_root)
+    local_store = LocalStore(data_root)
 
+    # Only trigger the download if we have not already acquired the file.
+    download_path_name = os.path.join(data_root, download_name)
 
-# Do not cache this method.
-# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
-def lidarpc_to_ego_state(lidar_pc: LidarPc) -> EgoState:
-    """
-    Converts a LidarPc to an EgoState object.
-    :param lidar_pc: Input lidar pc.
-    :return: Instantiated ego state.
-    """
-    ego_pose = lidar_pc.ego_pose
-    return EgoState.build_from_rear_axle(
-        StateSE2(ego_pose.x, ego_pose.y, ego_pose.quaternion.yaw_pitch_roll[0]),
-        tire_steering_angle=0.0,
-        vehicle_parameters=get_pacifica_parameters(),
-        time_point=TimePoint(ego_pose.timestamp),
-        rear_axle_velocity_2d=StateVector2D(x=ego_pose.vx, y=ego_pose.vy),
-        rear_axle_acceleration_2d=StateVector2D(x=ego_pose.acceleration_x, y=ego_pose.acceleration_y),
-    )
+    if not local_store.exists(download_name):
+        # If we have no matches, download the file.
+        logger.info("DB path not found. Downloading to %s..." % download_name)
+        start_time = time.time()
+        content = blob_store.get(potentially_remote_path)
+        local_store.put(download_name, content)
+        logger.info("Downloading db file took %.2f seconds." % (time.time() - start_time))
 
-
-def extract_boxes(lidar_pc: LidarPc) -> List[Box3D]:
-    """
-    Extracts all boxes from a lidarpc.
-    :param lidar_pc: Input lidarpc.
-    :return: List of boxes contained in the lidarpc.
-    """
-    return [lidar_box.box() for lidar_box in lidar_pc.lidar_boxes]
+    return download_path_name
 
 
 def extract_tracked_objects(
-    lidar_pc: LidarPc, future_trajectory_sampling: Optional[TrajectorySampling] = None
+    token: str, log_file: str, future_trajectory_sampling: Optional[TrajectorySampling] = None
 ) -> TrackedObjects:
     """
     Extracts all boxes from a lidarpc.
@@ -125,91 +118,83 @@ def extract_tracked_objects(
     are extracted
     :return: Tracked objects contained in the lidarpc.
     """
+    tracked_objects: List[TrackedObject] = []
+    agent_indexes: Dict[str, int] = {}
+    agent_future_trajectories: Dict[str, List[Waypoint]] = {}
+
+    for idx, tracked_object in enumerate(get_tracked_objects_for_lidarpc_token_from_db(log_file, token)):
+        if future_trajectory_sampling and isinstance(tracked_object, Agent):
+            agent_indexes[tracked_object.metadata.track_token] = idx
+            agent_future_trajectories[tracked_object.metadata.track_token] = []
+        tracked_objects.append(tracked_object)
+
     if future_trajectory_sampling:
-        future_waypoints = get_interpolated_waypoints(lidar_pc, future_trajectory_sampling)
-    else:
-        future_waypoints = dict()
+        timestamp_time = get_lidarpc_token_timestamp_from_db(log_file, token)
+        end_time = timestamp_time + (1e6 * future_trajectory_sampling.time_horizon)
 
-    return TrackedObjects(
-        tracked_objects=[
-            lidar_box.tracked_object(future_waypoints.get(lidar_box.track_token, None))
-            for lidar_box in lidar_pc.lidar_boxes
-        ]
-    )
+        # TODO: This is somewhat inefficient because the resampling should happen in SQL layer
+        for track_token, waypoint in get_future_waypoints_for_agents_from_db(
+            log_file, list(agent_indexes.keys()), timestamp_time, end_time
+        ):
+            agent_future_trajectories[track_token].append(waypoint)
 
+        for key in agent_future_trajectories:
+            # We can only interpolate waypoints if there is more than one in the future.
+            if len(agent_future_trajectories[key]) == 1:
+                tracked_objects[agent_indexes[key]]._predictions = [
+                    PredictedTrajectory(1.0, agent_future_trajectories[key])
+                ]
+            elif len(agent_future_trajectories[key]) > 1:
+                tracked_objects[agent_indexes[key]]._predictions = [
+                    PredictedTrajectory(
+                        1.0,
+                        interpolate_future_waypoints(
+                            agent_future_trajectories[key],
+                            future_trajectory_sampling.time_horizon,
+                            future_trajectory_sampling.interval_length,
+                        ),
+                    )
+                ]
 
-# Do not cache this method.
-# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
-def lidarpc_next(lidarpc: LidarPc) -> Optional[LidarPc]:
-    """
-    Retrieve the next LidarPc from the database.
-    :param lidarpc: Input lidarpc object.
-    :return: Next lidarpc in the database.
-    """
-    next_lidarpc = lidarpc.next
-
-    if next_lidarpc is None and lidarpc.next_token:
-        log_lidarpcs = lidarpc.log.lidar_pcs
-        next_lidarpc = log_lidarpcs[log_lidarpcs.index(lidarpc) + 1]
-
-    return next_lidarpc
-
-
-# Do not cache this method.
-# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
-def lidarpc_prev(lidarpc: LidarPc) -> Optional[LidarPc]:
-    """
-    Retrieve the previous LidarPc from the database.
-    :param lidarpc: Input lidarpc object.
-    :return: Previous lidarpc in the database.
-    """
-    prev_lidarpc = lidarpc.prev
-
-    if prev_lidarpc is None and lidarpc.prev_token:
-        log_lidarpcs = lidarpc.log.lidar_pcs
-        prev_lidarpc = log_lidarpcs[log_lidarpcs.index(lidarpc) - 1]
-
-    return prev_lidarpc
-
-
-# Do not cache this method.
-# This will keep old versions of the DB alive, which will lead to excessive memory allocations.
-def get_map_api(db: NuPlanDB, map_name: str) -> AbstractMap:
-    """
-    Retrieve the map API from a log.
-    :param db: nuPlan database object.
-    :param map_name: name of the map to load.
-    :return: Retrieved map object.
-    """
-    return NuPlanMapFactory(db.maps_db).build_map_from_name(map_name)
+    return TrackedObjects(tracked_objects=tracked_objects)
 
 
 def extract_lidarpc_tokens_as_scenario(
-    db: NuPlanDB,
-    anchor_timestamp: float,
-    scenario_extraction_info: ScenarioExtractionInfo,
-) -> List[str]:
+    log_file: str, anchor_timestamp: float, scenario_extraction_info: ScenarioExtractionInfo
+) -> Generator[str, None, None]:
     """
     Extract a list of lidarpc tokens that form a scenario around an anchor timestamp.
-    :param db: Object providing DB access.
+    :param log_file: The log file to access
     :param anchor_timestamp: Timestamp of Lidarpc representing the start of the scenario.
     :param scenario_extraction_info: Structure containing information used to extract the scenario.
     :return: List of extracted lidarpc tokens representing the scenario.
     """
-    start_timestamp = anchor_timestamp + scenario_extraction_info.extraction_offset * 1e6
-    end_timestamp = start_timestamp + scenario_extraction_info.scenario_duration * 1e6
+    start_timestamp = int(anchor_timestamp + scenario_extraction_info.extraction_offset * 1e6)
+    end_timestamp = int(start_timestamp + scenario_extraction_info.scenario_duration * 1e6)
+    subsample_step = int(1.0 / scenario_extraction_info.subsample_ratio)
 
-    lidarpcs = (
-        db.session.query(LidarPc)
-        .filter(LidarPc.timestamp > start_timestamp, LidarPc.timestamp < end_timestamp)
-        .order_by(LidarPc.timestamp.asc())
-        .all()
+    return cast(
+        Generator[str, None, None],
+        get_sampled_lidarpc_tokens_in_time_window_from_db(log_file, start_timestamp, end_timestamp, subsample_step),
     )
 
-    subsample_step = int(1.0 / scenario_extraction_info.subsample_ratio)
-    if subsample_step < len(lidarpcs):
-        lidarpcs = lidarpcs[::subsample_step]
 
-    lidarpc_tokens = [lidarpc.token for lidarpc in lidarpcs]
+def absolute_path_to_log_name(absolute_path: str) -> str:
+    """
+    Gets the log name from the absolute path to a log file.
+    E.g.
+        input: data/sets/nuplan/nuplan-v1.0/mini/2021.10.11.02.57.41_veh-50_01522_02088.db
+        output: 2021.10.11.02.57.41_veh-50_01522_02088
 
-    return lidarpc_tokens
+        input: /tmp/abcdef
+        output: abcdef
+    :param absolute_path: The absolute path to a log file.
+    :return: The log name.
+    """
+    filename = os.path.basename(absolute_path)
+
+    # Files generated during caching do not end with ".db"
+    # They have no extension.
+    if filename.endswith(".db"):
+        filename = os.path.splitext(filename)[0]
+    return filename

@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import Future
 from typing import Any, Iterable, List
 
 from tqdm import tqdm
@@ -33,3 +34,7 @@ class Sequential(WorkerPool):
             )
         ]
         return output
+
+    def submit(self, task: Task, *args: Any) -> Future[Any]:
+        """Inherited, see superclass."""
+        raise NotImplementedError

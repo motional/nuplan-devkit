@@ -41,14 +41,14 @@ filegroup(
 )
 
 py_test(
-    name = "test_tracked_object_interpolator",
+    name = "test_interpolate_tracked_object",
     size = "large",
-    srcs = ["test_tracked_object_interpolator.py"],
+    srcs = ["test_interpolate_tracked_object.py"],
     data = [
         ":test_json",
     ],
     deps = [
-        "//nuplan/common/geometry:tracked_object_interpolator",
+        "//nuplan/common/geometry:interpolate_tracked_object",
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/utils/serialization:from_scene",
     ],

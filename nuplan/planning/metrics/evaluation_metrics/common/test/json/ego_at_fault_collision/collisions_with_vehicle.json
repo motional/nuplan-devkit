@@ -60,10 +60,13 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "COUNT": 2,
-            "MAX": 2.28
-        },
+        "statistics": [
+            ["COUNT", 2],
+            ["MAX", 2.28],
+            ["MIN", 1.00],
+            ["MEAN", 1.64],
+            ["BOOLEAN", false]
+        ],
         "time_series": {}
     },
     "goal": {

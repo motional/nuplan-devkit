@@ -62,12 +62,13 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "MAX": 2.37,
-            "MIN": -1.14,
-            "P90": 2.02,
-            "BOOLEAN": true
-        },
+        "statistics": [
+            ["MAX", 2.37],
+            ["MIN", -1.14],
+            ["MEAN", 0.61],
+            ["P90", 2.37],
+            ["BOOLEAN", true]
+        ],
         "time_series": {
             "time_stamps": [1000000, 2000000, 3000000, 4000000, 5000000],
             "values": [-1.14, -0.26, 0.61, 1.49, 2.37]

@@ -124,7 +124,7 @@ class AgentsTrajectories(AbstractModelFeature):
     @property
     def poses(self) -> FeatureDataType:
         """
-        :return: List[<np.ndarray: num_frames, num_agents, 3>] x, y, yaw of all agent across all frames
+        :return: List[<np.ndarray: num_frames, num_agents, 3>] x, y, yaw of all agents across all frames
         """
         return [sample[..., :3] for sample in self.data]
 
@@ -138,21 +138,21 @@ class AgentsTrajectories(AbstractModelFeature):
     @property
     def yaw_rate(self) -> FeatureDataType:
         """
-        :return: List[<np.ndarray: num_frames, num_agents, 1>] yaw_rate of all agent across all frames
+        :return: List[<np.ndarray: num_frames, num_agents, 1>] yaw_rate of all agents across all frames
         """
         return [sample[..., 5] for sample in self.data]
 
     @property
     def terminal_xy(self) -> FeatureDataType:
         """
-        :return: List[<np.ndarray: terminal_frame, num_agents, 2>] x, y of all agent at terminal frame
+        :return: List[<np.ndarray: terminal_frame, num_agents, 2>] x, y of all agents at terminal frame
         """
         return [sample[-1, :, :2] for sample in self.data]
 
     @property
     def terminal_heading(self) -> FeatureDataType:
         """
-        :return: List[<np.ndarray: terminal_frame, num_agents, 1>] x, y of all agent at terminal frame
+        :return: List[<np.ndarray: terminal_frame, num_agents, 1>] heading of all agents at terminal frame
         """
         return [sample[-1, :, 3] for sample in self.data]
 

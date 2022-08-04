@@ -26,9 +26,10 @@
         "time_us": 1000000
     },
     "expected": {
-        "statistics": {
-            "COUNT": 0
-        },
+        "statistics": [
+            ["COUNT", 0],
+            ["BOOLEAN", true]
+        ],
         "time_series": {}
     },
     "goal": {

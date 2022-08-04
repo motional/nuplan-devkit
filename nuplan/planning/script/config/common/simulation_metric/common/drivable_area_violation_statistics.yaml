@@ -1,6 +1,0 @@
-drivable_area_violation_statistics:
-  _target_: nuplan.planning.metrics.evaluation_metrics.common.drivable_area_violation.DrivableAreaViolationStatistics
-  _convert_: 'all'
-  name: 'drivable_area_violation_statistics'
-  category: 'Planning'
-  max_violation_threshold: 0.0

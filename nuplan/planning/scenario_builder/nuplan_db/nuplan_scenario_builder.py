@@ -5,27 +5,24 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Type, Union, cast
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
-from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
-from nuplan.database.nuplan_db.nuplandb_wrapper import NuPlanDBWrapper
+from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory, get_maps_db
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
     FilterWrapper,
+    GetScenariosFromDbFileParams,
     ScenarioDict,
-    create_all_scenarios,
-    create_scenarios_by_tokens,
-    create_scenarios_by_types,
-    filter_by_map_names,
-    filter_invalid_goals,
+    discover_log_dbs,
     filter_num_scenarios_per_type,
     filter_total_num_scenarios,
+    get_scenarios_from_db_file,
     scenario_dict_to_list,
 )
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping, absolute_path_to_log_name
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilter
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
-from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
+from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +46,12 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         Initialize scenario builder that filters and retrieves scenarios from the nuPlan dataset.
         :param data_root: Local data root for loading (or storing downloaded) the log databases.
                           If `db_files` is not None, all downloaded databases will be stored to this data root.
+                          E.g.: /data/sets/nuplan
         :param map_root: Local map root for loading (or storing downloaded) the map database.
         :param db_files: Path to load the log database(s) from.
                          It can be a local/remote path to a single database, list of databases or dir of databases.
                          If None, all database filenames found under `data_root` will be used.
+                         E.g.: /data/sets/nuplan-v1.0-mini/2021.10.11.08.31.07_veh-50_01750_01948.db
         :param map_version: Version of map database to load. The map database is passed to each loaded log database.
         :param max_workers: Maximum number of workers to use when loading the databases concurrently.
                             Only used when the number of databases to load is larger than this parameter.
@@ -62,22 +61,13 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         """
         self._data_root = data_root
         self._map_root = map_root
-        self._db_files = db_files
+        self._db_files = discover_log_dbs(data_root if db_files is None else db_files)
         self._map_version = map_version
         self._max_workers = max_workers
         self._verbose = verbose
         self._ground_truth_predictions = ground_truth_predictions
         self._scenario_mapping = scenario_mapping if scenario_mapping is not None else ScenarioMapping({})
         self._vehicle_parameters = vehicle_parameters if vehicle_parameters is not None else get_pacifica_parameters()
-
-        self._db = NuPlanDBWrapper(
-            data_root=data_root,
-            map_root=map_root,
-            db_files=db_files,
-            map_version=map_version,
-            max_workers=max_workers,
-            verbose=verbose,
-        )
 
     def __reduce__(self) -> Tuple[Type[NuPlanScenarioBuilder], Tuple[Any, ...]]:
         """
@@ -102,7 +92,27 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
 
     def get_map_factory(self) -> NuPlanMapFactory:
         """Inherited. See superclass."""
-        return NuPlanMapFactory(self._db.maps_db)
+        return NuPlanMapFactory(get_maps_db(self._map_root, self._map_version))
+
+    def _aggregate_dicts(self, dicts: List[ScenarioDict]) -> ScenarioDict:
+        """
+        Combines multiple scenario dicts into a single dictionary by concatenating lists of matching scenario names.
+        Sample input:
+            [{"a": [1, 2, 3], "b": [2, 3, 4]}, {"b": [3, 4, 5], "c": [4, 5]}]
+        Sample output:
+            {"a": [1, 2, 3], "b": [2, 3, 4, 3, 4, 5], "c": [4, 5]}
+        :param dicts: The list of dictionaries to concatenate.
+        :return: The concatenated dictionaries.
+        """
+        output_dict = dicts[0]
+        for merge_dict in dicts[1:]:
+            for key in merge_dict:
+                if key not in output_dict:
+                    output_dict[key] = merge_dict[key]
+                else:
+                    output_dict[key] += merge_dict[key]
+
+        return output_dict
 
     def _create_scenarios(self, scenario_filter: ScenarioFilter, worker: WorkerPool) -> ScenarioDict:
         """
@@ -111,36 +121,50 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         :param worker: Worker pool for concurrent scenario processing.
         :return: Constructed scenario dictionary.
         """
-        if scenario_filter.scenario_tokens is not None:  # Filter scenarios by desired scenario tokens
-            scenario_dict = create_scenarios_by_tokens(
-                scenario_filter.scenario_tokens,
-                self._db,
-                scenario_filter.log_names,
-                scenario_filter.expand_scenarios,
-                self._vehicle_parameters,
-                self._ground_truth_predictions,
-            )
-        elif scenario_filter.scenario_types is not None:  # Filter scenarios by desired scenario types
-            scenario_dict = create_scenarios_by_types(
-                scenario_filter.scenario_types,
-                self._db,
-                scenario_filter.log_names,
-                scenario_filter.expand_scenarios,
-                self._scenario_mapping,
-                self._vehicle_parameters,
-                self._ground_truth_predictions,
-            )
-        else:  # Use all scenarios from each scene
-            scenario_dict = create_all_scenarios(
-                self._db,
-                scenario_filter.log_names,
-                scenario_filter.expand_scenarios,
-                self._vehicle_parameters,
-                worker,
-                self._ground_truth_predictions,
-            )
 
-        return scenario_dict
+        def get_scenarios_from_log_file(parameters: List[GetScenariosFromDbFileParams]) -> List[ScenarioDict]:
+            """
+            Gets all scenarios from a log file that match the provided parameters.
+            :param parameters: The parameters to use for scenario extraction.
+            :return: The extracted scenarios.
+            """
+            output_dict: ScenarioDict = {}
+            for parameter in parameters:
+                this_dict = get_scenarios_from_db_file(parameter)
+
+                for key in this_dict:
+                    if key not in output_dict:
+                        output_dict[key] = this_dict[key]
+                    else:
+                        output_dict[key] += this_dict[key]
+
+            return [output_dict]
+
+        allowable_log_names = set(scenario_filter.log_names) if scenario_filter.log_names is not None else None
+        map_parameters = [
+            GetScenariosFromDbFileParams(
+                data_root=self._data_root,
+                log_file_absolute_path=log_file,
+                expand_scenarios=scenario_filter.expand_scenarios,
+                map_root=self._map_root,
+                map_version=self._map_version,
+                scenario_mapping=self._scenario_mapping,
+                vehicle_parameters=self._vehicle_parameters,
+                ground_truth_predictions=self._ground_truth_predictions,
+                filter_tokens=scenario_filter.scenario_tokens,
+                filter_types=scenario_filter.scenario_types,
+                filter_map_names=scenario_filter.map_names,
+            )
+            for log_file in self._db_files
+            if (allowable_log_names is None) or (absolute_path_to_log_name(log_file) in allowable_log_names)
+        ]
+
+        if len(map_parameters) == 0:
+            raise ValueError("No log files found! Make sure they are available in your environment.")
+
+        dicts = worker_map(worker, get_scenarios_from_log_file, map_parameters)
+
+        return self._aggregate_dicts(dicts)
 
     def _create_filter_wrappers(self, scenario_filter: ScenarioFilter, worker: WorkerPool) -> List[FilterWrapper]:
         """
@@ -150,11 +174,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         :return: Series of filter wrappers.
         """
         filters = [
-            FilterWrapper(
-                fn=partial(filter_by_map_names, map_names=scenario_filter.map_names, db=self._db),
-                enable=(scenario_filter.map_names is not None),
-                name='map_names',
-            ),
             FilterWrapper(
                 fn=partial(
                     filter_num_scenarios_per_type,
@@ -172,11 +191,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 ),
                 enable=(scenario_filter.limit_total_scenarios is not None),
                 name='limit_total_scenarios',
-            ),
-            FilterWrapper(
-                fn=partial(filter_invalid_goals, worker=worker),
-                enable=scenario_filter.remove_invalid_goals,
-                name='remove_invalid_goals',
             ),
         ]
 

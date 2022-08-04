@@ -1,9 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Callable, Dict, List
 
 import pytest
 
 from nuplan.common.actor_state.state_representation import Point2D
-from nuplan.common.maps.abstract_map import SemanticMapLayer
+from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
 from nuplan.common.maps.abstract_map_objects import Lane, PolylineMapObject
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.common.maps.test_utils import add_map_objects_to_scene, add_polyline_to_scene
@@ -12,6 +12,27 @@ from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
 
 maps_db = get_test_maps_db()
 map_factory = NuPlanMapFactory(maps_db)
+
+
+def assert_helper(
+    first_markers: List[Dict[str, List[float]]],
+    second_markers: List[Dict[str, List[float]]],
+    assertion: Callable[[Lane, Lane, bool], None],
+    map: AbstractMap,
+    inverse: bool,
+) -> None:
+    """
+    Helper function to remove redundant lane instantiation and checking
+    """
+    # first_markers and second_markers contains "pose": [float, float, float] which denotes marker location in the scene
+    for first_marker, second_marker in zip(first_markers, second_markers):
+        first_point = Point2D(*first_marker["pose"][:2])
+        second_point = Point2D(*second_marker["pose"][:2])
+
+        first_lane = map.get_one_map_object(first_point, SemanticMapLayer.LANE)
+        second_lane = map.get_one_map_object(second_point, SemanticMapLayer.LANE)
+
+        assertion(first_lane, second_lane, inverse)
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
@@ -124,6 +145,78 @@ def test_get_lane_right_boundaries(scene: Dict[str, Any]) -> None:
         assert isinstance(right_boundary, PolylineMapObject)
 
         add_polyline_to_scene(scene, right_boundary.discrete_path)
+
+
+@nuplan_test(path='json/lanes/lanes_in_same_roadblock.json')
+def test_maps_db_lane_is_same_roadblock(scene: Dict[str, Any]) -> None:
+    """
+    Test if lanes are in the same roadblock
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    def is_same_roadblock(first_lane: Lane, second_lane: Lane, inverse: bool) -> None:
+        if not inverse:
+            assert first_lane.is_same_roadblock(second_lane)
+        else:
+            assert not first_lane.is_same_roadblock(second_lane)
+
+    # Index scheme that creates two lists containing every other marker over the specified range i.e. first_list = scene["markers"][i] and second_list = scene["markers"][i + 1]
+    assert_helper(scene["markers"][:4:2], scene["markers"][1:4:2], is_same_roadblock, nuplan_map, False)
+    assert_helper(scene["markers"][4::2], scene["markers"][5::2], is_same_roadblock, nuplan_map, True)
+
+
+@nuplan_test(path='json/lanes/lanes_are_adjacent.json')
+def test_maps_db_lane_is_other_adjacent(scene: Dict[str, Any]) -> None:
+    """
+    Test if lanes are adjacent
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    def is_other_adjacent(first_lane: Lane, second_lane: Lane, inverse: bool) -> None:
+        if not inverse:
+            assert first_lane.is_other_adjacent(second_lane)
+        else:
+            assert not first_lane.is_other_adjacent(second_lane)
+
+    # Index scheme that creates two lists containing every other marker over the specified range i.e. first_list = scene["markers"][i] and second_list = scene["markers"][i + 1]
+    assert_helper(scene["markers"][:4:2], scene["markers"][1:4:2], is_other_adjacent, nuplan_map, False)
+    assert_helper(scene["markers"][4::2], scene["markers"][5::2], is_other_adjacent, nuplan_map, True)
+
+
+@nuplan_test(path='json/lanes/lane_is_left_of.json')
+def test_maps_db_lane_is_left_of(scene: Dict[str, Any]) -> None:
+    """
+    Test if first is left of second
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    def is_left_of(first_lane: Lane, second_lane: Lane, inverse: bool) -> None:
+        if not inverse:
+            assert first_lane.is_left_of(second_lane)
+        else:
+            assert not first_lane.is_left_of(second_lane)
+
+    # Index scheme that creates two lists containing every other marker over the specified range i.e. first_list = scene["markers"][i] and second_list = scene["markers"][i + 1]
+    assert_helper(scene["markers"][:4:2], scene["markers"][1:4:2], is_left_of, nuplan_map, False)
+    assert_helper(scene["markers"][4::2], scene["markers"][5::2], is_left_of, nuplan_map, True)
+
+
+@nuplan_test(path='json/lanes/lane_is_left_of.json')
+def test_maps_db_lane_is_right_of(scene: Dict[str, Any]) -> None:
+    """
+    Test if first is right of second
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    def is_right_of(first_lane: Lane, second_lane: Lane, inverse: bool) -> None:
+        if not inverse:
+            assert first_lane.is_right_of(second_lane)
+        else:
+            assert not first_lane.is_right_of(second_lane)
+
+    # Index scheme that creates two lists containing every other marker over the specified range i.e. first_list = scene["markers"][i] and second_list = scene["markers"][i + 1]
+    assert_helper(scene["markers"][1:4:2], scene["markers"][:4:2], is_right_of, nuplan_map, False)
+    assert_helper(scene["markers"][5::2], scene["markers"][4::2], is_right_of, nuplan_map, True)
 
 
 if __name__ == "__main__":

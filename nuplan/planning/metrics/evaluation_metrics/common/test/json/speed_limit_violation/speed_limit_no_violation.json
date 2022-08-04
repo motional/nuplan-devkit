@@ -24,9 +24,10 @@
         "pose": []
     },
     "expected": {
-        "statistics": {
-            "COUNT": 0
-        },
+        "statistics": [
+            ["COUNT", 0],
+            ["BOOLEAN", true]
+        ],
         "time_series": {}
     },
     "map": {

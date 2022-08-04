@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Iterable, List, Union
 
-from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.agent_state import AgentState
 from nuplan.common.actor_state.car_footprint import CarFootprint
 from nuplan.common.actor_state.dynamic_car_state import DynamicCarState, get_acceleration_shifted, get_velocity_shifted
 from nuplan.common.actor_state.scene_object import SceneObjectMetadata
@@ -198,12 +198,12 @@ class EgoState(InterpolatableState):
         return SceneObjectMetadata(token='ego', track_token="ego", track_id=-1, timestamp_us=self.time_us)
 
     @cached_property
-    def agent(self) -> Agent:
+    def agent(self) -> AgentState:
         """
         Casts the EgoState to an Agent object.
         :return: An Agent object with the parameters of EgoState
         """
-        return Agent(
+        return AgentState(
             metadata=self.scene_object_metadata,
             tracked_object_type=TrackedObjectType.EGO,
             oriented_box=self.car_footprint.oriented_box,

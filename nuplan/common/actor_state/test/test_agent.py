@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from nuplan.common.actor_state.agent import Agent, PredictedTrajectory
+from nuplan.common.actor_state.agent_state import AgentState
 from nuplan.common.actor_state.scene_object import SceneObjectMetadata
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.test.test_utils import get_sample_agent, get_sample_oriented_box
@@ -22,6 +23,28 @@ class TestAgent(unittest.TestCase):
         self.sample_pose = StateSE2(1.0, 2.0, np.pi / 2.0)
         self.wlh = (2.0, 4.0, 1.5)
         self.velocity = StateVector2D(1.0, 2.2)
+
+    def test_agent_state(self) -> None:
+        """Test AgentState."""
+        angular_velocity = 10.0
+        oriented_box = get_sample_oriented_box()
+        metadata = SceneObjectMetadata(
+            token=self.sample_token, track_token=self.track_token, timestamp_us=self.timestamp, track_id=None
+        )
+        agent_state = AgentState(
+            TrackedObjectType.VEHICLE,
+            oriented_box=oriented_box,
+            velocity=self.velocity,
+            metadata=metadata,
+            angular_velocity=angular_velocity,
+        )
+        self.assertEqual(agent_state.tracked_object_type, TrackedObjectType.VEHICLE)
+        self.assertEqual(agent_state.box, oriented_box)
+        self.assertEqual(agent_state.metadata, metadata)
+        self.assertEqual(agent_state.velocity, self.velocity)
+        self.assertEqual(agent_state.angular_velocity, angular_velocity)
+        self.assertEqual(agent_state.token, metadata.token)
+        self.assertEqual(agent_state.track_token, metadata.track_token)
 
     def test_agent_types(self) -> None:
         """Test that enum works for both existing and missing keys"""

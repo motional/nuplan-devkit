@@ -29,14 +29,17 @@ py_library(
     name = "serialization_callback",
     srcs = ["serialization_callback.py"],
     deps = [
+        "//nuplan/common/actor_state:car_footprint",
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation:simulation_setup",
         "//nuplan/planning/simulation/callback:abstract_callback",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/utils:color",
         "//nuplan/planning/utils/serialization:to_scene",
     ],
 )

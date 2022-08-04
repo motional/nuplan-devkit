@@ -44,7 +44,7 @@ class EgoLatAccelerationStatistics(WithinBoundMetricBase):
         :param scenario: Scenario running this metric
         :return the estimated lateral acceleration metric.
         """
-        return self._compute_statistics(  # type: ignore
+        metric_statistics: List[MetricStatistics] = self._compute_statistics(
             history=history,
             scenario=scenario,
             statistic_unit_name='meters_per_second_squared',
@@ -52,3 +52,4 @@ class EgoLatAccelerationStatistics(WithinBoundMetricBase):
             extract_function_params={'acceleration_coordinate': 'y'},
             max_within_bound_threshold=self._max_abs_lat_accel,
         )
+        return metric_statistics

@@ -13,7 +13,7 @@ class TestVectorSetMap(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up test case."""
-        self.coords: Dict[str, List[npt.NDArray[np.float64]]] = {
+        self.coords: Dict[str, List[npt.NDArray[np.float32]]] = {
             'LANE': [np.array([[[0.0, 0.0], [1.0, 1.0]], [[0.0, 0.0], [1.0, 1.0]]])],
             'ROUTE': [np.array([[[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]]])],
         }
@@ -50,7 +50,7 @@ class TestVectorSetMap(unittest.TestCase):
         Test when same feature layers not present across feature.
         """
         # traffic light layer not in coords
-        coords: Dict[str, List[npt.NDArray[np.float64]]] = {
+        coords: Dict[str, List[npt.NDArray[np.float32]]] = {
             'ROUTE': [np.array([[[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]]])],
         }
         with self.assertRaises(RuntimeError):
@@ -68,7 +68,7 @@ class TestVectorSetMap(unittest.TestCase):
         Test when feature dimensions don't match within or across feature layers.
         """
         # mismatching dimensions between coords and tl status/avails
-        coords: Dict[str, List[npt.NDArray[np.float64]]] = {
+        coords: Dict[str, List[npt.NDArray[np.float32]]] = {
             'LANE': [np.array([[[0.0, 0.0]], [[0.0, 0.0]]])],
             'ROUTE': [np.array([[[0.0, 0.0], [1.0, 1.0]], [[0.0, 0.0], [1.0, 1.0]]])],
         }
@@ -112,7 +112,7 @@ class TestVectorSetMap(unittest.TestCase):
         Test data dimensions are wrong or missing.
         """
         # wrong coords dimensionality
-        coords: Dict[str, List[npt.NDArray[np.float64]]] = {
+        coords: Dict[str, List[npt.NDArray[np.float32]]] = {
             'LANE': [np.array([[[0.0], [1.0]], [[0.0], [1.0]]])],
             'ROUTE': [np.array([[[0.0], [1.0], [0.0]], [[0.0], [1.0], [0.0]]])],
         }

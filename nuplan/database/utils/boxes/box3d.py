@@ -459,7 +459,7 @@ class Box3D(BoxInterface):
         :return: True if both objects are the same, otherwise False.
         """
         if not isinstance(other, Box3D):
-            raise NotImplementedError
+            return NotImplemented
 
         center = np.allclose(self.center, other.center, atol=1e-04)
         wlh = np.allclose(self.wlh, other.wlh, atol=1e-04)
@@ -1118,7 +1118,7 @@ class Box3D(BoxInterface):
 
         # Set colors if it's None.
         if colors is None:
-            color = tuple([c / 255 for c in self.color[:3]])
+            color = tuple(c / 255 for c in self.color[:3])
             colors = (color, color, 'k')
 
         # Replace string colors with numbers.

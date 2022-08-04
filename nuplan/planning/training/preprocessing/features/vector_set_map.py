@@ -64,7 +64,10 @@ class VectorSetMap(AbstractModelFeature):
     _traffic_light_status_dim: int = LaneSegmentTrafficLightData.encoding_dim()
 
     def __post_init__(self) -> None:
-        """Sanitize attributes of the dataclass."""
+        """
+        Sanitize attributes of the dataclass.
+        :raise RuntimeError if dimensions invalid.
+        """
         # Check empty data
         if not len(self.coords) > 0:
             raise RuntimeError("Coords cannot be empty!")
@@ -78,6 +81,7 @@ class VectorSetMap(AbstractModelFeature):
     def _sanitize_feature_consistency(self) -> None:
         """
         Check data dimensionality consistent across and within map features.
+        :raise RuntimeError if dimensions invalid.
         """
         # Check consistency across map features
         if not all([len(coords) == len(list(self.coords.values())[0]) for coords in self.coords.values()]):
@@ -128,6 +132,7 @@ class VectorSetMap(AbstractModelFeature):
     def _sanitize_data_dimensionality(self) -> None:
         """
         Check data dimensionality as expected.
+        :raise RuntimeError if dimensions invalid.
         """
         for feature_coords in self.coords.values():
             for sample in feature_coords:
@@ -138,6 +143,11 @@ class VectorSetMap(AbstractModelFeature):
             for sample in feature_tl_data:
                 if sample.shape[2] != self._traffic_light_status_dim:
                     raise RuntimeError("The dimension of traffic light data is not correct!")
+
+        for feature_avails in self.availabilities.values():
+            for sample in feature_avails:
+                if len(sample.shape) != 2:
+                    raise RuntimeError("The dimension of availabilities is not correct!")
 
     @cached_property
     def is_valid(self) -> bool:
@@ -167,6 +177,7 @@ class VectorSetMap(AbstractModelFeature):
         Number of map elements for given feature, points per element.
         :param feature_name: name of map feature to access.
         :return: [num_elements, num_points]
+        :raise: RuntimeError if empty feature.
         """
         map_feature = self.coords[feature_name][0]
         if map_feature.size == 0:
@@ -296,14 +307,23 @@ class VectorSetMap(AbstractModelFeature):
         Translate the vector set map.
         :param translation_value: Translation in x, y, z.
         :return translated VectorSetMap.
+        :raise ValueError if translation_value dimensions invalid.
         """
-        assert translation_value.size == 3, "Translation value must have dimension of 3 (x, y, z)"
+        if translation_value.size != 3:
+            raise ValueError(
+                f"Translation value has incorrect dimensions: {translation_value.size}! Expected: 3 (x, y, z)"
+            )
         are_the_same_type(translation_value, list(self.coords.values())[0])
 
         return VectorSetMap(
             coords={
-                feature_name: [translate_coords(sample, translation_value) for sample in feature_coords]
-                for feature_name, feature_coords in self.coords.items()
+                feature_name: [
+                    translate_coords(sample_coords, translation_value, sample_avails)
+                    for sample_coords, sample_avails in zip(
+                        self.coords[feature_name], self.availabilities[feature_name]
+                    )
+                ]
+                for feature_name in self.coords
             },
             traffic_light_data=self.traffic_light_data,
             availabilities=self.availabilities,
@@ -314,8 +334,10 @@ class VectorSetMap(AbstractModelFeature):
         Scale the vector set map.
         :param scale_value: <np.float: 3,>. Scale in x, y, z.
         :return scaled VectorSetMap.
+        :raise ValueError if scale_value dimensions invalid.
         """
-        assert scale_value.size == 3, f"Scale value has incorrect dimension: {scale_value.size}!"
+        if scale_value.size != 3:
+            raise ValueError(f"Scale value has incorrect dimensions: {scale_value.size}! Expected: 3 (x, y, z)")
         are_the_same_type(scale_value, list(self.coords.values())[0])
 
         return VectorSetMap(

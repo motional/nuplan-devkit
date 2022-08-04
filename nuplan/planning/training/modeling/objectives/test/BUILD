@@ -11,13 +11,3 @@ py_test(
         "//nuplan/planning/training/preprocessing/features:agents_trajectories",
     ],
 )
-
-py_test(
-    name = "test_dynamic_imitation_objective",
-    size = "small",
-    srcs = ["test_dynamic_imitation_objective.py"],
-    deps = [
-        "//nuplan/planning/training/modeling/objectives:dynamic_imitation_objective",
-        "//nuplan/planning/training/preprocessing/features:dynamic_ego_trajectory",
-    ],
-)

@@ -243,24 +243,32 @@ class EgoStopAtStopLineStatistics(ViolationMetricBase):
             aggregated_timestamps.append(velocity_data.timestamp_np)
 
         # Aggregate
-        statistics = {
-            MetricStatisticsType.DISTANCE: Statistic(
+        statistics = [
+            Statistic(
+                name='number_of_ego_stop_before_stop_line',
+                unit=MetricStatisticsType.COUNT.unit,
+                value=sum(ego_stop_status),
+                type=MetricStatisticsType.COUNT,
+            ),
+            Statistic(
+                name='number_of_ego_before_stop_line',
+                unit=MetricStatisticsType.COUNT.unit,
+                value=len(ego_stop_status),
+                type=MetricStatisticsType.COUNT,
+            ),
+            Statistic(
                 name='mean_ego_min_distance_to_stop_line',
                 unit='meters',
                 value=float(np.mean(mean_ego_min_distance_to_stop_line)),
+                type=MetricStatisticsType.VALUE,
             ),
-            MetricStatisticsType.VELOCITY: Statistic(
+            Statistic(
                 name='mean_ego_min_velocity_before_stop_line',
                 unit='meters_per_second_squared',
                 value=float(np.mean(mean_ego_min_velocity_before_stop_line)),
+                type=MetricStatisticsType.VALUE,
             ),
-            MetricStatisticsType.VALUE: Statistic(
-                name='number_of_ego_before_stop_line', unit='value', value=len(ego_stop_status)
-            ),
-            MetricStatisticsType.COUNT: Statistic(
-                name='number_of_ego_stop_before_stop_line', unit='count', value=sum(ego_stop_status)
-            ),
-        }
+        ]
 
         aggregated_timestamp_velocity = np.hstack(aggregated_timestamp_velocity)  # type: ignore
         aggregated_timestamps = np.hstack(aggregated_timestamps)  # type: ignore

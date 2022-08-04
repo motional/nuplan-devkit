@@ -8,7 +8,7 @@ from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_t
 from nuplan.planning.metrics.evaluation_metrics.scenario_dependent.ego_stop_at_stop_line import (
     EgoStopAtStopLineStatistics,
 )
-from nuplan.planning.metrics.metric_result import MetricStatisticsType, TimeSeries
+from nuplan.planning.metrics.metric_result import TimeSeries
 from nuplan.planning.metrics.utils.testing_utils import setup_history
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 
@@ -103,10 +103,10 @@ def test_egos_stop_at_stop_line(scene: Dict[str, Any]) -> None:
     metric_statistics = result.statistics
     time_series: Optional[TimeSeries] = result.time_series
 
-    assert metric_statistics[MetricStatisticsType.DISTANCE].value == 0.06016734670118855
-    assert metric_statistics[MetricStatisticsType.VELOCITY].value == 0.05
-    assert metric_statistics[MetricStatisticsType.COUNT].value == 1
-    assert metric_statistics[MetricStatisticsType.VALUE].value == 1
+    assert metric_statistics[0].value == 1
+    assert metric_statistics[1].value == 1
+    assert metric_statistics[2].value == 0.06016734670118855
+    assert metric_statistics[3].value == 0.05
 
     expected_velocity = [0.5, 0.05]
     assert time_series.values if time_series is not None else [] == expected_velocity

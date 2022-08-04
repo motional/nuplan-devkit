@@ -34,7 +34,7 @@ base_tab_style: Dict[str, Any] = {
 }
 
 simulation_tile_style: Dict[str, Any] = {
-    "figure_sizes": (550, 550),
+    "figure_sizes": (500, 500),
     "figure_margins": [5, 40, 0, 30],
     "figure_title_text_font_size": "10pt",
     "video_button_margins": [5, 40, 5, 35],  # Top, right, bottom, left
@@ -43,6 +43,7 @@ simulation_tile_style: Dict[str, Any] = {
     "mission_goal_color": "#00FF00",
     "mission_goal_alpha": 0.0,
     "mission_goal_line_width": 2,
+    "decimal_points": 2,
 }
 
 simulation_tile_trajectory_style: Dict[str, Any] = {
@@ -113,6 +114,7 @@ overview_tab_style: Dict[str, Any] = {
 
 scenario_tab_style: Dict[str, Any] = {
     "default_div_width": 800,
+    "col_offset_width": 400,
     "scenario_metric_score_figure_sizes": [400, 350],
     "time_series_figure_margins": [10, 20, 20, 30],
     "time_series_figure_title_text_font_size": "0.9em",

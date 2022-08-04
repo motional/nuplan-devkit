@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -26,26 +26,37 @@ class ViolationMetricBase(MetricBase):
         """
         super().__init__(name=name, category=category)
         self._max_violation_threshold = max_violation_threshold
+        self.number_of_violations = 0
 
     def aggregate_metric_violations(
-        self, metric_violations: List[MetricViolation], scenario: AbstractScenario, time_series: TimeSeries = None
+        self,
+        metric_violations: List[MetricViolation],
+        scenario: AbstractScenario,
+        time_series: Optional[TimeSeries] = None,
     ) -> List[MetricStatistics]:
         """
-        Aggregates (possibly) multiple MetricViolations to a MetricStatistics
-        All the violations must be of the same metric
-        :param metric_violations: The list of violations for a single metric name
-        :param scenario: Scenario running this metric
+        Aggregates (possibly) multiple MetricViolations to a MetricStatistics.
+        All the violations must be of the same metric.
+        :param metric_violations: The list of violations for a single metric name.
+        :param scenario: Scenario running this metric.
+        :param time_series: Time series metrics.
         :return Statistics about the violations.
         """
         if not metric_violations:
-            statistics = {
-                MetricStatisticsType.COUNT: Statistic(name=f'number_of_{self.name}', unit='count', value=0),
-                MetricStatisticsType.BOOLEAN: Statistic(
-                    name=f'no_{self.name}',
-                    unit='boolean',
-                    value=True,
+            statistics = [
+                Statistic(
+                    name=f'number_of_{self.name}',
+                    unit=MetricStatisticsType.COUNT.unit,
+                    value=0,
+                    type=MetricStatisticsType.COUNT,
                 ),
-            }
+                Statistic(
+                    name=f'no_{self.name}',
+                    unit=MetricStatisticsType.BOOLEAN.unit,
+                    value=True,
+                    type=MetricStatisticsType.BOOLEAN,
+                ),
+            ]
 
         else:
             sample_violation = metric_violations[0]
@@ -73,27 +84,29 @@ class ViolationMetricBase(MetricBase):
                 durations
             )
 
-            statistics = {
-                MetricStatisticsType.MAX: Statistic(name=f'max_violating_{self.name}', unit=unit, value=max_val),
-                MetricStatisticsType.MIN: Statistic(name=f'min_violating_{self.name}', unit=unit, value=min_val),
-                MetricStatisticsType.MEAN: Statistic(name=f'mean_{self.name}', unit=unit, value=mean_val),
-                MetricStatisticsType.COUNT: Statistic(
+            statistics = [
+                Statistic(
                     name=f'number_of_{self.name}',
-                    unit='count',
+                    unit=MetricStatisticsType.COUNT.unit,
                     value=len(metric_violations),
+                    type=MetricStatisticsType.COUNT,
                 ),
-                MetricStatisticsType.BOOLEAN: Statistic(
+                Statistic(name=f'max_violating_{self.name}', unit=unit, value=max_val, type=MetricStatisticsType.MAX),
+                Statistic(name=f'min_violating_{self.name}', unit=unit, value=min_val, type=MetricStatisticsType.MIN),
+                Statistic(name=f'mean_{self.name}', unit=unit, value=mean_val, type=MetricStatisticsType.MEAN),
+                Statistic(
                     name=f'no_{self.name}',
-                    unit='boolean',
+                    unit=MetricStatisticsType.BOOLEAN.unit,
                     value=False,
+                    type=MetricStatisticsType.BOOLEAN,
                 ),
-            }
+            ]
 
-        results = self._construct_metric_results(
+        self.number_of_violations = len(metric_violations)
+        results: list[MetricStatistics] = self._construct_metric_results(
             metric_statistics=statistics, scenario=scenario, time_series=time_series
         )
-
-        return results  # type: ignore
+        return results
 
     def _compute_violation_metric_score(self, number_of_violations: int) -> float:
         """
@@ -107,13 +120,11 @@ class ViolationMetricBase(MetricBase):
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         time_series: Optional[TimeSeries] = None,
     ) -> float:
         """Inherited, see superclass."""
-        return self._compute_violation_metric_score(
-            number_of_violations=metric_statistics[MetricStatisticsType.COUNT].value
-        )
+        return self._compute_violation_metric_score(number_of_violations=self.number_of_violations)
 
     def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """

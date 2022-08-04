@@ -28,6 +28,13 @@ class TestTrajectorySampling(unittest.TestCase):
         self.assertEqual(sampling.interval_length, 0.5)
         self.assertEqual(sampling.num_poses, 16)
 
+    def test_num_poses_floating(self) -> None:
+        """Test that num poses are set correctly even with floating point numbers."""
+        sampling = TrajectorySampling(time_horizon=0.5, interval_length=0.1)
+        self.assertEqual(sampling.time_horizon, 0.5)
+        self.assertEqual(sampling.interval_length, 0.1)
+        self.assertEqual(sampling.num_poses, 5)
+
     def test_interval(self) -> None:
         """Test that interval are set correctly."""
         sampling = TrajectorySampling(time_horizon=8, num_poses=16)

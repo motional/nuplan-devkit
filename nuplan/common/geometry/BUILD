@@ -35,14 +35,25 @@ py_library(
 )
 
 py_library(
-    name = "tracked_object_interpolator",
-    srcs = ["tracked_object_interpolator.py"],
+    name = "interpolate_tracked_object",
+    srcs = ["interpolate_tracked_object.py"],
     deps = [
+        ":interpolate_state",
         "//nuplan/common/actor_state:agent_temporal_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/utils:interpolatable_state",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
         "//nuplan/planning/simulation/trajectory:predicted_trajectory",
+    ],
+)
+
+py_library(
+    name = "interpolate_state",
+    srcs = ["interpolate_state.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/utils:interpolatable_state",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )

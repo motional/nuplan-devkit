@@ -29,7 +29,7 @@ class Raster(AbstractModelFeature):
         """Sanitize attributes of dataclass."""
         self.num_map_channels = 2  # The number of map related channels (roadmap + baseline path)
         # We assume the map related layers are the bottom, and the number of ego and agent layers (with
-        # hisotry frames) will be equal. The separation index between ego and agent layers will be
+        # history frames) will be equal. The separation index between ego and agent layers will be
         # (num_total_channels - num_map_channels)//2
         self.ego_agent_sep_channel_num = int((self.num_channels() - self.num_map_channels) // 2)
         shape = self.data.shape

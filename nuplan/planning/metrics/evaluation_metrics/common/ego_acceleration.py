@@ -25,10 +25,11 @@ class EgoAccelerationStatistics(WithinBoundMetricBase):
         :param scenario: Scenario running this metric
         :return the estimated metric.
         """
-        return self._compute_statistics(  # type: ignore
+        metric_statistics: List[MetricStatistics] = self._compute_statistics(
             history=history,
             scenario=scenario,
             statistic_unit_name='meters_per_second_squared',
             extract_function=extract_ego_acceleration,
             extract_function_params={'acceleration_coordinate': 'magnitude'},
         )
+        return metric_statistics

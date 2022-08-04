@@ -31,3 +31,14 @@ py_test(
         "//nuplan/planning/training/preprocessing/utils:torch_geometry",
     ],
 )
+
+py_test(
+    name = "test_vector_preprocessing",
+    size = "small",
+    srcs = ["test_vector_preprocessing.py"],
+    deps = [
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
+        "//nuplan/planning/training/preprocessing/utils:vector_preprocessing",
+    ],
+)

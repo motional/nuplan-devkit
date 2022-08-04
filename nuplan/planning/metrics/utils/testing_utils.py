@@ -7,7 +7,7 @@ from nuplan.common.actor_state.state_representation import StateSE2, StateVector
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
-from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, TimeSeries
+from nuplan.planning.metrics.metric_result import MetricStatistics, TimeSeries
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
@@ -182,11 +182,17 @@ def metric_statistic_test(scene: Dict[str, Any], metric: AbstractMetricBuilder) 
     metric_result = metric.compute(history, mock_abstract_scenario)[0]
     statistics = metric_result.statistics
     expected_statistics = scene['expected']['statistics']
-    for statistics_type, expected_value in expected_statistics.items():
-        value = statistics[MetricStatisticsType.__members__[statistics_type.upper()]].value
-        if statistics_type.upper() not in [str(MetricStatisticsType.BOOLEAN)]:
-            value = np.round(value, 2)
-        assert value == expected_value, f'Statistic value incorrect: Actual: {value},  Expected: {expected_value}.'
+    assert len(expected_statistics) == len(statistics), (
+        f"Length of actual ({len(statistics)}) and expected " f"({len(expected_statistics)}) statistics must be same!"
+    )
+    for expected_statistic, statistic in zip(expected_statistics, statistics):
+        expected_type, expected_value = expected_statistic
+        assert expected_type == str(statistic.type), (
+            f"Statistic types don't match. Actual: {statistic.type}, " f"Expected: {expected_type}"
+        )
+        assert np.isclose(expected_value, statistic.value, atol=1e-2), (
+            f"Statistic values don't match. Actual: {statistic.value}, " f"Expected: {expected_value}"
+        )
 
     expected_time_series = scene['expected'].get('time_series', None)
     if expected_time_series and metric_result.time_series is not None:

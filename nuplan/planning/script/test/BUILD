@@ -91,6 +91,7 @@ py_test(
     data = [
         "//nuplan/planning/script:yaml",
     ],
+    flaky = True,
     deps = [
         ":skeleton_test_simulation",
     ],
@@ -180,6 +181,7 @@ py_test(
     data = [
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["manual"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script:run_training",
@@ -203,6 +205,7 @@ py_test(
     data = [
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["manual"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script:run_training",
@@ -255,6 +258,7 @@ py_test(
     data = [
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["manual"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script:run_training",
@@ -270,9 +274,9 @@ py_test(
 )
 
 py_test(
-    name = "test_optimizer_lr_scheduler",
+    name = "test_one_cycle_lr_scheduler",
     size = "enormous",
-    srcs = ["test_optimizer_lr_scheduler.py"],
+    srcs = ["test_one_cycle_lr_scheduler.py"],
     data = [
         "//nuplan/planning/script:yaml",
     ],
@@ -289,6 +293,7 @@ py_test(
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/data_loader:log_splitter",
-        "//nuplan/planning/training/modeling/models:raster_model",
+        "//nuplan/planning/training/modeling/models:lanegcn_utils",
+        "//nuplan/planning/training/modeling/models:simple_vector_map_model",
     ],
 )

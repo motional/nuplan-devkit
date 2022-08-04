@@ -2,14 +2,15 @@ import logging
 import lzma
 import pathlib
 import pickle
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
 import msgpack
 import ujson as json
 
+from nuplan.common.actor_state.car_footprint import CarFootprint
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
@@ -17,23 +18,16 @@ from nuplan.planning.simulation.history.simulation_history import SimulationHist
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
+from nuplan.planning.utils.color import TrajectoryColors
 from nuplan.planning.utils.serialization.to_scene import (
-    create_trajectory_structure,
     to_scene_agent_prediction_from_boxes,
     to_scene_boxes,
-    to_scene_ego_from_center_pose,
+    to_scene_ego_from_car_footprint,
+    to_scene_goal_from_state,
+    to_scene_trajectory_from_list_ego_state,
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SceneColors:
-    """Colors to use for each trajectory in the serialization."""
-
-    ego_predicted_trajectory = [0, 0, 255, 100]  # [r, g, b, a] color
-    ego_expert_trajectory = [255, 0, 0, 100]  # [r, g, b, a] color
-    agents_predicted_trajectory = [0, 255, 0, 50]  # [r, g, b, a] color
 
 
 def _dump_to_json(file: pathlib.Path, scene_to_save: Any) -> None:
@@ -78,7 +72,7 @@ def convert_sample_to_scene(
     mission_goal: Optional[StateSE2],
     expert_trajectory: List[EgoState],
     data: SimulationHistorySample,
-    colors: SceneColors = SceneColors(),
+    colors: TrajectoryColors = TrajectoryColors(),
 ) -> Dict[str, Any]:
     """
     Serialize history and scenario.
@@ -97,12 +91,16 @@ def convert_sample_to_scene(
 
     # Convert goal
     if mission_goal is not None:
-        scene["goal"] = to_scene_ego_from_center_pose(mission_goal)
+        scene["goal"] = dict(to_scene_goal_from_state(mission_goal))
     else:
         scene["goal"] = None
 
     # Convert ego pose
-    scene["ego"] = to_scene_ego_from_center_pose(data.ego_state.center)
+    scene["ego"] = dict(
+        to_scene_ego_from_car_footprint(
+            CarFootprint.build_from_center(data.ego_state.center, get_pacifica_parameters())
+        )
+    )
     scene["ego"]["timestamp_us"] = data.ego_state.time_us
 
     # Convert Map Area
@@ -118,12 +116,16 @@ def convert_sample_to_scene(
         )
 
     # Convert Trajectory
-    trajectories["ego_predicted_trajectory"] = create_trajectory_structure(
-        data.trajectory.get_sampled_trajectory(), colors.ego_predicted_trajectory
+    trajectories["ego_predicted_trajectory"] = dict(
+        to_scene_trajectory_from_list_ego_state(
+            data.trajectory.get_sampled_trajectory(), colors.ego_predicted_trajectory
+        )
     )
 
     # Convert Scenario
-    trajectories["ego_expert_trajectory"] = create_trajectory_structure(expert_trajectory, colors.ego_expert_trajectory)
+    trajectories["ego_expert_trajectory"] = dict(
+        to_scene_trajectory_from_list_ego_state(expert_trajectory, colors.ego_expert_trajectory)
+    )
 
     # Store trajectories
     scene["trajectories"] = trajectories
@@ -198,7 +200,7 @@ class SerializationCallback(AbstractCallback):
                 expert_trajectory=scenario.get_expert_ego_trajectory(),
                 mission_goal=scenario.get_mission_goal(),
                 data=sample,
-                colors=SceneColors(),
+                colors=TrajectoryColors(),
             )
             for index, sample in enumerate(history.data)
         ]

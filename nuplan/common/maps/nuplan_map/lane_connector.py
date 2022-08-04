@@ -1,11 +1,12 @@
 from functools import cached_property
 from typing import List, Optional, cast
 
+import numpy as np
 import pandas as pd
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
 
 import nuplan.common.maps.nuplan_map.lane as lane
-from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject, LaneConnector, PolylineMapObject, StopLine
+from nuplan.common.maps.abstract_map_objects import LaneConnector, LaneGraphEdgeMapObject, PolylineMapObject, StopLine
 from nuplan.common.maps.maps_datatypes import VectorLayer
 from nuplan.common.maps.nuplan_map.polyline_map_object import NuPlanPolylineMapObject
 from nuplan.common.maps.nuplan_map.stop_line import NuPlanStopLine
@@ -47,7 +48,7 @@ class NuPlanLaneConnector(LaneConnector):
         self._lane_connector = None
 
     @cached_property
-    def incoming_edges(self) -> List[GraphEdgeMapObject]:
+    def incoming_edges(self) -> List[LaneGraphEdgeMapObject]:
         """Inherited from superclass."""
         incoming_lane_id = self._get_lane_connector()["exit_lane_fid"]
 
@@ -64,7 +65,7 @@ class NuPlanLaneConnector(LaneConnector):
         ]
 
     @cached_property
-    def outgoing_edges(self) -> List[GraphEdgeMapObject]:
+    def outgoing_edges(self) -> List[LaneGraphEdgeMapObject]:
         """Inherited from superclass."""
         outgoing_lane_id = self._get_lane_connector()["entry_lane_fid"]
 
@@ -128,7 +129,35 @@ class NuPlanLaneConnector(LaneConnector):
         stop_line_ids = self._get_lane_connector()["traffic_light_stop_line_fids"]
         stop_line_ids = cast(List[str], stop_line_ids.replace(" ", "").split(","))
 
-        return [NuPlanStopLine(id_, self._stop_lines_df) for id_ in stop_line_ids if id_]
+        candidate_stop_lines = [NuPlanStopLine(id_, self._stop_lines_df) for id_ in stop_line_ids if id_]
+
+        # This lane connector has no stop lines associated
+        if not candidate_stop_lines:
+            return []
+
+        stop_lines = [
+            stop_line
+            for stop_line in candidate_stop_lines
+            if stop_line.polygon.intersects(self.baseline_path.linestring)
+        ]
+
+        # If intersection check is successful then return stop lines.
+        if stop_lines:
+            return stop_lines
+
+        # Stop line is not intersecting the lane connector's baseline. Perform a distance check instead.
+        def distance_to_stop_line(stop_line: StopLine) -> float:
+            """
+            Calculates the distance between the first point of the lane connector's baseline path
+            :param stop_line: The stop line to calculate the distance to.
+            :return: [m] The distance between first point points of the lane connector to the stop_line polygon.
+            """
+            start = Point(self.baseline_path.linestring.coords[0])
+            return float(start.distance(stop_line.polygon))
+
+        distances = [distance_to_stop_line(stop_line) for stop_line in candidate_stop_lines]
+
+        return [candidate_stop_lines[np.argmin(distances)]]
 
     def _get_lane_connector(self) -> pd.Series:
         """

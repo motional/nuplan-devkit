@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import abc
-from functools import lru_cache
-from typing import List, Optional
+from typing import Generator, List, Optional
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
@@ -196,7 +195,7 @@ class AbstractScenario(abc.ABC):
         return self.get_ego_state_at_iteration(0)
 
     @abc.abstractmethod
-    def get_traffic_light_status_at_iteration(self, iteration: int) -> List[TrafficLightStatusData]:
+    def get_traffic_light_status_at_iteration(self, iteration: int) -> Generator[TrafficLightStatusData, None, None]:
         """
         Get traffic light status at an iteration.
         :param iteration: within scenario 0 <= iteration < number_of_iterations
@@ -204,15 +203,14 @@ class AbstractScenario(abc.ABC):
         """
         pass
 
-    @lru_cache(maxsize=1)
-    def get_expert_ego_trajectory(self) -> List[EgoState]:
+    def get_expert_ego_trajectory(self) -> Generator[EgoState, None, None]:
         """
         Return trajectory that was taken by the expert-driver
         :return: sequence of agent states taken by ego.
         """
-        return [self.get_ego_state_at_iteration(index) for index in range(self.get_number_of_iterations())]
+        return (self.get_ego_state_at_iteration(index) for index in range(self.get_number_of_iterations()))
 
-    def get_ego_trajectory_slice(self, start_idx: int, end_idx: int) -> List[EgoState]:
+    def get_ego_trajectory_slice(self, start_idx: int, end_idx: int) -> Generator[EgoState, None, None]:
         """
         Return trajectory that was taken by the expert-driver between start_idx and end_idx
         :param start_idx: starting index for ego's trajectory
@@ -220,12 +218,12 @@ class AbstractScenario(abc.ABC):
         :return: sequence of agent states taken by ego
         timestamp (best matching to the database).
         """
-        return [self.get_ego_state_at_iteration(index) for index in range(start_idx, end_idx)]
+        return (self.get_ego_state_at_iteration(index) for index in range(start_idx, end_idx))
 
     @abc.abstractmethod
     def get_future_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[TimePoint]:
+    ) -> Generator[TimePoint, None, None]:
         """
         Find timesteps in future
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -239,7 +237,7 @@ class AbstractScenario(abc.ABC):
     @abc.abstractmethod
     def get_past_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[TimePoint]:
+    ) -> Generator[TimePoint, None, None]:
         """
         Find timesteps in past
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -253,7 +251,7 @@ class AbstractScenario(abc.ABC):
     @abc.abstractmethod
     def get_ego_future_trajectory(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[EgoState]:
+    ) -> Generator[EgoState, None, None]:
         """
         Find ego future trajectory
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -267,7 +265,7 @@ class AbstractScenario(abc.ABC):
     @abc.abstractmethod
     def get_ego_past_trajectory(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[EgoState]:
+    ) -> Generator[EgoState, None, None]:
         """
         Find ego past trajectory
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -279,7 +277,9 @@ class AbstractScenario(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_past_sensors(self, iteration: int, time_horizon: float, num_samples: Optional[int] = None) -> List[Sensors]:
+    def get_past_sensors(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[Sensors, None, None]:
         """
         Find past sensors
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -293,7 +293,7 @@ class AbstractScenario(abc.ABC):
     @abc.abstractmethod
     def get_past_tracked_objects(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[DetectionsTracks]:
+    ) -> Generator[DetectionsTracks, None, None]:
         """
         Find past detections
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -306,7 +306,7 @@ class AbstractScenario(abc.ABC):
     @abc.abstractmethod
     def get_future_tracked_objects(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[DetectionsTracks]:
+    ) -> Generator[DetectionsTracks, None, None]:
         """
         Find future detections
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations

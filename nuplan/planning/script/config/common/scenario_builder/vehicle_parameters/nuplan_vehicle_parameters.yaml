@@ -6,3 +6,5 @@ rear_length: 1.127
 cog_position_from_rear_axle: 1.67
 height: 1.777
 wheel_base: 3.089
+vehicle_name: "pacifica"
+vehicle_type: "gen1"

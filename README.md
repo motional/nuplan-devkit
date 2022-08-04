@@ -15,7 +15,7 @@ ______________________________________________________________________
   <a href="https://github.com/motional/nuplan-devkit/blob/master/tutorials/nuplan_framework.ipynb">Tutorial</a>
 </p>
 
-[![python](https://img.shields.io/badge/python-3.8%20%7C%203.9-blue.svg)]()
+[![python](https://img.shields.io/badge/python-%20%203.9-blue.svg)]()
 [![license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/motional/nuplan-devkit/blob/master/LICENSE.txt)
 
 ______________________________________________________________________
@@ -32,8 +32,10 @@ Stay tuned for the upcoming nuPlan ML planning challenges!
 ______________________________________________________________________
 
 ## Changelog
+- Aug 05 2022
+  * v0.4 Devkit: Database optimization, PYGEOS warning suppression, metrics improvements, scenario filter for training.
 - Jul 15 2022
-  * v0.3 Devkit: Updates to the devit including but not limited to: nuBoard update, reduce RAM usage during caching and training, new map APIs, simulation and metrics runtime improvements. 
+  * v0.3 Devkit: Updates to the devit including but not limited to: nuBoard update, reduce RAM usage during caching and training, new map APIs, simulation and metrics runtime improvements.
 - Jun 10 2022
   * v1.0 Dataset: Full nuPlan dataset release with over 1,300 hours of driving data (15,000+ logs) across 4 cities (Las Vegas, Pittsburgh, Boston, Singapore).
   * v0.2 Devkit: Multiple devkit updates with improvements across the whole framework (planning models, training, simulation, metrics, dashboard, tutorials and more).

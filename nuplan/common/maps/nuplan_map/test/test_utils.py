@@ -10,9 +10,12 @@ from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.common.maps.nuplan_map.utils import (
     build_lane_segments_from_blps,
+    build_lane_segments_from_blps_with_trim,
     connect_blp_lane_segments,
     connect_lane_conn_predecessor,
     connect_lane_conn_successor,
+    connect_trimmed_lane_conn_predecessor,
+    connect_trimmed_lane_conn_successor,
     extract_polygon_from_map_object,
     extract_roadblock_objects,
     get_roadblock_ids_from_trajectory,
@@ -77,9 +80,147 @@ def test_group_blp_lane_segments() -> None:
 
 
 @nuplan_test(path='json/baseline/baseline_in_lane.json')
+def test_build_lane_segments_from_blps_with_trim(scene: Dict[str, Any]) -> None:
+    """
+    Test build and trim the lane segments from the baseline paths.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+        radius = 20
+
+        lane: Lane = nuplan_map.get_one_map_object(Point2D(pose[0], pose[1]), SemanticMapLayer.LANE)
+
+        assert lane is not None
+
+        start_idx = 0
+        (
+            trimmed_obj_coords,
+            trimmed_obj_conns,
+            trimmed_obj_groupings,
+            trimmed_obj_lane_ids,
+            trimmed_obj_roadblock_ids,
+            trimmed_obj_cross_blp_conn,
+        ) = build_lane_segments_from_blps_with_trim(Point2D(pose[0], pose[1]), radius, lane, start_idx)
+
+        start_idx = 0
+        (
+            obj_coords,
+            obj_conns,
+            obj_groupings,
+            obj_lane_ids,
+            obj_roadblock_ids,
+            obj_cross_blp_conn,
+        ) = build_lane_segments_from_blps(lane, start_idx)
+
+        assert len(trimmed_obj_coords) > 0
+        assert len(trimmed_obj_conns) > 0
+        assert len(trimmed_obj_groupings) > 0
+        assert len(trimmed_obj_lane_ids) > 0
+        assert len(trimmed_obj_roadblock_ids) > 0
+        assert len(trimmed_obj_cross_blp_conn) == 2
+
+        assert len(trimmed_obj_coords) == len(trimmed_obj_conns) + 1
+        assert len(trimmed_obj_coords) == len(trimmed_obj_groupings[0])
+        assert len(trimmed_obj_coords) == len(trimmed_obj_lane_ids)
+        assert len(trimmed_obj_coords) == len(trimmed_obj_roadblock_ids)
+
+        assert len(trimmed_obj_coords) <= len(obj_coords)
+
+
+@nuplan_test(path='json/baseline/baseline_in_intersection.json')
+def test_connect_trimmed_lane_conn_predecessor(scene: Dict[str, Any]) -> None:
+    """
+    Test connecting trimmed lane connector to incoming lane.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+        lane_connector: LaneConnector = nuplan_map.get_all_map_objects(
+            Point2D(pose[0], pose[1]), SemanticMapLayer.LANE_CONNECTOR
+        )[0]
+        assert lane_connector is not None
+        incoming_edges = lane_connector.incoming_edges
+        assert len(incoming_edges) > 0
+
+        lane: Lane = lane_connector.incoming_edges[0]
+        assert lane is not None
+        start_idx = 0
+        radius = 20
+        trim_nodes = build_lane_segments_from_blps_with_trim(Point2D(pose[0], pose[1]), radius, lane, start_idx)
+        if trim_nodes is not None:
+            (
+                obj_coords,
+                obj_conns,
+                obj_groupings,
+                obj_lane_ids,
+                obj_roadblock_ids,
+                obj_cross_blp_conn,
+            ) = trim_nodes
+        else:
+            continue
+
+        cross_blp_conns: Dict[str, List[int]] = {}
+        cross_blp_conns[lane_connector.id] = [0, 0]
+        cross_blp_conns[incoming_edges[0].id] = [0, 0]
+
+        lane_seg_pred_conns = connect_trimmed_lane_conn_predecessor(obj_coords, lane_connector, cross_blp_conns)
+        assert len(lane_seg_pred_conns) > 0
+        assert isinstance(lane_seg_pred_conns, List)
+        assert isinstance(lane_seg_pred_conns[0], tuple)
+        assert isinstance(lane_seg_pred_conns[0][0], int)
+
+
+@nuplan_test(path='json/baseline/baseline_in_intersection.json')
+def test_connect_trimmed_lane_conn_successor(scene: Dict[str, Any]) -> None:
+    """
+    Test connecting trimmed lane connector to outgoing lane.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+        lane_connector: LaneConnector = nuplan_map.get_all_map_objects(
+            Point2D(pose[0], pose[1]), SemanticMapLayer.LANE_CONNECTOR
+        )[0]
+        assert lane_connector is not None
+        outgoing_edges = lane_connector.outgoing_edges
+        assert len(outgoing_edges) > 0
+
+        lane: Lane = lane_connector.outgoing_edges[0]
+        assert lane is not None
+        start_idx = 0
+        radius = 20
+        trim_nodes = build_lane_segments_from_blps_with_trim(Point2D(pose[0], pose[1]), radius, lane, start_idx)
+        if trim_nodes is not None:
+            (
+                obj_coords,
+                obj_conns,
+                obj_groupings,
+                obj_lane_ids,
+                obj_roadblock_ids,
+                obj_cross_blp_conn,
+            ) = trim_nodes
+        else:
+            continue
+
+        cross_blp_conns: Dict[str, List[int]] = {}
+        cross_blp_conns[lane_connector.id] = [0, 0]
+        cross_blp_conns[outgoing_edges[0].id] = [0, 0]
+
+        lane_seg_suc_conns = connect_trimmed_lane_conn_successor(obj_coords, lane_connector, cross_blp_conns)
+        assert len(lane_seg_suc_conns) > 0
+        assert isinstance(lane_seg_suc_conns, List)
+        assert isinstance(lane_seg_suc_conns[0], tuple)
+        assert isinstance(lane_seg_suc_conns[0][0], int)
+
+
+@nuplan_test(path='json/baseline/baseline_in_lane.json')
 def test_build_lane_segments_from_blps(scene: Dict[str, Any]) -> None:
     """
-    Test splitting baseline paths into lane segments.
+    Test building lane segments from baseline paths.
     """
     nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
 

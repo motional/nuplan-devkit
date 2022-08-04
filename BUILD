@@ -3,9 +3,10 @@ load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
-    name = "jenkins_env",
+    name = "requirements",
     data = [
         "requirements.txt",
+        "requirements_torch.txt",
     ],
 )
 

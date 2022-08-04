@@ -62,10 +62,11 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "VALUE": 41.04,
-            "MEAN": 8.21
-        },
+        "statistics": [
+            ["VALUE", 41.99],
+            ["VALUE", 41.04],
+            ["RATIO", 0.97]
+        ],
         "time_series": {}
     },
     "goal": {

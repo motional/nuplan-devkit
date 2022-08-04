@@ -18,7 +18,7 @@ class TestPerfectTracking(unittest.TestCase):
         """
         initial_time_point = TimePoint(0)
         scenario = MockAbstractScenario(initial_time_us=initial_time_point)
-        trajectory = InterpolatedTrajectory(scenario.get_expert_ego_trajectory())
+        trajectory = InterpolatedTrajectory(list(scenario.get_expert_ego_trajectory()))
         tracker = PerfectTrackingController(scenario)
 
         # Check initial state

@@ -1,27 +1,39 @@
 from __future__ import annotations
 
-from functools import cached_property, lru_cache
-from typing import Any, List, Optional, Tuple, Type, cast
+import os
+from functools import cached_property
+from typing import Any, Generator, List, Optional, Tuple, Type, cast
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType, Transform
+from nuplan.common.maps.maps_datatypes import PointCloud, TrafficLightStatusData, Transform
+from nuplan.common.maps.nuplan_map.map_factory import get_maps_api
 from nuplan.common.maps.nuplan_map.utils import get_roadblock_ids_from_trajectory
+from nuplan.database.common.blob_store.blob_store import BlobStore
+from nuplan.database.common.blob_store.creator import BlobStoreCreator
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
-from nuplan.database.nuplan_db.nuplandb import NuPlanDB
+from nuplan.database.nuplan_db.nuplan_scenario_queries import (
+    get_ego_state_for_lidarpc_token_from_db,
+    get_end_lidarpc_time_from_db,
+    get_lidar_pcs_from_lidarpc_tokens_from_db,
+    get_lidar_transform_matrix_for_lidarpc_token_from_db,
+    get_lidarpc_token_timestamp_from_db,
+    get_mission_goal_for_lidarpc_token_from_db,
+    get_sampled_ego_states_from_db,
+    get_sampled_lidarpcs_from_db,
+    get_statese2_for_lidarpc_token_from_db,
+    get_traffic_light_status_for_lidarpc_token_from_db,
+)
+from nuplan.database.utils.pointclouds.lidar import LidarPointCloud
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import (
     ScenarioExtractionInfo,
+    absolute_path_to_log_name,
+    download_file_if_necessary,
     extract_lidarpc_tokens_as_scenario,
     extract_tracked_objects,
-    get_map_api,
-    get_time_stamp_from_lidar_pc,
-    lidarpc_next,
-    lidarpc_prev,
-    lidarpc_to_ego_state,
-    lidarpc_to_state_se2,
 )
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
@@ -33,37 +45,56 @@ class NuPlanScenario(AbstractScenario):
 
     def __init__(
         self,
-        db: Optional[NuPlanDB],
-        log_name: str,
+        data_root: str,
+        log_file_load_path: str,
         initial_lidar_token: str,
+        initial_lidar_timestamp: int,
         scenario_type: str,
+        map_root: str,
+        map_version: str,
+        map_name: str,
         scenario_extraction_info: Optional[ScenarioExtractionInfo],
         ego_vehicle_parameters: VehicleParameters,
         ground_truth_predictions: Optional[TrajectorySampling] = None,
     ) -> None:
         """
         Initialize the nuPlan scenario.
-        :param db: Object that provides database access.
-        :param log_name: Name of the log that this scenario belongs to.
+        :param data_root: The prefix for the log file. e.g. "/data/root/nuplan". For remote paths, this is where the file will be downloaded if necessary.
+        :param log_file_load_path: Name of the log that this scenario belongs to. e.g. "/data/sets/nuplan-v1.0/mini/2021.07.16.20.45.29_veh-35_01095_01486.db", "s3://path/to/db.db"
         :param initial_lidar_token: Token of the scenario's initial lidarpc.
+        :param initial_lidar_timestamp: The timestamp of the initial lidarpc.
         :param scenario_type: Type of scenario (e.g. ego overtaking).
+        :param map_root: The root path for the map db
+        :param map_version: The version of maps to load
+        :param map_name: The map name to use for the scenario
         :param scenario_extraction_info: Structure containing information used to extract the scenario.
             None means the scenario has no length and it is comprised only by the initial lidarpc.
         :param ego_vehicle_parameters: Structure containing the vehicle parameters.
         :param ground_truth_predictions: True if you want to extract agent future ground truth predictions.
         """
-        self._db = db
-        self._log_name = log_name
+        self._blob_store: Optional[BlobStore] = None  # Lazily create
+
+        self._data_root = data_root
+        self._log_file_load_path = log_file_load_path
         self._initial_lidar_token = initial_lidar_token
+        self._initial_lidar_timestamp = initial_lidar_timestamp
         self._scenario_type = scenario_type
+        self._map_root = map_root
+        self._map_version = map_version
+        self._map_name = map_name
         self._scenario_extraction_info = scenario_extraction_info
         self._ego_vehicle_parameters = ego_vehicle_parameters
         self._ground_truth_predictions = ground_truth_predictions
 
-        # db can be None when reading from the cache
-        if self._db is not None:
-            # If we have a valid DB, add a reference to it to prevent tables from being detached
-            self._db.add_ref()
+        # Typically, the log file will already be downloaded by the scenario_builder by this point
+        #   So most of the time, this should be a trivial translation.
+        #
+        # However, in the situation in which a scenario is serialized, then deserialized on another machine,
+        #   The log file may not be downloaded.
+        #
+        # So, we must check and download the file here as well.
+        self._log_file = download_file_if_necessary(self._data_root, self._log_file_load_path)
+        self._log_name: str = absolute_path_to_log_name(self._log_file)
 
     def __reduce__(self) -> Tuple[Type[NuPlanScenario], Tuple[Any, ...]]:
         """
@@ -73,48 +104,24 @@ class NuPlanScenario(AbstractScenario):
         return (
             self.__class__,
             (
-                self._db,
-                self._log_name,
+                self._data_root,
+                self._log_file_load_path,
                 self._initial_lidar_token,
+                self._initial_lidar_timestamp,
                 self._scenario_type,
+                self._map_root,
+                self._map_version,
+                self._map_name,
                 self._scenario_extraction_info,
                 self._ego_vehicle_parameters,
                 self._ground_truth_predictions,
             ),
         )
 
-    def __del__(self) -> None:
-        """
-        Called when the scenario is being destroyed.
-        """
-        # If we have a valid DB, remove the reference so it can be GC'd if no other components
-        #   are using it.
-        if self._db is not None:
-            self._db.remove_ref()
-
     @property
     def ego_vehicle_parameters(self) -> VehicleParameters:
         """Inherited, see superclass."""
         return self._ego_vehicle_parameters
-
-    def _get_lidar_pc_at_iteration(self, iteration: int) -> LidarPc:
-        """
-        Return lidar pc from iteration
-        :param iteration: within scenario
-        :return: LidarPc
-        """
-        assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration: {iteration} is out of bounds!"
-        assert self._db is not None, "_get_lidar_pc_at_iteration called with db=None"
-        token = self._lidarpc_tokens[iteration]
-        return self._db.lidar_pc[token]
-
-    @property
-    def _initial_lidarpc(self) -> LidarPc:
-        """
-        :return: initial pointcloud
-        """
-        assert self._db is not None, "_initial_lidarpc called with db=None"
-        return self._db.lidar_pc[self._initial_lidar_token]
 
     @cached_property
     def _lidarpc_tokens(self) -> List[str]:
@@ -124,58 +131,23 @@ class NuPlanScenario(AbstractScenario):
         if self._scenario_extraction_info is None:
             return [self._initial_lidar_token]
 
-        lidarpc_tokens = extract_lidarpc_tokens_as_scenario(
-            self._db,
-            self._initial_lidarpc.timestamp,
-            self._scenario_extraction_info,
+        lidarpc_tokens = list(
+            extract_lidarpc_tokens_as_scenario(
+                self._log_file,
+                self._initial_lidar_timestamp,
+                self._scenario_extraction_info,
+            )
         )
 
         return cast(List[str], lidarpc_tokens)
-
-    @property
-    def _final_lidarpc(self) -> LidarPc:
-        """
-        :return: last pointcloud
-        """
-        return self._get_lidar_pc_at_iteration(self.get_number_of_iterations() - 1)
-
-    def _get_next_lidarpc(self, lidarpc: LidarPc, next_idx: int) -> LidarPc:
-        """Inherited, see superclass."""
-        for _ in range(next_idx):
-            lidarpc = lidarpc_next(lidarpc)
-            assert lidarpc is not None, f"Error while retrieving lidarpc {next_idx} steps into the future"
-
-        return lidarpc
-
-    def _get_prev_lidarpc(self, lidarpc: LidarPc, prev_idx: int) -> LidarPc:
-        """Inherited, see superclass."""
-        for _ in range(prev_idx):
-            lidarpc = lidarpc_prev(lidarpc)
-            assert lidarpc is not None, f"Error while retrieving lidarpc {prev_idx} steps into the past"
-
-        return lidarpc
-
-    @cached_property
-    def _mission_goal(self) -> Optional[StateSE2]:
-        """
-        return: Mission goal based on the initial lidar pc.
-        """
-        pose_token = self._final_lidarpc.scene.goal_ego_pose_token
-
-        if pose_token is None:
-            return None
-
-        assert self._db is not None, "_mission_goal called with db=None"
-
-        mission_pose = self._db.ego_pose[pose_token]
-        return StateSE2(mission_pose.x, mission_pose.y, mission_pose.quaternion.yaw_pitch_roll[0])
 
     @cached_property
     def _route_roadblock_ids(self) -> List[str]:
         """
         return: Route roadblock ids extracted from expert trajectory.
         """
-        expert_trajectory = self._extract_expert_trajectory()
+        # TODO: update get_roadblock_ids_from_trajectory to take in generator
+        expert_trajectory = list(self._extract_expert_trajectory())
         return get_roadblock_ids_from_trajectory(self.map_api, expert_trajectory)  # type: ignore
 
     @property
@@ -186,6 +158,7 @@ class NuPlanScenario(AbstractScenario):
     @property
     def log_name(self) -> str:
         """Inherited, see superclass."""
+        # e.g. "2021.07.16.20.45.29_veh-35_01095_01486.db"
         return self._log_name
 
     @property
@@ -201,7 +174,17 @@ class NuPlanScenario(AbstractScenario):
     @property
     def map_api(self) -> AbstractMap:
         """Inherited, see superclass."""
-        return get_map_api(self._db, self._initial_lidarpc.log.map_version)
+        return get_maps_api(self._map_root, self._map_version, self._map_name)
+
+    @property
+    def map_root(self) -> str:
+        """Get the map root folder."""
+        return self._map_root
+
+    @property
+    def map_version(self) -> str:
+        """Get the map version."""
+        return self._map_version
 
     @property
     def database_interval(self) -> float:
@@ -214,11 +197,11 @@ class NuPlanScenario(AbstractScenario):
 
     def get_lidar_to_ego_transform(self) -> Transform:
         """Inherited, see superclass."""
-        return self._initial_lidarpc.lidar.trans_matrix
+        return get_lidar_transform_matrix_for_lidarpc_token_from_db(self._log_file, self._intial_lidar_token)
 
     def get_mission_goal(self) -> Optional[StateSE2]:
         """Inherited, see superclass."""
-        return self._mission_goal
+        return get_mission_goal_for_lidarpc_token_from_db(self._log_file, self._lidarpc_tokens[-1])
 
     def get_route_roadblock_ids(self) -> List[str]:
         """Inherited, see superclass."""
@@ -226,110 +209,106 @@ class NuPlanScenario(AbstractScenario):
 
     def get_expert_goal_state(self) -> StateSE2:
         """Inherited, see superclass."""
-        return lidarpc_to_state_se2(self._final_lidarpc)
+        return get_statese2_for_lidarpc_token_from_db(self._log_file, self._lidarpc_tokens[-1])
 
     def get_time_point(self, iteration: int) -> TimePoint:
         """Inherited, see superclass."""
-        return TimePoint(get_time_stamp_from_lidar_pc(self._get_lidar_pc_at_iteration(iteration)))
+        return TimePoint(time_us=get_lidarpc_token_timestamp_from_db(self._log_file, self._lidarpc_tokens[iteration]))
 
     def get_ego_state_at_iteration(self, iteration: int) -> EgoState:
         """Inherited, see superclass."""
-        return lidarpc_to_ego_state(self._get_lidar_pc_at_iteration(iteration))
+        return get_ego_state_for_lidarpc_token_from_db(self._log_file, self._lidarpc_tokens[iteration])
 
     def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
         """Inherited, see superclass."""
         assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration is out of scenario: {iteration}!"
         return DetectionsTracks(
-            extract_tracked_objects(self._get_lidar_pc_at_iteration(iteration), self._ground_truth_predictions)
+            extract_tracked_objects(self._lidarpc_tokens[iteration], self._log_file, self._ground_truth_predictions)
         )
 
     def get_sensors_at_iteration(self, iteration: int) -> Sensors:
         """Inherited, see superclass."""
-        lidar_pc = self._get_lidar_pc_at_iteration(iteration)
-        return Sensors(pointcloud=lidar_pc.load().points.T)
+        lidar_pc = next(get_lidar_pcs_from_lidarpc_tokens_from_db(self._log_file, [self._lidarpc_tokens[iteration]]))
+
+        return Sensors(pointcloud=self._load_point_cloud(lidar_pc))
 
     def get_future_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[TimePoint]:
+    ) -> Generator[TimePoint, None, None]:
         """Inherited, see superclass."""
-        return [
-            TimePoint(get_time_stamp_from_lidar_pc(lidar_pc))
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True)
-        ]
+        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True):
+            yield TimePoint(lidar_pc.timestamp)
 
     def get_past_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[TimePoint]:
+    ) -> Generator[TimePoint, None, None]:
         """Inherited, see superclass."""
-        return [
-            TimePoint(get_time_stamp_from_lidar_pc(lidar_pc))
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False)
-        ]
+        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False):
+            yield TimePoint(lidar_pc.timestamp)
 
     def get_ego_past_trajectory(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[EgoState]:
+    ) -> Generator[EgoState, None, None]:
         """Inherited, see superclass."""
-        return [
-            lidarpc_to_ego_state(lidar_pc)
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False)
-        ]
+        num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self.database_interval)
+
+        return cast(
+            Generator[EgoState, None, None],
+            get_sampled_ego_states_from_db(self._log_file, self._lidarpc_tokens[iteration], indices, future=False),
+        )
 
     def get_ego_future_trajectory(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[EgoState]:
+    ) -> Generator[EgoState, None, None]:
         """Inherited, see superclass."""
-        return [
-            lidarpc_to_ego_state(lidar_pc)
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True)
-        ]
+        num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self.database_interval)
+
+        return cast(
+            Generator[EgoState, None, None],
+            get_sampled_ego_states_from_db(self._log_file, self._lidarpc_tokens[iteration], indices, future=True),
+        )
 
     def get_past_tracked_objects(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[DetectionsTracks]:
+    ) -> Generator[DetectionsTracks, None, None]:
         """Inherited, see superclass."""
-        return [
-            DetectionsTracks(extract_tracked_objects(lidar_pc, self._ground_truth_predictions))
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False)
-        ]
+        # TODO: This can be made even more efficient with a batch query
+        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False):
+            yield DetectionsTracks(
+                extract_tracked_objects(lidar_pc.token, self._log_file, self._ground_truth_predictions)
+            )
 
     def get_future_tracked_objects(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[DetectionsTracks]:
+    ) -> Generator[DetectionsTracks, None, None]:
         """Inherited, see superclass."""
-        return [
-            DetectionsTracks(extract_tracked_objects(lidar_pc, self._ground_truth_predictions))
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True)
-        ]
+        # TODO: This can be made even more efficient with a batch query
+        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True):
+            yield DetectionsTracks(
+                extract_tracked_objects(lidar_pc.token, self._log_file, self._ground_truth_predictions)
+            )
 
-    def get_past_sensors(self, iteration: int, time_horizon: float, num_samples: Optional[int] = None) -> List[Sensors]:
+    def get_past_sensors(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[Sensors, None, None]:
         """Inherited, see superclass."""
-        return [
-            Sensors(pointcloud=lidar_pc.load().points.T)
-            for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False)
-        ]
+        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False):
+            yield Sensors(self._load_point_cloud(lidar_pc))
 
-    @lru_cache
-    def get_traffic_light_status_at_iteration(self, iteration: int) -> List[TrafficLightStatusData]:
+    def get_traffic_light_status_at_iteration(self, iteration: int) -> Generator[TrafficLightStatusData, None, None]:
         """Inherited, see superclass."""
         token = self._lidarpc_tokens[iteration]
 
-        assert self._db is not None, "get_traffic_light_status_at_iteration called with db=None"
-        traffic_light_status = self._db.traffic_light_status.select_many(lidar_pc_token=token)
-
-        traffic_light_status_data = [
-            TrafficLightStatusData(
-                status=TrafficLightStatusType[traffic_light.status.upper()],
-                lane_connector_id=traffic_light.lane_connector_id,
-                timestamp=self._get_lidar_pc_at_iteration(iteration).timestamp,
-            )
-            for traffic_light in traffic_light_status
-        ]
-        return traffic_light_status_data
+        return cast(
+            Generator[TrafficLightStatusData, None, None],
+            get_traffic_light_status_for_lidarpc_token_from_db(self._log_file, token),
+        )
 
     def _find_matching_lidar_pcs(
         self, iteration: int, num_samples: Optional[int], time_horizon: float, look_into_future: bool
-    ) -> List[LidarPc]:
+    ) -> Generator[LidarPc, None, None]:
         """
         Find the best matching lidar_pcs to the desired samples and time horizon
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
@@ -340,13 +319,13 @@ class NuPlanScenario(AbstractScenario):
         """
         num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
         indices = sample_indices_with_time_horizon(num_samples, time_horizon, self.database_interval)
-        return (
-            [self._get_next_lidarpc(self._get_lidar_pc_at_iteration(iteration), idx) for idx in indices]
-            if look_into_future
-            else [self._get_prev_lidarpc(self._get_lidar_pc_at_iteration(iteration), idx) for idx in reversed(indices)]
+
+        return cast(
+            Generator[LidarPc, None, None],
+            get_sampled_lidarpcs_from_db(self._log_file, self._lidarpc_tokens[iteration], indices, look_into_future),
         )
 
-    def _extract_expert_trajectory(self, max_future_seconds: int = 60) -> List[EgoState]:
+    def _extract_expert_trajectory(self, max_future_seconds: int = 60) -> Generator[EgoState, None, None]:
         """
         Extract expert trajectory with specified time parameters. If initial lidar pc does not have enough history/future
             only available time will be extracted
@@ -356,15 +335,39 @@ class NuPlanScenario(AbstractScenario):
         minimal_required_future_time_available = 0.5
 
         # Extract Future
-        end_log_time_us = self._initial_lidarpc.log.lidar_pcs[-1].timestamp
-        max_future_time = min(
-            (end_log_time_us - self._get_lidar_pc_at_iteration(0).timestamp) * 1e-6, max_future_seconds
-        )
+        end_log_time_us = get_end_lidarpc_time_from_db(self._log_file)
+        max_future_time = min((end_log_time_us - self._initial_lidar_timestamp) * 1e-6, max_future_seconds)
 
-        future_ego = (
-            self.get_ego_future_trajectory(0, max_future_time)
-            if max_future_time > minimal_required_future_time_available
-            else []
-        )
+        if max_future_time < minimal_required_future_time_available:
+            return
 
-        return future_ego
+        for traj in self.get_ego_future_trajectory(0, max_future_time):
+            yield traj
+
+    def _load_point_cloud(self, lidar_pc: LidarPc) -> PointCloud:
+        """
+        Loads a point cloud given a database LidarPC object.
+        This method will initialize the scenario's blob store if it does not already exist.
+
+        :param lidar_pc: The lidar_pc for which to grab the point cloud.
+        :return: The corresponding point cloud.
+        """
+        if lidar_pc.channel != "MergedPointCloud":
+            raise NotImplementedError()
+        for supported_file_type in ["bin2", "pcd"]:
+            if lidar_pc.filename.endswith(supported_file_type):
+                self._blob_store = self._create_blob_store_if_needed()
+                blob = self._blob_store.get(os.path.join("sensor_blobs", lidar_pc.filename))
+                cloud = LidarPointCloud.from_buffer(blob, supported_file_type)
+                return cloud.points.T
+        raise NotImplementedError()
+
+    def _create_blob_store_if_needed(self) -> BlobStore:
+        """
+        A convenience method that creates the blob store if it's not already created.
+        :return: The created or cached blob store object.
+        """
+        if self._blob_store is not None:
+            return self._blob_store
+
+        return BlobStoreCreator.create_nuplandb(self._data_root)

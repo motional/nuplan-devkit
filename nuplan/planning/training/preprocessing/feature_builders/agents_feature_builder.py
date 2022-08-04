@@ -62,9 +62,11 @@ class AgentsFeatureBuilder(ScriptableFeatureBuilder):
             past_ego_states = scenario.get_ego_past_trajectory(
                 iteration=0, num_samples=self.num_past_poses, time_horizon=self.past_time_horizon
             )
-            sampled_past_ego_states = past_ego_states + [anchor_ego_state]
-            time_stamps = scenario.get_past_timestamps(
-                iteration=0, num_samples=self.num_past_poses, time_horizon=self.past_time_horizon
+            sampled_past_ego_states = list(past_ego_states) + [anchor_ego_state]
+            time_stamps = list(
+                scenario.get_past_timestamps(
+                    iteration=0, num_samples=self.num_past_poses, time_horizon=self.past_time_horizon
+                )
             ) + [scenario.start_time]
             # Retrieve present/future agent boxes
             present_tracked_objects = scenario.initial_tracked_objects.tracked_objects

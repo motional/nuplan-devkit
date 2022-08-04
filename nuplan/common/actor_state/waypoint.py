@@ -44,7 +44,7 @@ class Waypoint(InterpolatableState):
         :return True if both objects are same.
         """
         if not isinstance(other, Waypoint):
-            raise NotImplementedError
+            return NotImplemented
 
         return (
             other.oriented_box == self._oriented_box
