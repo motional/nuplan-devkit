@@ -177,10 +177,10 @@ class SimulationHistoryBuffer:
         else:
             raise ValueError(f"No matching observation type for {observation_type} for history!")
 
-        past_observation = observation_getter(iteration=0, time_horizon=buffer_duration, num_samples=buffer_size)
+        past_observation = list(observation_getter(iteration=0, time_horizon=buffer_duration, num_samples=buffer_size))
 
-        past_ego_states = scenario.get_ego_past_trajectory(
-            iteration=0, time_horizon=buffer_duration, num_samples=buffer_size
+        past_ego_states = list(
+            scenario.get_ego_past_trajectory(iteration=0, time_horizon=buffer_duration, num_samples=buffer_size)
         )
 
         return SimulationHistoryBuffer.initialize_from_list(

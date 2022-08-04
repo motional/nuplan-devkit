@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import numpy.typing as npt
+import torch
 from pyquaternion import Quaternion
 
 from nuplan.planning.training.preprocessing.features.vector_utils import (
@@ -18,10 +19,16 @@ class TestVectorUtils(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up test case."""
-        self.coords: npt.NDArray[np.float64] = np.array(
+        self.coords: npt.NDArray[np.float32] = np.array(
             [
                 [[0.0, 0.0], [-1.0, 1.0], [1.0, 1.0]],
                 [[1.0, 0.0], [-1.0, -1.0], [1.0, -1.0]],
+            ]
+        )
+        self.avails: npt.NDArray[np.bool_] = np.array(
+            [
+                [False, True, True],
+                [True, True, True],
             ]
         )
 
@@ -31,7 +38,7 @@ class TestVectorUtils(unittest.TestCase):
         """
         quaternion = Quaternion(axis=[1, 0, 0], angle=3.14159265)
 
-        expected_result: npt.NDArray[np.float64] = np.array(
+        expected_result: npt.NDArray[np.float32] = np.array(
             [
                 [[0.0, 0.0], [-1.0, -1.0], [1.0, -1.0]],
                 [[1.0, 0.0], [-1.0, 1.0], [1.0, 1.0]],
@@ -39,16 +46,15 @@ class TestVectorUtils(unittest.TestCase):
         )
 
         result = rotate_coords(self.coords, quaternion)
-
         np.testing.assert_allclose(expected_result, result)
 
     def test_translate_coords(self) -> None:
         """
         Test vector feature coordinate translation.
         """
-        translation_value: npt.NDArray[np.float64] = np.array([1.0, 0.0, -1.0])
+        translation_value: npt.NDArray[np.float32] = np.array([1.0, 0.0, -1.0])
 
-        expected_result: npt.NDArray[np.float64] = np.array(
+        expected_result: npt.NDArray[np.float32] = np.array(
             [
                 [[1.0, 0.0], [0.0, 1.0], [2.0, 1.0]],
                 [[2.0, 0.0], [0.0, -1.0], [2.0, -1.0]],
@@ -56,16 +62,24 @@ class TestVectorUtils(unittest.TestCase):
         )
 
         result = translate_coords(self.coords, translation_value)
-
         np.testing.assert_allclose(expected_result, result)
+
+        result = translate_coords(self.coords, translation_value, self.avails)
+        expected_result[0][0] = [0.0, 0.0]
+        np.testing.assert_allclose(expected_result, result)
+
+        result = translate_coords(
+            torch.from_numpy(self.coords), torch.from_numpy(translation_value), torch.from_numpy(self.avails)
+        )
+        torch.testing.assert_allclose(torch.from_numpy(expected_result), result)
 
     def test_scale_coords(self) -> None:
         """
         Test vector feature coordinate scaling.
         """
-        scale_value: npt.NDArray[np.float64] = np.array([-2.0, 0.0, -1.0])
+        scale_value: npt.NDArray[np.float32] = np.array([-2.0, 0.0, -1.0])
 
-        expected_result: npt.NDArray[np.float64] = np.array(
+        expected_result: npt.NDArray[np.float32] = np.array(
             [
                 [[0.0, 0.0], [2.0, 0.0], [-2.0, 0.0]],
                 [[-2.0, 0.0], [2.0, 0.0], [-2.0, 0.0]],
@@ -73,14 +87,16 @@ class TestVectorUtils(unittest.TestCase):
         )
 
         result = scale_coords(self.coords, scale_value)
-
         np.testing.assert_allclose(expected_result, result)
+
+        result = scale_coords(torch.from_numpy(self.coords), torch.from_numpy(scale_value))
+        torch.testing.assert_allclose(torch.from_numpy(expected_result), result)
 
     def test_xflip_coords(self) -> None:
         """
         Test flipping vector feature coordinates about X-axis.
         """
-        expected_result: npt.NDArray[np.float64] = np.array(
+        expected_result: npt.NDArray[np.float32] = np.array(
             [
                 [[0.0, 0.0], [1.0, 1.0], [-1.0, 1.0]],
                 [[-1.0, 0.0], [1.0, -1.0], [-1.0, -1.0]],
@@ -88,14 +104,16 @@ class TestVectorUtils(unittest.TestCase):
         )
 
         result = xflip_coords(self.coords)
-
         np.testing.assert_allclose(expected_result, result)
+
+        result = xflip_coords(torch.from_numpy(self.coords))
+        torch.testing.assert_allclose(torch.from_numpy(expected_result), result)
 
     def test_yflip_coords(self) -> None:
         """
         Test flipping vector feature coordinates about Y-axis.
         """
-        expected_result: npt.NDArray[np.float64] = np.array(
+        expected_result: npt.NDArray[np.float32] = np.array(
             [
                 [[0.0, 0.0], [-1.0, -1.0], [1.0, -1.0]],
                 [[1.0, 0.0], [-1.0, 1.0], [1.0, 1.0]],
@@ -103,8 +121,10 @@ class TestVectorUtils(unittest.TestCase):
         )
 
         result = yflip_coords(self.coords)
-
         np.testing.assert_allclose(expected_result, result)
+
+        result = yflip_coords(torch.from_numpy(self.coords))
+        torch.testing.assert_allclose(torch.from_numpy(expected_result), result)
 
 
 if __name__ == '__main__':

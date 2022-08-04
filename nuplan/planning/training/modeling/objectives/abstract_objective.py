@@ -6,14 +6,22 @@ import torch
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
-def aggregate_objectives(objectives: Dict[str, torch.Tensor]) -> torch.Tensor:
+def aggregate_objectives(objectives: Dict[str, torch.Tensor], agg_mode: str) -> torch.Tensor:
     """
     Aggregates all computed objectives in a single scalar loss tensor used for backpropagation.
 
     :param objectives: dictionary of objective names and values
+    :param agg_mode: how to aggregate multiple objectives. [mean, sum, max]
     :return: scalar loss tensor
     """
-    return torch.stack(list(objectives.values())).mean()
+    if agg_mode == 'mean':
+        return torch.stack(list(objectives.values())).mean()
+    elif agg_mode == 'sum':
+        return torch.stack(list(objectives.values())).sum()
+    elif agg_mode == 'max':
+        return torch.stack(list(objectives.values())).max()
+    else:
+        raise ValueError("agg_mode should be one of 'mean', 'sum', and 'max'.")
 
 
 class AbstractObjective(ABC):

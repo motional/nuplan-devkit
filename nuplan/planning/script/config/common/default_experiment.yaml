@@ -21,3 +21,4 @@ gpu: true                                           # Whether to use available G
 
 # Logger
 logger_level: info                                  # Level of logger
+logger_format_string: null                          # Logger format string, set null to use the default format string

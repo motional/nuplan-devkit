@@ -126,7 +126,12 @@ def build_logger(cfg: DictConfig) -> logging.Logger:
         path = str(Path(cfg.output_dir) / 'log.txt')
         handler_configs.append(LogHandlerConfig(level=cfg.logger_level, path=path))
 
-    logger = configure_logger(handler_configs)
+    format_string = (
+        '%(asctime)s %(levelname)-2s {%(pathname)s:%(lineno)d}  %(message)s'
+        if not cfg.logger_format_string
+        else cfg.logger_format_string
+    )
+    logger = configure_logger(handler_configs, format_str=format_string)
 
     # Disable logger if it's not main process. This is useful when the trainer uses multiple processes in the DDP mode.
     if cfg.gpu:

@@ -53,7 +53,7 @@ class EgoExpertL2ErrorWithYawStatistics(MetricBase):
             time_series=time_series, statistics_type_list=statistics_type_list
         )
 
-        results = self._construct_metric_results(
+        results: List[MetricStatistics] = self._construct_metric_results(
             metric_statistics=metric_statistics, scenario=scenario, time_series=time_series
         )
-        return results  # type: ignore
+        return results

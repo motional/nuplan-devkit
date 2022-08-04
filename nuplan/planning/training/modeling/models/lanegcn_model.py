@@ -14,6 +14,10 @@ from nuplan.planning.training.modeling.models.lanegcn_utils import (
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 from nuplan.planning.training.preprocessing.feature_builders.agents_feature_builder import AgentsFeatureBuilder
+from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import (
+    LaneOnRouteStatusData,
+    LaneSegmentTrafficLightData,
+)
 from nuplan.planning.training.preprocessing.feature_builders.vector_map_feature_builder import VectorMapFeatureBuilder
 from nuplan.planning.training.preprocessing.features.agents import Agents
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
@@ -83,6 +87,12 @@ class LaneGCN(TorchModuleWrapper):
 
         # LaneGCN components
         self.feature_dim = feature_dim
+        self.connection_scales = (
+            list(range(map_net_scales)) if vector_map_connection_scales is None else vector_map_connection_scales
+        )
+        # +1 on input dim for both agents and ego to include both history and current steps
+        self.ego_input_dim = (past_trajectory_sampling.num_poses + 1) * Agents.ego_state_dim()
+        self.agent_input_dim = (past_trajectory_sampling.num_poses + 1) * Agents.agents_states_dim()
         self.lane_net = LaneNet(
             lane_input_len=2,
             lane_feature_len=self.feature_dim,
@@ -91,14 +101,14 @@ class LaneGCN(TorchModuleWrapper):
             is_map_feat=False,
         )
         self.ego_feature_extractor = torch.nn.Sequential(
-            nn.Linear((past_trajectory_sampling.num_poses + 1) * Agents.ego_state_dim(), self.feature_dim),
+            nn.Linear(self.ego_input_dim, self.feature_dim),
             nn.ReLU(inplace=True),
             nn.Linear(self.feature_dim, self.feature_dim),
             nn.ReLU(inplace=True),
             LinearWithGroupNorm(self.feature_dim, self.feature_dim, num_groups=1, activation=False),
         )
         self.agent_feature_extractor = torch.nn.Sequential(
-            nn.Linear((past_trajectory_sampling.num_poses + 1) * Agents.agents_states_dim(), self.feature_dim),
+            nn.Linear(self.agent_input_dim, self.feature_dim),
             nn.ReLU(inplace=True),
             nn.Linear(self.feature_dim, self.feature_dim),
             nn.ReLU(),
@@ -155,28 +165,57 @@ class LaneGCN(TorchModuleWrapper):
 
         # Map and agent features have different size across batch so we use per sample feature extraction
         for sample_idx in range(batch_size):
-            coords = vector_map_data.coords[sample_idx]
-            connections = vector_map_data.multi_scale_connections[sample_idx]
-
-            lane_features = self.lane_net(coords, connections)
-            lane_centers = coords.mean(axis=1)
-            lane_meta_tl = vector_map_data.traffic_light_data[sample_idx]
-            lane_meta_route = vector_map_data.on_route_status[sample_idx]
-            lane_meta = torch.cat((lane_meta_tl, lane_meta_route), dim=1)
 
             sample_ego_feature = self.ego_feature_extractor(ego_past_trajectory[sample_idx].view(1, -1))
             sample_ego_center = ego_agent_features.get_ego_agents_center_in_sample(sample_idx)
+
+            # Check for empty vector map input
+            if not vector_map_data.is_valid:
+                # Create a single lane node located at (0, 0)
+                num_coords = 1
+                coords = torch.zeros(
+                    (num_coords, 2, 2),  # <num_lanes, 2, 2>
+                    device=sample_ego_feature.device,
+                    dtype=sample_ego_feature.dtype,
+                    layout=sample_ego_feature.layout,
+                )
+                connections = {}
+                for scale in self.connection_scales:
+                    connections[scale] = torch.zeros((num_coords, 2), device=sample_ego_feature.device).long()
+                lane_meta_tl = torch.zeros(
+                    (num_coords, LaneSegmentTrafficLightData._encoding_dim), device=sample_ego_feature.device
+                )
+                lane_meta_route = torch.zeros(
+                    (num_coords, LaneOnRouteStatusData._encoding_dim), device=sample_ego_feature.device
+                )
+                lane_meta = torch.cat((lane_meta_tl, lane_meta_route), dim=1)
+            else:
+                coords = vector_map_data.coords[sample_idx]
+                connections = vector_map_data.multi_scale_connections[sample_idx]
+                lane_meta_tl = vector_map_data.traffic_light_data[sample_idx]
+                lane_meta_route = vector_map_data.on_route_status[sample_idx]
+                lane_meta = torch.cat((lane_meta_tl, lane_meta_route), dim=1)
+            lane_features = self.lane_net(coords, connections)
+            lane_centers = coords.mean(axis=1)
 
             if ego_agent_features.has_agents(sample_idx):
                 sample_agents_feature = self.agent_feature_extractor(
                     ego_agent_features.get_flatten_agents_features_in_sample(sample_idx)
                 )
                 sample_agents_center = ego_agent_features.get_agents_centers_in_sample(sample_idx)
-                ego_agents_feature = torch.cat([sample_ego_feature, sample_agents_feature], dim=0)
-                ego_agents_center = torch.cat([sample_ego_center.unsqueeze(dim=0), sample_agents_center], dim=0)
             else:
-                ego_agents_feature = sample_ego_feature
-                ego_agents_center = sample_ego_center.unsqueeze(dim=0)
+                # if no agent in the sample, create a single agent with a stationary trajectory at 0s
+                flattened_agents = torch.zeros(
+                    (1, self.agent_input_dim),
+                    device=sample_ego_feature.device,
+                    dtype=sample_ego_feature.dtype,
+                    layout=sample_ego_feature.layout,
+                )
+                sample_agents_feature = self.agent_feature_extractor(flattened_agents)
+                sample_agents_center = torch.zeros_like(sample_ego_center).unsqueeze(dim=0)
+
+            ego_agents_feature = torch.cat([sample_ego_feature, sample_agents_feature], dim=0)
+            ego_agents_center = torch.cat([sample_ego_center.unsqueeze(dim=0), sample_agents_center], dim=0)
 
             lane_features = self.actor2lane_attention(
                 ego_agents_feature, ego_agents_center, lane_features, lane_meta, lane_centers

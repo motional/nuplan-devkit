@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from enum import IntEnum
 from functools import cached_property, lru_cache
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 from shapely.geometry import Polygon
@@ -198,28 +198,36 @@ class OrientedBox:
         return cls(pose, box.length, box.width, box.height)
 
 
-def collision_by_radius_check(box1: OrientedBox, box2: OrientedBox) -> bool:
+def collision_by_radius_check(box1: OrientedBox, box2: OrientedBox, radius_threshold: Optional[float]) -> bool:
     """
-    Quick check for whether two boxes are in collision using an over-approximated circle around each box
+    Quick check for whether two boxes are in collision using a radius check, if radius_threshold is None, an over-approximated circle around each box is considered to determine the radius
     :param box1: Oriented box (e.g., of ego)
     :param box2: Oriented box (e.g., of other tracks)
-    :return False if the distance between centers of the two boxes is larger than a non_overlapping_diagonal
-    threshold (circles are external tangents), else True.
+    :param radius_threshold: Radius threshold for quick collision check
+    :return False if the distance between centers of the two boxes is larger than radius_threshold else True. If radius_threshold is None, radius_threshold is defined as the sum of the radius of the smallest over-approximated circles around each box
+    centered at the box center (i.e., the radius_threshold is defined when over-approximated circles are external tangents).
     """
+    if not radius_threshold:
+        w1, l1 = box1.width, box1.length
+        w2, l2 = box2.width, box2.length
+        radius_threshold = (np.hypot(w1, l1) + np.hypot(w2, l2)) / 2.0
+
     distance_between_centers = box1.center.distance_to(box2.center)
-    w1, l1 = box1.width, box1.length
-    w2, l2 = box2.width, box2.length
-    non_overlapping_diagonal = (np.hypot(w1, l1) + np.hypot(w2, l2)) / 2.0
 
-    return bool(distance_between_centers < non_overlapping_diagonal)
+    return bool(distance_between_centers < radius_threshold)
 
 
-def in_collision(box1: OrientedBox, box2: OrientedBox) -> bool:
+def in_collision(box1: OrientedBox, box2: OrientedBox, radius_threshold: Optional[float] = None) -> bool:
     """
-    Check for collision between two boxes. First do a quick check by approximating each box with a circle,
+    Check for collision between two boxes. First do a quick check by approximating each box with a circle of given radius,
     if there is an overlap, check for the exact intersection using geometry Polygon
     :param box1: Oriented box (e.g., of ego)
     :param box2: Oriented box (e.g., of other tracks)
+    :param radius: Radius for quick collision check
     :return True if there is a collision between the two boxes.
     """
-    return bool(box1.geometry.intersects(box2.geometry)) if collision_by_radius_check(box1, box2) else False
+    return (
+        bool(box1.geometry.intersects(box2.geometry))
+        if collision_by_radius_check(box1, box2, radius_threshold)
+        else False
+    )

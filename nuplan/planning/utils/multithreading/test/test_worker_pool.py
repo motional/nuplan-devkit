@@ -51,11 +51,13 @@ class TestWorkerPool(unittest.TestCase):
     def test_workers(self) -> None:
         """Tests the sequential worker."""
         for worker in self.workers:
-            self.check_worker(worker)
+            if not isinstance(worker, Sequential):
+                self.check_worker_submit(worker)
+            self.check_worker_map(worker)
 
-    def check_worker(self, worker: WorkerPool) -> None:
+    def check_worker_map(self, worker: WorkerPool) -> None:
         """
-        Check whether worker passes all checks
+        Check whether worker.map passes all checks
         :param worker: to be tested
         """
         task = Task(fn=matrix_multiplication)
@@ -75,6 +77,15 @@ class TestWorkerPool(unittest.TestCase):
         result = worker.map(task, [self.lhs_matrix] * number_of_functions, [self.rhs_matrix] * number_of_functions)
         self.assertEqual(len(result), number_of_functions)
         self.validate_result(result)
+
+    def check_worker_submit(self, worker: WorkerPool) -> None:
+        """
+        Check whether worker.submit passes all checks
+        :param worker: to be tested
+        """
+        task = Task(fn=matrix_multiplication)
+        result = worker.submit(task, self.lhs_matrix, self.rhs_matrix).result()
+        self.assertTrue((result == self.target).all())
 
     def validate_result(self, results: List[npt.NDArray[np.float32]]) -> None:
         """

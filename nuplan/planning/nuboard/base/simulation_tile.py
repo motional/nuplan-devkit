@@ -13,10 +13,11 @@ import msgpack
 import numpy as np
 from bokeh.document import without_document_lock
 from bokeh.document.document import Document
+from bokeh.events import PointEvent
 from bokeh.io.export import get_screenshot_as_png
 from bokeh.layouts import column, gridplot
-from bokeh.models import Button, ColumnDataSource, Slider
-from bokeh.plotting import figure
+from bokeh.models import Button, ColumnDataSource, Slider, Title
+from bokeh.plotting.figure import Figure
 from selenium import webdriver
 from tornado import gen
 from tqdm import tqdm
@@ -136,6 +137,19 @@ class SimulationTile:
         self._maps: Dict[str, AbstractMap] = {}
         self._figures: List[SimulationFigure] = []
 
+    def _on_mouse_move(self, event: PointEvent, figure_index: int) -> None:
+        """
+        Event when mouse moving in a figure.
+        :param event: Point event.
+        :param figure_index: Figure index where the mouse is moving.
+        """
+        main_figure = self._figures[figure_index]
+        # Update x and y coordinate values.
+        main_figure.x_y_coordinate_title.text = (
+            f"x [m]: {np.round(event.x, simulation_tile_style['decimal_points'])}, "
+            f"y [m]: {np.round(event.y, simulation_tile_style['decimal_points'])}"
+        )
+
     def _create_initial_figure(
         self, figure_index: int, figure_sizes: List[int], backend: Optional[str] = "webgl"
     ) -> SimulationFigure:
@@ -153,7 +167,7 @@ class SimulationTile:
         )
         planner_name = selected_scenario_key.planner_name
         presented_planner_name = planner_name + f' ({experiment_path.stem})'
-        simulation_figure = figure(
+        simulation_figure = Figure(
             x_range=(-self._radius, self._radius),
             y_range=(-self._radius, self._radius),
             width=figure_sizes[0],
@@ -166,10 +180,13 @@ class SimulationTile:
             background_fill_color=simulation_tile_style["background_color"],
             output_backend=backend,
         )
+        simulation_figure.on_event("mousemove", partial(self._on_mouse_move, figure_index=figure_index))
         simulation_figure.axis.visible = False
         simulation_figure.xgrid.visible = False
         simulation_figure.ygrid.visible = False
         simulation_figure.title.text_font_size = simulation_tile_style["figure_title_text_font_size"]
+        x_y_coordinate_title = Title(text="x [m]: , y [m]: ")
+        simulation_figure.add_layout(x_y_coordinate_title, 'below')
         slider = Slider(
             start=0,
             end=1,
@@ -200,6 +217,7 @@ class SimulationTile:
             planner_name=planner_name,
             scenario=simulation_log.scenario,
             simulation_history=simulation_log.simulation_history,
+            x_y_coordinate_title=x_y_coordinate_title,
         )
 
         return simulation_figure_data
@@ -255,17 +273,19 @@ class SimulationTile:
         self,
         selected_scenario_keys: List[SimulationScenarioKey],
         figure_sizes: List[int] = simulation_tile_style['figure_sizes'],
+        hidden_glyph_names: Optional[List[str]] = None,
     ) -> List[SimulationData]:
         """
         Render simulation tiles.
         :param selected_scenario_keys: A list of selected scenario keys.
         :param figure_sizes: Width and height in pixels.
+        :param hidden_glyph_names: A list of glyph names to be hidden.
         :return A list of bokeh layouts.
         """
         self._selected_scenario_keys = selected_scenario_keys
         self.init_simulations(figure_sizes=figure_sizes)
         for main_figure in tqdm(self._figures, desc="Rendering a scenario"):
-            self._render_scenario(main_figure)
+            self._render_scenario(main_figure, hidden_glyph_names=hidden_glyph_names)
 
         layouts = self._render_simulation_layouts()
         return layouts
@@ -355,9 +375,9 @@ class SimulationTile:
                     video_obj.write(cv2_image)
 
                 video_obj.release()
-                print("Video saved to %s" % str(video_save_path))
+                logger.info("Video saved to %s" % str(video_save_path))
         except (RuntimeError, Exception) as e:
-            print("%s" % e)
+            logger.warning("%s" % e)
 
         self._doc.add_next_tick_callback(partial(self._reset_video_button, figure_index=figure_index))
 
@@ -373,10 +393,11 @@ class SimulationTile:
         if new != len(self._figures[figure_index].simulation_history.data):
             self._render_plots(main_figure=selected_figure, frame_index=new)
 
-    def _render_scenario(self, main_figure: SimulationFigure) -> None:
+    def _render_scenario(self, main_figure: SimulationFigure, hidden_glyph_names: Optional[List[str]] = None) -> None:
         """
         Render scenario.
         :param main_figure: Simulation figure object.
+        :param hidden_glyph_names: A list of glyph names to be hidden.
         """
         self._render_map(main_figure=main_figure)
 
@@ -388,7 +409,7 @@ class SimulationTile:
 
         # Must be updated after drawing maps
         main_figure.update_data_sources()
-        self._render_plots(main_figure=main_figure, frame_index=0)
+        self._render_plots(main_figure=main_figure, frame_index=0, hidden_glyph_names=hidden_glyph_names)
 
     def _render_map(self, main_figure: SimulationFigure) -> None:
         """
@@ -491,10 +512,14 @@ class SimulationTile:
         source = extract_source_from_states(expert_ego_trajectory)
         main_figure.render_expert_trajectory(expert_ego_trajectory_state=source)
 
-    def _render_plots(self, main_figure: SimulationFigure, frame_index: int) -> None:
+    def _render_plots(
+        self, main_figure: SimulationFigure, frame_index: int, hidden_glyph_names: Optional[List[str]] = None
+    ) -> None:
         """
         Render plot with a frame index.
+        :param main_figure: Main figure to render.
         :param frame_index: A frame index.
+        :param hidden_glyph_names: A list of glyph names to be hidden.
         """
         main_figure.figure.title.text = main_figure.figure_title_name_with_timestamp(frame_index=frame_index)
 
@@ -514,4 +539,4 @@ class SimulationTile:
         # Update agent heading data sources
         main_figure.agent_state_heading_plot.update_plot(main_figure=main_figure.figure, frame_index=frame_index)
 
-        main_figure.update_legend()
+        main_figure.update_glyphs_visibility(glyph_names=hidden_glyph_names)

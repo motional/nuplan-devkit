@@ -27,6 +27,8 @@ defaults:
   - training_metric: ???
   - data_augmentation: null
 
+objective_aggregate_mode: ??? # How to aggregate multiple objectives, can be 'mean', 'max', 'sum'
+
 # Cache parameters
 cache:
   cache_path: ${oc.env:NUPLAN_EXP_ROOT}/cache         # Local/remote path to store all preprocessed artifacts from the data pipeline

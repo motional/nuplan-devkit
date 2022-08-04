@@ -10,9 +10,9 @@ from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer, TrafficLightStatusData, TrafficLightStatusType
 from nuplan.common.maps.nuplan_map.utils import (
-    build_lane_segments_from_blps,
-    connect_lane_conn_predecessor,
-    connect_lane_conn_successor,
+    build_lane_segments_from_blps_with_trim,
+    connect_trimmed_lane_conn_predecessor,
+    connect_trimmed_lane_conn_successor,
     extract_polygon_from_map_object,
 )
 
@@ -33,10 +33,11 @@ class VectorFeatureLayer(IntEnum):
     """
 
     LANE = 0
-    BOUNDARIES = 1
-    STOP_LINE = 2
-    CROSSWALK = 3
-    ROUTE = 4
+    LEFT_BOUNDARY = 1
+    RIGHT_BOUNDARY = 2
+    STOP_LINE = 3
+    CROSSWALK = 4
+    ROUTE = 5
 
     @classmethod
     def deserialize(cls, layer: str) -> VectorFeatureLayer:
@@ -249,22 +250,22 @@ def lane_segment_coords_from_lane_segment_vector(coords: List[List[List[float]]]
 
 def get_lane_polylines(
     map_api: AbstractMap, point: Point2D, radius: float
-) -> Tuple[MapObjectPolylines, MapObjectPolylines, MapObjectPolylines, List[LaneSegmentLaneIDs]]:
+) -> Tuple[MapObjectPolylines, MapObjectPolylines, MapObjectPolylines, LaneSegmentLaneIDs]:
     """
     Extract ids, baseline path polylines, and boundary polylines of neighbor lanes and lane connectors around ego vehicle.
     :param map_api: map to perform extraction on.
     :param point: [m] x, y coordinates in global frame.
-    :param radius [m] floating number about extraction query range.
+    :param radius: [m] floating number about extraction query range.
     :return:
         lanes_mid: extracted lane/lane connector baseline polylines.
         lanes_left: extracted lane/lane connector left boundary polylines.
         lanes_right: extracted lane/lane connector right boundary polylines.
-        lane_ids: ids of lanes/lane connector associated polylines were extracted from at given index.
+        lane_ids: ids of lanes/lane connector associated polylines were extracted from.
     """
     lanes_mid: List[List[Point2D]] = []  # shape: [num_lanes, num_points_per_lane (variable), 2]
     lanes_left: List[List[Point2D]] = []  # shape: [num_lanes, num_points_per_lane (variable), 2]
     lanes_right: List[List[Point2D]] = []  # shape: [num_lanes, num_points_per_lane (variable), 2]
-    lane_ids: List[LaneSegmentLaneIDs] = []  # shape: [num_lanes, num_points_per_lane (variable)]
+    lane_ids: List[str] = []  # shape: [num_lanes]
     layer_names = [SemanticMapLayer.LANE, SemanticMapLayer.LANE_CONNECTOR]
     layers = map_api.get_proximal_map_objects(point, radius, layer_names)
 
@@ -279,13 +280,13 @@ def get_lane_polylines(
             lanes_right.append([Point2D(node.x, node.y) for node in map_obj.right_boundary.discrete_path])
 
             # lane ids
-            lane_ids.append(LaneSegmentLaneIDs([map_obj.id for _ in range(len(baseline_path_polyline))]))
+            lane_ids.append(map_obj.id)
 
     return (
         MapObjectPolylines(lanes_mid),
         MapObjectPolylines(lanes_left),
         MapObjectPolylines(lanes_right),
-        lane_ids,
+        LaneSegmentLaneIDs(lane_ids),
     )
 
 
@@ -296,7 +297,7 @@ def get_map_object_polygons(
     Extract polygons of neighbor map object around ego vehicle for specified semantic layers.
     :param map_api: map to perform extraction on.
     :param point: [m] x, y coordinates in global frame.
-    :param radius [m] floating number about extraction query range.
+    :param radius: [m] floating number about extraction query range.
     :param layer_name: semantic layer to query.
     :return extracted map object polygons.
     """
@@ -413,7 +414,7 @@ def get_neighbor_vector_map(
     Extract neighbor vector map information around ego vehicle.
     :param map_api: map to perform extraction on.
     :param point: [m] x, y coordinates in global frame.
-    :param radius [m] floating number about vector map query range.
+    :param radius: [m] floating number about vector map query range.
     :return
         lane_seg_coords: lane_segment coords in shape of [num_lane_segment, 2, 2].
         lane_seg_conns: lane_segment connections [start_idx, end_idx] in shape of [num_connection, 2].
@@ -439,25 +440,29 @@ def get_neighbor_vector_map(
             # current number of coords needed for indexing lane segments
             start_lane_seg_idx = len(lane_seg_coords)
             # update lane segment info with info for given lane/lane connector
-            (
-                obj_coords,
-                obj_conns,
-                obj_groupings,
-                obj_lane_ids,
-                obj_roadblock_ids,
-                obj_cross_blp_conn,
-            ) = build_lane_segments_from_blps(map_obj, start_lane_seg_idx)
-            lane_seg_coords += obj_coords
-            lane_seg_conns += obj_conns
-            lane_seg_groupings += obj_groupings
-            lane_seg_lane_ids += obj_lane_ids
-            lane_seg_roadblock_ids += obj_roadblock_ids
-            cross_blp_conns[map_obj.id] = obj_cross_blp_conn
+            trim_nodes = build_lane_segments_from_blps_with_trim(point, radius, map_obj, start_lane_seg_idx)
+            if trim_nodes is not None:
+                (
+                    obj_coords,
+                    obj_conns,
+                    obj_groupings,
+                    obj_lane_ids,
+                    obj_roadblock_ids,
+                    obj_cross_blp_conn,
+                ) = trim_nodes
+
+                lane_seg_coords += obj_coords
+                lane_seg_conns += obj_conns
+                lane_seg_groupings += obj_groupings
+                lane_seg_lane_ids += obj_lane_ids
+                lane_seg_roadblock_ids += obj_roadblock_ids
+                cross_blp_conns[map_obj.id] = obj_cross_blp_conn
 
     # create connections between adjoining lanes and lane connectors
     for lane_conn in nearest_vector_map[SemanticMapLayer.LANE_CONNECTOR]:
-        lane_seg_conns += connect_lane_conn_predecessor(lane_conn, cross_blp_conns)
-        lane_seg_conns += connect_lane_conn_successor(lane_conn, cross_blp_conns)
+        if lane_conn.id in cross_blp_conns:
+            lane_seg_conns += connect_trimmed_lane_conn_predecessor(lane_seg_coords, lane_conn, cross_blp_conns)
+            lane_seg_conns += connect_trimmed_lane_conn_successor(lane_seg_coords, lane_conn, cross_blp_conns)
 
     return (
         lane_segment_coords_from_lane_segment_vector(lane_seg_coords),
@@ -475,22 +480,23 @@ def get_neighbor_vector_set_map(
     radius: float,
     route_roadblock_ids: List[str],
     traffic_light_status_data: List[TrafficLightStatusData],
-) -> Tuple[Dict[str, MapObjectPolylines], Dict[str, List[LaneSegmentTrafficLightData]]]:
+) -> Tuple[Dict[str, MapObjectPolylines], Dict[str, LaneSegmentTrafficLightData]]:
     """
     Extract neighbor vector set map information around ego vehicle.
     :param map_api: map to perform extraction on.
     :param map_features: Name of map features to extract.
     :param point: [m] x, y coordinates in global frame.
-    :param radius [m] floating number about vector map query range.
+    :param radius: [m] floating number about vector map query range.
     :param route_roadblock_ids: List of ids of roadblocks/roadblock connectors (lane groups) within goal route.
     :param traffic_light_status_data: A list of all available data at the current time step.
     :return:
         coords: Dictionary mapping feature name to polyline vector sets.
         traffic_light_data: Dictionary mapping feature name to traffic light info corresponding to map elements
             in coords.
+    :raise ValueError: if provided feature_name is not a valid VectorFeatureLayer.
     """
     coords: Dict[str, MapObjectPolylines] = {}
-    traffic_light_data: Dict[str, List[LaneSegmentTrafficLightData]] = {}
+    traffic_light_data: Dict[str, LaneSegmentTrafficLightData] = {}
     feature_layers: List[VectorFeatureLayer] = []
 
     for feature_name in map_features:
@@ -507,16 +513,15 @@ def get_neighbor_vector_set_map(
         coords[VectorFeatureLayer.LANE.name] = lanes_mid
 
         # lane traffic light data
-        lane_traffic_light_data: List[LaneSegmentTrafficLightData] = [
-            get_traffic_light_encoding(lane_segment_ids, traffic_light_status_data) for lane_segment_ids in lane_ids
-        ]
-        traffic_light_data[VectorFeatureLayer.LANE.name] = lane_traffic_light_data
+        traffic_light_data[VectorFeatureLayer.LANE.name] = get_traffic_light_encoding(
+            lane_ids, traffic_light_status_data
+        )
 
         # lane boundaries
-        if VectorFeatureLayer.BOUNDARIES in feature_layers:
-            coords[VectorFeatureLayer.BOUNDARIES.name] = MapObjectPolylines(
-                lanes_left.polylines + lanes_right.polylines
-            )
+        if VectorFeatureLayer.LEFT_BOUNDARY in feature_layers:
+            coords[VectorFeatureLayer.LEFT_BOUNDARY.name] = MapObjectPolylines(lanes_left.polylines)
+        if VectorFeatureLayer.RIGHT_BOUNDARY in feature_layers:
+            coords[VectorFeatureLayer.RIGHT_BOUNDARY.name] = MapObjectPolylines(lanes_right.polylines)
 
     # extract route
     if VectorFeatureLayer.ROUTE in feature_layers:

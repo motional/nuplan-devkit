@@ -3,9 +3,10 @@ import math
 import os
 from pathlib import Path
 from shutil import rmtree
+from typing import cast
 
+import pytorch_lightning as pl
 import torch
-from hydra._internal.instantiate._instantiate2 import _resolve_target
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.optim.lr_scheduler import OneCycleLR
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 def update_config_for_training(cfg: DictConfig) -> None:
     """
     Updates the config based on some conditions.
-    :param cfg: omegaconf dictionary that is used to run the experiment
+    :param cfg: omegaconf dictionary that is used to run the experiment.
     """
     # Make the configuration editable.
     OmegaConf.set_struct(cfg, False)
@@ -108,98 +109,163 @@ def update_distributed_optimizer_config(cfg: DictConfig) -> DictConfig:
     :param cfg: DictConfig. Configuration that is used to run the experiment.
     :return cfg: DictConfig. Updated configuration that is used to run the experiment.
     """
-    if (
-        cfg.lightning.distributed_training.lr_scaling_method == 'none'
-        or cfg.lightning.trainer.params.accelerator != 'ddp'
-    ):
-        logger.info('Learning rate will not be scaled.')
-        return cfg
-
-    lr_scale = int(os.environ.get('WORLD_SIZE', 1))
+    lr_scale = get_num_gpus_used(cfg)
     logger.info(f'World size: {lr_scale}')
     logger.info(f'Learning rate before: {cfg.optimizer.lr}')
-    logger.info(f'Scaling method: {cfg.lightning.distributed_training.scale_lr}')
-
-    # TODO: support other distributed training strategies
-    cfg.optimizer.lr = scale_lr_ddp(
-        cfg.optimizer.lr, world_size=lr_scale, scaling_method=cfg.lightning.distributed_training.lr_scaling_method
+    scaling_method = (
+        'Equal Variance' if cfg.lightning.distributed_training.equal_variance_scaling_strategy else 'Linearly'
     )
+    logger.info(f'Scaling method: {scaling_method}')
+
+    # TODO: support other distributed training strategies like ddp2, dp, etc
+    cfg.optimizer.lr = scale_parameter(
+        parameter=cfg.optimizer.lr,
+        world_size=lr_scale,
+        equal_variance_scaling_strategy=cfg.lightning.distributed_training.equal_variance_scaling_strategy,
+    )
+    # if optimizer is Adam or AdamW, scale the momentum as well
+    if is_target_type(cfg.optimizer, torch.optim.Adam) or is_target_type(cfg.optimizer, torch.optim.AdamW):
+        cfg.optimizer.betas[0] = scale_parameter(
+            parameter=cfg.optimizer.betas[0],
+            world_size=lr_scale,
+            equal_variance_scaling_strategy=cfg.lightning.distributed_training.equal_variance_scaling_strategy,
+            raise_power=True,
+        )
+        cfg.optimizer.betas[1] = scale_parameter(
+            parameter=cfg.optimizer.betas[1],
+            world_size=lr_scale,
+            equal_variance_scaling_strategy=cfg.lightning.distributed_training.equal_variance_scaling_strategy,
+            raise_power=True,
+        )
+        logger.info(f'Betas after scaling: {cfg.optimizer.betas}')
 
     logger.info(f'Learning rate after scaling: {cfg.optimizer.lr}')
 
     return cfg
 
 
-def scale_lr_ddp(lr: float, world_size: int, scaling_method: str) -> float:
+def scale_parameter(
+    parameter: float, world_size: int, equal_variance_scaling_strategy: bool, raise_power: bool = False
+) -> float:
     """
-    Scales lr using method provided in the context of PytorchLightning's ddp.
-    :param lr: Learning rate provided
-    :param world_size: Number gpus used
-    :param scaling_method: Method to scale the learning rate by
-    :return lr: Learning rate after scaling
+    Scale parameter (such as learning rate or beta values in Adam/AdamW optimizer) using method specified in the context of PytorchLightning's ddp.
+    :param parameter: Learning rate/beta values used in Adam optimizer/etc.
+    :param world_size: Number gpus used.
+    :param equal_variance_scaling_strategy: Whether the method to scale the learning rate or betas by is equal_variance (by square root of num GPUs); otherwise it is linearly (by num GPUs).
+    :return parameter: Learning rate/beta values used in Adam optimizer/etc after scaling.
     """
-    if scaling_method == 'linearly':
-        lr *= world_size
-    elif scaling_method == 'equal_variance':
-        lr *= (world_size) ** 0.5
-    else:  # if user specifies none of the currently supported options
-        raise (RuntimeError(f'The lr scaling method specified is not supported: {scaling_method}'))
-    return lr
+    scaling_factor = world_size**0.5 if equal_variance_scaling_strategy else world_size
+    parameter = parameter * scaling_factor if not raise_power else parameter**scaling_factor
+
+    return parameter
 
 
-def update_distributed_lr_scheduler_config(cfg: DictConfig, train_dataset_len: int) -> DictConfig:
+def update_distributed_lr_scheduler_config(cfg: DictConfig, num_train_batches: int) -> DictConfig:
     """
-    Adapted from ml_products/lsn/lsn/builders/lr_scheduler.py
     Updates the learning rate scheduler config that modifies optimizer parameters over time.
     Optimizer and LR Scheduler is built in configure_optimizers() methods of the model.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
-    :param train_dataset_len: Length of the train dataset.
+    :param num_train_batches: Number of batches in train dataloader.
     :return cfg: Configuration with the updated lr_scheduler key.
     """
     logger.info('Updating Learning Rate Scheduler Config...')
 
-    if cfg.lightning.trainer.params.accelerator != 'ddp':
-        return cfg
-
-    number_gpus = int(os.environ.get('WORLD_SIZE', 1))
+    number_gpus = get_num_gpus_used(cfg)
     # Setup learning rate and momentum schedulers
-    if _resolve_target(cfg.lr_scheduler._target_) == OneCycleLR:
+
+    if is_target_type(cfg.lr_scheduler, OneCycleLR):
+        enable_overfitting = cfg.lightning.trainer.overfitting.enable
+        overfit_batches = cfg.lightning.trainer.overfitting.params.overfit_batches
+
+        if enable_overfitting and overfit_batches != 0:  # if overfitting, number of batches used in training changes
+
+            if overfit_batches >= 1.0:  # if number of batches to overfit is integer value
+                num_train_batches = overfit_batches
+
+            else:  # if fraction is given as input to overfit_batches
+                num_train_batches = math.ceil(num_train_batches * overfit_batches)
+
         # compute the steps_per_epoch
-        cfg.lr_scheduler.steps_per_epoch = scale_oclr_steps_per_epoch_ddp(
-            batch_size=cfg.data_loader.params.batch_size,
-            overfit_batches=cfg.lightning.trainer.overfitting.params.overfit_batches,
-            train_dataset_len=train_dataset_len,
+        cfg.lr_scheduler.steps_per_epoch = scale_oclr_steps_per_epoch(
+            num_train_batches=num_train_batches,
             world_size=number_gpus,
+            epochs=cfg.lightning.trainer.params.max_epochs,
+        )
+        logger.info(f'Updating learning rate scheduler config Completed. Using {cfg.lr_scheduler._target_}.')
+
+    else:  # Only updating of OneCycleLR is supported as of right now
+        logger.info(
+            f'Updating {cfg.lr_scheduler._target_} in ddp setting is not yet supported. Learning rate scheduler config will not be updated.'
         )
 
-        # Ensure the initial learning rate used is correct by adjusting max_lr
-        # This only has to be done for OneCycleLR which overrides the lr in the optimizer
-        # provided with max_lr/div_factor
-        div_factor = cfg.lr_scheduler.div_factor  # factor to divide the max_lr by to get the initial lr
-        cfg.lr_scheduler.max_lr = cfg.optimizer.lr * div_factor
-
-        logger.info('Updating Learning Rate Scheduler Config Completed. Using {cfg.lr_scheduler._target_}')
-
-    return cfg  # return cfg is there was no optimizer override
+    return cfg
 
 
-def scale_oclr_steps_per_epoch_ddp(
-    batch_size: int, overfit_batches: float, train_dataset_len: int, world_size: int
-) -> int:
+def scale_oclr_steps_per_epoch(num_train_batches: int, world_size: int, epochs: int) -> int:
     """
-    Scales lr using method provided in the context of PytorchLightning's ddp.
-    :param batch_size: Batch size that each GPU sees in ddp
-    :param overfit_batches: Number of batches to overfit. Could be integer or fraction
-    :param world_size: Number gpus used
-    :return steps_per_epoch_per_gpu: Step per epoch after scaling
+    Scales OneCycleLR steps per epoch using method provided in the context of PytorchLightning's ddp.
+    :param num_train_batches: Number of batches in train_dataloader.
+    :param world_size: Number gpus used.
+    :param epochs: Number of epochs we are training for.
+    :return steps_per_epoch_per_gpu: Step per epoch after scaling.
     """
-    if overfit_batches == 0.0:
-        num_samples_per_gpu = math.ceil(train_dataset_len / world_size)
-        steps_per_epoch_per_gpu = math.ceil(num_samples_per_gpu / batch_size)
-    elif overfit_batches >= 1.0:
-        steps_per_epoch_per_gpu = math.ceil(overfit_batches / world_size)
-    else:  # fractional overfit_batches
-        overfit_train_dataset_len = math.ceil(train_dataset_len * overfit_batches)
-        num_samples_per_gpu = math.ceil(overfit_train_dataset_len / world_size)
-        steps_per_epoch_per_gpu = math.ceil(num_samples_per_gpu / batch_size)
+    num_batches_per_gpu = math.ceil(num_train_batches / world_size)
+    steps_per_epoch_per_gpu = math.ceil(num_batches_per_gpu / epochs)
+
     return steps_per_epoch_per_gpu
+
+
+def scale_cfg_for_distributed_training(cfg: DictConfig, datamodule: pl.LightningDataModule) -> DictConfig:
+    """
+    Adjusts parameters in cfg for ddp.
+    :param cfg: Config with parameters for instantiation.
+    :param datamodule: Datamodule which will be used for updating the lr_scheduler parameters.
+    :return cfg: Updated config.
+    """
+    OmegaConf.set_struct(cfg, False)
+    cfg = update_distributed_optimizer_config(cfg)
+    # Update lr_scheduler with yaml file config before building lightning module
+    if 'lr_scheduler' in cfg:
+        num_train_samples = int(
+            len(datamodule._splitter.get_train_samples(datamodule._all_samples)) * datamodule._train_fraction
+        )
+        cfg = update_distributed_lr_scheduler_config(
+            cfg=cfg,
+            num_train_batches=num_train_samples // cfg.data_loader.params.batch_size,
+        )
+
+    OmegaConf.set_struct(cfg, True)
+    logger.info('Optimizer and LR Scheduler configs updated according to ddp strategy.')
+    return cfg
+
+
+def get_num_gpus_used(cfg: DictConfig) -> int:
+    """
+    Gets the number of gpus used in ddp by searching through the environment variable WORLD_SIZE, PytorchLightning Trainer specified number of GPUs, and torch.cuda.device_count() in that order.
+    :param cfg: Config with experiment parameters.
+    :return num_gpus: Number of gpus used in ddp.
+    """
+    num_gpus = os.getenv('WORLD_SIZE', -1)
+
+    if num_gpus == -1:  # if environment variable WORLD_SIZE is not set, find from trainer
+        logger.info('WORLD_SIZE was not set.')
+        trainer_num_gpus = cfg.lightning.trainer.params.gpus
+
+        if isinstance(num_gpus, str):
+            raise RuntimeError('Error, please specify gpus as integer. Received string.')
+        trainer_num_gpus = cast(int, trainer_num_gpus)
+
+        if trainer_num_gpus == -1:  # if trainer gpus = -1, all gpus are used, so find all available devices
+            logger.info(
+                'PytorchLightning Trainer gpus was set to -1, finding number of GPUs used from torch.cuda.device_count().'
+            )
+            cuda_num_gpus = torch.cuda.device_count() * int(os.getenv('NUM_NODES', 1))
+            num_gpus = cuda_num_gpus
+
+        else:  # if trainer gpus is not -1
+            logger.info(f'Trainer gpus was set to {trainer_num_gpus}, using this as the number of gpus.')
+            num_gpus = trainer_num_gpus
+
+    num_gpus = int(num_gpus)
+    logger.info(f'Number of gpus found to be in use: {num_gpus}')
+    return num_gpus

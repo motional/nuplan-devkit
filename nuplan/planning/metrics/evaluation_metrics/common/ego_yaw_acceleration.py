@@ -27,7 +27,7 @@ class EgoYawAccelerationStatistics(WithinBoundMetricBase):
         :param scenario: Scenario running this metric
         :return the estimated yaw acceleration metric.
         """
-        return self._compute_statistics(  # type: ignore
+        metric_statistics: List[MetricStatistics] = self._compute_statistics(
             history=history,
             scenario=scenario,
             statistic_unit_name='radians_per_second_squared',
@@ -35,3 +35,4 @@ class EgoYawAccelerationStatistics(WithinBoundMetricBase):
             extract_function_params={'deriv_order': 2, 'poly_order': 3},
             max_within_bound_threshold=self._max_abs_yaw_accel,
         )
+        return metric_statistics

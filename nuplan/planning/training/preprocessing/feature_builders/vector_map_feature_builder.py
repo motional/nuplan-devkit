@@ -250,16 +250,16 @@ class VectorMapFeatureBuilder(ScriptableFeatureBuilder):
         :param traffic_light_data: The LaneSegmentTrafficLightData returned from `get_neighbor_vector_map` to transform.
         :param anchor_state: The ego state to transform to vector.
         """
-        lane_segment_coords: torch.tensor = torch.tensor(lane_coords.to_vector(), dtype=torch.float32)
+        lane_segment_coords: torch.tensor = torch.tensor(lane_coords.to_vector(), dtype=torch.float64)
         lane_segment_conns: torch.tensor = torch.tensor(lane_conns.to_vector(), dtype=torch.int64)
         on_route_status: torch.tensor = torch.tensor(lane_on_route_status.to_vector(), dtype=torch.float32)
-        traffic_light_array: torch.tensor = torch.tensor(traffic_light_data.to_vector(), dtype=torch.int64)
+        traffic_light_array: torch.tensor = torch.tensor(traffic_light_data.to_vector(), dtype=torch.float32)
         lane_segment_groupings: List[torch.tensor] = []
 
         for lane_grouping in lane_groupings.to_vector():
             lane_segment_groupings.append(torch.tensor(lane_grouping, dtype=torch.int64))
 
-        anchor_state_tensor = torch.tensor([anchor_state.x, anchor_state.y, anchor_state.heading], dtype=torch.float32)
+        anchor_state_tensor = torch.tensor([anchor_state.x, anchor_state.y, anchor_state.heading], dtype=torch.float64)
 
         return (
             {
@@ -302,8 +302,8 @@ class VectorMapFeatureBuilder(ScriptableFeatureBuilder):
         # Transform the lane coordinates from global frame to ego vehicle frame.
         # Flatten lane_segment_coords from (num_lane_segment, 2, 2) to (num_lane_segment * 2, 2) for easier processing.
         lane_segment_coords = lane_segment_coords.reshape(-1, 2)
-        lane_segment_coords = coordinates_to_local_frame(lane_segment_coords, anchor_state)
-        lane_segment_coords = lane_segment_coords.reshape(-1, 2, 2)
+        lane_segment_coords = coordinates_to_local_frame(lane_segment_coords, anchor_state, precision=torch.float64)
+        lane_segment_coords = lane_segment_coords.reshape(-1, 2, 2).float()
 
         if self._connection_scales is not None:
             # Generate multi-scale connections.

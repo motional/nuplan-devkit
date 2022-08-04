@@ -41,7 +41,7 @@ py_library(
         "//nuplan/common/maps/nuplan_map:utils",
         "//nuplan/database/maps_db:imapsdb",
         "//nuplan/database/maps_db:layer",
-        "//nuplan/database/nuplan_db:utils",
+        "//nuplan/database/nuplan_db_orm:utils",
     ],
 )
 
@@ -63,6 +63,7 @@ py_library(
     deps = [
         "//nuplan/common/maps:abstract_map_factory",
         "//nuplan/common/maps/nuplan_map",
+        "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:imapsdb",
     ],
 )

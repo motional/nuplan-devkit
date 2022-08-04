@@ -274,10 +274,7 @@ class NuPlanMap(AbstractMap):
             if layer_name == 'drivable_area':
                 self._initialize_drivable_area()
             else:
-                self._vector_map[layer_name] = self._maps_db.load_vector_layer(self._map_name, layer_name).set_index(
-                    'fid', drop=False
-                )
-
+                self._vector_map[layer_name] = self._maps_db.load_vector_layer(self._map_name, layer_name)
         return self._vector_map[layer_name]
 
     def _get_all_map_objects(self, point: Point2D, layer: SemanticMapLayer) -> List[MapObject]:
@@ -413,10 +410,10 @@ class NuPlanMap(AbstractMap):
         road_segments = self._load_vector_map_layer('road_segments')
         intersections = self._load_vector_map_layer('intersections')
         generic_drivable_areas = self._load_vector_map_layer('generic_drivable_areas')
-
-        self._vector_map['drivable_area'] = pd.concat([road_segments, intersections, generic_drivable_areas]).dropna(
-            axis=1, how='any'
-        )
+        car_parks = self._load_vector_map_layer('carpark_areas')
+        self._vector_map['drivable_area'] = pd.concat(
+            [road_segments, intersections, generic_drivable_areas, car_parks]
+        ).dropna(axis=1, how='any')
 
     def _get_stop_line(self, stop_line_id: str) -> StopLine:
         """

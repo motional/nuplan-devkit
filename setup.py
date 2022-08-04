@@ -9,7 +9,7 @@ os.chdir(script_folder)
 # Installs
 setuptools.setup(
     name='nuplan-devkit',
-    version='0.3.0',
+    version='0.4.0',
     author='The nuPlan team @ Motional',
     author_email='nuscenes@motional.com',
     description='The official devkit of the nuPlan dataset (www.nuPlan.org).',

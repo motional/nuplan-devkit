@@ -8,6 +8,7 @@ from nuplan.planning.training.preprocessing.utils.torch_geometry import (
     global_state_se2_tensor_to_local,
     state_se2_tensor_to_transform_matrix,
     transform_matrix_to_state_se2_tensor,
+    vector_set_coordinates_to_local_frame,
 )
 
 
@@ -173,6 +174,53 @@ class TestTorchGeometry(unittest.TestCase):
 
         py_result = to_script.forward(test_states, test_pose)
         script_result = scripted.forward(test_states, test_pose)
+
+        torch.testing.assert_allclose(py_result, script_result)
+
+    def test_vector_set_coordinates_to_local_frame_functionality(self) -> None:
+        """
+        Test converting vector set map coordinates from global to local ego frame.
+        """
+        coords = torch.tensor([[[1, 1], [3, 1], [5, 1]]], dtype=torch.float64)
+        avails = torch.ones(coords.shape[:2], dtype=torch.bool)
+        anchor_state = torch.tensor([0, 0, 0], dtype=torch.float64)
+
+        result_coords = vector_set_coordinates_to_local_frame(coords, avails, anchor_state)
+
+        self.assertIsInstance(result_coords, torch.FloatTensor)
+        self.assertEqual(result_coords.shape, coords.shape)
+        torch.testing.assert_allclose(coords.float(), result_coords)
+
+        # test unexpected shape
+        with self.assertRaises(ValueError):
+            vector_set_coordinates_to_local_frame(coords[0], avails[0], anchor_state)
+
+        # test mismatching shape
+        with self.assertRaises(ValueError):
+            vector_set_coordinates_to_local_frame(coords, avails[0], anchor_state)
+
+    def test_vector_set_coordinates_to_local_frame_scriptability(self) -> None:
+        """
+        Tests that the function vector_set_coordinates_to_local_frame scripts properly.
+        """
+
+        class tmp_module(torch.nn.Module):
+            def __init__(self) -> None:
+                super().__init__()
+
+            def forward(self, coords: torch.Tensor, avails: torch.Tensor, anchor_state: torch.Tensor) -> torch.Tensor:
+                result = vector_set_coordinates_to_local_frame(coords, avails, anchor_state)
+                return result
+
+        to_script = tmp_module()
+        scripted = torch.jit.script(to_script)
+
+        test_coords = torch.tensor([[[1, 1], [3, 1], [5, 1]]], dtype=torch.float64)
+        test_avails = torch.ones(test_coords.shape[:2], dtype=torch.bool)
+        test_anchor_state = torch.tensor([0, 0, 0], dtype=torch.float64)
+
+        py_result = to_script.forward(test_coords, test_avails, test_anchor_state)
+        script_result = scripted.forward(test_coords, test_avails, test_anchor_state)
 
         torch.testing.assert_allclose(py_result, script_result)
 

@@ -19,7 +19,6 @@ py_test(
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_acceleration",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_distance_to_goal",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_jerk",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",

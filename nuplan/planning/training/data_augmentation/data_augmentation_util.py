@@ -24,7 +24,14 @@ class ConstrainedNonlinearSmoother:
         self.dt = dt
         self.trajectory_len = trajectory_len
         self.current_index = 0
+        # Use a array of dts to make it compatible to situations with varying dts across different time steps.
+        self._dts: npt.NDArray[np.float32] = np.asarray([[dt] * trajectory_len])
+        self._init_optimization()
 
+    def _init_optimization(self) -> None:
+        """
+        Initialize related variables and constraints for optimization.
+        """
         self.nx = 4  # state dim
         self.nu = 2  # control dim
 
@@ -84,9 +91,9 @@ class ConstrainedNonlinearSmoother:
         self.curvature = self.control[0, :]
         self.accel = self.control[1, :]
 
-        # Derived control and state variables
-        self.curvature_rate = diff(self.curvature) / self.dt
-        self.jerk = diff(self.accel) / self.dt
+        # Derived control and state variables, dt[:, 1:] becuases state vector is one step longer than action.
+        self.curvature_rate = diff(self.curvature) / self._dts[:, 1:]
+        self.jerk = diff(self.accel) / self._dts[:, 1:]
         self.lateral_accel = self.speed[: self.trajectory_len] ** 2 * self.curvature
 
     def _create_parameters(self) -> None:
@@ -137,7 +144,7 @@ class ConstrainedNonlinearSmoother:
         max_speed = 35.0  # m/s
         self._optimizer.subject_to(self._optimizer.bounded(0.0, self.speed, max_speed))  # only forward
         max_yaw_rate = 1.75  # rad/s
-        self._optimizer.subject_to(self._optimizer.bounded(-max_yaw_rate, diff(self.yaw) / self.dt, max_yaw_rate))
+        self._optimizer.subject_to(self._optimizer.bounded(-max_yaw_rate, diff(self.yaw) / self._dts, max_yaw_rate))
         max_lateral_accel = 4.0  # m/s^2, assumes circular motion acc_lat = speed^2 * curvature
         self._optimizer.subject_to(
             self._optimizer.bounded(

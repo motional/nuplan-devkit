@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass
 from typing import Iterable, List, Union
 
 import numpy as np
@@ -106,7 +106,7 @@ class Point2D:
         """
         :return: iterator of tuples (x, y)
         """
-        return iter(astuple(self))
+        return iter((self.x, self.y))
 
     @property
     def array(self) -> npt.NDArray[np.float64]:
@@ -118,7 +118,7 @@ class Point2D:
 
     def __hash__(self) -> int:
         """Hash method"""
-        return hash(astuple(self))
+        return hash((self.x, self.y))
 
 
 @dataclass
@@ -213,6 +213,12 @@ class StateSE2(Point2D):
             and math.isclose(self.y, other.y, abs_tol=1e-3)
             and math.isclose(self.heading, other.heading, abs_tol=1e-4)
         )
+
+    def __iter__(self) -> Iterable[float]:
+        """
+        :return: iterator of tuples (x, y, heading)
+        """
+        return iter((self.x, self.y, self.heading))
 
     def __hash__(self) -> int:
         """

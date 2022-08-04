@@ -1,4 +1,3 @@
-import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,17 +8,27 @@ from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.nuboard.base.data_class import NuBoardFile, SimulationScenarioKey
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile
+from nuplan.planning.nuboard.utils.test.utils import create_sample_simulation_log
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockMapFactory
 
 
 class TestSimulationTile(unittest.TestCase):
     """Test simulation_tile functionality."""
 
+    def set_up_simulation_log(self, output_path: Path) -> None:
+        """
+        Create a simulation log and save it to disk.
+        :param output path: to write the simulation log to.
+        """
+        simulation_log = create_sample_simulation_log(output_path)
+        simulation_log.save_to_file()
+
     def setUp(self) -> None:
         """Set up simulation tile with nuboard file."""
         self.tmp_dir = tempfile.TemporaryDirectory()
         vehicle_parameters = get_pacifica_parameters()
-        simulation_main_path = os.path.dirname(os.path.realpath(__file__))
+        simulation_log_path = Path(self.tmp_dir.name) / "test_simulation_tile_simulation_log.msgpack.xz"
+        self.set_up_simulation_log(simulation_log_path)
         nuboard_file = NuBoardFile(
             simulation_main_path=self.tmp_dir.name,
             metric_main_path=self.tmp_dir.name,
@@ -35,7 +44,7 @@ class TestSimulationTile(unittest.TestCase):
                 planner_name="SimplePlanner",
                 scenario_type="common",
                 scenario_name="test",
-                files=[Path(simulation_main_path) / "simulation_log/test_simulation_log.msgpack.xz"],
+                files=[simulation_log_path],
             )
         ]
         doc = Document()

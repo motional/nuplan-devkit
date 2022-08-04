@@ -62,9 +62,9 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "BOOLEAN": false
-        },
+        "statistics": [
+            ["BOOLEAN", false]
+        ],
         "time_series": {}
     },
     "goal": {

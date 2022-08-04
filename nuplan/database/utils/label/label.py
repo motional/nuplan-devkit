@@ -33,7 +33,7 @@ class Label:
         :return: True if both objects are the same.
         """
         if not isinstance(other, Label):
-            raise NotImplementedError
+            return NotImplemented
 
         return self.name == other.name and self.color == other.color
 
@@ -43,7 +43,7 @@ class Label:
         Normalized color used for pyplot.
         :return: Normalized color.
         """
-        return tuple([c / 255.0 for c in self.color])
+        return tuple(c / 255.0 for c in self.color)
 
     def serialize(self) -> Dict[str, Any]:
         """
@@ -59,4 +59,4 @@ class Label:
         :param data: Output from serialize.
         :return: Deserialized label.
         """
-        return Label(name=data['name'], color=tuple([int(channel) for channel in data['color']]))  # type: ignore
+        return Label(name=data['name'], color=tuple(int(channel) for channel in data['color']))  # type: ignore

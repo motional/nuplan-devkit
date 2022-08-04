@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -39,7 +39,7 @@ class MetricBase(AbstractMetricBuilder):
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         time_series: Optional[TimeSeries] = None,
     ) -> Optional[float]:
         """Inherited, see superclass."""
@@ -57,16 +57,17 @@ class MetricBase(AbstractMetricBuilder):
         raise NotImplementedError
 
     def _compute_time_series_statistic(
-        self, time_series: TimeSeries, statistics_type_list: Optional[List[str]] = None
-    ) -> Dict[str, Statistic]:
+        self, time_series: TimeSeries, statistics_type_list: Optional[List[MetricStatisticsType]] = None
+    ) -> List[Statistic]:
         """
-        Compute metric statistics in time series
-        :param time_series: time series (with float values)
+        Compute metric statistics in time series.
+        :param time_series: time series (with float values).
         :param statistics_type_list: List of available types such as [MetricStatisticsType.MAX,
-         MetricStatisticsType.MIN, MetricStatisticsType.MEAN, MetricStatisticsType.P90]. Use all if set to None
-        :return A dictionary of metric statistics
+        MetricStatisticsType.MIN, MetricStatisticsType.MEAN, MetricStatisticsType.P90]. Use all if set to None.
+        :return A list of metric statistics.
         """
         values = time_series.values
+        assert values, "Time series values cannot be empty!"
         unit = time_series.unit
 
         if statistics_type_list is None:
@@ -76,36 +77,37 @@ class MetricBase(AbstractMetricBuilder):
                 MetricStatisticsType.MEAN,
                 MetricStatisticsType.P90,
             ]
-        statistics = {}
+        statistics = []
         for statistics_type in statistics_type_list:
             if statistics_type == MetricStatisticsType.MAX:
                 name = f"max_{self.name}"
-                value = np.amax(values)
+                value = np.nanmax(values)
             elif statistics_type == MetricStatisticsType.MEAN:
                 name = f"avg_{self.name}"
-                value = np.mean(values)
+                value = np.nanmean(values)
             elif statistics_type == MetricStatisticsType.MIN:
                 name = f"min_{self.name}"
-                value = np.min(values)
+                value = np.nanmin(values)
             elif statistics_type == MetricStatisticsType.P90:
                 name = f"p90_{self.name}"
-                value = np.percentile(values, 90)
+                # Use the closest observation to return the actual data instead of linear interpolation
+                value = np.nanpercentile(values, 90, method='closest_observation')
             else:
                 raise TypeError('Other metric types statistics cannot be created by compute_statistics()')
 
-            statistics[statistics_type] = Statistic(name=name, unit=unit, value=value)
+            statistics.append(Statistic(name=name, unit=unit, value=value, type=statistics_type))
 
         return statistics
 
     def _construct_metric_results(
         self,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         scenario: AbstractScenario,
         time_series: Optional[TimeSeries] = None,
     ) -> List[MetricStatistics]:
         """
         Construct metric results with statistics, scenario, and time series
-        :param metric_statistics: Metric statistics
+        :param metric_statistics: A list of metric statistics
         :param scenario: Scenario running this metric to compute a metric score
         :param time_series: Time series object.
         """

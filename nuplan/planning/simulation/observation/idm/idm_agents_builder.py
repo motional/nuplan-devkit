@@ -68,7 +68,7 @@ def build_idm_agents_on_map_rails(
     :param decel_max: maximum deceleration (positive value) [m/s^2]
     :param minimum_path_length: [m] The minimum path length
     :param scenario: scenario
-    :return: a dictionary of IDM agent uniquely identified by an token
+    :return: a dictionary of IDM agent uniquely identified by a track_token
     """
     unique_agents: UniqueIDMAgents = {}
 
@@ -85,7 +85,7 @@ def build_idm_agents_on_map_rails(
         detections.tracked_objects.get_tracked_objects_of_type(TrackedObjectType.VEHICLE), desc=desc, leave=False
     ):
         # filter for only vehicles
-        if agent.token not in unique_agents:
+        if agent.track_token not in unique_agents:
 
             route, progress = get_starting_segment(agent, map_api)
 
@@ -103,7 +103,7 @@ def build_idm_agents_on_map_rails(
             if not agent_occupancy.intersects(box_on_baseline.geometry).is_empty():
                 continue
 
-            agent_occupancy.insert(agent.token, box_on_baseline.geometry)
+            agent_occupancy.insert(agent.track_token, box_on_baseline.geometry)
 
             # Project velocity into local frame
             if np.isnan(agent.velocity.array).any():
@@ -124,7 +124,7 @@ def build_idm_agents_on_map_rails(
                 path_progress=progress,
                 predictions=agent.predictions,
             )
-            unique_agents[agent.token] = IDMAgent(
+            unique_agents[agent.track_token] = IDMAgent(
                 start_iteration=0,
                 initial_state=initial_state,
                 route=[route],

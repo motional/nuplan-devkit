@@ -1,4 +1,5 @@
 import gc
+import itertools
 import logging
 import os
 import uuid
@@ -7,8 +8,11 @@ from typing import Dict, List, Union, cast
 from omegaconf import DictConfig, OmegaConf
 
 from nuplan.common.utils.s3_utils import check_s3_path_exists
-from nuplan.database.nuplan_db.nuplandb_wrapper import discover_log_dbs, get_db_filenames_from_load_path
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
+    discover_log_dbs,
+    get_db_filenames_from_load_path,
+)
 from nuplan.planning.script.builders.model_builder import build_torch_module_wrapper
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
 from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
@@ -31,7 +35,7 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
         "failures": The number of scenarios that couldn't be processed.
     """
     # Define a wrapper method to help with memory garbage collection.
-    # This way, everythin will go out of scope, allowing the python GC to clean up after the function.
+    # This way, everything will go out of scope, allowing the python GC to clean up after the function.
     #
     # This is necessary to save memory when running on large datasets.
     def cache_scenarios_oneshot_internal(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[Dict[str, int]]:
@@ -79,13 +83,19 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
             logger.info(
                 "Processing scenario %s / %s in thread_id=%s, node_id=%s",
                 idx + 1,
-                len(scenarios) + 1,
+                len(scenarios),
                 thread_id,
                 node_id,
             )
+
             features, targets = preprocessor.compute_features(scenario)
-            num_failures += any(not feature.is_valid for feature in list(features.values()) + list(targets.values()))
-            num_successes += len(features.values()) + len(targets.values()) - num_failures
+
+            scenario_num_failures = sum(
+                0 if feature.is_valid else 1 for feature in itertools.chain(features.values(), targets.values())
+            )
+            scenario_num_successes = len(features.values()) + len(targets.values()) - scenario_num_failures
+            num_failures += scenario_num_failures
+            num_successes += scenario_num_successes
 
         logger.info("Finished processing scenarios for thread_id=%s, node_id=%s", thread_id, node_id)
         return [{"failures": num_failures, "successes": num_successes}]
@@ -117,7 +127,7 @@ def cache_scenarios_parallel_oneshot(current_chunk: List[str], cfg: DictConfig, 
     num_success = sum(v["successes"] for v in successes_and_fails)
     num_fail = sum(v["failures"] for v in successes_and_fails)
     num_total = num_success + num_fail
-    logger.info("Completed dataset caching! Failed samples: %s out of %s", str(num_fail), str(num_total))
+    logger.info("Completed dataset caching! Failed features and targets: %s out of %s", str(num_fail), str(num_total))
 
 
 def cache_data(cfg: DictConfig, worker: WorkerPool) -> None:

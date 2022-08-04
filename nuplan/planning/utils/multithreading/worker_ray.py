@@ -1,5 +1,6 @@
 import logging
 import os
+from concurrent.futures import Future
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Union
 
@@ -143,3 +144,9 @@ class RayDistributed(WorkerPool):
     def _map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
         """Inherited, see superclass."""
         return ray_map(task, *item_lists, log_dir=self._log_dir)  # type: ignore
+
+    def submit(self, task: Task, *args: Any) -> Future[Any]:
+        """Inherited, see superclass."""
+        remote_fn = ray.remote(task.fn).options(num_gpus=task.num_gpus, num_cpus=task.num_cpus)
+        object_ids: ray._raylet.ObjectRef = remote_fn.remote(*args)
+        return object_ids.future()  # type: ignore

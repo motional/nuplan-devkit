@@ -29,7 +29,7 @@ class EgoLonAccelerationStatistics(WithinBoundMetricBase):
         :param scenario: Scenario running this metric
         :return the estimated longitudinal acceleration metric.
         """
-        return self._compute_statistics(  # type: ignore
+        metric_statistics: List[MetricStatistics] = self._compute_statistics(
             history=history,
             scenario=scenario,
             statistic_unit_name='meters_per_second_squared',
@@ -38,3 +38,4 @@ class EgoLonAccelerationStatistics(WithinBoundMetricBase):
             min_within_bound_threshold=self._min_lon_accel,
             max_within_bound_threshold=self._max_lon_accel,
         )
+        return metric_statistics

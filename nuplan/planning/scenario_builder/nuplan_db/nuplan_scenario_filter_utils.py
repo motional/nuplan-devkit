@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 import logging
+import os
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Union
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
-from nuplan.database.nuplan_db.lidar_pc import LidarPc
-from nuplan.database.nuplan_db.nuplandb import NuPlanDB
-from nuplan.database.nuplan_db.nuplandb_wrapper import NuPlanDBWrapper
-from nuplan.database.nuplan_db.scene import Scene
+from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir
+from nuplan.database.nuplan_db.nuplan_scenario_queries import get_scenarios_from_db
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import (
     DEFAULT_SCENARIO_NAME,
-    ScenarioExtractionInfo,
     ScenarioMapping,
+    download_file_if_necessary,
 )
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
@@ -57,217 +57,133 @@ class FilterWrapper:
         return scenario_dict
 
 
-def is_scene_valid(
-    scene: Scene, first_valid_idx: int = FIRST_VALID_SCENE_IDX, last_valid_idx: int = LAST_VALID_SCENE_IDX
-) -> bool:
+@dataclass(frozen=True)
+class GetScenariosFromDbFileParams:
     """
-    Check whether the scene has enough history/future buffer and is valid for training/simulation.
-    :param scene: Candidate scene.
-    :param first_valid_idx: Index of first valid scene.
-    :param last_valid_idx: Index of last valid scene.
-    :return: Whether the scene is valid or not.
+    A convenience class for holding all the parameters to get_scenarios_from_log_file
     """
-    scenes = scene.log.scenes
-    scene_idx = int(scenes.index(scene))
-    return first_valid_idx <= scene_idx < len(scenes) + last_valid_idx
+
+    # The root folder for the db file (e.g. "/data/sets/nuplan")
+    data_root: str
+
+    # The absolute path log file to query
+    # e.g. /data/sets/nuplan-v1.0/mini/2021.10.11.08.31.07_veh-50_01750_01948.db
+    log_file_absolute_path: str
+
+    # Whether to expand multi-sample scenarios to multiple single-sample scenarios
+    expand_scenarios: bool
+
+    # The root directory for maps (e.g. "/data/sets/nuplan/maps")
+    map_root: str
+
+    # The map version to load (e.g. "1.0")
+    map_version: str
+
+    # The ScenarioMapping to pass to the constructed scenarios.
+    scenario_mapping: ScenarioMapping
+
+    # The ego vehicle parameters to pass to the constructed scenarios.
+    vehicle_parameters: VehicleParameters
+
+    # The ground_truth_prediction sampling parameters to pass to the constructed scenarios.
+    ground_truth_predictions: Optional[TrajectorySampling]
+
+    # If provided, the tokens on which to filter.
+    filter_tokens: Optional[List[str]]
+
+    # If provided, the scenario types on which to filter.
+    filter_types: Optional[List[str]]
+
+    # If provided, the map names on which to filter (e.g. "[us-nv-las-vegas-strip, us-ma-boston]")
+    filter_map_names: Optional[List[str]]
 
 
-def extract_scenes_from_log_db(
-    db: NuPlanDB, first_valid_idx: int = FIRST_VALID_SCENE_IDX, last_valid_idx: int = LAST_VALID_SCENE_IDX
-) -> List[Scene]:
+def get_db_filenames_from_load_path(load_path: str) -> List[str]:
     """
-    Retrieve all valid scenes from a log database.
-    :param db: Log database to retrieve scenes from.
-    :param first_valid_idx: Index of first valid scene.
-    :param last_valid_idx: Index of last valid scene.
-    :return: Retrieved scenes.
+    Retrieve all log database filenames from a load path.
+    The path can be either local or remote (S3).
+    The path can represent either a single database filename (.db file) or a directory containing files.
+    :param load_path: Load path, it can be a filename or list of filenames.
+    :return: A list of all discovered log database filenames.
     """
-    return list(db.scene)[first_valid_idx:last_valid_idx]
+    if load_path.endswith('.db'):  # Single database path
+        if load_path.startswith('s3://'):  # File is remote (S3)
+            assert check_s3_path_exists(load_path), f'S3 db path does not exist: {load_path}'
+            os.environ['NUPLAN_DATA_ROOT_S3_URL'] = load_path.rstrip(Path(load_path).name)
+        else:  # File is local
+            assert Path(load_path).is_file(), f'Local db path does not exist: {load_path}'
+        db_filenames = [load_path]
+    else:  # Path to directory containing databases
+        if load_path.startswith('s3://'):  # Directory is remote (S3)
+            db_filenames = expand_s3_dir(load_path, filter_suffix='.db')
+            assert len(db_filenames) > 0, f'S3 dir does not contain any dbs: {load_path}'
+            os.environ['NUPLAN_DATA_ROOT_S3_URL'] = load_path  # TODO: Deprecate S3 data root env variable
+        elif Path(load_path).expanduser().is_dir():  # Directory is local
+            db_filenames = [
+                str(path) for path in sorted(Path(load_path).expanduser().iterdir()) if path.suffix == '.db'
+            ]
+        else:
+            raise ValueError(f'Expected db load path to be file, dir or list of files/dirs, but got {load_path}')
+
+    return db_filenames
 
 
-def create_scenarios_by_tokens(
-    scenario_tokens: List[Tuple[str, str]],
-    db: NuPlanDBWrapper,
-    log_names: Optional[List[str]],
-    expand_scenarios: bool,
-    vehicle_parameters: VehicleParameters,
-    ground_truth_predictions: Optional[TrajectorySampling],
-) -> ScenarioDict:
+def discover_log_dbs(load_path: Union[List[str], str]) -> List[str]:
     """
-    Create initial scenario dictionary based on desired tokens.
-    :param scenario_tokens: List of (log_name, lidarpc_tokens) used to initialize the scenario dict.
-    :param db: Object for accessing the available databases.
-    :param log_names: List of log names to include in the scenario dictionary.
-    :param expand_scenarios: Whether to expand multi-sample scenarios to multiple single-sample scenarios.
-    :param vehicle_parameters: Vehicle parameters for this db.
-    :param ground_truth_predictions: If None, no GT predictions will be extracted based on its future setting.
-    :return: Dictionary that holds a list of scenarios for each scenario type.
+    Discover all log dbs from the input load path.
+    If the path is a filename, expand the path and return the list of filenames in that path.
+    Else, if the path is already a list, expand each path in the list and return the flattened list.
+    :param load_path: Load path, it can be a filename or list of filenames of a database and/or dirs of databases.
+    :return: A list with all discovered log database filenames.
     """
-    logger.debug("Creating scenarios by tokens...")
+    if isinstance(load_path, list):  # List of database paths
+        nested_db_filenames = [get_db_filenames_from_load_path(path) for path in sorted(load_path)]
+        db_filenames = [filename for filenames in nested_db_filenames for filename in filenames]
+    else:
+        db_filenames = get_db_filenames_from_load_path(load_path)
 
-    # Whether to expand scenarios from multi-sample to single-sample scenarios
-    extraction_info = None if expand_scenarios else ScenarioExtractionInfo()
-
-    # Find all tokens that match the desired log names
-    if log_names:
-        candidate_log_names = set(log_names)
-        scenario_tokens = [(log_name, token) for log_name, token in scenario_tokens if log_name in candidate_log_names]
-
-    # Construct nuplan scenario objects for each (log_name, lidarpc token) pair
-    args = [DEFAULT_SCENARIO_NAME, extraction_info, vehicle_parameters, ground_truth_predictions]
-    scenarios = [NuPlanScenario(db.get_log_db(log_name), log_name, token, *args) for log_name, token in scenario_tokens]
-
-    return {DEFAULT_SCENARIO_NAME: scenarios}
+    return db_filenames
 
 
-def create_scenarios_by_types(
-    scenario_types: List[str],
-    db: NuPlanDBWrapper,
-    log_names: Optional[List[str]],
-    expand_scenarios: bool,
-    scenario_mapping: ScenarioMapping,
-    vehicle_parameters: VehicleParameters,
-    ground_truth_predictions: Optional[TrajectorySampling],
-) -> ScenarioDict:
+def get_scenarios_from_db_file(params: GetScenariosFromDbFileParams) -> ScenarioDict:
     """
-    Create initial scenario dictionary based on desired scenario types.
-    :param scenario_types: List of scenario types used to filter the pool of scenarios.
-    :param db: Object for accessing the available databases.
-    :param log_names: List of log names to include in the scenario dictionary.
-    :param expand_scenarios: Whether to expand multi-sample scenarios to multiple single-sample scenarios.
-    :param vehicle_parameters: Vehicle parameters for this db.
-    :param ground_truth_predictions: If None, no GT predictions will be extracted based on its future setting.
-    :return: Dictionary that holds a list of scenarios for each scenario type.
+    Gets all of the scenarios present in a single sqlite db file that match the provided filter parameters.
+    :param params: The filter parameters to use.
+    :return: A ScenarioDict containing the relevant scenarios.
     """
-    logger.debug(f"Creating scenarios by types {scenario_types}...")
+    local_log_file_absolute_path = download_file_if_necessary(params.data_root, params.log_file_absolute_path)
 
-    # Dictionary that holds a list of scenarios for each scenario type
-    scenario_dict: ScenarioDict = dict()
+    scenario_dict: ScenarioDict = {}
+    for row in get_scenarios_from_db(
+        local_log_file_absolute_path, params.filter_tokens, params.filter_types, params.filter_map_names
+    ):
+        scenario_type = row["scenario_type"]
 
-    # Find all candidate scenario types
-    available_types = db.get_all_scenario_types()
-    candidate_types = set(scenario_types).intersection(available_types)
+        if scenario_type is None:
+            scenario_type = DEFAULT_SCENARIO_NAME
 
-    # Find all log dbs that match the desired log names
-    log_dbs = db.log_dbs
-    if log_names:
-        candidate_log_names = set(log_names)
-        log_dbs = [log_db for log_db in log_dbs if log_db.name in candidate_log_names]
+        if scenario_type not in scenario_dict:
+            scenario_dict[scenario_type] = []
 
-    # Populate scenario dictionary with list of scenarios for each type
-    for scenario_type in candidate_types:
-        extraction_info = None if expand_scenarios else scenario_mapping.get_extraction_info(scenario_type)
+        extraction_info = (
+            None if params.expand_scenarios else params.scenario_mapping.get_extraction_info(scenario_type)
+        )
 
-        # TODO: Make scenario_tag.select_many method in DB
-        args = [scenario_type, extraction_info, vehicle_parameters, ground_truth_predictions]
-        scenario_dict[scenario_type] = [
-            NuPlanScenario(log_db, log_db.log_name, tag.lidar_pc_token, *args)
-            for log_db in log_dbs
-            for tag in log_db.scenario_tag.select_many(type=scenario_type)
-            if is_scene_valid(tag.lidar_pc.scene)
-        ]
-
-    return scenario_dict
-
-
-def create_all_scenarios(
-    db: NuPlanDBWrapper,
-    log_names: Optional[List[str]],
-    expand_scenarios: bool,
-    vehicle_parameters: VehicleParameters,
-    worker: WorkerPool,
-    ground_truth_predictions: Optional[TrajectorySampling],
-) -> ScenarioDict:
-    """
-    Create initial scenario dictionary containing all available scenarios in the scenario pool.
-    :param db: Object for accessing the available databases.
-    :param log_names: List of log names to include in the scenario dictionary.
-    :param expand_scenarios: Whether to expand multi-sample scenarios to multiple single-sample scenarios.
-    :param vehicle_parameters: Vehicle parameters for this db.
-    :param worker: Worker pool for concurrent scenario processing.
-    :param ground_truth_predictions: If None, no GT predictions will be extracted based on its future setting
-    :return: Dictionary that holds a list of scenarios for each scenario type.
-    """
-    logger.debug('Creating all scenarios...')
-
-    # Whether to expand scenarios from multi-sample to single-sample scenarios
-    extraction_info = None if expand_scenarios else ScenarioExtractionInfo()
-
-    def get_scenarios_from_log_dbs(log_dbs: List[NuPlanDB]) -> List[NuPlanScenario]:
-        """
-        Retrieve a list of nuplan scenario objects from a list of nuplan log databases.
-        :param log_db: List of nuplan log databases.
-        :return: List of nuplan scenarios.
-        """
-
-        def get_scenarios_from_log_db(log_db: NuPlanDB) -> List[NuPlanScenario]:
-            """
-            Retrieve a list of nuplan scenario objects from a single nuplan log database.
-            Note: This method uses variables from the outer scope to avoid transferring unnecessary load across workers.
-            :param log_db: Nuplan log database.
-            :return: List of nuplan scenarios.
-            """
-            # Total list of scene tokens in the database
-            scene_tokens = [scene.token for scene in extract_scenes_from_log_db(log_db)]
-
-            query = (
-                log_db.session.query(LidarPc.token)
-                .filter(LidarPc.scene_token.in_(scene_tokens))
-                .order_by(LidarPc.timestamp.asc())
-                .all()
+        scenario_dict[scenario_type].append(
+            NuPlanScenario(
+                params.data_root,
+                params.log_file_absolute_path,
+                row["token"].hex(),
+                row["timestamp"],
+                scenario_type,
+                params.map_root,
+                params.map_version,
+                row["map_name"],
+                extraction_info,
+                params.vehicle_parameters,
+                params.ground_truth_predictions,
             )
-
-            # Construct nuplan scenario objects for this log
-            args = [DEFAULT_SCENARIO_NAME, extraction_info, vehicle_parameters, ground_truth_predictions]
-            scenarios = [NuPlanScenario(log_db, log_db.log_name, token, *args) for token, in query]
-
-            return scenarios
-
-        return [scenario for log_db in log_dbs for scenario in get_scenarios_from_log_db(log_db)]
-
-    # Find all log dbs that match the desired log names
-    log_dbs = db.log_dbs
-    if log_names:
-        candidate_log_names = set(log_names)
-        log_dbs = [log_db for log_db in log_dbs if log_db.name in candidate_log_names]
-
-    # Retrieve all scenarios for the total list of scenes concurrently
-    scenarios = worker_map(worker, get_scenarios_from_log_dbs, log_dbs)
-
-    return {DEFAULT_SCENARIO_NAME: scenarios}
-
-
-def filter_by_log_names(scenario_dict: ScenarioDict, log_names: List[str]) -> ScenarioDict:
-    """
-    Filter a scenario dictionary by log names.
-    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type.
-    :param log_names: List of log names to include in the scenario dictionary.
-    :return: Filtered scenario dictionary.
-    """
-    scenario_dict = {
-        scenario_type: [scenario for scenario in scenarios if scenario.log_name in log_names]
-        for scenario_type, scenarios in scenario_dict.items()
-    }
-
-    return scenario_dict
-
-
-def filter_by_map_names(scenario_dict: ScenarioDict, map_names: List[str], db: NuPlanDBWrapper) -> ScenarioDict:
-    """
-    Filter a scenario dictionary by map names.
-    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type.
-    :param map_names: List of map names to include in the scenario dictionary.
-    :param db: Object for accessing the available log databases.
-    :return: Filtered scenario dictionary.
-    """
-    # Mapping from log name to map version
-    # TODO: Pass map name in scenario
-    log_maps = {log_db.log_name: log_db.map_name for log_db in db.log_dbs}
-
-    scenario_dict = {
-        scenario_type: [scenario for scenario in scenarios if log_maps[scenario.log_name] in map_names]
-        for scenario_type, scenarios in scenario_dict.items()
-    }
+        )
 
     return scenario_dict
 

@@ -38,12 +38,12 @@ class EgoTrajectoryTargetBuilder(AbstractTargetBuilder):
             iteration=0, num_samples=self._num_future_poses, time_horizon=self._time_horizon
         )
 
-        if len(trajectory_absolute_states) != self._num_future_poses:
-            raise RuntimeError(f'Expected {self._num_future_poses} num poses but got {len(trajectory_absolute_states)}')
-
         # Get all future poses relative to the ego coordinate system
         trajectory_relative_poses = convert_absolute_to_relative_poses(
             current_absolute_state.rear_axle, [state.rear_axle for state in trajectory_absolute_states]
         )
+
+        if len(trajectory_relative_poses) != self._num_future_poses:
+            raise RuntimeError(f'Expected {self._num_future_poses} num poses but got {len(trajectory_absolute_states)}')
 
         return Trajectory(data=trajectory_relative_poses)

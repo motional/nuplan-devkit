@@ -8,7 +8,6 @@ py_test(
     srcs = ["test_nuplan_cli.py"],
     deps = [
         "//nuplan/cli:nuplan_cli",
-        "//nuplan/common/actor_state:oriented_box",
-        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/database/nuplan_db:db_description_types",
     ],
 )

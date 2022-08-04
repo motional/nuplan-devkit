@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+import math
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, cast
 
 
 @dataclass
@@ -20,15 +23,22 @@ class TrajectorySampling:
         """
         Make sure all entries are correctly initialized.
         """
+        if self.num_poses and not isinstance(self.num_poses, int):
+            raise ValueError(f"num_poses was defined but it is not int. Instead {type(self.num_poses)}!")
+        if self.time_horizon:
+            self.time_horizon = float(self.time_horizon)
+        if self.interval_length:
+            self.interval_length = float(self.interval_length)
         if self.num_poses and self.time_horizon and not self.interval_length:
             self.interval_length = self.time_horizon / self.num_poses
         elif self.num_poses and self.interval_length and not self.time_horizon:
             self.time_horizon = self.num_poses * self.interval_length
         elif self.time_horizon and self.interval_length and not self.num_poses:
-            if self.time_horizon % self.interval_length != 0:
+            remainder = math.fmod(self.time_horizon, self.interval_length)
+            if not math.isclose(remainder, 0) and not math.isclose(remainder, self.interval_length):
                 raise ValueError(
                     "The time horizon must be a multiple of interval length! "
-                    f"time_horizon = {self.time_horizon}, interval = {self.interval_length}"
+                    f"time_horizon = {self.time_horizon}, interval = {self.interval_length} and is {remainder}"
                 )
             self.num_poses = int(self.time_horizon / self.interval_length)
         elif self.num_poses and self.time_horizon and self.interval_length:
@@ -60,3 +70,17 @@ class TrajectorySampling:
             It is not frozen because we deduce the missing parameters.
         """
         return hash((self.num_poses, self.time_horizon, self.interval_length))
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Compare two instances of trajectory sampling
+        :param other: object, needs to be TrajectorySampling class
+        :return: true, if they are equal, false otherwise
+        """
+        if not isinstance(other, TrajectorySampling):
+            return NotImplemented
+        return (
+            math.isclose(cast(float, other.time_horizon), cast(float, self.time_horizon))
+            and math.isclose(cast(float, other.interval_length), cast(float, self.interval_length))
+            and other.num_poses == self.num_poses
+        )

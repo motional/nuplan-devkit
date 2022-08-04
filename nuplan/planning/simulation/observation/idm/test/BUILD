@@ -77,7 +77,7 @@ py_test(
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/database/nuplan_db:nuplandb",
+        "//nuplan/database/nuplan_db_orm:nuplandb",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/simulation/observation:idm_agents",

@@ -4,15 +4,15 @@ from typing import Union, cast
 
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.database.maps_db.imapsdb import IMapsDB
-from nuplan.database.nuplan_db.camera import Camera
-from nuplan.database.nuplan_db.ego_pose import EgoPose
-from nuplan.database.nuplan_db.image import Image
-from nuplan.database.nuplan_db.lidar import Lidar
-from nuplan.database.nuplan_db.lidar_box import LidarBox
-from nuplan.database.nuplan_db.lidar_pc import LidarPc
-from nuplan.database.nuplan_db.nuplandb import NuPlanDB
-from nuplan.database.nuplan_db.nuplandb_wrapper import NuPlanDBWrapper, discover_log_dbs
-from nuplan.database.nuplan_db.track import Track
+from nuplan.database.nuplan_db_orm.camera import Camera
+from nuplan.database.nuplan_db_orm.ego_pose import EgoPose
+from nuplan.database.nuplan_db_orm.image import Image
+from nuplan.database.nuplan_db_orm.lidar import Lidar
+from nuplan.database.nuplan_db_orm.lidar_box import LidarBox
+from nuplan.database.nuplan_db_orm.lidar_pc import LidarPc
+from nuplan.database.nuplan_db_orm.nuplandb import NuPlanDB
+from nuplan.database.nuplan_db_orm.nuplandb_wrapper import NuPlanDBWrapper, discover_log_dbs
+from nuplan.database.nuplan_db_orm.track import Track
 
 DEFAULT_TEST_DB_INDEX = 0  # default database index to load when only a single database is required
 DEFAULT_TEST_CAMERA_INDEX = 0  # default camera for testing

@@ -5,7 +5,7 @@ import pandas as pd
 from shapely.geometry import Polygon
 
 import nuplan.common.maps.nuplan_map.lane_connector as lane_connector
-from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject, Lane, PolylineMapObject
+from nuplan.common.maps.abstract_map_objects import Lane, LaneGraphEdgeMapObject, PolylineMapObject
 from nuplan.common.maps.maps_datatypes import VectorLayer
 from nuplan.common.maps.nuplan_map.polyline_map_object import NuPlanPolylineMapObject
 from nuplan.common.maps.nuplan_map.utils import get_all_rows_with_value, get_row_with_value
@@ -46,7 +46,7 @@ class NuPlanLane(Lane):
         self._lane = None
 
     @cached_property
-    def incoming_edges(self) -> List[GraphEdgeMapObject]:
+    def incoming_edges(self) -> List[LaneGraphEdgeMapObject]:
         """Inherited from superclass."""
         lane_connectors_ids = get_all_rows_with_value(self._lane_connectors_df, "entry_lane_fid", self.id)["fid"]
 
@@ -64,7 +64,7 @@ class NuPlanLane(Lane):
         ]
 
     @cached_property
-    def outgoing_edges(self) -> List[GraphEdgeMapObject]:
+    def outgoing_edges(self) -> List[LaneGraphEdgeMapObject]:
         """Inherited from superclass."""
         lane_connectors_ids = get_all_rows_with_value(self._lane_connectors_df, "exit_lane_fid", self.id)["fid"]
 

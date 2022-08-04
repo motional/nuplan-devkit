@@ -3,4 +3,4 @@ ego_progress_along_expert_route_statistics:
   _convert_: 'all'
   name: 'ego_progress_along_expert_route'
   category: 'Planning'
-  score_progress_threshold: 10
+  score_progress_threshold: 0.1

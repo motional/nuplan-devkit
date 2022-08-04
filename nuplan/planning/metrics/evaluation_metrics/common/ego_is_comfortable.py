@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -56,11 +56,11 @@ class EgoIsComfortableStatistics(MetricBase):
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         time_series: Optional[TimeSeries] = None,
     ) -> float:
         """Inherited, see superclass."""
-        return float(metric_statistics[MetricStatisticsType.BOOLEAN].value)
+        return float(metric_statistics[0].value)
 
     def check_ego_is_comfortable(self, history: SimulationHistory, scenario: AbstractScenario) -> bool:
         """
@@ -82,9 +82,16 @@ class EgoIsComfortableStatistics(MetricBase):
         :return the estimated metric.
         """
         ego_is_comfortable = self.check_ego_is_comfortable(history=history, scenario=scenario)
-        statistics = {
-            MetricStatisticsType.BOOLEAN: Statistic(name='ego_is_comfortable', unit='boolean', value=ego_is_comfortable)
-        }
+        statistics = [
+            Statistic(
+                name='ego_is_comfortable',
+                unit=MetricStatisticsType.BOOLEAN.unit,
+                value=ego_is_comfortable,
+                type=MetricStatisticsType.BOOLEAN,
+            )
+        ]
 
-        results = self._construct_metric_results(metric_statistics=statistics, time_series=None, scenario=scenario)
-        return results  # type: ignore
+        results: List[MetricStatistics] = self._construct_metric_results(
+            metric_statistics=statistics, time_series=None, scenario=scenario
+        )
+        return results

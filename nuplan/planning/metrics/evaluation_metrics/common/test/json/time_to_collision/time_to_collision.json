@@ -26,11 +26,13 @@
         "time_us": 1000000
     },
     "expected": {
-        "statistics": {
-            "MIN": 1.7,
-            "P90": 1.7,
-            "BOOLEAN": true
-        },
+        "statistics": [
+            ["MAX", 1.7],
+            ["MIN", 1.7],
+            ["MEAN", 1.7],
+            ["P90", 1.7],
+            ["BOOLEAN", true]
+        ],
         "time_series": {
             "time_stamps": [
                 1000000

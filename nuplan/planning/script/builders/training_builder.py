@@ -89,6 +89,7 @@ def build_lightning_module(cfg: DictConfig, torch_module_wrapper: TorchModuleWra
         batch_size=cfg.data_loader.params.batch_size,
         optimizer=cfg.optimizer,
         lr_scheduler=cfg.lr_scheduler if 'lr_scheduler' in cfg else None,
+        objective_aggregate_mode=cfg.objective_aggregate_mode,
     )
 
     return cast(pl.LightningModule, model)

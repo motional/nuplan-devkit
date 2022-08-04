@@ -166,7 +166,7 @@ class LidarPointCloud:
         :return: True if both objects are equal otherwise False.
         """
         if not isinstance(other, LidarPointCloud):
-            raise NotImplementedError
+            return NotImplemented
 
         return np.allclose(self.points, other.points, atol=1e-06)
 

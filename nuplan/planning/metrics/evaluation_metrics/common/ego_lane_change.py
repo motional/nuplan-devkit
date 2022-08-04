@@ -16,11 +16,7 @@ from nuplan.planning.metrics.utils.route_extractor import (
     get_route,
     get_timestamps_in_common_or_connected_route_objs,
 )
-from nuplan.planning.metrics.utils.state_extractors import (
-    extract_ego_center,
-    extract_ego_corners,
-    extract_ego_time_point,
-)
+from nuplan.planning.metrics.utils.state_extractors import extract_ego_center, extract_ego_time_point
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 
@@ -190,10 +186,10 @@ class EgoLaneChangeStatistics(MetricBase):
         ego_timestamps = extract_ego_time_point(ego_states)
 
         # Extract corners of ego's footprint
-        ego_corners = extract_ego_corners(ego_states)  # 4 corners of oriented box (FL, RL, RR, FR)
+        ego_footprint_list = [ego_state.car_footprint for ego_state in ego_states]
 
         # Extract corner lanes/lane connectors
-        corners_route = extract_corners_route(history.map_api, ego_corners)
+        corners_route = extract_corners_route(history.map_api, ego_footprint_list)
         # Store to load in high level metrics
         self.corners_route = corners_route
 
@@ -211,12 +207,20 @@ class EgoLaneChangeStatistics(MetricBase):
         lane_changes = find_lane_changes(ego_timestamps, common_or_connected_route_objs)
 
         if len(lane_changes) == 0:
-            metric_statistics = {
-                MetricStatisticsType.COUNT: Statistic(name=f"number_of_{self.name}", unit="count", value=0),
-                MetricStatisticsType.BOOLEAN: Statistic(
-                    name=f"{self.name}_fail_rate_below_threshold", unit="boolean", value=True
+            metric_statistics = [
+                Statistic(
+                    name=f"number_of_{self.name}",
+                    unit=MetricStatisticsType.COUNT.unit,
+                    value=0,
+                    type=MetricStatisticsType.COUNT,
                 ),
-            }
+                Statistic(
+                    name=f"{self.name}_fail_rate_below_threshold",
+                    unit=MetricStatisticsType.BOOLEAN.unit,
+                    value=True,
+                    type=MetricStatisticsType.BOOLEAN,
+                ),
+            ]
 
         else:
             # Find lane change durations in seconds and ratio of number of failed to total number of lane changes
@@ -224,34 +228,55 @@ class EgoLaneChangeStatistics(MetricBase):
             failed_lane_changes = [lane_change for lane_change in lane_changes if not lane_change.success]
             failed_ratio = len(failed_lane_changes) / len(lane_changes)
             fail_rate_below_threshold = 1 if self._max_fail_rate >= failed_ratio else 0
-            metric_statistics = {
-                MetricStatisticsType.MAX: Statistic(
-                    name=f"max_{self.name}_duration", unit="seconds", value=np.max(lane_change_durations)
+            metric_statistics = [
+                Statistic(
+                    name=f"number_of_{self.name}",
+                    unit=MetricStatisticsType.COUNT.unit,
+                    value=len(lane_changes),
+                    type=MetricStatisticsType.COUNT,
                 ),
-                MetricStatisticsType.MIN: Statistic(
-                    name=f"min_{self.name}_duration", unit="seconds", value=np.min(lane_change_durations)
+                Statistic(
+                    name=f"max_{self.name}_duration",
+                    unit="seconds",
+                    value=np.max(lane_change_durations),
+                    type=MetricStatisticsType.MAX,
                 ),
-                MetricStatisticsType.MEAN: Statistic(
-                    name=f"avg_{self.name}_duration", unit="seconds", value=np.mean(lane_change_durations)
+                Statistic(
+                    name=f"min_{self.name}_duration",
+                    unit="seconds",
+                    value=np.min(lane_change_durations),
+                    type=MetricStatisticsType.MIN,
                 ),
-                MetricStatisticsType.P90: Statistic(
-                    name=f"p90_{self.name}_duration", unit="seconds", value=np.percentile(lane_change_durations, 90)
+                Statistic(
+                    name=f"avg_{self.name}_duration",
+                    unit="seconds",
+                    value=float(np.mean(lane_change_durations)),
+                    type=MetricStatisticsType.MEAN,
                 ),
-                MetricStatisticsType.COUNT: Statistic(
-                    name=f"number_of_{self.name}", unit="count", value=len(lane_changes)
+                Statistic(
+                    name=f"p90_{self.name}_duration",
+                    unit="seconds",
+                    value=np.percentile(lane_change_durations, 90),
+                    type=MetricStatisticsType.P90,
                 ),
-                MetricStatisticsType.RATIO: Statistic(
-                    name=f"ratio_of_failed_{self.name}", unit="ratio", value=failed_ratio
+                Statistic(
+                    name=f"ratio_of_failed_{self.name}",
+                    unit=MetricStatisticsType.RATIO.unit,
+                    value=failed_ratio,
+                    type=MetricStatisticsType.RATIO,
                 ),
-                MetricStatisticsType.BOOLEAN: Statistic(
-                    name=f"{self.name}_fail_rate_below_threshold", unit="boolean", value=bool(fail_rate_below_threshold)
+                Statistic(
+                    name=f"{self.name}_fail_rate_below_threshold",
+                    unit=MetricStatisticsType.BOOLEAN.unit,
+                    value=bool(fail_rate_below_threshold),
+                    type=MetricStatisticsType.BOOLEAN,
                 ),
-            }
+            ]
 
-        results = self._construct_metric_results(
+        results: List[MetricStatistics] = self._construct_metric_results(
             metric_statistics=metric_statistics, time_series=None, scenario=scenario
         )
 
         self.results = results
 
-        return results  # type: ignore
+        return results

@@ -3,14 +3,16 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
+from nuplan.common.actor_state.car_footprint import CarFootprint
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.ego_temporal_state import EgoTemporalState
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
 from nuplan.common.actor_state.tracked_objects_types import AGENT_TYPES, TrackedObjectType
+from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.actor_state.waypoint import Waypoint
-from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
-from nuplan.planning.utils.color import Color
+from nuplan.planning.utils.color import Color, ColorType
+from nuplan.planning.utils.serialization.scene import EgoScene, GoalScene, Trajectory, TrajectoryState
 
 tracked_object_types = {
     'vehicles': TrackedObjectType.VEHICLE,
@@ -36,7 +38,7 @@ def to_scene_waypoint(waypoint: Waypoint, time_offset: Optional[float] = None) -
     }
 
 
-def to_scene_ego_pose(ego_pose: Union[EgoState, EgoTemporalState]) -> Dict[str, Any]:
+def to_scene_ego_from_ego_state(ego_pose: Union[EgoState, EgoTemporalState]) -> EgoScene:
     """
     :param ego_pose: temporal state trajectory
     :return serialized scene
@@ -64,96 +66,93 @@ def to_scene_ego_pose(ego_pose: Union[EgoState, EgoTemporalState]) -> Dict[str, 
     )
 
     predictions = {
-        "color": Color(red=255, green=0, blue=0, alpha=255).to_list(),
+        "color": Color(red=1, green=0, blue=0, alpha=1, serialize_to=ColorType.FLOAT).to_list(),
         "states": past + future,
     }
 
     rear_axle = current_state.rear_axle
-    return {
-        "acceleration": 0.0,
-        "pose": [rear_axle.x, rear_axle.y, rear_axle.heading],
-        "speed": current_state.dynamic_car_state.speed,
-        "prediction": predictions,
-    }
+    return EgoScene(
+        acceleration=0.0,
+        pose=rear_axle,
+        speed=current_state.dynamic_car_state.speed,
+        prediction=predictions,
+    )
 
 
-def to_scene_from_states(trajectory: List[EgoState]) -> List[Dict[str, Any]]:
+def to_scene_trajectory_state_from_ego_state(ego_state: EgoState) -> TrajectoryState:
     """
-    Convert trajectory into structure
-    :param trajectory: input trajectory ot be converted
-    :return scene
+    Convert ego state into scene structure for states in a trajectory.
+    :param ego_state: ego state.
+    :return: state in scene format.
     """
-    return [
-        {
-            'pose': [state.rear_axle.x, state.rear_axle.y, state.rear_axle.heading],
-            'speed': state.dynamic_car_state.speed,
-            'velocity_2d': [
-                state.dynamic_car_state.rear_axle_velocity_2d.x,
-                state.dynamic_car_state.rear_axle_velocity_2d.y,
-            ],
-            'lateral': [0.0, 0.0],
-            'acceleration': [
-                state.dynamic_car_state.rear_axle_acceleration_2d.x,
-                state.dynamic_car_state.rear_axle_acceleration_2d.y,
-            ],
-            'tire_steering_angle': state.tire_steering_angle,
-        }
-        for state in trajectory
-    ]
-
-
-def to_scene_from_trajectory(trajectory: AbstractTrajectory) -> List[Dict[str, Any]]:
-    """
-    Convert trajectory into structure
-    :param trajectory: input trajectory ot be converted
-    :return scene
-    """
-    return to_scene_from_states(trajectory.get_sampled_trajectory())
-
-
-def create_trajectory_structure(trajectory: List[EgoState], color: List[int]) -> Dict[str, Any]:
-    """
-    Create scene json structure for a trajectory with a color.
-    :param trajectory: set of states.
-    :param color: color [R, G, B, A]
-    :return: scene representing a trajectory
-    """
-    return {'color': color, 'states': to_scene_from_states(trajectory)}
-
-
-def create_waypoint_trajectory_structure(trajectory: List[Waypoint], color: List[int]) -> Dict[str, Any]:
-    """
-    Create scene json structure for a trajectory with a color.
-    :param trajectory: set of states.
-    :param color: color [R, G, B, A]
-    :return: scene representing a trajectory
-    """
-    return {
-        'color': color,
-        'states': [
-            {
-                'pose': [*state.center],
-                'speed': state.velocity.magnitude(),
-                'velocity_2d': [
-                    state.velocity.x,
-                    state.velocity.y,
-                ]
-                if state.velocity
-                else [0, 0],
-                'lateral': [0.0, 0.0],
-            }
-            for state in trajectory
+    return TrajectoryState(
+        pose=ego_state.rear_axle,
+        speed=ego_state.dynamic_car_state.speed,
+        velocity_2d=[
+            ego_state.dynamic_car_state.rear_axle_velocity_2d.x,
+            ego_state.dynamic_car_state.rear_axle_velocity_2d.y,
         ],
-    }
+        lateral=[0.0, 0.0],
+        acceleration=[
+            ego_state.dynamic_car_state.rear_axle_acceleration_2d.x,
+            ego_state.dynamic_car_state.rear_axle_acceleration_2d.y,
+        ],
+        tire_steering_angle=ego_state.tire_steering_angle,
+    )
 
 
-def to_scene_ego_from_center_pose(state_center: StateSE2) -> Dict[str, Any]:
+def to_scene_trajectory_from_list_ego_state(trajectory: List[EgoState], color: Color) -> Trajectory:
     """
-    Convert to a scene by ego's center pose.
-    :param state_center: state of ego's center pose.
-    :return scene.
+    Convert list of ego states and a color into a scene structure for a trajectory.
+    :param trajectory: a list of states.
+    :param color: color [R, G, B, A].
+    :return: Trajectory in scene format.
     """
-    return {'acceleration': 0.0, 'pose': [state_center.x, state_center.y, state_center.heading], 'speed': 0.0}
+    trajectory_states = [to_scene_trajectory_state_from_ego_state(state) for state in trajectory]
+    return Trajectory(color=color, states=trajectory_states)
+
+
+def to_scene_trajectory_state_from_waypoint(waypoint: Waypoint) -> TrajectoryState:
+    """
+    Convert ego state into scene structure for states in a trajectory.
+    :param waypoint: waypoint in a trajectory.
+    :return: state in scene format.
+    """
+    return TrajectoryState(
+        pose=waypoint.center,
+        speed=waypoint.velocity.magnitude(),
+        velocity_2d=[waypoint.velocity.x, waypoint.velocity.y] if waypoint.velocity else [0, 0],
+        lateral=[0.0, 0.0],
+    )
+
+
+def to_scene_trajectory_from_list_waypoint(trajectory: List[Waypoint], color: Color) -> Trajectory:
+    """
+    Convert list of waypoints and a color into a scene structure for a trajectory.
+    :param trajectory: a list of states.
+    :param color: color [R, G, B, A].
+    :return: Trajectory in scene format.
+    """
+    trajectory_states = [to_scene_trajectory_state_from_waypoint(state) for state in trajectory]
+    return Trajectory(color=color, states=trajectory_states)
+
+
+def to_scene_goal_from_state(state: StateSE2) -> GoalScene:
+    """
+    Convert car footprint to scene structure for ego.
+    :param car_footprint: CarFootprint of ego.
+    :return Ego in scene format.
+    """
+    return GoalScene(pose=state)
+
+
+def to_scene_ego_from_car_footprint(car_footprint: CarFootprint) -> EgoScene:
+    """
+    Convert car footprint to scene structure for ego.
+    :param car_footprint: CarFootprint of ego.
+    :return Ego in scene format.
+    """
+    return EgoScene(acceleration=0.0, pose=car_footprint.rear_axle, speed=0.0)
 
 
 def to_scene_agent_type(agent_type: TrackedObjectType) -> str:
@@ -244,7 +243,9 @@ def to_scene_from_ego_and_boxes(
     scene: Dict[str, Any] = {
         'map': {'area': map_name_without_suffix},
         'world': world,
-        'ego': to_scene_ego_from_center_pose(ego_pose),
+        'ego': dict(
+            to_scene_ego_from_car_footprint(CarFootprint.build_from_center(ego_pose, get_pacifica_parameters()))
+        ),
     }
 
     if set_camera:
@@ -263,7 +264,7 @@ def to_scene_from_ego_and_boxes(
     return scene
 
 
-def _to_scene_agent_prediction(tracked_object: TrackedObject, color: List[int]) -> Dict[str, Any]:
+def _to_scene_agent_prediction(tracked_object: TrackedObject, color: Color) -> Dict[str, Any]:
     """
     Extract agent's predicted states from TrackedObject to scene.
     :param tracked_object: tracked_object representation.
@@ -298,13 +299,13 @@ def _to_scene_agent_prediction(tracked_object: TrackedObject, color: List[int]) 
     ]
     return {
         'id': tracked_object.metadata.track_id,
-        'color': color,
+        'color': color.to_list(),
         'size': [tracked_object.box.width, tracked_object.box.length],
         'states': past_states + future_states,
     }
 
 
-def to_scene_agent_prediction_from_boxes(tracked_objects: TrackedObjects, color: List[int]) -> List[Dict[str, Any]]:
+def to_scene_agent_prediction_from_boxes(tracked_objects: TrackedObjects, color: Color) -> List[Dict[str, Any]]:
     """
     Convert predicted observations into prediction dictionary.
     :param tracked_objects: List of tracked_objects in global coordinates.
@@ -319,7 +320,7 @@ def to_scene_agent_prediction_from_boxes(tracked_objects: TrackedObjects, color:
 
 
 def to_scene_agent_prediction_from_boxes_separate_color(
-    tracked_objects: TrackedObjects, color_vehicles: List[int], color_pedestrians: List[int], color_bikes: List[int]
+    tracked_objects: TrackedObjects, color_vehicles: Color, color_pedestrians: Color, color_bikes: Color
 ) -> List[Dict[str, Any]]:
     """
     Convert predicted observations into prediction dictionary.
@@ -342,7 +343,7 @@ def to_scene_agent_prediction_from_boxes_separate_color(
         elif tracked_object.tracked_object_type == TrackedObjectType.BICYCLE:
             color = color_bikes
         else:
-            color = [0, 0, 0, 255]
+            color = Color(0, 0, 0, 1, ColorType.FLOAT)
 
         predictions.append(_to_scene_agent_prediction(tracked_object, color))
 

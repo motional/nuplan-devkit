@@ -54,7 +54,7 @@ class TestSceneColor(TestCase):
         Tests multiplication operation.
         """
         # Call method under test
-        result = self.scene_color * 255
+        result = self.scene_color * 0.75
 
         # Assertions
         self.assertEqual(
@@ -73,10 +73,10 @@ class TestSceneColor(TestCase):
         Tests reverse multiplication operation.
         """
         # Call method under test
-        result = 255 * self.scene_color
+        result = 0.75 * self.scene_color
 
         # Assertions
-        mock_mul.assert_called_once_with(255)
+        mock_mul.assert_called_once_with(0.75)
         self.assertEqual(result, mock_mul.return_value)
 
 

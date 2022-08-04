@@ -51,11 +51,12 @@ py_library(
     name = "ego_state",
     srcs = ["ego_state.py"],
     deps = [
-        ":agent",
+        ":agent_state",
         ":car_footprint",
         ":dynamic_car_state",
+        ":scene_object",
         ":state_representation",
-        ":tracked_objects_types",
+        ":waypoint",
         "//nuplan/common/utils:interpolatable_state",
         "//nuplan/common/utils:split_state",
     ],
@@ -81,14 +82,26 @@ py_library(
 )
 
 py_library(
+    name = "agent_state",
+    srcs = ["agent_state.py"],
+    deps = [
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:scene_object",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:tracked_objects_types",
+    ],
+)
+
+py_library(
     name = "agent",
     srcs = ["agent.py"],
     deps = [
-        ":agent_temporal_state",
-        ":oriented_box",
-        ":scene_object",
-        ":state_representation",
-        ":tracked_objects_types",
+        "//nuplan/common/actor_state:agent_state",
+        "//nuplan/common/actor_state:agent_temporal_state",
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:scene_object",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/simulation/trajectory:predicted_trajectory",
     ],
 )
@@ -104,6 +117,7 @@ py_library(
     srcs = ["tracked_objects.py"],
     deps = [
         ":agent",
+        ":agent_temporal_state",
         ":oriented_box",
         ":scene_object",
         ":static_object",

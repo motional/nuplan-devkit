@@ -166,3 +166,39 @@ def coordinates_to_local_frame(
     result = result[:, :2]
 
     return result
+
+
+def vector_set_coordinates_to_local_frame(
+    coords: torch.Tensor, avails: torch.Tensor, anchor_state: torch.Tensor
+) -> torch.Tensor:
+    """
+    Transform the vector set map element coordinates from global frame to ego vehicle frame, as specified by
+        anchor_state.
+    :param coords: Coordinates to transform. <torch.Tensor: num_elements, num_points, 2>.
+    :param avails: Availabilities mask identifying real vs zero-padded data in coords.
+        <torch.Tensor: num_elements, num_points>.
+    :param anchor_state: The coordinate frame to transform to, in the form [x, y, heading].
+    :return: Transformed coordinates.
+    :raise ValueError: If coordinates dimensions are not valid or don't match availabilities.
+    """
+    if len(coords.shape) != 3 or coords.shape[2] != 2:
+        raise ValueError(f"Unexpected coords shape: {coords.shape}. Expected shape: (*, *, 2)")
+
+    if coords.shape[:2] != avails.shape:
+        raise ValueError(f"Mismatching shape between coords and availabilities: {coords.shape[:2]}, {avails.shape}")
+
+    # Flatten coords from (num_map_elements, num_points_per_element, 2) to
+    #   (num_map_elements * num_points_per_element, 2) for easier processing.
+    num_map_elements, num_points_per_element, _ = coords.size()
+    coords = coords.reshape(num_map_elements * num_points_per_element, 2)
+
+    # Apply transformation using adequate precision
+    coords = coordinates_to_local_frame(coords.double(), anchor_state.double(), precision=torch.float64)
+
+    # Reshape to original dimensionality and output as 32-bit for training
+    coords = coords.reshape(num_map_elements, num_points_per_element, 2).float()
+
+    # ignore zero-padded data
+    coords[~avails] = 0.0
+
+    return coords

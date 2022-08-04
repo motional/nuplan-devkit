@@ -5,6 +5,7 @@ from typing import Deque, Dict, List, Optional
 import numpy as np
 from shapely.geometry import Polygon
 from shapely.geometry.base import CAP_STYLE
+from shapely.ops import unary_union
 
 from nuplan.common.actor_state.agent import Agent, PredictedTrajectory
 from nuplan.common.actor_state.oriented_box import OrientedBox
@@ -98,7 +99,7 @@ class IDMAgent:
         start_progress = self._clamp_progress(self.progress - self.length / 2)
         end_progress = self._clamp_progress(self.progress + self.length / 2 + self.velocity * self._policy.headway_time)
         projected_path = path_to_linestring(trim_path(self._path, start_progress, end_progress))
-        return projected_path.buffer((self.width / 2), cap_style=CAP_STYLE.flat)
+        return unary_union([projected_path.buffer((self.width / 2), cap_style=CAP_STYLE.flat), self.polygon])
 
     @property
     def width(self) -> float:

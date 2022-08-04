@@ -7,6 +7,21 @@ py_library(
     srcs = ["__init__.py"],
 )
 
+py_library(
+    name = "skeleton_test_tab",
+    srcs = ["skeleton_test_tab.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_engine",
+        "//nuplan/planning/metrics:metric_file",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/utils/test:utils",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/simulation:simulation_log",
+    ],
+)
+
 py_test(
     name = "test_configuration_tab",
     size = "medium",
@@ -24,14 +39,9 @@ py_test(
     size = "medium",
     srcs = ["test_histogram_tab.py"],
     deps = [
-        "//nuplan/planning/metrics:metric_engine",
-        "//nuplan/planning/metrics:metric_file",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/nuboard/base:data_class",
+        ":skeleton_test_tab",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
-        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
-        "//nuplan/planning/simulation:simulation_log",
     ],
 )
 
@@ -40,14 +50,9 @@ py_test(
     size = "medium",
     srcs = ["test_overview_tab.py"],
     deps = [
-        "//nuplan/planning/metrics:metric_engine",
-        "//nuplan/planning/metrics:metric_file",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/nuboard/base:data_class",
+        ":skeleton_test_tab",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:overview_tab",
-        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
-        "//nuplan/planning/simulation:simulation_log",
     ],
 )
 
@@ -56,11 +61,8 @@ py_test(
     size = "medium",
     srcs = ["test_scenario_tab.py"],
     deps = [
+        ":skeleton_test_tab",
         "//nuplan/common/actor_state:vehicle_parameters",
-        "//nuplan/planning/metrics:metric_engine",
-        "//nuplan/planning/metrics:metric_file",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:scenario_tab",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",

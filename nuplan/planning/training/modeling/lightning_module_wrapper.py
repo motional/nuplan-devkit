@@ -1,11 +1,13 @@
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
+from torch.optim.lr_scheduler import OneCycleLR
 
+from nuplan.planning.script.builders.utils.utils_type import is_target_type
 from nuplan.planning.training.modeling.metrics.planning_metrics import AbstractTrainingMetric
 from nuplan.planning.training.modeling.objectives.abstract_objective import aggregate_objectives
 from nuplan.planning.training.modeling.objectives.imitation_objective import AbstractObjective
@@ -25,9 +27,10 @@ class LightningModuleWrapper(pl.LightningModule):
         model: TorchModuleWrapper,
         objectives: List[AbstractObjective],
         metrics: List[AbstractTrainingMetric],
-        batch_size: Optional[int] = None,
-        optimizer: DictConfig = None,
-        lr_scheduler: DictConfig = None,
+        batch_size: int,
+        optimizer: DictConfig,
+        lr_scheduler: DictConfig,
+        objective_aggregate_mode: str = 'mean',
     ) -> None:
         """
         Initializes the class.
@@ -38,15 +41,17 @@ class LightningModuleWrapper(pl.LightningModule):
         :param batch_size: batch_size taken from dataloader config
         :param optimizer: config for instantiating optimizer
         :param lr_scheduler: config for instantiating lr_scheduler
+        :param objective_aggregate_mode: how should different objectives be combined, can be 'sum', 'mean', and 'max'.
         """
         super().__init__()
-        self.save_hyperparameters(ignore=["model", "optimizer", "lr_scheduler"])
+        self.save_hyperparameters(ignore=["model"])
 
         self.model = model
         self.objectives = objectives
         self.metrics = metrics
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.objective_aggregate_mode = objective_aggregate_mode
 
         # Validate metrics objectives and model
         model_targets = {builder.get_feature_unique_name() for builder in model.get_list_of_computed_target()}
@@ -72,7 +77,7 @@ class LightningModuleWrapper(pl.LightningModule):
         predictions = self.forward(features)
         objectives = self._compute_objectives(predictions, targets)
         metrics = self._compute_metrics(predictions, targets)
-        loss = aggregate_objectives(objectives)
+        loss = aggregate_objectives(objectives, agg_mode=self.objective_aggregate_mode)
 
         self._log_step(loss, objectives, metrics, prefix)
 
@@ -179,24 +184,51 @@ class LightningModuleWrapper(pl.LightningModule):
 
         :return: optimizer or dictionary of optimizers and schedules
         """
-        optimizer_dict = {}
+        optimizer_dict: Dict[str, Any] = {}
 
-        optimizer: torch.optim.Optimizer = instantiate(config=self.optimizer, params=self.parameters())
+        optimizer: torch.optim.Optimizer = instantiate(
+            config=self.optimizer,
+            params=self.parameters(),
+            lr=self.optimizer.lr,  # Use lr found from lr finder; otherwise use optimizer config
+        )
+
         optimizer_dict['optimizer'] = optimizer
-
         # Log the optimizer used
         logger.info(f'Using optimizer: {self.optimizer._target_}')
 
         # Instatiate a learning rate scheduler if it is provided
         if self.lr_scheduler:  # instantiate lr_scheduler according to cfg provided
+            lr_scheduler_params: Dict[str, Any] = {}
+            if is_target_type(self.lr_scheduler, OneCycleLR):
+                # Ensure the initial learning rate used by the LR scheduler is correct by adjusting max_lr
+                # This only has to be done for OneCycleLR which overrides the lr in the optimizer provided with max_lr/div_factor
+
+                # Use lr found from lr_find(), otherwise use original optimizer config lr
+                self.lr_scheduler.max_lr = self.optimizer.lr
+
+                # ensure lr_scheduler.step() is considered every step, ie every batch (default is every epoch)
+                lr_scheduler_params['interval'] = 'step'
+
+                # to ensure that over the course of the training, the learning rate follows 1 cycle, we must call
+                # lr_scheduler.step() at a frequency of number of batches per epoch / number of lr_scheduler steps per epoch
+                frequency_of_lr_scheduler_step = self.lr_scheduler.epochs
+
+                lr_scheduler_params[
+                    'frequency'
+                ] = frequency_of_lr_scheduler_step  # number of batches to wait before calling lr_scheduler.step()
+
+                logger.info(f'lr_scheduler.step() will be called every {frequency_of_lr_scheduler_step} batches')
+
             lr_scheduler: torch.optim.lr_scheduler._LRScheduler = instantiate(
-                config=self.lr_scheduler, optimizer=optimizer
+                config=self.lr_scheduler,
+                optimizer=optimizer,
             )
-            optimizer_dict['lr_scheduler'] = {'scheduler': lr_scheduler}
+            lr_scheduler_params['scheduler'] = lr_scheduler
+            optimizer_dict['lr_scheduler'] = lr_scheduler_params
 
             # Log the learning rate scheduler used
             logger.info(f'Using lr_scheduler provided: {self.lr_scheduler._target_}')
         else:  # no lr_scheduler provided
             logger.info('Not using any lr_schedulers')
 
-        return optimizer_dict['optimizer'] if 'lr_scheduler' not in optimizer_dict else optimizer_dict
+        return optimizer_dict if 'lr_scheduler' in optimizer_dict else optimizer_dict['optimizer']

@@ -35,7 +35,7 @@ def compute_or_load_feature(
 
     # Filename of the cached features/targets
     file_name = (
-        cache_path / scenario.log_name / scenario.token / builder.get_feature_unique_name()
+        cache_path / scenario.log_name / scenario.scenario_type / scenario.token / builder.get_feature_unique_name()
         if cache_path_available
         else None
     )

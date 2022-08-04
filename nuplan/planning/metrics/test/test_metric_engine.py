@@ -9,10 +9,9 @@ from nuplan.common.actor_state.state_representation import StateSE2, StateVector
 from nuplan.common.actor_state.tracked_objects import TrackedObjects
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.planning.metrics.evaluation_metrics.common.ego_acceleration import EgoAccelerationStatistics
-from nuplan.planning.metrics.evaluation_metrics.common.ego_distance_to_goal import EgoDistanceToGoalStatistics
 from nuplan.planning.metrics.evaluation_metrics.common.ego_jerk import EgoJerkStatistics
 from nuplan.planning.metrics.metric_engine import MetricsEngine
-from nuplan.planning.metrics.metric_result import MetricStatisticsType, TimeSeries
+from nuplan.planning.metrics.metric_result import TimeSeries
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
@@ -28,19 +27,13 @@ class TestMetricEngine(unittest.TestCase):
         goal = StateSE2(x=664430.1930625531, y=3997650.6249544094, heading=0)
         self.scenario = MockAbstractScenario(mission_goal=goal)
 
-        self.metric_names = ['ego_acceleration', 'ego_distance_to_goal', 'ego_jerk']
+        self.metric_names = ['ego_acceleration', 'ego_jerk']
         ego_acceleration_metric = EgoAccelerationStatistics(name=self.metric_names[0], category='Dynamics')
 
-        ego_distance_to_goal = EgoDistanceToGoalStatistics(
-            name=self.metric_names[1], category='Planning', score_distance_threshold=5
-        )
-
-        ego_jerk = EgoJerkStatistics(name=self.metric_names[2], category='Dynamics', max_abs_mag_jerk=10.0)
+        ego_jerk = EgoJerkStatistics(name=self.metric_names[1], category='Dynamics', max_abs_mag_jerk=10.0)
 
         self.planner_name = 'planner'
-        self.metric_engine = MetricsEngine(
-            metrics=[ego_acceleration_metric, ego_distance_to_goal], main_save_path=Path(''), timestamp=0
-        )
+        self.metric_engine = MetricsEngine(metrics=[ego_acceleration_metric], main_save_path=Path(''), timestamp=0)
         self.metric_engine.add_metric(ego_jerk)
         self.history = self.setup_history()
 
@@ -145,18 +138,17 @@ class TestMetricEngine(unittest.TestCase):
 
     def test_compute(self) -> None:
         """Test compute() in MetricEngine."""
-        expected_values = [[0.81, 0.04, 0.63], [27.59, 21.29, 27.1], [0.58, -0.28, 0.49]]
+        expected_values = [[0.81, 0.04, 0.3, 0.81], [0.58, -0.28, 0.15, 0.58]]
         expected_time_stamps = [1000000, 2000000, 3000000, 4000000, 5000000]
         expected_time_series_values = [
             [0.21, 0.04, 0.09, 0.34, 0.81],
-            [21.29, 23.31, 26.37, 26.37, 27.59],
             [-0.28, -0.06, 0.15, 0.36, 0.58],
         ]
         metric_dict = self.metric_engine.compute(
             history=self.history, planner_name=self.planner_name, scenario=self.scenario
         )
         metric_files = metric_dict['mock_scenario_type_mock_scenario_name_planner']
-        self.assertEqual(len(metric_files), 3)
+        self.assertEqual(len(metric_files), 2)
 
         for index, metric_file in enumerate(metric_files):
             key = metric_file.key
@@ -169,9 +161,10 @@ class TestMetricEngine(unittest.TestCase):
 
             for statistic_result in metric_statistics:
                 statistics = statistic_result.statistics
-                self.assertEqual(np.round(statistics[MetricStatisticsType.MAX].value, 2), expected_values[index][0])
-                self.assertEqual(np.round(statistics[MetricStatisticsType.MIN].value, 2), expected_values[index][1])
-                self.assertEqual(np.round(statistics[MetricStatisticsType.P90].value, 2), expected_values[index][2])
+                self.assertEqual(np.round(statistics[0].value, 2), expected_values[index][0])
+                self.assertEqual(np.round(statistics[1].value, 2), expected_values[index][1])
+                self.assertEqual(np.round(statistics[2].value, 2), expected_values[index][2])
+                self.assertEqual(np.round(statistics[3].value, 2), expected_values[index][3])
 
                 time_series = statistic_result.time_series
                 assert isinstance(time_series, TimeSeries)

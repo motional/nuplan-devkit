@@ -1,12 +1,46 @@
-import random
 import unittest
-from copy import copy
+from typing import List, Union
 
-import numpy as np
+import mock
 
-from nuplan.planning.scenario_builder.nuplan_db.test.nuplan_scenario_test_utils import get_test_nuplan_scenario_builder
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder import NuPlanScenarioBuilder
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
+    GetScenariosFromDbFileParams,
+    ScenarioDict,
+)
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilter
 from nuplan.planning.utils.multithreading.worker_sequential import Sequential
+
+
+class MockNuPlanScenario:
+    """
+    A dummy NuPlanScenario class to use for unit testing
+    """
+
+    def __init__(self, token: str, scenario_type: str) -> None:
+        """
+        The mock object initialization method.
+        :param token: The token to use.
+        :param scenario_type: The scneario_type to use.
+        """
+        self._token = token
+        self._scenario_type = scenario_type
+
+    @property
+    def token(self) -> str:
+        """
+        Returns the object's token.
+        :return: The token.
+        """
+        return self._token
+
+    @property
+    def scenario_type(self) -> str:
+        """
+        Returns the object's scenario_type.
+        :return: The scenario_type.
+        """
+        return self._scenario_type
 
 
 class TestNuPlanScenarioBuilder(unittest.TestCase):
@@ -14,304 +48,267 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
     Tests scenario filtering and construction functionality.
     """
 
-    def setUp(self) -> None:
+    def test_get_scenarios_no_filters(self) -> None:
         """
-        Initialize the scenario builder.
+        Tests that the get_scenarios() method functions properly
+        With no additional filters applied.
         """
-        random.seed(0)
 
-        # Objects under test
-        self.scenario_builder = get_test_nuplan_scenario_builder()
-        self.worker = Sequential()
+        def db_file_patch(params: GetScenariosFromDbFileParams) -> ScenarioDict:
+            """
+            A patch for the get_scenarios_from_db_file method that validates the input args.
+            """
+            self.assertIsNone(params.filter_tokens)
+            self.assertIsNone(params.filter_types)
+            self.assertIsNone(params.filter_map_names)
 
-        # Test parameters
-        self.num_scenarios = 5
-        self.scenario_types = ['on_pickup_dropoff', 'starting_left_turn']
+            m1 = MockNuPlanScenario(token="a", scenario_type="type1")
+            m2 = MockNuPlanScenario(token="b", scenario_type="type1")
+            m3 = MockNuPlanScenario(token="c", scenario_type="type2")
 
-        # Expected results
-        total_samples_in_20s = 400  # 20s @ 20Hz
-        total_samples_margin = 5  # +/- 5 samples to account for sample shifts in scenes
-        self.min_samples_in_20s = total_samples_in_20s - total_samples_margin
-        self.max_samples_in_20s = total_samples_in_20s + total_samples_margin
+            return {"type1": [m1, m2], "type2": [m3]}
 
-    def test_all_unknown_single_sample_scenarios(self) -> None:
+        def discover_log_dbs_patch(load_path: Union[List[str], str]) -> List[str]:
+            """
+            A patch for the discover_log_dbs method.
+            """
+            return ["filename"]
+
+        with mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            db_file_patch,
+        ), mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
+            discover_log_dbs_patch,
+        ):
+            scenario_builder = NuPlanScenarioBuilder(
+                data_root="foo",
+                map_root="bar",
+                db_files=None,
+                map_version="baz",
+                max_workers=None,
+                verbose=False,
+                scenario_mapping=None,
+                vehicle_parameters=None,
+                ground_truth_predictions=None,
+            )
+
+            scenario_filter = ScenarioFilter(
+                scenario_types=None,
+                scenario_tokens=None,
+                log_names=None,
+                map_names=None,
+                num_scenarios_per_type=None,
+                limit_total_scenarios=None,
+                expand_scenarios=False,
+                remove_invalid_goals=False,
+                shuffle=False,
+            )
+
+            result = scenario_builder.get_scenarios(scenario_filter, Sequential())
+
+            self.assertEqual(3, len(result))
+            result.sort(key=lambda s: s.token)
+            self.assertEqual("a", result[0].token)
+            self.assertEqual("b", result[1].token)
+            self.assertEqual("c", result[2].token)
+
+    def test_get_scenarios_db_filters(self) -> None:
         """
-        Tests filtering of all unknown single-sample scenarios (e.g. used in open-loop training).
+        Tests that the get_scenarios() method functions properly with db filters applied.
         """
-        scenario_filter_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': None,
-            'log_names': None,
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': self.num_scenarios,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': True,
-        }
 
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
+        def db_file_patch(params: GetScenariosFromDbFileParams) -> ScenarioDict:
+            """
+            A patch for the get_scenarios_from_db_file method.
+            """
+            self.assertEqual(params.filter_tokens, ["a", "b", "c", "d", "e", "f"])
+            self.assertEqual(params.filter_types, ["type1", "type2", "type3"])
+            self.assertEqual(params.filter_map_names, ["map1", "map2"])
 
-        assert len(scenarios) == self.num_scenarios
-        assert len(scenarios[0]._lidarpc_tokens) == 1
+            self.assertTrue(params.log_file_absolute_path in ["filename1", "filename2"])
 
-    def test_all_unknown_mutli_sample_scenarios(self) -> None:
+            m1 = MockNuPlanScenario(token="a", scenario_type="type1")
+            m2 = MockNuPlanScenario(token="b", scenario_type="type1")
+            m3 = MockNuPlanScenario(token="c", scenario_type="type2")
+
+            return {"type1": [m1, m2], "type2": [m3]}
+
+        def discover_log_dbs_patch(load_path: Union[List[str], str]) -> List[str]:
+            """
+            A patch for the discover_log_dbs method.
+            """
+            return ["filename1", "filename2", "filename3"]
+
+        with mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            db_file_patch,
+        ), mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
+            discover_log_dbs_patch,
+        ):
+            scenario_builder = NuPlanScenarioBuilder(
+                data_root="foo",
+                map_root="bar",
+                db_files=None,
+                map_version="baz",
+                max_workers=None,
+                verbose=False,
+                scenario_mapping=None,
+                vehicle_parameters=None,
+                ground_truth_predictions=None,
+            )
+
+            scenario_filter = ScenarioFilter(
+                scenario_types=["type1", "type2", "type3"],
+                scenario_tokens=["a", "b", "c", "d", "e", "f"],
+                log_names=["filename1", "filename2"],
+                map_names=["map1", "map2"],
+                num_scenarios_per_type=None,
+                limit_total_scenarios=None,
+                expand_scenarios=False,
+                remove_invalid_goals=False,
+                shuffle=False,
+            )
+
+            result = scenario_builder.get_scenarios(scenario_filter, Sequential())
+
+            self.assertEqual(6, len(result))
+            result.sort(key=lambda s: s.token)
+            self.assertEqual("a", result[0].token)
+            self.assertEqual("a", result[1].token)
+            self.assertEqual("b", result[2].token)
+            self.assertEqual("b", result[3].token)
+            self.assertEqual("c", result[4].token)
+            self.assertEqual("c", result[5].token)
+
+    def test_get_scenarios_num_scenarios_per_type_filter(self) -> None:
         """
-        Tests filtering of all unknown multi-sample scenarios (e.g. used in closed-loop training or generic simulation).
+        Tests that the get_scenarios() method functions properly
+        With a num_scenarios_per_type filter applied.
         """
-        scenario_filter_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': None,
-            'log_names': None,
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': self.num_scenarios,
-            'expand_scenarios': False,
-            'remove_invalid_goals': False,
-            'shuffle': True,
-        }
 
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
+        def db_file_patch(params: GetScenariosFromDbFileParams) -> ScenarioDict:
+            """
+            A patch for the get_scenarios_from_db_file method
+            """
+            self.assertEqual(params.filter_tokens, ["a", "b", "c", "d", "e", "f"])
+            self.assertEqual(params.filter_types, ["type1", "type2", "type3"])
+            self.assertEqual(params.filter_map_names, ["map1", "map2"])
 
-        assert len(scenarios) == self.num_scenarios
-        assert self.min_samples_in_20s < len(scenarios[0]._lidarpc_tokens) < self.max_samples_in_20s
+            self.assertTrue(params.log_file_absolute_path in ["filename1", "filename2"])
 
-    def test_specific_single_sample_scenario_types(self) -> None:
+            m1 = MockNuPlanScenario(token="a", scenario_type="type1")
+            m2 = MockNuPlanScenario(token="b", scenario_type="type1")
+            m3 = MockNuPlanScenario(token="c", scenario_type="type2")
+
+            return {"type1": [m1, m2], "type2": [m3]}
+
+        def discover_log_dbs_patch(load_path: Union[List[str], str]) -> List[str]:
+            """
+            A patch for the discover_log_dbs method
+            """
+            return ["filename1", "filename2", "filename3"]
+
+        with mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            db_file_patch,
+        ), mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
+            discover_log_dbs_patch,
+        ):
+            scenario_builder = NuPlanScenarioBuilder(
+                data_root="foo",
+                map_root="bar",
+                db_files=None,
+                map_version="baz",
+                max_workers=None,
+                verbose=False,
+                scenario_mapping=None,
+                vehicle_parameters=None,
+                ground_truth_predictions=None,
+            )
+
+            scenario_filter = ScenarioFilter(
+                scenario_types=["type1", "type2", "type3"],
+                scenario_tokens=["a", "b", "c", "d", "e", "f"],
+                log_names=["filename1", "filename2"],
+                map_names=["map1", "map2"],
+                num_scenarios_per_type=2,
+                limit_total_scenarios=None,
+                expand_scenarios=False,
+                remove_invalid_goals=False,
+                shuffle=False,
+            )
+
+            result = scenario_builder.get_scenarios(scenario_filter, Sequential())
+
+            self.assertEqual(4, len(result))
+            self.assertEqual(2, sum(1 if s.scenario_type == "type1" else 0 for s in result))
+            self.assertEqual(2, sum(1 if s.scenario_type == "type2" else 0 for s in result))
+
+    def test_get_scenarios_total_num_scenarios_filter(self) -> None:
         """
-        Tests filtering of specific single-sample scenario types (e.g. used in open-loop evaluatiion of a model).
+        Tests that the get_scenarios() method functions properly
+        With a total_num_scenarios filter.
         """
-        scenario_filter_kwargs = {
-            'scenario_types': self.scenario_types,
-            'scenario_tokens': None,
-            'log_names': None,
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': self.num_scenarios,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': True,
-        }
 
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
+        def db_file_patch(params: GetScenariosFromDbFileParams) -> ScenarioDict:
+            """
+            A patch for the get_scenarios_from_db_file method
+            """
+            self.assertEqual(params.filter_tokens, ["a", "b", "c", "d", "e", "f"])
+            self.assertEqual(params.filter_types, ["type1", "type2", "type3"])
+            self.assertEqual(params.filter_map_names, ["map1", "map2"])
 
-        assert len(scenarios) == self.num_scenarios
-        assert len(scenarios[0]._lidarpc_tokens) == 1
+            self.assertTrue(params.log_file_absolute_path in ["filename1", "filename2"])
 
-    def test_specific_single_sample_scenario_types_2(self) -> None:
-        """
-        Tests filtering of a specific single-sample scenario type (e.g. used in open-loop evaluatiion of a model).
-        """
-        scenario_filter_kwargs = {
-            'scenario_types': self.scenario_types,
-            'scenario_tokens': None,
-            'log_names': None,
-            'map_names': None,
-            'num_scenarios_per_type': self.num_scenarios,
-            'limit_total_scenarios': None,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': True,
-        }
+            m1 = MockNuPlanScenario(token="a", scenario_type="type1")
+            m2 = MockNuPlanScenario(token="b", scenario_type="type1")
+            m3 = MockNuPlanScenario(token="c", scenario_type="type2")
 
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
+            return {"type1": [m1, m2], "type2": [m3]}
 
-        assert len(scenarios) == len(self.scenario_types) * self.num_scenarios
-        assert len(scenarios[0]._lidarpc_tokens) == 1
+        def discover_log_dbs_patch(load_path: Union[List[str], str]) -> List[str]:
+            """
+            A patch for the discover_log_dbs method
+            """
+            return ["filename1", "filename2", "filename3"]
 
-        for scenario in scenarios:
-            assert scenario.scenario_type in self.scenario_types
+        with mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            db_file_patch,
+        ), mock.patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
+            discover_log_dbs_patch,
+        ):
+            scenario_builder = NuPlanScenarioBuilder(
+                data_root="foo",
+                map_root="bar",
+                db_files=None,
+                map_version="baz",
+                max_workers=None,
+                verbose=False,
+                scenario_mapping=None,
+                vehicle_parameters=None,
+                ground_truth_predictions=None,
+            )
 
-    def test_specific_multi_sample_scenario_types(self) -> None:
-        """
-        Tests filtering of specific multi-sample scenario types (e.g. to compute metrics across all scenario types).
-        """
-        scenario_filter_kwargs = {
-            'scenario_types': self.scenario_types,
-            'scenario_tokens': None,
-            'log_names': None,
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': self.num_scenarios,
-            'expand_scenarios': False,
-            'remove_invalid_goals': False,
-            'shuffle': True,
-        }
+            scenario_filter = ScenarioFilter(
+                scenario_types=["type1", "type2", "type3"],
+                scenario_tokens=["a", "b", "c", "d", "e", "f"],
+                log_names=["filename1", "filename2"],
+                map_names=["map1", "map2"],
+                num_scenarios_per_type=None,
+                limit_total_scenarios=5,
+                expand_scenarios=False,
+                remove_invalid_goals=False,
+                shuffle=False,
+            )
 
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
+            result = scenario_builder.get_scenarios(scenario_filter, Sequential())
 
-        assert len(scenarios) == self.num_scenarios
-        assert self.min_samples_in_20s < len(scenarios[0]._lidarpc_tokens) < self.max_samples_in_20s
-
-    def test_scenario_construction_from_token(self) -> None:
-        """
-        Tests filtering scenarios based on custom token input.
-        """
-        log_name = '2021.08.31.14.40.58_veh-40_00285_00668'
-        token = '97f9f797bc635eb6'
-
-        scenario_filter_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': [(log_name, token)],
-            'log_names': None,
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': None,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': False,
-        }
-
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
-
-        assert len(scenarios) == 1
-        assert len(scenarios[0]._lidarpc_tokens) == 1
-        assert scenarios[0].token == token
-        assert scenarios[0].log_name == log_name
-
-    def test_scenario_filtering_by_log_name(self) -> None:
-        """
-        Tests filtering scenarios by log name.
-        """
-        log_name = "2021.07.16.20.45.29_veh-35_01095_01486"
-
-        scenario_filter_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': None,
-            'log_names': [log_name],
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': self.num_scenarios,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': False,
-        }
-
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
-
-        assert len(scenarios) == self.num_scenarios
-        assert len(scenarios[0]._lidarpc_tokens) == 1
-
-        for scenario in scenarios:
-            assert scenario.log_name == log_name
-
-    def test_scenario_filtering_by_map_name(self) -> None:
-        """
-        Tests filtering scenarios by map name.
-        """
-        map_name = "us-nv-las-vegas-strip"
-
-        scenario_filter_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': None,
-            'log_names': None,
-            'map_names': [map_name],
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': self.num_scenarios,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': False,
-        }
-
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
-
-        assert len(scenarios) == self.num_scenarios
-        assert len(scenarios[0]._lidarpc_tokens) == 1
-
-        for scenario in scenarios:
-            assert scenario._initial_lidarpc.log.map_version == map_name
-
-    def test_remove_invalid_goals(self) -> None:
-        """
-        Tests that invalid mission goals are correctly filtered out.
-        """
-        filter_with_invalid_goals_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': None,
-            'log_names': ["2021.07.16.20.45.29_veh-35_01095_01486"],
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': 50,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': False,
-        }
-
-        filter_with_valid_goals_args = copy(filter_with_invalid_goals_kwargs)
-        filter_with_valid_goals_args['remove_invalid_goals'] = True
-
-        scenarios_with_invalid_goals = self.scenario_builder.get_scenarios(
-            ScenarioFilter(**filter_with_invalid_goals_kwargs), self.worker
-        )
-        scenarios_with_valid_goals = self.scenario_builder.get_scenarios(
-            ScenarioFilter(**filter_with_valid_goals_args), self.worker
-        )
-
-        scenarios_invalid_goals_removed_tokens = [scenario.token for scenario in scenarios_with_valid_goals]
-
-        for scenario in scenarios_with_invalid_goals:
-            if scenario.token not in scenarios_invalid_goals_removed_tokens:
-                assert scenario.get_mission_goal() is None
-            else:
-                assert scenario.get_mission_goal() is not None
-
-    @unittest.skip('We no longer assume that scenarios are sorted by time.')
-    def test_limit_scenarios_incrementally(self) -> None:
-        """
-        Tests that limit scenario filter is applied incrementally on the list of samples.
-        """
-        log_name = "2021.07.16.20.45.29_veh-35_01095_01486"
-
-        scenario_filter_kwargs = {
-            'scenario_types': None,
-            'scenario_tokens': None,
-            'log_names': [log_name],
-            'map_names': None,
-            'num_scenarios_per_type': None,
-            'limit_total_scenarios': 0.05,
-            'expand_scenarios': True,
-            'remove_invalid_goals': False,
-            'shuffle': False,
-        }
-
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
-
-        assert len(scenarios) > 0
-        assert len(scenarios[0]._lidarpc_tokens) == 1
-
-        timestamps = [scenario.get_time_point(0).time_us for scenario in scenarios]
-        assert (np.diff(timestamps) > 0).all()
-
-    def test_multiple_filters(self) -> None:
-        """
-        Tests multiple filters simultaneously.
-        """
-        num_scenarios = 10
-        total_factor = 0.5
-        log_name = "2021.07.16.20.45.29_veh-35_01095_01486"
-        map_name = "us-nv-las-vegas-strip"
-        scenario_type = "on_pickup_dropoff"
-
-        scenario_filter_kwargs = {
-            'scenario_types': [scenario_type],
-            'scenario_tokens': None,
-            'log_names': [log_name],
-            'map_names': [map_name],
-            'num_scenarios_per_type': num_scenarios,
-            'limit_total_scenarios': total_factor,
-            'expand_scenarios': False,
-            'remove_invalid_goals': False,
-            'shuffle': True,
-        }
-
-        scenarios = self.scenario_builder.get_scenarios(ScenarioFilter(**scenario_filter_kwargs), self.worker)
-
-        assert 0 < len(scenarios) <= int(num_scenarios * total_factor)  # accounting for invalid goals
-        assert self.min_samples_in_20s < len(scenarios[0]._lidarpc_tokens) < self.max_samples_in_20s
-
-        for scenario in scenarios:
-            assert scenario.scenario_type == scenario_type
-            assert scenario._initial_lidarpc.log.map_version == map_name
-            assert scenario.log_name == log_name
+            self.assertEqual(5, len(result))
 
 
 if __name__ == '__main__':

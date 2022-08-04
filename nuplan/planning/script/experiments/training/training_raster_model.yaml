@@ -1,6 +1,7 @@
 # @package _global_
 experiment_name: training_raster_model
 py_func: train
+objective_aggregate_mode: mean
 
 defaults:
   - override /data_augmentation:

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -39,8 +39,8 @@ class WithinBoundMetricBase(MetricBase):
         """Inherited, see superclass."""
         return None
 
+    @staticmethod
     def _compute_within_bound(
-        self,
         time_series: TimeSeries,
         min_within_bound_threshold: Optional[float] = None,
         max_within_bound_threshold: Optional[float] = None,
@@ -76,7 +76,7 @@ class WithinBoundMetricBase(MetricBase):
         history: SimulationHistory,
         scenario: AbstractScenario,
         statistic_unit_name: str,
-        extract_function: Callable,  # type: ignore
+        extract_function: Any,
         extract_function_params: Dict[str, Any],
         min_within_bound_threshold: Optional[float] = None,
         max_within_bound_threshold: Optional[float] = None,
@@ -122,15 +122,20 @@ class WithinBoundMetricBase(MetricBase):
             max_within_bound_threshold=max_within_bound_threshold,
         )
         if self.within_bound_status is not None:
-            metric_statistics[MetricStatisticsType.BOOLEAN] = Statistic(
-                name=f'abs_{self.name}_within_bounds', unit='boolean', value=self.within_bound_status
+            metric_statistics.append(
+                Statistic(
+                    name=f'abs_{self.name}_within_bounds',
+                    unit=MetricStatisticsType.BOOLEAN.unit,
+                    value=self.within_bound_status,
+                    type=MetricStatisticsType.BOOLEAN,
+                )
             )
 
-        results = self._construct_metric_results(
+        results: List[MetricStatistics] = self._construct_metric_results(
             metric_statistics=metric_statistics, time_series=time_series, scenario=scenario
         )
 
-        return results  # type: ignore
+        return results
 
     def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """

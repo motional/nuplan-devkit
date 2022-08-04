@@ -8,10 +8,10 @@ import warnings
 from functools import lru_cache
 from typing import List, Sequence
 
-import fiona
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
+import pyogrio
 import rasterio
 
 from nuplan.database.common.blob_store.creator import BlobStoreCreator
@@ -244,16 +244,16 @@ class GPKGMapsDB(IMapsDB):
             warnings.filterwarnings("ignore")
 
             # The projected coordinate system depends on which UTM zone the mapped location is in.
-            map_meta = gpd.read_file(path_on_disk, layer="meta")
+            map_meta = gpd.read_file(path_on_disk, layer="meta", engine="pyogrio")
             projection_system = map_meta[map_meta["key"] == "projectedCoordSystem"]["value"].iloc[0]
 
-            gdf_in_pixel_coords = gpd.read_file(path_on_disk, layer=layer_name)
+            gdf_in_pixel_coords = pyogrio.read_dataframe(path_on_disk, layer=layer_name, fid_as_index=True)
             gdf_in_utm_coords = gdf_in_pixel_coords.to_crs(projection_system)
 
-            # Restore "fid" column, which isn't included by default due to a quirk.
-            # See http://kuanbutts.com/2019/07/02/gpkg-write-from-geopandas/
-            with fiona.open(path_on_disk, layer=layer_name) as fiona_collection:
-                gdf_in_utm_coords["fid"] = [f["id"] for f in fiona_collection]
+            # For backwards compatibility, cast the index to string datatype.
+            #   and mirror it to the "fid" column.
+            gdf_in_utm_coords.index = gdf_in_utm_coords.index.map(str)
+            gdf_in_utm_coords["fid"] = gdf_in_utm_coords.index
 
         return gdf_in_utm_coords
 
@@ -266,7 +266,7 @@ class GPKGMapsDB(IMapsDB):
         path_on_disk = os.path.join(self._map_root, rel_path)
         self._blob_store.save_to_disk(rel_path)
 
-        return fiona.listlayers(path_on_disk)  # type: ignore
+        return pyogrio.list_layers(path_on_disk)  # type: ignore
 
     def purge_cache(self) -> None:
         """Inherited, see superclass."""
