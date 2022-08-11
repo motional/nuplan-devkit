@@ -6,6 +6,7 @@ py_test(
     name = "test_nuplan_scenario_queries",
     size = "small",
     srcs = ["test_nuplan_scenario_queries.py"],
+    tags = ["manual"],
     deps = [
         ":minimal_db_test_utils",
         "//nuplan/common/actor_state:agent",
@@ -20,6 +21,7 @@ py_test(
     name = "test_db_cli_queries",
     size = "small",
     srcs = ["test_db_cli_queries.py"],
+    tags = ["manual"],
     deps = [
         ":minimal_db_test_utils",
         "//nuplan/database/nuplan_db:db_cli_queries",
