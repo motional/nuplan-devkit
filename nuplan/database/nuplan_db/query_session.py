@@ -13,6 +13,7 @@ def execute_many(query_text: str, query_parameters: Any, db_file: str) -> Genera
     """
     # Caching a connection saves around 600 uS for local databases.
     # By making it stateless, we get isolation, which is a huge plus.
+    print(f"patk DEBUG:{db_file}")
     connection = sqlite3.connect(db_file)
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
@@ -38,6 +39,7 @@ def execute_one(query_text: str, query_parameters: Any, db_file: str) -> Optiona
     """
     # Caching a connection saves around 600 uS for local databases.
     # By making it stateless, we get isolation, which is a huge plus.
+    print(f"patk DEBUG:{db_file}")
     connection = sqlite3.connect(db_file)
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
