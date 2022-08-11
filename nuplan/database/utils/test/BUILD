@@ -3,6 +3,15 @@ load("@rules_python//python:defs.bzl", "py_test")
 package(default_visibility = ["//visibility:public"])
 
 py_test(
+    name = "test_iterable_lidar_box",
+    size = "medium",
+    srcs = ["test_iterable_lidar_box.py"],
+    deps = [
+        "//nuplan/database/utils:iterable_lidar_box",
+    ],
+)
+
+py_test(
     name = "test_geometry",
     size = "medium",
     srcs = ["test_geometry.py"],

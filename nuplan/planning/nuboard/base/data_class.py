@@ -56,7 +56,7 @@ class NuBoardFile:
         :return True if both objects are same.
         """
         if not isinstance(other, NuBoardFile):
-            raise NotImplementedError
+            return NotImplemented
 
         return (
             other.simulation_main_path == self.simulation_main_path

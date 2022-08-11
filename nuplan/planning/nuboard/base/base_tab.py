@@ -92,16 +92,18 @@ class BaseTab:
         ]
         return enable_planner_names
 
-    def get_plot_cols(self, plot_width: int, default_col_width: int = 1024) -> int:
+    def get_plot_cols(self, plot_width: int, default_col_width: int = 1024, offset_width: int = 0) -> int:
         """
         Return number of columns for a grid plot.
         :param plot_width: Plot width.
         :param default_col_width: The number of columns would be 1 if window width is lower than this value.
+        :param offset_width: Additional offset width.
         :return: Get a number of columns for a grid plot.
         """
-        if self.window_width <= default_col_width:
+        window_width = self.window_width - offset_width
+        if window_width <= default_col_width:
             return 1
-        col_num = 1 + round((self.window_width - default_col_width) / plot_width)
+        col_num = 1 + round((window_width - default_col_width) / plot_width)
         return col_num
 
     def get_scatter_sign(self, index: int) -> str:

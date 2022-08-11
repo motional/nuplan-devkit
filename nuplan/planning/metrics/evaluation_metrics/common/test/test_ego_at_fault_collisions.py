@@ -9,7 +9,6 @@ from nuplan.planning.metrics.evaluation_metrics.common.ego_at_fault_collisions i
     EgoAtFaultCollisionStatistics,
 )
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
-from nuplan.planning.metrics.metric_result import MetricStatisticsType
 from nuplan.planning.metrics.utils.testing_utils import build_mock_history_scenario_test, metric_statistic_test
 
 
@@ -21,14 +20,14 @@ def test_ego_not_collision(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_result = metric_statistic_test(scene=scene, metric=metric)
     statistics = metric_result.statistics
 
     # No at_fault collisions
-    assert statistics[MetricStatisticsType.COUNT].value == 0
+    assert statistics[0].value == 0
     # No collisions
     assert len(metric.all_collisions) == 0
 
@@ -41,7 +40,7 @@ def test_active_front_collision(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_statistic_test(scene=scene, metric=metric)
@@ -62,7 +61,7 @@ def test_active_lateral_collision(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_statistic_test(scene=scene, metric=metric)
@@ -83,7 +82,7 @@ def test_active_rear_collision(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_statistic_test(scene=scene, metric=metric)
@@ -104,7 +103,7 @@ def test_stopped_track_collision(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_statistic_test(scene=scene, metric=metric)
@@ -125,7 +124,7 @@ def test_stopped_ego_collision(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_statistic_test(scene=scene, metric=metric)
@@ -147,7 +146,7 @@ def test_multiple_collisions(scene: Dict[str, Any]) -> None:
     """
     ego_lane_change_metric = EgoLaneChangeStatistics('ego_lane_change_statistics', 'Planning', max_fail_rate=0.3)
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
+    _ = ego_lane_change_metric.compute(history, mock_abstract_scenario)[0]
 
     metric = EgoAtFaultCollisionStatistics('ego_at_fault_collisions_statistics', 'Planning', ego_lane_change_metric)
     metric_statistic_test(scene=scene, metric=metric)

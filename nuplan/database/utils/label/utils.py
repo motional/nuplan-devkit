@@ -83,6 +83,8 @@ PBVTB_LABELMAPPING = LabelMapping(local2id=raw_mapping['local2id'])
 
 local2agent_type = {
     "generic_object": "GENERIC_OBJECT",
+    "genericobjects": "GENERIC_OBJECT",
+    "obstacles": "GENERIC_OBJECT",
     "car": "VEHICLE",
     "ped": "PEDESTRIAN",
     "bike": "BICYCLE",
@@ -90,4 +92,6 @@ local2agent_type = {
     "trafficcone": "TRAFFIC_CONE",
     "barrier": "BARRIER",
     "czone_sign": "CZONE_SIGN",
+    "short_vehicle": "VEHICLE",
+    "long_vehicle": "VEHICLE",
 }

@@ -1,10 +1,16 @@
 from dataclasses import dataclass
 from functools import cached_property
-from typing import List, Optional
+from typing import List, Optional, Union
 
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
+
+# EgoState is used if trajectory contains ego positions
+# Waypoint is used if trajectory contains agent positions
+# TODO Refactor EgoState such that it will inherit from Waypoint
+WaypointTypes = Union[Waypoint, EgoState]
 
 
 @dataclass
@@ -15,10 +21,10 @@ class PredictedTrajectory:
     probability: float
 
     # List of predicted waypoints, if None, we appended the predictions to have desired length
-    waypoints: List[Optional[Waypoint]]
+    waypoints: List[Optional[WaypointTypes]]
 
     @property
-    def valid_waypoints(self) -> List[Waypoint]:
+    def valid_waypoints(self) -> List[WaypointTypes]:
         """
         Interface to get only valid waypoints
         :return: waypoints which are not None

@@ -18,3 +18,4 @@ defaults:
       - time_to_collision_statistics
       - speed_limit_violation_statistics
       - ego_is_comfortable_statistics
+      - ego_is_making_progress_statistics

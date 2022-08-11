@@ -1,5 +1,5 @@
 distributed_training:
-  lr_scaling_method: none #[none, linearly, equal_variance] method by which to scale lr using world size (number of GPUs)
+  equal_variance_scaling_strategy: true  # scales lr and betas either linearly if false (multiply by num GPUs) or with equal_variance if true (multiply by sqaure root of num GPUs)
 
 trainer:
   checkpoint:
@@ -23,7 +23,7 @@ trainer:
     accelerator: ddp  # distribution method
     precision: 16  # floating point precision
     amp_level: O2  # AMP optimization level
-    num_nodes: 1 # Number of nodes used for training
+    num_nodes: 1  # Number of nodes used for training
 
     auto_scale_batch_size: false
     auto_lr_find: false  # tunes LR before beginning training

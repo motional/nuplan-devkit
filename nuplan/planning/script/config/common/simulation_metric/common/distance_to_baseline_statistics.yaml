@@ -1,5 +1,0 @@
-distance_to_baseline_statistics:
-  _target_: nuplan.planning.metrics.evaluation_metrics.common.distance_to_baseline.DistanceToBaselineStatistics
-  _convert_: 'all'
-  name: 'distance_to_baseline'
-  category: 'Planning'

@@ -5,19 +5,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 import numpy as np
-from bokeh.models import (
-    Button,
-    ColumnDataSource,
-    GlyphRenderer,
-    HoverTool,
-    LayoutDOM,
-    Legend,
-    Line,
-    MultiLine,
-    MultiPolygons,
-    Slider,
-)
-from bokeh.plotting import figure
+from bokeh.models import Button, ColumnDataSource, GlyphRenderer, HoverTool, LayoutDOM, Legend, Slider, Title
+from bokeh.plotting.figure import Figure
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
@@ -32,6 +21,7 @@ from nuplan.planning.nuboard.style import (
 )
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
+from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 from nuplan.planning.utils.serialization.to_scene import tracked_object_types
 
 
@@ -43,6 +33,9 @@ class BokehAgentStates(NamedTuple):
     agent_type: List[str]  # A list of agent's category
     track_id: List[Union[int, float]]  # A list of agent's track id
     track_token: List[str]  # A list of agent's track token
+    center_xs: List[float]  # [m], a list of center in x.
+    center_ys: List[float]  # [m], a list of center in y.
+    headings: List[float]  # [m], a list of headings
 
 
 @dataclass(frozen=True)
@@ -109,7 +102,7 @@ class TrafficLightPlot:
     """A dataclass for traffic light plot."""
 
     data_sources: Dict[int, ColumnDataSource] = field(default_factory=dict)  # A dict of data sources for each frame
-    plot: Optional[MultiLine] = None  # A bokeh glyph element
+    plot: Optional[GlyphRenderer] = None  # A bokeh glyph element
     condition: Optional[threading.Condition] = None  # Threading condition
 
     def __post_init__(self) -> None:
@@ -117,7 +110,7 @@ class TrafficLightPlot:
         if not self.condition:
             self.condition = threading.Condition(threading.Lock())
 
-    def update_plot(self, main_figure: figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
@@ -191,7 +184,7 @@ class EgoStatePlot:
     vehicle_parameters: VehicleParameters  # Ego vehicle parameters
     data_sources: Dict[int, ColumnDataSource] = field(default_factory=dict)  # A dict of data sources for each frame
     init_state: bool = True  # True to indicate it is in init state
-    plot: Optional[MultiPolygons] = None  # A bokeh glyph element
+    plot: Optional[GlyphRenderer] = None  # A bokeh glyph element
     condition: Optional[threading.Condition] = None  # Threading condition
 
     def __post_init__(self) -> None:
@@ -199,7 +192,7 @@ class EgoStatePlot:
         if not self.condition:
             self.condition = threading.Condition(threading.Lock())
 
-    def update_plot(self, main_figure: figure, radius: float, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, radius: float, frame_index: int) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
@@ -214,8 +207,8 @@ class EgoStatePlot:
                 self.condition.wait()
 
             data_sources = dict(self.data_sources[frame_index].data)
-            center_x = data_sources["x"][0]
-            center_y = data_sources["y"][0]
+            center_x = data_sources["center_x"][0]
+            center_y = data_sources["center_y"][0]
 
             if self.plot is None:
                 self.plot = main_figure.multi_polygons(
@@ -228,7 +221,13 @@ class EgoStatePlot:
                     source=data_sources,
                 )
                 ego_hover = HoverTool(
-                    renderers=[self.plot], tooltips=[("x", "$x{0.2f}"), ("y", "$y{0.2f}"), ("Type", "Ego")]
+                    renderers=[self.plot],
+                    tooltips=[
+                        ("center_x [m]", "@center_x{0.2f}"),
+                        ("center_y [m]", "@center_y{0.2f}"),
+                        ("heading [rad]", "@heading{0.2f}"),
+                        ("type", "Ego"),
+                    ],
                 )
                 main_figure.add_tools(ego_hover)
             else:
@@ -268,7 +267,13 @@ class EgoStatePlot:
                 corner_xs.append(corner_xs[0])
                 corner_ys.append(corner_ys[0])
                 source = ColumnDataSource(
-                    dict(x=[ego_pose.center.x], y=[ego_pose.center.y], xs=[[[corner_xs]]], ys=[[[corner_ys]]])
+                    dict(
+                        center_x=[ego_pose.center.x],
+                        center_y=[ego_pose.center.y],
+                        heading=[ego_pose.center.heading],
+                        xs=[[[corner_xs]]],
+                        ys=[[[corner_ys]]],
+                    )
                 )
                 self.data_sources[frame_index] = source
                 self.condition.notify()
@@ -279,7 +284,7 @@ class EgoStateTrajectoryPlot:
     """A dataclass for ego state trajectory plot."""
 
     data_sources: Dict[int, ColumnDataSource] = field(default_factory=dict)  # A dict of data sources for each frame
-    plot: Optional[Line] = None  # A bokeh glyph element
+    plot: Optional[GlyphRenderer] = None  # A bokeh glyph element
     condition: Optional[threading.Condition] = None  # Threading condition
 
     def __post_init__(self) -> None:
@@ -287,7 +292,7 @@ class EgoStateTrajectoryPlot:
         if not self.condition:
             self.condition = threading.Condition(threading.Lock())
 
-    def update_plot(self, main_figure: figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
@@ -369,7 +374,7 @@ class AgentStatePlot:
 
         return number_track_id
 
-    def update_plot(self, main_figure: figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
@@ -402,11 +407,11 @@ class AgentStatePlot:
                     agent_hover = HoverTool(
                         renderers=[self.plots[category]],
                         tooltips=[
-                            ("x", "$x{0.2f}"),
-                            ("y", "$y{0.2f}"),
-                            ("Type", "@agent_type"),
-                            ("Track id", "@track_id"),
-                            ("Track token", "@track_token"),
+                            ("center_x [m]", "@center_xs{0.2f}"),
+                            ("center_y [m]", "@center_ys{0.2f}"),
+                            ("heading [rad]", "@headings{0.2f}"),
+                            ("type", "@agent_type"),
+                            ("track token", "@track_token"),
                         ],
                     )
                     main_figure.add_tools(agent_hover)
@@ -423,6 +428,9 @@ class AgentStatePlot:
 
         with self.condition:
             for frame_index, sample in enumerate(history.data):
+                if not isinstance(sample.observation, DetectionsTracks):
+                    continue
+
                 tracked_objects = sample.observation.tracked_objects
                 frame_dict = {}
                 for tracked_object_type_name, tracked_object_type in tracked_object_types.items():
@@ -431,6 +439,9 @@ class AgentStatePlot:
                     track_ids = []
                     track_tokens = []
                     agent_types = []
+                    center_xs = []
+                    center_ys = []
+                    headings = []
 
                     for tracked_object in tracked_objects.get_tracked_objects_of_type(tracked_object_type):
                         agent_corners = tracked_object.box.all_corners()
@@ -440,7 +451,9 @@ class AgentStatePlot:
                         corners_y.append(corners_y[0])
                         corner_xs.append([[corners_x]])
                         corner_ys.append([[corners_y]])
-
+                        center_xs.append(tracked_object.center.x)
+                        center_ys.append(tracked_object.center.y)
+                        headings.append(tracked_object.center.heading)
                         agent_types.append(tracked_object_type.fullname)
                         track_ids.append(self._get_track_id(tracked_object.track_token))
                         track_tokens.append(tracked_object.track_token)
@@ -451,6 +464,9 @@ class AgentStatePlot:
                         track_id=track_ids,
                         track_token=track_tokens,
                         agent_type=agent_types,
+                        center_xs=center_xs,
+                        center_ys=center_ys,
+                        headings=headings,
                     )
 
                     frame_dict[tracked_object_type_name] = ColumnDataSource(agent_states._asdict())
@@ -465,7 +481,6 @@ class AgentStateHeadingPlot:
 
     data_sources: Dict[int, Dict[str, ColumnDataSource]] = field(default_factory=dict)  # A dict of data for each frame
     plots: Dict[str, GlyphRenderer] = field(default_factory=dict)  # A dict of plots for each type
-    plot: Optional[MultiLine] = None  # A bokeh glyph element
     condition: Optional[threading.Condition] = None  # Threading condition
 
     def __post_init__(self) -> None:
@@ -473,7 +488,7 @@ class AgentStateHeadingPlot:
         if not self.condition:
             self.condition = threading.Condition(threading.Lock())
 
-    def update_plot(self, main_figure: figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
@@ -515,6 +530,9 @@ class AgentStateHeadingPlot:
 
         with self.condition:
             for frame_index, sample in enumerate(history.data):
+                if not isinstance(sample.observation, DetectionsTracks):
+                    continue
+
                 tracked_objects = sample.observation.tracked_objects
                 frame_dict: Dict[str, Any] = {}
                 for tracked_object_type_name, tracked_object_type in tracked_object_types.items():
@@ -551,10 +569,11 @@ class SimulationFigure:
     vehicle_parameters: VehicleParameters  # Ego parameters
 
     # Rendering objects
-    figure: figure  # Bokeh figure
+    figure: Figure  # Bokeh figure
     slider: Slider  # Bokeh slider to this figure
     video_button: Button  # Bokeh video button to this figure
     figure_title_name: str  # Figure title name
+    x_y_coordinate_title: Title  # Title renderer for x and y coordinate
     time_us: Optional[List[int]] = None  # Timestamp in microsecond
     mission_goal_plot: Optional[GlyphRenderer] = None  # Mission goal plot
     expert_trajectory_plot: Optional[GlyphRenderer] = None  # Expert trajectory plot
@@ -569,6 +588,9 @@ class SimulationFigure:
 
     # Optional simulation data
     lane_connectors: Optional[Dict[str, LaneConnector]] = None  # Lane connector id: lane connector
+
+    # Dataclass
+    glyph_names_from_checkbox_group: Optional[Dict[str, str]] = None  # Correct glyph names from checkbox groups
 
     def __post_init__(self) -> None:
         """Initialize all plots and data sources."""
@@ -709,6 +731,101 @@ class SimulationFigure:
             line_width=simulation_tile_trajectory_style["expert_ego"]["line_width"],
             source=expert_ego_trajectory_state,
         )
+
+    @staticmethod
+    def _update_glyph_visibility(glyphs: List[Optional[GlyphRenderer]]) -> None:
+        """
+        Update visibility in a list of glyphs.
+        :param glyphs: A list of glyphs.
+        """
+        for glyph in glyphs:
+            if glyph is not None:
+                glyph.visible = not glyph.visible
+
+    def get_glyph_name_from_checkbox_group(self, glyph_checkbox_group_name: str) -> str:
+        """
+        Get the correct glyph name of each glyph type based on the name from checkbox group.
+        :param glyph_checkbox_group_name: glyph name from a checkbox group.
+        :return Correct glyph name based on the glyph name from checkbox groups.
+        """
+        if not self.glyph_names_from_checkbox_group:
+            self.glyph_names_from_checkbox_group = {
+                'Vehicle': 'vehicles',
+                'Pedestrian': 'pedestrians',
+                'Bicycle': 'bicycles',
+                'Generic': 'genericobjects',
+                'Traffic Cone': 'traffic_cone',
+                'Barrier': 'barrier',
+                'Czone Sign': 'czone_sign',
+                'Lane': SemanticMapLayer.LANE.name,
+                'Intersection': SemanticMapLayer.INTERSECTION.name,
+                'Stop Line': SemanticMapLayer.STOP_LINE.name,
+                'Crosswalk': SemanticMapLayer.CROSSWALK.name,
+                'Walkway': SemanticMapLayer.WALKWAYS.name,
+                'Carpark': SemanticMapLayer.CARPARK_AREA.name,
+                'Lane Connector': SemanticMapLayer.LANE_CONNECTOR.name,
+                'Lane Line': SemanticMapLayer.LANE.name,
+            }
+
+        name = self.glyph_names_from_checkbox_group.get(glyph_checkbox_group_name, None)
+        if not name:
+            raise ValueError(f"{glyph_checkbox_group_name} is not a valid glyph name!")
+        return name
+
+    def _get_trajectory_glyph_to_update(self, glyph_name: str) -> List[Optional[GlyphRenderer]]:
+        """
+        Get a trajectory glyph to update its visibility.
+        :param glyph_name: Glyph name.
+        :return A list of glyphs to be updated.
+        """
+        if glyph_name == 'Expert Trajectory':
+            return [self.expert_trajectory_plot if self.expert_trajectory_plot is not None else None]
+        elif glyph_name == 'Ego Trajectory':
+            return [self.ego_state_trajectory_plot.plot if self.ego_state_trajectory_plot is not None else None]
+        elif glyph_name == 'Goal':
+            return [self.mission_goal_plot]
+        elif glyph_name == 'Traffic Light':
+            return [self.traffic_light_plot.plot if self.traffic_light_plot is not None else None]
+        else:
+            raise ValueError(f"{glyph_name} is not a valid trajectory name.")
+
+    def _get_agent_glyph_to_update(self, glyph_name: str) -> List[Optional[GlyphRenderer]]:
+        """
+        Update an agent glyph to update its visibility.
+        :param glyph_name: Glyph name.
+        :return A list of glyphs to be updated.
+        """
+        object_type_name = self.get_glyph_name_from_checkbox_group(glyph_checkbox_group_name=glyph_name)
+        return [
+            self.agent_state_plot.plots.get(object_type_name, None) if self.agent_state_plot is not None else None,
+            self.agent_state_heading_plot.plots.get(object_type_name, None)
+            if self.agent_state_heading_plot is not None
+            else None,
+        ]
+
+    def update_glyphs_visibility(self, glyph_names: Optional[List[str]] = None) -> None:
+        """
+        Update glyphs' visibility based on a list of glyph names.
+        :param glyph_names: List of glyph names to update their visibility.
+        """
+        if not glyph_names:
+            return
+        glyphs = []
+        for glyph_name in glyph_names:
+            if glyph_name == 'Ego':
+                glyphs += [self.ego_state_plot.plot if self.ego_state_plot is not None else None]
+            elif glyph_name in ['Expert Trajectory', 'Ego Trajectory', 'Goal', 'Traffic Light']:
+                glyphs += self._get_trajectory_glyph_to_update(glyph_name=glyph_name)
+            elif glyph_name in ['Vehicle', 'Pedestrian', 'Bicycle', 'Generic', 'Traffic Cone', 'Barrier', 'Czone Sign']:
+                glyphs += self._get_agent_glyph_to_update(glyph_name=glyph_name)
+            elif glyph_name in ['Lane', 'Intersection', 'Stop Line', 'Crosswalk', 'Walkway', 'Carpark']:
+                map_polygon_name = self.get_glyph_name_from_checkbox_group(glyph_checkbox_group_name=glyph_name)
+                glyphs += [self.map_polygon_plots.get(map_polygon_name, None)]
+            elif glyph_name in ['Lane Connector', 'Lane Line']:
+                map_line_name = self.get_glyph_name_from_checkbox_group(glyph_checkbox_group_name=glyph_name)
+                glyphs += [self.map_line_plots.get(map_line_name, None)]
+
+        self._update_glyph_visibility(glyphs=glyphs)
 
     def update_legend(self) -> None:
         """Update legend."""

@@ -21,7 +21,7 @@ class TestLQRTracker(unittest.TestCase):
         """Inherited, see superclass."""
         self.initial_time_point = TimePoint(0)
         self.scenario = MockAbstractScenario(initial_time_us=self.initial_time_point)
-        self.trajectory = InterpolatedTrajectory(self.scenario.get_expert_ego_trajectory())
+        self.trajectory = InterpolatedTrajectory(list(self.scenario.get_expert_ego_trajectory()))
         self.sampling_time = 0.5
         self.tracker = LQRTracker(
             q_diag=np.ones((1, 6)).flatten(),

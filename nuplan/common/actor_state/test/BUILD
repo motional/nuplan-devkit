@@ -74,6 +74,7 @@ py_test(
     srcs = ["test_agent.py"],
     deps = [
         "//nuplan/common/actor_state:agent",
+        "//nuplan/common/actor_state:agent_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/common/actor_state:waypoint",

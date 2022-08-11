@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from nuplan.common.actor_state.state_representation import TimePoint
+from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.planning.simulation.trajectory.predicted_trajectory import PredictedTrajectory
 
 
@@ -29,6 +30,16 @@ class AgentTemporalState:
         self._initial_time_stamp = initial_time_stamp
         self.predictions: List[PredictedTrajectory] = predictions if predictions is not None else []
         self.past_trajectory = past_trajectory
+
+    @property
+    def previous_state(self) -> Optional[Waypoint]:
+        """
+        :return: None if agent's previous state does not exists, otherwise return previous state
+        """
+        # At minimum 2 states are required since the last state is the same as current state
+        if not self.past_trajectory or len(self.past_trajectory.valid_waypoints) < 2:
+            return None
+        return self.past_trajectory.waypoints[-2]
 
     @property
     def predictions(self) -> List[PredictedTrajectory]:

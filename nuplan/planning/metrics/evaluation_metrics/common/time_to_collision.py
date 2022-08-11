@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -18,49 +18,51 @@ from nuplan.planning.metrics.utils.state_extractors import extract_ego_time_poin
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 from nuplan.planning.simulation.observation.idm.utils import is_agent_ahead, is_agent_behind
+from nuplan.planning.simulation.observation.observation_type import Observation
 
-TRACKS_POSE_SPEED_BOX = Tuple[List[npt.NDArray[np.float32]], List[npt.NDArray[np.float32]], List[List[OrientedBox]]]
+# Typing for trajectory of tracks pose, speed and box
+TRACKS_POSE_SPEED_BOX = Tuple[
+    List[npt.NDArray[np.float32]], List[npt.NDArray[np.float32]], List[npt.NDArray[OrientedBox]]
+]
 
 
 def extract_tracks_info_excluding_collided_tracks(
-    history: SimulationHistory,
+    ego_states: List[EgoState],
+    ego_timestamps: npt.NDArray[np.int32],
+    observations: List[Observation],
     all_collisions: List[Collisions],
     timestamps_in_common_or_connected_route_objs: List[int],
 ) -> TRACKS_POSE_SPEED_BOX:
     """
-    Extracts tracks pose, speed and oriented box for TTC: all lead tracks, plus lateral tracks if ego is in between lanes or in nondrivable area.
+    Extracts arrays of tracks pose, speed and oriented box for TTC: all lead tracks, plus lateral tracks if ego is in
+    between lanes or in nondrivable area.
 
-    :param history: History from a simulation engine
+    :param ego_states: A list of ego states
+    :param ego_timestamps: Array of times in time_us
+    :param observations: A list of observations
     :param all_collisions: List of all collisions in the history
     :param timestamps_in_common_or_connected_route_objs: List of timestamps where ego is in same or connected
         lanes/lane connectors
-    :return: A tuple of lists of arrays containing tracks poses, speed and represented box at each timestep.
+    :return: A tuple of lists of arrays of tracks pose, speed and represented box at each timestep.
     """
     collided_track_ids: Set[str] = set()
 
-    timestamps_in_collision = [collision.timestamp for collision in all_collisions]
-
     history_tracks_poses: List[npt.NDArray[np.float32]] = []
     history_tracks_speed: List[npt.NDArray[np.float32]] = []
-    history_tracks_boxes: List[List[OrientedBox]] = []
+    history_tracks_boxes: List[npt.NDArray[OrientedBox]] = []
 
-    for sample in history.data:
-        ego_state = sample.ego_state
-        timestamp = ego_state.time_point.time_us
-        observation = sample.observation
+    collision_time_dict = {
+        collision.timestamp: list(collision.collisions_id_data.keys()) for collision in all_collisions
+    }
 
-        # Check if ego is in a collision to have the collided tracks to be excluded from later timestamps
-        ego_in_collision = timestamp in timestamps_in_collision
-        # Check if ego is in between lanes or between/in nondrivable area, in this case we consider lead and lateral tracks for TTC
+    for (ego_state, timestamp, observation) in zip(ego_states, ego_timestamps, observations):
+
+        # Add the collided tracks at this timestamp to be excluded from later timestamps
+        collided_track_ids = collided_track_ids.union(set(collision_time_dict.get(timestamp, [])))
+
+        # Check if ego is in between lanes or between/in nondrivable area, in this case we consider
+        # lead and lateral tracks for TTC
         ego_not_in_common_or_connected_route_objs = timestamp not in timestamps_in_common_or_connected_route_objs
-
-        if ego_in_collision:
-            new_collided_track = [
-                list(collision.collisions_id_data.keys())
-                for collision in all_collisions
-                if collision.timestamp == timestamp
-            ][0]
-            collided_track_ids = collided_track_ids.union(set(new_collided_track))
 
         tracked_objects = [
             tracked_object
@@ -88,7 +90,7 @@ def extract_tracks_info_excluding_collided_tracks(
 
         history_tracks_poses.append(np.array(poses))
         history_tracks_speed.append(np.array(speeds))
-        history_tracks_boxes.append(boxes)
+        history_tracks_boxes.append(np.array(boxes))
 
     return history_tracks_poses, history_tracks_speed, history_tracks_boxes
 
@@ -135,26 +137,41 @@ class TimeToCollisionStatistics(MetricBase):
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         time_series: Optional[TimeSeries] = None,
     ) -> float:
         """Inherited, see superclass."""
         # Return 1.0 if time_to_collision_bound is True, otherwise 0
-        return float(metric_statistics[MetricStatisticsType.BOOLEAN].value)
+        return float(metric_statistics[-1].value)
+
+    @staticmethod
+    def _get_elongated_box_length(
+        length: float, dx: float, dy: float, time_horizon: float, time_step_size: float
+    ) -> float:
+        """
+        Helper to find the length of an elongated box projected up to a given time horizon.
+        :param length: The length of the OrientedBox
+        :param dx: Movement in x axis in global frame at each time_step_size
+        :param dy: Movement in y axis in global frame at each time_step_size
+        :param time_horizon: Time horizon for collision checking
+        :param time_step_size: Step size for the propagation of collision agents
+        :return: Length of elonated box up to time horizon.
+        """
+        return float(length + np.hypot(dx * time_horizon / time_step_size, dy * time_horizon / time_step_size))
 
     def compute_time_to_collision(
         self,
         history: SimulationHistory,
         ego_states: List[EgoState],
-        ego_timestamps: List[int],
+        ego_timestamps: npt.NDArray[np.int32],
         timestamps_in_common_or_connected_route_objs: List[int],
         all_collisions: List[Collisions],
         timestamps_at_fault_collisions: List[int],
-        stopped_speed_threshhold: float = 5e-03,
+        stopped_speed_threshold: float = 5e-03,
     ) -> npt.NDArray[np.float32]:
         """
-        Computes an estimate of the minimal time to collision with other agents. Agents are projected
-        with constant velocity until there is a collision with ego or the maximal time window is reached.
+        Computes an estimate of the minimal time to collision with other agents. Ego and agents are projected
+        with constant velocity until there is a collision or the maximal time window is reached.
 
         :param history The scenario history
         :param ego_states: A list of ego states
@@ -163,11 +180,14 @@ class TimeToCollisionStatistics(MetricBase):
         lanes/lane connectors
         :param all_collisions: List of all collisions in the history
         :param timestamps_at_fault_collisions: List of timestamps corresponding to at-fault-collisions in the history
-        :param stopped_speed_threshhold: Threshhold for 0 speed due to noise
+        :param stopped_speed_threshold: Threshold for 0 speed due to noise
         :return: The minimal TTC for each sample, inf if no collision is found within the projection horizon.
         """
         # Extract speed of ego from history.
         ego_velocities = extract_ego_velocity(history)
+
+        # Extract observation from history.
+        observations = [sample.observation for sample in history.data]
 
         # Extract tracks info, collided tracks are removed from the analysis after the first timestamp of the collision
         (
@@ -175,11 +195,14 @@ class TimeToCollisionStatistics(MetricBase):
             history_tracks_speed,
             history_tracks_boxes,
         ) = extract_tracks_info_excluding_collided_tracks(
-            history, all_collisions, timestamps_in_common_or_connected_route_objs
+            ego_states, ego_timestamps, observations, all_collisions, timestamps_in_common_or_connected_route_objs
         )
 
         # Default TTC to be inf
         time_to_collision: npt.NDArray[np.float32] = np.asarray([np.inf] * len(history))
+
+        time_step_size = self._time_step_size
+        time_horizon = self._time_horizon
 
         for i, (timestamp, ego_state, ego_speed, tracks_poses, tracks_speed, tracks_boxes) in enumerate(
             zip(
@@ -199,35 +222,91 @@ class TimeToCollisionStatistics(MetricBase):
                 continue
 
             # Remain inf if we don't have any agents or ego is stopped
-            if len(tracks_poses) == 0 or ego_speed <= stopped_speed_threshhold:
+            if len(tracks_poses) == 0 or ego_speed <= stopped_speed_threshold:
                 continue
-
-            ego_dx = np.cos(ego_state.center.heading) * ego_speed * self._time_step_size
-            ego_dy = np.sin(ego_state.center.heading) * ego_speed * self._time_step_size
-
-            tracks_dxy = np.array(
-                [
-                    np.cos(tracks_poses[:, 2]) * tracks_speed * self._time_step_size,  # type:ignore
-                    np.sin(tracks_poses[:, 2]) * tracks_speed * self._time_step_size,
-                ]
-            ).T
 
             ego_pose: npt.NDArray[np.float32] = np.array([*ego_state.center])
             ego_box = ego_state.car_footprint.oriented_box
 
-            # If there is no collision at this timestamp, find TTC by projecting oriented boxes with fixed speed and headings
-            for t in np.arange(self._time_step_size, self._time_horizon, self._time_step_size):
+            # Find ego movements in the global frame
+            ego_dx = np.cos(ego_pose[2]) * ego_speed * time_step_size
+            ego_dy = np.sin(ego_pose[2]) * ego_speed * time_step_size
+
+            # Find tracks' movements in the global frame, assume all tracks also follow the bicycle dynamic model
+            tracks_dxy = np.array(
+                [
+                    np.cos(tracks_poses[:, 2]) * tracks_speed * time_step_size,  # type:ignore
+                    np.sin(tracks_poses[:, 2]) * tracks_speed * time_step_size,
+                ]
+            ).T
+
+            # Find the center of elongated boxes if ego and tracks continue their movement with
+            # the same speed and heading
+            ego_elongated_box_center_pose: npt.NDArray[np.float32] = np.array(
+                [
+                    (time_horizon / time_step_size) / 2 * ego_dx + ego_pose[0],
+                    (time_horizon / time_step_size) / 2 * ego_dy + ego_pose[1],
+                    ego_pose[2],
+                ]
+            )
+
+            ego_elongated_box = OrientedBox(
+                StateSE2(*ego_elongated_box_center_pose),
+                self._get_elongated_box_length(ego_box.length, ego_dx, ego_dy, time_horizon, time_step_size),
+                ego_box.width,
+                ego_box.height,
+            )
+
+            # Project tracks poses up to the time_horizon
+            tracks_elongated_box_center_poses: npt.NDArray[np.float32] = np.concatenate(
+                (
+                    (time_horizon / time_step_size) / 2 * tracks_dxy + tracks_poses[:, :2],
+                    tracks_poses[:, 2].reshape(-1, 1),
+                ),
+                axis=1,
+            )
+            # Find the convex hulls including tracks initial and projected corners
+            tracks_elongated_boxes = [
+                OrientedBox(
+                    StateSE2(*track_elongated_box_center_pose),
+                    self._get_elongated_box_length(
+                        track_box.length, track_dxy[0], track_dxy[1], time_horizon, time_step_size
+                    ),
+                    track_box.width,
+                    track_box.height,
+                )
+                for track_box, track_dxy, track_elongated_box_center_pose in zip(
+                    tracks_boxes, tracks_dxy, tracks_elongated_box_center_poses
+                )
+            ]
+
+            # Find relevant tracks for which the elongated box overlaps with ego elongated box
+            relevant_tracks_mask = np.where(
+                [in_collision(ego_elongated_box, track_elongated_box) for track_elongated_box in tracks_elongated_boxes]
+            )[0]
+
+            # If there is no relevant track affecting TTC, remain inf
+            if not len(relevant_tracks_mask):
+                continue
+
+            # Find TTC for relevant tracks by projecting ego and tracks boxes with time_step_size
+            ttc_found = False
+            for t in np.arange(time_step_size, time_horizon, time_step_size):
                 # project ego's center pose and footprint with a fixed speed
                 ego_pose[:2] += (ego_dx, ego_dy)
-                ego_box = OrientedBox.from_new_pose(ego_box, StateSE2.deserialize(ego_pose))
+                projected_ego_box = OrientedBox.from_new_pose(ego_box, StateSE2(*ego_pose))
                 # project tracks's center pose and footprint with a fixed speed
                 tracks_poses[:, :2] += tracks_dxy
-                tracks_boxes = [
-                    OrientedBox.from_new_pose(track_box, StateSE2.deserialize(track_pose))
-                    for track_box, track_pose in zip(tracks_boxes, tracks_poses)
-                ]
-                if np.any([in_collision(ego_box, track_box) for track_box in tracks_boxes]):
-                    time_to_collision[i] = t
+                for track_box, track_pose in zip(
+                    tracks_boxes[relevant_tracks_mask], tracks_poses[relevant_tracks_mask]
+                ):
+                    projected_track_box = OrientedBox.from_new_pose(track_box, StateSE2(*track_pose))
+                    if in_collision(projected_ego_box, projected_track_box):
+                        time_to_collision[i] = t
+                        ttc_found = True
+                        break
+
+                if ttc_found:
                     break
 
         return time_to_collision
@@ -272,13 +351,18 @@ class TimeToCollisionStatistics(MetricBase):
         metric_statistics = self._compute_time_series_statistic(time_series=time_series)
 
         time_to_collision_within_bounds = self._least_min_ttc < np.array(time_to_collision)
-        metric_statistics[MetricStatisticsType.BOOLEAN] = Statistic(
-            name=f'{self.name}_within_bound', unit='boolean', value=bool(np.all(time_to_collision_within_bounds))
+        metric_statistics.append(
+            Statistic(
+                name=f'{self.name}_within_bound',
+                unit=MetricStatisticsType.BOOLEAN.unit,
+                value=bool(np.all(time_to_collision_within_bounds)),
+                type=MetricStatisticsType.BOOLEAN,
+            )
         )
-        results = self._construct_metric_results(
+        results: List[MetricStatistics] = self._construct_metric_results(
             metric_statistics=metric_statistics, time_series=time_series, scenario=scenario
         )
         # Save to load in high level metrics
         self.results = results
 
-        return results  # type: ignore
+        return results

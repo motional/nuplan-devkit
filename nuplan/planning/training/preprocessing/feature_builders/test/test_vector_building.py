@@ -10,6 +10,7 @@ from nuplan.planning.training.preprocessing.feature_builders.vector_builder_util
     LaneSegmentGroupings,
     LaneSegmentLaneIDs,
     LaneSegmentRoadBlockIDs,
+    LaneSegmentTrafficLightData,
     MapObjectPolylines,
     OnRouteStatusType,
     get_lane_polylines,
@@ -37,7 +38,7 @@ class TestVectorUtils(unittest.TestCase):
         self.traffic_light_data = scenario.get_traffic_light_status_at_iteration(0)
 
         self.radius = 20
-        self.map_features = ['LANE', 'ROUTE', 'STOP_LINE', 'CROSSWALK']
+        self.map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE']
 
     def test_get_lane_polylines(self) -> None:
         """
@@ -48,7 +49,7 @@ class TestVectorUtils(unittest.TestCase):
         assert type(lanes_mid) == MapObjectPolylines
         assert type(lanes_left) == MapObjectPolylines
         assert type(lanes_right) == MapObjectPolylines
-        assert type(lane_ids) == list
+        assert type(lane_ids) == LaneSegmentLaneIDs
 
     def test_get_map_object_polygons(self) -> None:
         """
@@ -119,7 +120,7 @@ class TestVectorUtils(unittest.TestCase):
 
         # check traffic light data
         assert 'LANE' in traffic_light_data
-        assert type(traffic_light_data['LANE']) == list
+        assert type(traffic_light_data['LANE']) == LaneSegmentTrafficLightData
 
 
 if __name__ == '__main__':

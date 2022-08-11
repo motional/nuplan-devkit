@@ -13,11 +13,11 @@ py_library(
     deps = [
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:imapsdb",
-        "//nuplan/database/nuplan_db:camera",
-        "//nuplan/database/nuplan_db:image",
-        "//nuplan/database/nuplan_db:lidar",
-        "//nuplan/database/nuplan_db:nuplandb",
-        "//nuplan/database/nuplan_db:nuplandb_wrapper",
+        "//nuplan/database/nuplan_db_orm:camera",
+        "//nuplan/database/nuplan_db_orm:image",
+        "//nuplan/database/nuplan_db_orm:lidar",
+        "//nuplan/database/nuplan_db_orm:nuplandb",
+        "//nuplan/database/nuplan_db_orm:nuplandb_wrapper",
     ],
 )
 
@@ -26,7 +26,7 @@ py_test(
     size = "small",
     srcs = ["test_nuplan.py"],
     deps = [
-        "//nuplan/database/nuplan_db:nuplandb",
+        "//nuplan/database/nuplan_db_orm:nuplandb",
         "//nuplan/database/tests:nuplan_db_test_utils",
     ],
 )

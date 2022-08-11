@@ -491,7 +491,14 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
             footprint = CarFootprint(
                 center=StateSE2(x=i, y=i, heading=i),
                 vehicle_parameters=VehicleParameters(
-                    width=i, front_length=i, rear_length=i, cog_position_from_rear_axle=i, wheel_base=i, height=i
+                    vehicle_name="vehicle_name",
+                    vehicle_type="vehicle_type",
+                    width=i,
+                    front_length=i,
+                    rear_length=i,
+                    cog_position_from_rear_axle=i,
+                    wheel_base=i,
+                    height=i,
                 ),
             )
             dynamic_car_state = DynamicCarState(

@@ -150,7 +150,7 @@ class Simulation:
         iteration = self._time_controller.get_iteration()
         ego_state = self._ego_controller.get_state()
         observation = self._observations.get_observation()
-        traffic_light_status = self._scenario.get_traffic_light_status_at_iteration(iteration.index)
+        traffic_light_status = list(self._scenario.get_traffic_light_status_at_iteration(iteration.index))
 
         # Add new sample to history
         logger.debug(f"Adding to history: {iteration.index}")

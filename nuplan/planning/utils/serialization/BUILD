@@ -24,10 +24,19 @@ py_library(
     name = "scene_simple_trajectory",
     srcs = ["scene_simple_trajectory.py"],
     deps = [
-        "@nuplan_devkit//nuplan/common/actor_state:oriented_box",
-        "@nuplan_devkit//nuplan/common/actor_state:state_representation",
-        "@nuplan_devkit//nuplan/common/actor_state:waypoint",
-        "@nuplan_devkit//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:waypoint",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+    ],
+)
+
+py_library(
+    name = "scene",
+    srcs = ["scene.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/planning/utils:color",
     ],
 )
 
@@ -35,11 +44,14 @@ py_library(
     name = "to_scene",
     srcs = ["to_scene.py"],
     deps = [
+        ":scene",
+        "//nuplan/common/actor_state:car_footprint",
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:ego_temporal_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
         "//nuplan/planning/utils:color",
     ],

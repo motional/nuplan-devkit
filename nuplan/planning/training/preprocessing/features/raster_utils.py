@@ -10,6 +10,7 @@ import numpy.typing as npt
 from scipy.spatial.transform import Rotation as R
 
 from nuplan.common.actor_state.agent import Agent
+from nuplan.common.actor_state.agent_state import AgentState
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.oriented_box import OrientedBox
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
@@ -58,7 +59,7 @@ def _cartesian_to_projective_coords(coords: npt.NDArray[np.float64]) -> npt.NDAr
 
 
 def _get_layer_coords(
-    agent: Agent,
+    agent: AgentState,
     map_api: AbstractMap,
     map_layer_name: SemanticMapLayer,
     map_layer_geometry: str,
@@ -176,7 +177,7 @@ def _draw_linestring_image(
 
 
 def get_roadmap_raster(
-    focus_agent: Agent,
+    focus_agent: AgentState,
     map_api: AbstractMap,
     map_features: Dict[str, int],
     x_range: Tuple[float, float],
@@ -186,7 +187,7 @@ def get_roadmap_raster(
 ) -> npt.NDArray[np.float32]:
     """
     Construct the map layer of the raster by converting vector map to raster map.
-    :param ego_state: SE2 state of ego.
+    :param focus_agent: agent state representing ego.
     :param map_api: map api.
     :param map_features: name of map features to be drawn and its color for encoding.
     :param x_range: [m] min and max range from the edges of the grid in x direction.
@@ -285,7 +286,7 @@ def get_agents_raster(
 
 
 def get_focus_agent_raster(
-    agent: Agent,
+    agent: AgentState,
     raster_shape: Tuple[int, int],
     ego_longitudinal_offset: float,
     target_pixel_size: float,
@@ -313,7 +314,7 @@ def get_focus_agent_raster(
 
 
 def get_non_focus_agents_raster(
-    focus_agent: Agent,
+    focus_agent: AgentState,
     other_agents: List[Agent],
     x_range: Tuple[float, float],
     y_range: Tuple[float, float],
@@ -406,7 +407,7 @@ def get_ego_raster(
 
 
 def get_baseline_paths_raster(
-    focus_agent: Agent,
+    focus_agent: AgentState,
     map_api: AbstractMap,
     x_range: Tuple[float, float],
     y_range: Tuple[float, float],
@@ -461,7 +462,7 @@ def get_baseline_paths_raster(
 
 
 def get_baseline_paths_agents_raster(
-    focus_agent: Agent,
+    focus_agent: AgentState,
     map_api: AbstractMap,
     x_range: Tuple[float, float],
     y_range: Tuple[float, float],
@@ -473,7 +474,7 @@ def get_baseline_paths_agents_raster(
     """
     Construct the baseline paths layer by converting vector map to raster map.
     This function is for agents raster model, it has 3 channels for baseline path.
-    :param ego_state: SE2 state of ego.
+    :param focus_agent: agent state representing ego.
     :param map_api: map api
     :param x_range: [m] min and max range from the edges of the grid in x direction.
     :param y_range: [m] min and max range from the edges of the grid in y direction.

@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from nuplan.planning.metrics.metric_result import MetricStatistics, Statistic, TimeSeries
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
@@ -31,7 +31,7 @@ class AbstractMetricBuilder(metaclass=ABCMeta):
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
+        metric_statistics: List[Statistic],
         time_series: Optional[TimeSeries] = None,
     ) -> float:
         """

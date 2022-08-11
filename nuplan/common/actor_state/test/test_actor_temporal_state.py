@@ -34,6 +34,8 @@ class TestActorTemporalState(unittest.TestCase):
         self.assertEqual(actor.past_trajectory.probability, 1.0)
         self.assertEqual(len(actor.past_trajectory.valid_waypoints), 2)
         self.assertEqual(len(actor.past_trajectory), 3)
+        # In this case since past_waypoints has size 2, first element is actually second last.
+        self.assertEqual(actor.previous_state, self.past_waypoints[0])
 
     def test_past_setting_fail(self) -> None:
         """Test that we can raise if past trajectory does not start at current state."""

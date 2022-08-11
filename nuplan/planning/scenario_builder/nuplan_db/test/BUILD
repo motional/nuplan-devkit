@@ -7,8 +7,7 @@ py_library(
     srcs = ["nuplan_scenario_test_utils.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/database/nuplan_db:nuplandb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/nuplan_db:nuplan_scenario_queries",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_utils",
@@ -17,30 +16,36 @@ py_library(
 
 py_test(
     name = "test_nuplan_scenario",
-    size = "medium",
+    size = "small",
     srcs = ["test_nuplan_scenario.py"],
     deps = [
+        "//nuplan/common/actor_state:agent",
+        "//nuplan/common/actor_state:oriented_box",
+        "//nuplan/common/actor_state:scene_object",
         "//nuplan/common/actor_state:state_representation",
-        "//nuplan/common/maps:abstract_map",
-        "//nuplan/common/maps:abstract_map_factory",
-        "//nuplan/database/nuplan_db:nuplandb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/common/actor_state:static_object",
+        "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/common/actor_state:vehicle_parameters",
+        "//nuplan/common/actor_state:waypoint",
+        "//nuplan/common/utils:interpolatable_state",
+        "//nuplan/database/nuplan_db/test:minimal_db_test_utils",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
-        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_utils",
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
     ],
 )
 
 py_test(
     name = "test_nuplan_scenario_builder",
-    size = "medium",
+    size = "small",
     srcs = ["test_nuplan_scenario_builder.py"],
     data = [
     ],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
-        "//nuplan/planning/script/builders:worker_pool_builder",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_filter_utils",
+        "//nuplan/planning/utils/multithreading:worker_sequential",
     ],
 )

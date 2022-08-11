@@ -58,4 +58,8 @@ AGENT_TYPES: Set[TrackedObjectType] = {
     TrackedObjectType.EGO,
 }
 
-STATIC_OBJECT_TYPES: Set[TrackedObjectType] = set()
+STATIC_OBJECT_TYPES: Set[TrackedObjectType] = {
+    TrackedObjectType.CZONE_SIGN,
+    TrackedObjectType.BARRIER,
+    TrackedObjectType.TRAFFIC_CONE,
+}

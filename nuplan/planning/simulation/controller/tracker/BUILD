@@ -29,3 +29,11 @@ py_library(
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
 )
+
+py_library(
+    name = "tracker_utils",
+    srcs = ["tracker_utils.py"],
+    deps = [
+        "//nuplan/common/geometry:compute",
+    ],
+)

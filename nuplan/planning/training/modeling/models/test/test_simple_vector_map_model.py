@@ -1,4 +1,5 @@
 import os
+import socket
 import unittest
 from typing import Callable, Dict, List
 
@@ -113,13 +114,25 @@ class TestVectorMapSimpleMLP(unittest.TestCase):
         loss.backward()
         optimizer.step()
 
-    def _init_distributed_process_group(self, port: int) -> None:
+    def _find_free_port(self) -> int:
+        """
+        Finds a free port to use for gloo server.
+        :return: A port not in use.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # passing "0" as port will instruct the OS to pick an open port at random.
+            s.bind(("localhost", 0))
+            address, port = s.getsockname()
+            return int(port)
+
+    def _init_distributed_process_group(self) -> None:
         """
         Sets up the torch distributed processing server.
-        :param port: The port to use for the gloo server.
+        :param port: The starting to use for the gloo server. If taken, it will increment by 1 until a free port is found.
+        :param max_port: The maximum port number to try.
         """
         os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = str(port)
+        os.environ["MASTER_PORT"] = str(self._find_free_port())
         os.environ["RANK"] = "0"
         os.environ["WORLD_SIZE"] = "1"
         torch.distributed.init_process_group(backend="gloo")
@@ -130,7 +143,7 @@ class TestVectorMapSimpleMLP(unittest.TestCase):
         This test was developed in response to an error like this one:
         https://discuss.pytorch.org/t/need-help-runtimeerror-expected-to-have-finished-reduction-in-the-prior-iteration-before-starting-a-new-one/119247
         """
-        self._init_distributed_process_group(port=12355)
+        self._init_distributed_process_group()
 
         device = torch.device("cpu")
 

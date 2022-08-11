@@ -344,8 +344,7 @@ def build_ego_features(ego_trajectory: List[EgoState], reverse: bool = False) ->
     Build agent features from the ego and agents trajectory
     :param ego_trajectory: ego trajectory comprising of EgoState [num_frames]
     :param reverse: if True, the last element in the list will be considered as the present ego state
-    :return: Tuple[ego_features, agent_features]
-             ego_features: <np.ndarray: num_frames, 3>
+    :return: ego_features: <np.ndarray: num_frames, 3>
                          The num_frames includes both present and past/future frames.
                          The last dimension is the ego pose (x, y, heading) at time t.
     """
@@ -356,6 +355,27 @@ def build_ego_features(ego_trajectory: List[EgoState], reverse: bool = False) ->
 
     ego_poses = [ego_state.rear_axle for ego_state in ego_trajectory]
     ego_relative_poses = convert_absolute_to_relative_poses(anchor_ego_state.rear_axle, ego_poses)
+
+    return ego_relative_poses
+
+
+def build_ego_center_features(ego_trajectory: List[EgoState], reverse: bool = False) -> FeatureDataType:
+    """
+    Build agent features from the ego and agents trajectory, using center of ego OrientedBox as reference points.
+    :param ego_trajectory: ego trajectory comprising of EgoState [num_frames]
+    :param reverse: if True, the last element in the list will be considered as the present ego state
+    :return: ego_features
+             ego_features: <np.ndarray: num_frames, 3>
+                         The num_frames includes both present and past/future frames.
+                         The last dimension is the ego pose (x, y, heading) at time t.
+    """
+    if reverse:
+        anchor_ego_state = ego_trajectory[-1]
+    else:
+        anchor_ego_state = ego_trajectory[0]
+
+    ego_poses = [ego_state.center for ego_state in ego_trajectory]
+    ego_relative_poses = convert_absolute_to_relative_poses(anchor_ego_state.center, ego_poses)
 
     return ego_relative_poses
 

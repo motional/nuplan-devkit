@@ -369,7 +369,7 @@ class LaneNet(nn.Module):
         """
         :param coords:<torch.FloatTensor: num_lanes, 2, 2>. Coordindates of the start and
                     end point of each lane segment.
-        :param conns:<torch.FloatTensor: num_scale, num_connections, 2>. Indices of the predecessor
+        :param conns:<torch.LongTensor: num_scale, num_connections, 2>. Indices of the predecessor
                     and successor segment pair with different scale/hop.
         :return:
             lane_features: <torch.FloatTensor: num lane segments across all batches,

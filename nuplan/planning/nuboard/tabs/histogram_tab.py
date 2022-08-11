@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from bokeh.document.document import Document
 from bokeh.layouts import column, gridplot, layout
-from bokeh.models import ColumnDataSource, Div, MultiChoice, Spinner, glyph
+from bokeh.models import ColumnDataSource, Div, HoverTool, MultiChoice, Spinner, glyph
 from bokeh.models.callbacks import CustomJS
 from bokeh.plotting import figure
 
@@ -430,6 +430,7 @@ class HistogramTab(BaseTab):
         :return a figure.
         """
         tooltips = [("Frequency", "@y_values"), ("Values", "@x_values{safe}"), ("Scenarios", "@scenario_names{safe}")]
+        hover_tool = HoverTool(tooltips=tooltips, point_policy="follow_mouse")
         statistic_figure = figure(
             background_fill_color=PLOT_PALETTE["background_white"],
             title=f"{title}",
@@ -439,7 +440,8 @@ class HistogramTab(BaseTab):
             height=self.plot_sizes[1],
             x_range=x_range,
             output_backend="webgl",
-            tooltips=tooltips,
+            active_scroll="wheel_zoom",
+            tools=["pan", "wheel_zoom", "save", "reset", hover_tool],
         )
 
         statistic_figure.title.text_font_size = histogram_tab_style["statistic_figure_title_text_font_size"]

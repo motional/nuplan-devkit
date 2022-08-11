@@ -11,7 +11,7 @@ import numpy.typing as npt
 import pandas
 from bokeh.document.document import Document
 from bokeh.layouts import LayoutDOM, column, gridplot, layout
-from bokeh.models import ColumnDataSource, Div, HoverTool, Select
+from bokeh.models import CheckboxGroup, ColumnDataSource, Div, HoverTool, Select
 from bokeh.models.callbacks import CustomJS
 from bokeh.plotting.figure import Figure
 
@@ -174,6 +174,40 @@ class ScenarioTab(BaseTab):
         self._simulation_figure_data: List[Any] = []
         self._available_scenario_names: List[str] = []
         self._simulation_plots: Optional[column] = None
+
+        object_types = ['Ego', 'Vehicle', 'Pedestrian', 'Bicycle', 'Generic', 'Traffic Cone', 'Barrier', 'Czone Sign']
+        self._object_checkbox_group = CheckboxGroup(
+            labels=object_types,
+            active=list(range(len(object_types))),
+            css_classes=["scenario-object-checkbox-group"],
+            name='scenario_object_checkbox_group',
+        )
+        self._object_checkbox_group.on_change('active', self._object_checkbox_group_active_on_change)
+        trajectories = ['Expert Trajectory', 'Ego Trajectory', 'Goal', 'Traffic Light']
+        self._traj_checkbox_group = CheckboxGroup(
+            labels=trajectories,
+            active=list(range(len(trajectories))),
+            css_classes=["scenario-traj-checkbox-group"],
+            name='scenario_traj_checkbox_group',
+        )
+        self._traj_checkbox_group.on_change('active', self._traj_checkbox_group_active_on_change)
+        map_objects = [
+            'Lane',
+            'Intersection',
+            'Stop Line',
+            'Crosswalk',
+            'Walkway',
+            'Carpark',
+            'Lane Connector',
+            'Lane Line',
+        ]
+        self._map_checkbox_group = CheckboxGroup(
+            labels=map_objects,
+            active=list(range(len(map_objects))),
+            css_classes=["scenario-map-checkbox-group"],
+            name='scenario_map_checkbox_group',
+        )
+        self._map_checkbox_group.on_change('active', self._map_checkbox_group_active_on_change)
         self._init_selection()
 
     @property
@@ -192,6 +226,21 @@ class ScenarioTab(BaseTab):
         return self._scalar_scenario_name_select
 
     @property
+    def object_checkbox_group(self) -> CheckboxGroup:
+        """Return object checkbox group."""
+        return self._object_checkbox_group
+
+    @property
+    def traj_checkbox_group(self) -> CheckboxGroup:
+        """Return traj checkbox group."""
+        return self._traj_checkbox_group
+
+    @property
+    def map_checkbox_group(self) -> CheckboxGroup:
+        """Return map checkbox group."""
+        return self._map_checkbox_group
+
+    @property
     def time_series_layout(self) -> column:
         """Return time_series_layout."""
         return self._time_series_layout
@@ -205,6 +254,47 @@ class ScenarioTab(BaseTab):
     def simulation_tile_layout(self) -> column:
         """Return simulation_tile_layout."""
         return self._simulation_tile_layout
+
+    def _update_glyph_checkbox_group(self, glyph_names: List[str]) -> None:
+        """
+        Update visibility of glyphs according to checkbox group.
+        :param glyph_names: A list of updated glyph names.
+        """
+        for simulation_figure in self.simulation_tile.figures:
+            simulation_figure.update_glyphs_visibility(glyph_names=glyph_names)
+
+    def _traj_checkbox_group_active_on_change(self, attr: str, old: List[int], new: List[int]) -> None:
+        """
+        Helper function for traj checkbox group when the list of actives changes.
+        :param attr: Attribute name.
+        :param old: Old active index.
+        :param new: New active index.
+        """
+        active_indices = list(set(old) - set(new)) + list(set(new) - set(old))
+        active_labels = [self._traj_checkbox_group.labels[index] for index in active_indices]
+        self._update_glyph_checkbox_group(glyph_names=active_labels)
+
+    def _map_checkbox_group_active_on_change(self, attr: str, old: List[int], new: List[int]) -> None:
+        """
+        Helper function for map checkbox group when the list of actives changes.
+        :param attr: Attribute name.
+        :param old: Old active index.
+        :param new: New active index.
+        """
+        active_indices = list(set(old) - set(new)) + list(set(new) - set(old))
+        active_labels = [self._map_checkbox_group.labels[index] for index in active_indices]
+        self._update_glyph_checkbox_group(glyph_names=active_labels)
+
+    def _object_checkbox_group_active_on_change(self, attr: str, old: List[int], new: List[int]) -> None:
+        """
+        Helper function for object checkbox group when the list of actives changes.
+        :param attr: Attribute name.
+        :param old: Old active index.
+        :param new: New active index.
+        """
+        active_indices = list(set(old) - set(new)) + list(set(new) - set(old))
+        active_labels = [self._object_checkbox_group.labels[index] for index in active_indices]
+        self._update_glyph_checkbox_group(glyph_names=active_labels)
 
     def file_paths_on_change(
         self, experiment_file_data: ExperimentFileData, experiment_file_active_index: List[int]
@@ -268,7 +358,9 @@ class ScenarioTab(BaseTab):
         else:
             simulation_layouts = gridplot(
                 filtered_simulation_figures,
-                ncols=self.get_plot_cols(plot_width=self.simulation_figure_sizes[0]),
+                ncols=self.get_plot_cols(
+                    plot_width=self.simulation_figure_sizes[0], offset_width=scenario_tab_style['col_offset_width']
+                ),
                 toolbar_location=None,
             )
         self._simulation_tile_layout.children[0] = layout(simulation_layouts)
@@ -295,7 +387,6 @@ class ScenarioTab(BaseTab):
 
         # Aggregate time series data
         self._time_series_data = self._aggregate_time_series_data()
-
         # Render time series figure data
         time_series_figure_data = self._render_time_series(aggregated_time_series_data=self._time_series_data)
 
@@ -315,7 +406,7 @@ class ScenarioTab(BaseTab):
         self._doc.add_next_tick_callback(self._update_simulation_layouts)
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
-        logger.debug(f"Rending scenario plot takes {elapsed_time:.4f} seconds.")
+        logger.info(f"Rending scenario plot takes {elapsed_time:.4f} seconds.")
 
     def _update_planner_names(self) -> None:
         """Update planner name options in the checkbox widget."""
@@ -511,7 +602,6 @@ class ScenarioTab(BaseTab):
             tuple([self._scalar_scenario_type_select.value]) if self._scalar_scenario_type_select.value else None
         )
         log_names = tuple([self._scalar_log_name_select.value]) if self._scalar_log_name_select.value else None
-
         if not len(self._scalar_scenario_name_select.value):
             return aggregated_time_series_data
 
@@ -743,7 +833,11 @@ class ScenarioTab(BaseTab):
                 figure_plot.legend.background_fill_alpha = 0.0
             figure_plot_list.append(figure_plot)
 
-        grid_plot = gridplot(figure_plot_list, ncols=self.get_plot_cols(plot_width=plot_width), toolbar_location="left")
+        grid_plot = gridplot(
+            figure_plot_list,
+            ncols=self.get_plot_cols(plot_width=plot_width, offset_width=scenario_tab_style['col_offset_width']),
+            toolbar_location="left",
+        )
         return grid_plot
 
     def _render_scenario_metric_layout(
@@ -780,13 +874,23 @@ class ScenarioTab(BaseTab):
         if not selected_keys:
             simulation_layouts = column(self._default_simulation_div)
         else:
+            hidden_glyph_names = [
+                label
+                for checkbox_group in [self._object_checkbox_group, self._traj_checkbox_group, self._map_checkbox_group]
+                for index, label in enumerate(checkbox_group.labels)
+                if index not in checkbox_group.active
+            ]
             self._simulation_figure_data = self.simulation_tile.render_simulation_tiles(
-                selected_scenario_keys=selected_keys, figure_sizes=self.simulation_figure_sizes
+                selected_scenario_keys=selected_keys,
+                figure_sizes=self.simulation_figure_sizes,
+                hidden_glyph_names=hidden_glyph_names,
             )
             simulation_figures = [data.plot for data in self._simulation_figure_data]
             simulation_layouts = gridplot(
                 simulation_figures,
-                ncols=self.get_plot_cols(plot_width=self.simulation_figure_sizes[0]),
+                ncols=self.get_plot_cols(
+                    plot_width=self.simulation_figure_sizes[0], offset_width=scenario_tab_style['col_offset_width']
+                ),
                 toolbar_location=None,
             )
 

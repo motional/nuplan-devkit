@@ -62,11 +62,11 @@
         }
     ],
     "expected": {
-        "statistics": {
-            "MAX": 0.00,
-            "MEAN": 0.00,
-            "P90": 0.00
-        },
+        "statistics": [
+            ["MAX", 0.00],
+            ["MEAN", 0.00],
+            ["P90", 0.00]
+        ],
         "time_series": {}
     },
     "goal": {

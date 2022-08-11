@@ -32,6 +32,7 @@ py_library(
     deps = [
         ":abstract_trajectory",
         ":interpolated_trajectory",
+        "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:waypoint",
     ],
 )

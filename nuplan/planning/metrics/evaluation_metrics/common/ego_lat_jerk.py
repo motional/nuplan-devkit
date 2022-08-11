@@ -25,10 +25,11 @@ class EgoLatJerkStatistics(WithinBoundMetricBase):
         :param scenario: Scenario running this metric
         :return the estimated lateral jerk metric.
         """
-        return self._compute_statistics(  # type: ignore
+        metric_statistics: List[MetricStatistics] = self._compute_statistics(
             history=history,
             scenario=scenario,
             statistic_unit_name='meters_per_second_cubed',
             extract_function=extract_ego_jerk,
             extract_function_params={'acceleration_coordinate': 'y'},
         )
+        return metric_statistics

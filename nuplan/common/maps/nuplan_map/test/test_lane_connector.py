@@ -86,7 +86,7 @@ def test_get_lane_right_boundaries(scene: Dict[str, Any]) -> None:
 @nuplan_test(path='json/intersections/on_intersection_with_stop_lines.json')
 def test_get_stop_lines(scene: Dict[str, Any]) -> None:
     """
-    Test getting incoming and outgoing lanes.
+    Test getting stop lines from lane connector.
     """
     nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
 
@@ -101,6 +101,28 @@ def test_get_stop_lines(scene: Dict[str, Any]) -> None:
         stop_lines = lane_connectors[0].stop_lines
 
         assert len(stop_lines) > 0
+
+        add_map_objects_to_scene(scene, stop_lines)
+
+
+@nuplan_test(path='json/intersections/on_intersection_with_no_stop_lines.json')
+def test_get_stop_lines_empty(scene: Dict[str, Any]) -> None:
+    """
+    Test getting stop lines from lane connector when there are no stop lines.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    for marker in scene["markers"]:
+        pose = marker["pose"]
+
+        lane_connectors: List[LaneConnector] = nuplan_map.get_all_map_objects(
+            Point2D(pose[0], pose[1]), SemanticMapLayer.LANE_CONNECTOR
+        )
+        assert len(lane_connectors) > 0
+
+        stop_lines = lane_connectors[0].stop_lines
+
+        assert len(stop_lines) == 0
 
         add_map_objects_to_scene(scene, stop_lines)
 

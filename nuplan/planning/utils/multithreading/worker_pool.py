@@ -1,5 +1,6 @@
 import abc
 import logging
+from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
@@ -125,6 +126,15 @@ class WorkerPool(abc.ABC):
         :param item_lists: arguments to the function
         :param number_of_elements: number of calls to the function
         :return: type from the fn
+        """
+
+    @abc.abstractmethod
+    def submit(self, task: Task, *args: Any) -> Future[Any]:
+        """
+        Submit a task to the worker
+        :param task: to be submitted
+        :param args: arguments for the task
+        :return: future
         """
         pass
 

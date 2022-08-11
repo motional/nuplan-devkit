@@ -27,6 +27,8 @@ py_test(
     name = "test_worker_pool",
     size = "medium",
     srcs = ["test_worker_pool.py"],
+    flaky = True,
+    tags = ["exclusive"],
     deps = [
         "//nuplan/planning/utils/multithreading:worker_parallel",
         "//nuplan/planning/utils/multithreading:worker_pool",

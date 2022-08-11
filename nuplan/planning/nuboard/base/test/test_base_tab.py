@@ -1,4 +1,3 @@
-import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,8 +11,8 @@ from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatis
 from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
+from nuplan.planning.nuboard.utils.test.utils import create_sample_simulation_log
 from nuplan.planning.simulation.main_callback.metric_file_callback import MetricFileCallback
-from nuplan.planning.simulation.simulation_log import SimulationLog
 
 
 class TestBaseTab(unittest.TestCase):
@@ -35,15 +34,11 @@ class TestBaseTab(unittest.TestCase):
         :param scenario_type: Scenario type.
         :param scenario_name: Scenario name.
         """
-        simulation_file = (
-            Path(os.path.dirname(os.path.realpath(__file__))) / "simulation_log/test_simulation_log.msgpack.xz"
-        )
-        simulation_data = SimulationLog.load_data(simulation_file)
-
-        # Save to a tmp folder
+        # Create a sample SimulationLog and save it to a tmp folder
         save_path = simulation_path / planner_name / scenario_type / log_name / scenario_name
         save_path.mkdir(parents=True, exist_ok=True)
-        simulation_data.file_path = save_path / "1.msgpack.xz"
+        simulation_data = create_sample_simulation_log(save_path / "test_base_tab_simulation_log.msgpack.xz")
+
         simulation_data.save_to_file()
 
     def set_up_dummy_metric(
@@ -58,17 +53,17 @@ class TestBaseTab(unittest.TestCase):
         :param scenario_name: Scenario name.
         """
         # Set up dummy metric statistics
-        statistics = {
-            MetricStatisticsType.MAX: Statistic(
-                name="ego_max_acceleration", unit="meters_per_second_squared", value=2.0
+        statistics = [
+            Statistic(
+                name="ego_max_acceleration", unit="meters_per_second_squared", value=2.0, type=MetricStatisticsType.MAX
             ),
-            MetricStatisticsType.MIN: Statistic(
-                name="ego_min_acceleration", unit="meters_per_second_squared", value=0.0
+            Statistic(
+                name="ego_min_acceleration", unit="meters_per_second_squared", value=0.0, type=MetricStatisticsType.MIN
             ),
-            MetricStatisticsType.P90: Statistic(
-                name="ego_p90_acceleration", unit="meters_per_second_squared", value=1.0
+            Statistic(
+                name="ego_p90_acceleration", unit="meters_per_second_squared", value=1.0, type=MetricStatisticsType.P90
             ),
-        }
+        ]
         time_stamps = [0, 1, 2]
         accel = [0.0, 1.0, 2.0]
         time_series = TimeSeries(unit="meters_per_second_squared", time_stamps=list(time_stamps), values=list(accel))

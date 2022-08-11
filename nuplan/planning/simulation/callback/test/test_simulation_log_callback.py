@@ -1,7 +1,10 @@
 import pathlib
 import tempfile
 import unittest
+from typing import Any, Callable, Iterable
 from unittest.mock import Mock
+
+import numpy as np
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
@@ -20,6 +23,110 @@ from nuplan.planning.simulation.simulation_time_controller.abstract_simulation_t
 )
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
+
+
+def callable_name_matches(a: Callable[..., Any], b: Callable[..., Any]) -> bool:
+    """
+    Checks that callable names match.
+    :param a: first callable to compare.
+    :param b: second callable to compare.
+    :return: true if the names match, otherwise false.
+    """
+    # Ideally we'd use __name__, but it's not guaranteed to exist for all callables
+    if hasattr(a, "__name__"):
+        if a.__name__ != b.__name__:
+            return False
+
+    # If __name__ does not exist, then try to parse from repr
+    # We expect the repr to look like:
+    # <scipy.interpolate._interpolate.interp1d object at 0x7f86ffcd4400>
+    # From this, extract scipy.interpolate._interpolate.interp1d
+    elif "object at" in (a_repr := repr(a)):
+        address_ind = a_repr.index("object at")
+        a_name = a_repr[1 : address_ind - 1]
+        b_name = repr(b)[1 : address_ind - 1]
+
+        if a_name != b_name:
+            return False
+
+    else:
+        # Don't expect to reach here, but there may be uncovered edgecases in general
+        raise NotImplementedError
+
+    return True
+
+
+def iterator_is_equal(a: Iterable[Any], b: Iterable[Any]) -> bool:
+    """
+    Checks that two iterables are equal by value.
+    :param a: a in a == b.
+    :param b: b in a == b.
+    :return: true if the iterable contents match.
+    """
+    for a_item, b_item in zip(a_iter := iter(a), b_iter := iter(b)):
+        if not objects_are_equal(a_item, b_item):
+            return False
+
+    # Check that the iterator lengths match by making sure both iterators is exhausted
+    try:
+        next(a_iter)
+        return False  # If it succeeds, the lengths didn't match
+    except StopIteration:
+        try:
+            next(b_iter)
+            return False
+        except StopIteration:
+            return True
+
+
+def objects_are_equal(a: object, b: object) -> bool:
+    """
+    Recursively checks if two objects are equal by value.
+
+    This method supports objects that are compositions of:
+        * built-in types (int, float, bool, etc)
+        * callable objects
+        * numpy arrays
+        * objects supporting `__dict__`
+        * compositions of the above objects
+
+    Other types are currently unsupported.
+
+    :param a: a in a == b, must implement __dict__.
+    :param b: b in a == b, must implement __dict__.
+    :return: true if both objects are the same, otherwise false.
+    """
+    a_dict = a.__dict__
+    b_dict = b.__dict__
+
+    if set(a_dict.keys()) != set(b_dict.keys()):
+        return False
+
+    for key in a_dict:
+        if type(a_dict[key]) != type(b_dict[key]):  # noqa: E721
+            return False
+
+        # The order of the checks matters (eg. callables have __dict__, __dict__ often has __iter__)
+        if callable(a_dict[key]):
+            if not callable_name_matches(a_dict[key], b_dict[key]):
+                return False
+        elif isinstance(a_dict[key], str):
+            if a_dict[key] != b_dict[key]:
+                return False
+        elif hasattr(a_dict[key], "__dict__"):
+            if not objects_are_equal(a_dict[key], b_dict[key]):
+                return False
+        elif isinstance(a_dict[key], np.ndarray):
+            if not np.allclose(a_dict[key], b_dict[key]):
+                return False
+        elif hasattr(a_dict[key], "__iter__"):
+            if not iterator_is_equal(a_dict[key], b_dict[key]):
+                return False
+        else:
+            if a_dict[key] != b_dict[key]:
+                return False
+
+    return True
 
 
 class TestSimulationLogCallback(unittest.TestCase):
@@ -41,7 +148,10 @@ class TestSimulationLogCallback(unittest.TestCase):
         self.output_folder.cleanup()
 
     def test_callback(self) -> None:
-        """Tests whether a scene can be dumped into a simulation log and check the keys are correct."""
+        """
+        Tests whether a scene can be dumped into a simulation log, checks that the keys are correct,
+        and checks that the log contains the expected data after being re-loaded from disk.
+        """
         scenario = MockAbstractScenario()
 
         self.setup = SimulationSetup(
@@ -117,6 +227,8 @@ class TestSimulationLogCallback(unittest.TestCase):
         self.assertTrue(path.exists())
         simulation_log = SimulationLog.load_data(file_path=path)
         self.assertEqual(simulation_log.file_path, path)
+
+        self.assertTrue(objects_are_equal(simulation_log.simulation_history, history))
 
 
 if __name__ == '__main__':

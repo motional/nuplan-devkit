@@ -92,14 +92,16 @@ class TestVectorMapFeatureBuilder(unittest.TestCase):
         num_lane_segment = 5
         num_connections = 7
         tensor_data = {
-            "lane_segment_coords": torch.rand((num_lane_segment, 2, 2)),
+            "lane_segment_coords": torch.rand((num_lane_segment, 2, 2), dtype=torch.float64),
             "lane_segment_conns": torch.zeros((num_connections, 2), dtype=torch.int64),
-            "on_route_status": torch.zeros((num_lane_segment, 2)),
-            "traffic_light_array": torch.zeros((num_lane_segment, 4)),
-            "anchor_state": torch.zeros((3,)),
+            "on_route_status": torch.zeros((num_lane_segment, 2), dtype=torch.float32),
+            "traffic_light_array": torch.zeros((num_lane_segment, 4), dtype=torch.float32),
+            "anchor_state": torch.zeros((3,), dtype=torch.float64),
         }
 
-        list_tensor_data = {"lane_segment_groupings": [torch.zeros(size=(2,)) for _ in range(num_lane_segment)]}
+        list_tensor_data = {
+            "lane_segment_groupings": [torch.zeros(size=(2,), dtype=torch.int64) for _ in range(num_lane_segment)]
+        }
 
         list_list_tensor_data: Dict[str, List[List[torch.Tensor]]] = {}
 

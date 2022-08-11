@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, cast
+from typing import Dict, List, Tuple, Union, cast
 
 import geopandas as gpd
 import numpy as np
@@ -74,6 +74,85 @@ def group_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[
     return [obj_grouping]
 
 
+def trim_lane_nodes(point: Point2D, radius: float, lane_nodes: List[StateSE2]) -> List[StateSE2]:
+    """
+    Trim the discretized baseline path nodes to be within the radius. To ensure the continuity of
+    the lane coords, only the end points of the lane/lane connectors are trimmed. For example, given
+    the points in lane as [p_1, ..., p_n], only points at the end of the lane [p_1,...p_f], or
+    [p_e, ... p_n] will be trimmed if they are further than the radius. The points between p_f and
+    p_e will be kept regardless their distance to the ego.
+    :param point: [m] x, y coordinates in global frame.
+    :param radius [m] floating number about vector map query range.
+    :param lane_nodes: The list of lane nodes to be filtered.
+    :return obj_groupings: Data recording lane-segment indices associated with given lane/lane connector.
+    """
+    start_index = -1
+    # Trim from the front end of lane/lane connector
+    for index in range(len(lane_nodes)):
+        node = lane_nodes[index]
+        if np.linalg.norm([node.x - point.x, node.y - point.y]) <= radius:
+            start_index = index
+            break
+    # The lane/lane connector is completely trimmed
+    if start_index == -1:
+        return []
+    # Trim from the other end of lane/lane connector
+    for index in range(len(lane_nodes) - 1, -1, -1):
+        node = lane_nodes[index]
+        if np.linalg.norm([node.x - point.x, node.y - point.y]) <= radius:
+            end_index = index + 1
+            break
+    trimmed_nodes = lane_nodes[start_index:end_index]
+
+    return trimmed_nodes
+
+
+def build_lane_segments_from_blps_with_trim(
+    point: Point2D, radius: float, map_obj: MapObject, start_lane_seg_idx: int
+) -> Union[
+    None, Tuple[List[List[List[float]]], List[Tuple[int, int]], List[List[int]], List[str], List[str], Tuple[int, int]]
+]:
+    """
+    Process baseline paths of associated lanes/lane connectors to series of lane-segments along with connection info.
+    :param point: [m] x, y coordinates in global frame.
+    :param radius [m] floating number about vector map query range.
+    :param map_obj: Lane or LaneConnector for building lane segments from associated baseline path.
+    :param start_lane_seg_idx: Starting index for lane segments.
+    :return
+        obj_coords: Data recording lane-segment coordinates in format of [N, 2, 2].
+        obj_conns: Data recording lane-segment connection relations in format of [M, 2].
+        obj_groupings: Data recording lane-segment indices associated with each lane in format
+            [num_lanes, num_segments_in_lane].
+        obj_lane_ids: Data recording map object ids of lane/lane connector containing lane-segment.
+        obj_roadblock_ids: Data recording map object ids of roadblock/roadblock connector containing lane-segment.
+        obj_cross_blp_conn: Data storing indices of first and last lane segments of a given map object's baseline path
+            as [blp_start_lane_seg_idx, blp_end_lane_seg_idx].
+    """
+    map_obj_id = map_obj.id
+    roadblock_id = map_obj.get_roadblock_id()
+    nodes = map_obj.baseline_path.discrete_path
+    nodes = trim_lane_nodes(point, radius, nodes)
+
+    # return None if at most one node are within the radius
+    if len(nodes) <= 2:
+        return None
+
+    lane_seg_num = len(nodes) - 1
+    end_lane_seg_idx = start_lane_seg_idx + lane_seg_num - 1
+
+    obj_coords = split_blp_lane_segments(nodes, lane_seg_num)
+    obj_conns = connect_blp_lane_segments(start_lane_seg_idx, lane_seg_num)
+    obj_groupings = group_blp_lane_segments(start_lane_seg_idx, lane_seg_num)
+    # record which map object each segment came from
+    obj_lane_ids = [map_obj_id for _ in range(lane_seg_num)]
+    # record which roadblock (lane group) each segment came from
+    obj_roadblock_ids = [roadblock_id for _ in range(lane_seg_num)]
+    # record first and last segment in baseline path for connecting lane and lane connectors later
+    obj_cross_blp_conn = (start_lane_seg_idx, end_lane_seg_idx)
+
+    return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
+
+
 # TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def build_lane_segments_from_blps(
     map_obj: MapObject, start_lane_seg_idx: int
@@ -109,6 +188,90 @@ def build_lane_segments_from_blps(
     obj_cross_blp_conn = (start_lane_seg_idx, end_lane_seg_idx)
 
     return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
+
+
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
+def connect_trimmed_lane_conn_predecessor(
+    lane_coords: Tuple[List[List[List[float]]]],
+    lane_conn: LaneConnector,
+    cross_blp_conns: Dict[str, Tuple[int, int]],
+    distance_threshold: float = 0.3,
+) -> List[Tuple[int, int]]:
+    """
+    Given a specific lane connector, find its predecessor lane and return new connection info. To
+                       handle the case where the end points of lane connector or/and the predecissor
+                       lane being trimmed, a distance check is performed to make sure the end points
+                       of the predecissor lane is close enough to be connected.
+    :param: lane_coords: the lane segment cooridnates
+    :param lane_conn: a specific lane connector.
+    :param cross_blp_conns: Dict recording the map object id as key(str) and corresponding [first segment index,
+        last segment index] pair as value (Tuple[int, int]).
+    :param distance_threshold: the distance to determine if the end points are close enough to be
+        connected in the lane graph.
+    :return lane_seg_pred_conns: container recording the connection [from_lane_seg_idx, to_lane_seg_idx] between
+        last predecessor segment and first segment of given lane connector.
+    """
+    lane_seg_pred_conns: List[Tuple[int, int]] = []
+    lane_conn_start_seg_idx, lane_conn_end_seg_idx = cross_blp_conns[lane_conn.id]
+    incoming_lanes = [incoming_edge for incoming_edge in lane_conn.incoming_edges if isinstance(incoming_edge, Lane)]
+
+    for incoming_lane in incoming_lanes:
+        lane_id = incoming_lane.id
+
+        if lane_id in cross_blp_conns.keys():
+            # record connection between last segment of incoming lane and first segment of given lane connector
+            predecessor_start_idx, predecessor_end_idx = cross_blp_conns[lane_id]
+            if (
+                np.linalg.norm(
+                    np.array(lane_coords[predecessor_end_idx][1]) - np.array(lane_coords[lane_conn_start_seg_idx][0])
+                )
+                < distance_threshold
+            ):
+                lane_seg_pred_conns.append((predecessor_end_idx, lane_conn_start_seg_idx))
+
+    return lane_seg_pred_conns
+
+
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
+def connect_trimmed_lane_conn_successor(
+    lane_coords: Tuple[List[List[List[float]]]],
+    lane_conn: LaneConnector,
+    cross_blp_conns: Dict[str, Tuple[int, int]],
+    distance_threshold: float = 0.3,
+) -> List[Tuple[int, int]]:
+    """
+    Given a specific lane connector, find its successor lane and return new connection info. To
+                       handle the case where the end points of lane connector or/and the predecissor
+                       lane being trimmed, a distance check is performed to make sure the end points
+                       of the predecissor lane is close enough to be connected.
+    :param: lane_coords: the lane segment cooridnates
+    :param lane_conn: a specific lane connector.
+    :param cross_blp_conns: Dict recording the map object id as key(str) and corresponding [first segment index,
+        last segment index] pair as value (Tuple[int, int]).
+    :param distance_threshold: the distance to determine if the end points are close enough to be
+        connected in the lane graph.
+    :return lane_seg_suc_conns: container recording the connection [from_lane_seg_idx, to_lane_seg_idx] between
+        last segment of given lane connector and first successor lane segment.
+    """
+    lane_seg_suc_conns: List[Tuple[int, int]] = []
+    lane_conn_start_seg_idx, lane_conn_end_seg_idx = cross_blp_conns[lane_conn.id]
+    outgoing_lanes = [outgoing_edge for outgoing_edge in lane_conn.outgoing_edges if isinstance(outgoing_edge, Lane)]
+
+    for outgoing_lane in outgoing_lanes:
+        lane_id = outgoing_lane.id
+
+        if lane_id in cross_blp_conns.keys():
+            # record connection between last segment of given lane connector and first segment of outgoing lane
+            successor_start_idx, successor_end_seg_idx = cross_blp_conns[lane_id]
+            if (
+                np.linalg.norm(
+                    np.array(lane_coords[lane_conn_end_seg_idx][1]) - np.array(lane_coords[successor_start_idx][0])
+                )
+                < distance_threshold
+            ):
+                lane_seg_suc_conns.append((lane_conn_end_seg_idx, successor_start_idx))
+
+    return lane_seg_suc_conns
 
 
 # TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
@@ -172,7 +335,7 @@ def extract_polygon_from_map_object(map_object: MapObject) -> List[Point2D]:
     :return: polygon as list of Point2D.
     """
     x_coords, y_coords = map_object.polygon.exterior.coords.xy
-    return [Point2D(x, y) for x, y in zip(x_coords[:-1], y_coords[:-1])]  # ignore last point, same as the first
+    return [Point2D(x, y) for x, y in zip(x_coords, y_coords)]
 
 
 def extract_roadblock_objects(map_api: AbstractMap, point: Point2D) -> List[RoadBlockGraphEdgeMapObject]:

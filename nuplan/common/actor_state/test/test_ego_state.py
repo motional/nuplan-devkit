@@ -38,24 +38,6 @@ class TestEgoState(unittest.TestCase):
         self.assertEqual(wp.oriented_box, ego_state_ext.car_footprint)
         self.assertEqual(wp.velocity, ego_state_ext.dynamic_car_state.rear_axle_velocity_2d)
 
-    def test_cast_to_agent(self) -> None:
-        """Tests that the ego state extended can be cast to an Agent object."""
-        ego_state_ext = EgoState.build_from_rear_axle(
-            rear_axle_pose=self.ego_state.rear_axle,
-            rear_axle_velocity_2d=self.dynamic_car_state.rear_axle_velocity_2d,
-            rear_axle_acceleration_2d=self.dynamic_car_state.rear_axle_acceleration_2d,
-            tire_steering_angle=self.ego_state.tire_steering_angle,
-            time_point=self.ego_state.time_point,
-            angular_vel=self.dynamic_car_state.angular_velocity,
-            angular_accel=self.dynamic_car_state.angular_acceleration,
-            is_in_auto_mode=True,
-            vehicle_parameters=self.vehicle,
-        )
-        ego_agent = ego_state_ext.agent
-        self.assertEqual("ego", ego_agent.token)
-        self.assertTrue(ego_state_ext.car_footprint.oriented_box is ego_agent.box)
-        self.assertTrue(ego_state_ext.dynamic_car_state.center_velocity_2d is ego_agent.velocity)
-
     def test_to_split_state(self) -> None:
         """Tests that the state gets split as expected"""
         split_state = self.ego_state.to_split_state()

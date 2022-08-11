@@ -191,7 +191,7 @@ class MapVersionMeta:
         :return: True if both objects are the same, otherwise False.
         """
         if not isinstance(other, MapVersionMeta):
-            raise NotImplementedError
+            return NotImplemented
 
         return self.__hash__() == hash(other)
 

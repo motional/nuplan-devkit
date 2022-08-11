@@ -14,17 +14,6 @@ py_library(
 )
 
 py_test(
-    name = "test_clearance_from_static_agents",
-    srcs = ["test_clearance_from_static_agents.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:clearance_from_static_agents",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
     name = "test_drivable_area_violation",
     srcs = ["test_drivable_area_violation.py"],
     data = [":test_json"],
@@ -43,29 +32,6 @@ py_test(
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_acceleration",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_collisions",
-    srcs = ["test_ego_collisions.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_collisions",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_distance_to_goal",
-    srcs = ["test_ego_distance_to_goal.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_distance_to_goal",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
@@ -143,17 +109,6 @@ py_test(
 )
 
 py_test(
-    name = "test_ego_min_distance_to_track",
-    srcs = ["test_ego_min_distance_to_track.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_min_distance_to_track",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
     name = "test_ego_yaw_acceleration",
     srcs = ["test_ego_yaw_acceleration.py"],
     data = [":test_json"],
@@ -188,28 +143,6 @@ py_test(
 )
 
 py_test(
-    name = "test_time_gap_to_lead_agent",
-    srcs = ["test_time_gap_to_lead_agent.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:time_gap_to_lead_agent",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_time_gap_to_rear_agent",
-    srcs = ["test_time_gap_to_rear_agent.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:time_gap_to_rear_agent",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
     name = "test_time_to_collision",
     srcs = ["test_time_to_collision.py"],
     data = [":test_json"],
@@ -218,28 +151,6 @@ py_test(
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/evaluation_metrics/common:time_to_collision",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_progress_to_goal",
-    srcs = ["test_ego_progress_to_goal.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_progress_to_goal",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_relative_progress_to_goal",
-    srcs = ["test_ego_relative_progress_to_goal.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_relative_progress_to_goal",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
@@ -282,19 +193,6 @@ py_test(
 )
 
 py_test(
-    name = "test_distance_to_baseline",
-    srcs = ["test_distance_to_baseline.py"],
-    data = [
-        ":test_json",
-    ],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:distance_to_baseline",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
     name = "test_ego_progress_along_expert_route",
     srcs = ["test_ego_progress_along_expert_route.py"],
     data = [
@@ -331,38 +229,6 @@ py_test(
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_safety_performance",
-    srcs = ["test_ego_safety_performance.py"],
-    data = [
-        ":test_json",
-    ],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_min_distance_to_lead_agent",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_safety_performance",
-        "//nuplan/planning/metrics/evaluation_metrics/common:time_to_collision",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_min_distance_to_lead_agent",
-    srcs = ["test_ego_min_distance_to_lead_agent.py"],
-    data = [":test_json"],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_min_distance_to_lead_agent",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
@@ -425,6 +291,20 @@ py_test(
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_vehicles",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_ego_is_making_progress",
+    srcs = ["test_ego_is_making_progress.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_is_making_progress",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_progress_along_expert_route",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )

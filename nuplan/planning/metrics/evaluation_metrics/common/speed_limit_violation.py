@@ -1,7 +1,7 @@
 import logging
 import statistics
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -9,13 +9,7 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject, Lane
 from nuplan.planning.metrics.evaluation_metrics.base.violation_metric_base import ViolationMetricBase
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
-from nuplan.planning.metrics.metric_result import (
-    MetricStatistics,
-    MetricStatisticsType,
-    MetricViolation,
-    Statistic,
-    TimeSeries,
-)
+from nuplan.planning.metrics.metric_result import MetricStatistics, MetricViolation, Statistic, TimeSeries
 from nuplan.planning.metrics.utils.state_extractors import extract_ego_time_point
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
@@ -50,11 +44,13 @@ class SpeedLimitViolationExtractor:
 
     def extract_metric(self, ego_route: List[List[GraphEdgeMapObject]]) -> None:
         """Extracts the drivable area violations from the history of Ego poses."""
+        timestamp = None
         for sample, curr_ego_route in zip(self.history.data, ego_route):
             ego_state = sample.ego_state
             timestamp = ego_state.time_point.time_us
 
-            # If no lane or lane connector is associated with pose (such as when ego is outside the drivable area), we won't consider speed limit violation
+            # If no lane or lane connector is associated with pose (such as when ego is
+            # outside the drivable area), we won't consider speed limit violation
             if not curr_ego_route:
                 violation = None
             else:
@@ -71,7 +67,7 @@ class SpeedLimitViolationExtractor:
                 if self.open_violation:
                     self.end_violation(timestamp, higher_is_worse=True)
         # End all violations
-        if self.open_violation:
+        if timestamp and self.open_violation:
             self.end_violation(timestamp)
 
     def start_violation(self, violation: GenericViolation) -> None:
@@ -114,8 +110,9 @@ class SpeedLimitViolationExtractor:
         )
         self.open_violation = None
 
+    @staticmethod
     def _get_speed_limit_violation(
-        self, ego_state: EgoState, timestamp: int, ego_lane_or_laneconnector: List[GraphEdgeMapObject]
+        ego_state: EgoState, timestamp: int, ego_lane_or_laneconnector: List[GraphEdgeMapObject]
     ) -> Optional[GenericViolation]:
         """
         Computes by how much ego is exceeding the speed limit
@@ -133,7 +130,8 @@ class SpeedLimitViolationExtractor:
                 edges = map_obj.outgoing_edges + map_obj.incoming_edges
                 speed_limits.extend([lane.speed_limit_mps for lane in edges])
 
-        # new map can potentially return None if the GPKG does not contain speed limit data, make sure speed limits exist
+        # new map can potentially return None if the GPKG does not contain speed limit data,
+        # make sure speed limits exist
         if all(speed_limits):
             max_speed_limit = max(speed_limits)
             exceeding_speed = ego_state.dynamic_car_state.speed - max_speed_limit
@@ -159,7 +157,8 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
         :param category: Metric category
         :param lane_change_metric: lane change metric
         :param max_violation_threshold: Maximum threshold for the number of violation
-        :param max_overspeed_value_threshold: A threshold for overspeed value driving above which is considered more dangerous.
+        :param max_overspeed_value_threshold: A threshold for overspeed value driving above which is considered more
+        dangerous.
         """
         super().__init__(name=name, category=category, max_violation_threshold=max_violation_threshold)
         self._max_overspeed_value_threshold = max_overspeed_value_threshold
@@ -167,7 +166,8 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
 
     def _compute_violation_metric_score(self, time_series: TimeSeries) -> float:
         """
-        Compute a metric score based on the durtaion and magnitude of the violation compared to the scenario duration and a threshold for overspeed value
+        Compute a metric score based on the durtaion and magnitude of the violation compared to the scenario
+        duration and a threshold for overspeed value.
         :param time_series: A time series for the overspeed
         :return: A metric score between 0 and 1.
         """
@@ -186,11 +186,11 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
     def compute_score(
         self,
         scenario: AbstractScenario,
-        metric_statistics: Dict[str, Statistic],
-        time_series: TimeSeries,
+        metric_statistics: List[Statistic],
+        time_series: Optional[TimeSeries] = None,
     ) -> float:
         """Inherited, see superclass."""
-        if metric_statistics[MetricStatisticsType.BOOLEAN].value:
+        if metric_statistics[-1].value:
             return 1.0
 
         return float(self._compute_violation_metric_score(time_series=time_series))
@@ -209,8 +209,8 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
 
         time_stamps = extract_ego_time_point(history.extract_ego_state)
         time_series = TimeSeries(unit='mps', time_stamps=list(time_stamps), values=extractor.violation_depths)
-        violation_statistics = self.aggregate_metric_violations(
+        violation_statistics: List[MetricStatistics] = self.aggregate_metric_violations(
             metric_violations=extractor.violations, scenario=scenario, time_series=time_series
         )
 
-        return violation_statistics  # type: ignore
+        return violation_statistics

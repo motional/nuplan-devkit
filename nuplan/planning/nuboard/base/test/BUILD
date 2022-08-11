@@ -19,6 +19,7 @@ py_test(
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/base:plot_data",
+        "//nuplan/planning/nuboard/utils/test:utils",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
         "//nuplan/planning/simulation/main_callback:metric_file_callback",
     ],
@@ -35,7 +36,7 @@ py_test(
 
 py_test(
     name = "test_simulation_tile",
-    size = "medium",
+    size = "small",
     srcs = ["test_simulation_tile.py"],
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
@@ -43,6 +44,7 @@ py_test(
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/base:plot_data",
         "//nuplan/planning/nuboard/base:simulation_tile",
+        "//nuplan/planning/nuboard/utils/test:utils",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
     ],
 )

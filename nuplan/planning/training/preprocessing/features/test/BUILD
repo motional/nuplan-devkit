@@ -12,15 +12,6 @@ py_test(
 )
 
 py_test(
-    name = "test_dynamic_ego_feature",
-    size = "medium",
-    srcs = ["test_dynamic_ego_feature.py"],
-    deps = [
-        "//nuplan/planning/training/preprocessing/features:dynamic_ego_feature",
-    ],
-)
-
-py_test(
     name = "test_raster_building",
     size = "medium",
     srcs = ["test_raster_building.py"],
@@ -39,15 +30,6 @@ py_test(
     srcs = ["test_trajectory.py"],
     deps = [
         "//nuplan/planning/training/preprocessing/features:trajectory",
-    ],
-)
-
-py_test(
-    name = "test_dynamic_ego_trajectory",
-    size = "medium",
-    srcs = ["test_dynamic_ego_trajectory.py"],
-    deps = [
-        "//nuplan/planning/training/preprocessing/features:dynamic_ego_trajectory",
     ],
 )
 

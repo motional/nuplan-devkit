@@ -38,6 +38,8 @@ class VehicleParameters(BoxParameters):
         rear_length: float,
         cog_position_from_rear_axle: float,
         wheel_base: float,
+        vehicle_name: str,
+        vehicle_type: str,
         height: Optional[float] = None,
     ):
         """
@@ -46,22 +48,19 @@ class VehicleParameters(BoxParameters):
         :param rear_length: [m] distance between rear axle and rear bumper
         :param cog_position_from_rear_axle: [m] distance between rear axle and center of gravity (cog)
         :param wheel_base: [m] wheel base of the vehicle
+        :param vehicle_name: name of the vehicle
+        :param vehicle_type: type of the vehicle
         :param height: [m] height of box around vehicle
         """
         self.width = width
-        self.front_length = front_length
-        self.rear_length = rear_length
+        self.front_length = front_length  # [m] (dist. from rear axle to front bumper)
+        self.rear_length = rear_length  # [m] (dist. from rear axle to rear bumper)
         self.wheel_base = wheel_base
         self.length = front_length + rear_length
-        self.cog_position_from_rear_axle = cog_position_from_rear_axle
+        self.cog_position_from_rear_axle = cog_position_from_rear_axle  # [m] position of COG wrt. to rear axle
         self.height = height
-
-        # [m] (dist. from rear axle to front bumper)
-        self.front_length = front_length
-        # [m] (dist. from rear axel to rear bumper)
-        self.rear_length = rear_length
-        # [m] position of COG wrt. to rear axle
-        self.cog_position_from_rear_axle = cog_position_from_rear_axle
+        self.vehicle_name = vehicle_name
+        self.vehicle_type = vehicle_type
 
     @property
     def rear_axle_to_center(self) -> float:
@@ -77,12 +76,42 @@ class VehicleParameters(BoxParameters):
         """
         return self.wheel_base - self.cog_position_from_rear_axle
 
+    def __hash__(self) -> int:
+        """
+        :return: hash vehicle parameters
+        """
+        return hash(
+            (
+                self.vehicle_name,
+                self.vehicle_type,
+                self.width,
+                self.front_length,
+                self.rear_length,
+                self.cog_position_from_rear_axle,
+                self.wheel_base,
+                self.height,
+            )
+        )
+
+    def __str__(self) -> str:
+        """
+        :return: string for this class
+        """
+        return (
+            f"VehicleParameters(vehicle_name={self.vehicle_name}, vehicle_type={self.vehicle_type}, "
+            f"width={self.width}, front_length={self.front_length}, "
+            f"rear_length={self.rear_length}, cog_position_from_rear_axle={self.cog_position_from_rear_axle}, "
+            f"wheel_base={self.wheel_base}, height={self.height}, width={self.width})"
+        )
+
 
 def get_pacifica_parameters() -> VehicleParameters:
     """
     :return VehicleParameters containing parameters of Pacifica Vehicle
     """
     return VehicleParameters(
+        vehicle_name="pacifica",
+        vehicle_type="gen1",
         width=1.1485 * 2.0,
         front_length=4.049,
         rear_length=1.127,
