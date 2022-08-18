@@ -1,5 +1,12 @@
-Feature Request
 ---
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels: ''
+assignees: ''
+
+---
+
 ### Description
 *Ex. It would be convienient to have a feature that [...]*
 
