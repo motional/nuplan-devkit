@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>nuPlan Planning Challenge</title>
+
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/simple-sidebar.css" rel="stylesheet">
+
+  </head>
+
+  <body>
+
+    <div id="wrapper">
+
+      <!-- Sidebar -->
+      <div id="sidebar-wrapper">
+        <ul class="sidebar-nav">
+              <li class="sidebar-brand">Motional</li>
+              <li><a href="#overview">Overview</a></li>
+              <li><a href="#timeline">Competition Timeline</a></li>
+              <li><a href="#how-to-enter">How to enter</a></li>
+              <li><a href="#challenges">Challenges</a>
+              <ul>
+                <li><a href="#challenge_1">1. Open-loop</a></li>
+                <li><a href="#challenge_2">2. Closed-loop non-reactive agents</a></li>
+                <li><a href="#challenge_3">3. Closed-loop reactive agents</a></li>
+              </ul>
+              </li>
+              <li><a href="#prizes">Prizes</a></li>
+              <li><a href="#rules">Rules</a></li>
+              <li><a href="#contact">Contact</a></li>
+        </ul>
+      </div>
+
+      <!-- Page content -->
+      <div id="page-content-wrapper">
+        <div class="content-header">
+          <h1>
+            nuPlan <small> planning challenge</small>
+          </h1>
+        </div>
+        <!-- Keep all page content within the page-content inset div! -->
+        <div class="page-content inset">
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="overview" class="page-header">Overview</h3>
+              <p>
+                The main focus of the nuPlan planning challenge is to evaluate a motion planning system in
+                realistic driving scenarios. In this challenge it is assumed that a planner will consume a top
+                down semantic representation of detected traffic participants (vehicles, bicycles etc.) and static
+                obstacles and predict the vehicle’s future trajectory for a specific time horizon. The challenge
+                is organized into three increasingly complex modes:
+              </p>
+              <ol>
+                <li>Open-loop</li>
+                <li>Closed-loop non-reactive agents</li>
+                <li>Closed-loop reactive agents</li>
+              </ol>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="rules" class="page-header">Competition Timeline</h3>
+            <ul>
+              <li>September 1st 2022 - Competition opens for submission</li>
+              <li>November 15th 2022 - Competition closes</li>
+              <li>November 22nd 2022 - Finalists are announced. Finalists are invited to share there code this us for verification</li>
+              <li>November 29nd 2022 - Winners are announced</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="timeline" class="page-header">How to enter</h3>
+            <h4>Getting Started</h4>
+            <ol>
+              <li>Sign up and download the dataset from <a href="https://www.nuscenes.org/nuplan">https://www.nuscenes.org/nuplan</a>. </li>
+              <li>Clone the devkit. Feel free to ask any questions by raising an issue on our GitHub: <a href="https://github.com/motional/nuplan-devkit">https://github.com/motional/nuplan-devkit</a></li>
+              <li>Create a team on <a href="https://eval.ai/web/challenges/challenge-page/1729/overview">EvalAI</a>. </li>
+            </ol>
+
+            <h4>Making a submission</h4>
+            <ol>
+              <li>Submit docker your container through <a href="https://eval.ai/web/challenges/challenge-page/1729/overview">EvalAI</a>. </li>
+              <li>Participants may submit up to 3 entries</li>
+              <li>Finalists are invited to share there code this us for verification</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="challenges" class="page-header">Challenges</h3>
+
+            <h4 id="challenge_1"><span style="font-weight: bold;">Challenge 1: Open-loop</span></h4>
+            <p>
+              In this challenge, the planning system is tasked with imitating the expert driver
+              in open-loop. For every time step, the planner’s predicted trajectory is scored based on a set of
+              predefined open-loop metrics. Namely, it is compared directly against the driven ground-truth
+              trajectory. As the name suggests, the planned trajectory will not be used to alter the state of the
+              simulation.
+            </p>
+
+            <h4>How to win</h4>
+            <p>
+              Challenge 1 winners are ones with the highest scores according top a weighted average of:
+            </p>
+            <ul>
+              <li> Average Displacement Error (ADE) </li>
+              <li> Final Displacement Error (FDE) </li>
+              <li> Average heading error </li>
+              <li> Final heading error </li>
+            </ul>
+            <p>
+              The details of how this challenge is evaulated can be found <a href="url">here</a>.
+            </p>
+
+            <h4 id="challenge_2"><span style="font-weight: bold;">Challenge 2: Closed-loop non-reactive agents</span></h4>
+            <p>
+              In this challenge, the planner outputs a planned trajectory using
+              the information available at each time step, similar to the previous case. The predicted trajectory
+              is used as a reference for a tracking controller to simulate the vehicle’s state at the next time step.
+              Nonetheless, the other agents are replayed from a log according to their observed states in open-
+              loop - hence, the name non-reactive. Most importantly, the ground-truth is no longer applicable
+              to the evaluation of the planner. Instead, a suite of closed-loop metrics will be used to judge the
+              performance of a planner
+              </p>
+
+            <h4>How to win</h4>
+            <p>
+              Challenge 2 winners are ones with the highest scores according top a scoring hierachy. The hierachy takes the following factors into consideration:
+            </p>
+            <ul>
+              <li> At fault collision </li>
+              <li> Drivable Area Violation </li>
+              <li> Making progress </li>
+              <li> Time to Collision (TTC) </li>
+              <li> Speed limit violation </li>
+              <li> Ego progress along the expert's route ratio </li>
+              <li> Comfort </li>
+            </ul>
+            <p>
+
+              The details of how this challenge is evaulated can be found <a href="url">here</a>.
+            </p>
+
+            <h4 id="challenge_3"><span style="font-weight: bold;">Challenge 3: Closed-loop reactive agents</span></h4>
+            <p>
+              In the final and most complex challenge, the agents in the scene be-
+              come reactive. In other words, the agents will react to the actions of the planner-controlled
+              vehicle along with the behavior of other agents. Similar to the non-reactive closed-loop chal-
+              lenge, a suite of metrics will be used to judge the performance of a planner in closed-loop.
+            </p>
+
+            <h4>How to win</h4>
+            <p>
+              Challenge 3 winners are ones with the highest scores according top a scoring hierachy. The hierachy takes the following factors into consideration:
+            </p>
+            <ul>
+              <li> At fault collision </li>
+              <li> Drivable Area Violation </li>
+              <li> Making progress </li>
+              <li> Time to Collision (TTC) </li>
+              <li> Speed limit violation </li>
+              <li> Ego progress along the expert's route ratio </li>
+              <li> Comfort </li>
+            </ul>
+
+            <p>
+              The details of how this challenge is evaulated can be found <a href="url">here</a>.
+            </p>
+
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="prizes" class="page-header">Prizes</h3>
+            <ul>
+              <li>Challenge 1:</li>
+                <ol><li>One winner: $$$</li></ol>
+              <li>Challenge 2</li>
+                 <ol><li>One winner: $$$</li></ol>
+              <li>Challenge 3</li>
+                 <ol>
+                    <li>1st place: $$$</li>
+                    <li>2nd place: $$$</li>
+                    <li>3rd place: $$$</li>
+                  </ol>
+            </ul>
+        </div>
+
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="rules" class="page-header">Rules</h3>
+            <ul>
+              <li>Lorem Ipsum</li>
+              <li>Dolor Sit Amet</li>
+              <li>Consectetur</li>
+              <li>Adipiscing Elit</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-10">
+            <h3 id="contact" class="page-header">Contact</h3>
+            To contact the organizers, please make an issue on our <a href="https://github.com/motional/nuplan-devkit/issues">.GitHub</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+  </body>
+
+  <div id="banner"></div>
+</html>

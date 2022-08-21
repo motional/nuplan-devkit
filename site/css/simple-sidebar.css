@@ -1,0 +1,148 @@
+#wrapper {
+  padding-left: 325px;
+}
+
+#sidebar-wrapper {
+  margin-left: -325px;
+  left: 325px;
+  width: 325px;
+  background: #000;
+  position: fixed;
+  height: 100%;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+#page-content-wrapper {
+  width: 100%;
+}
+
+.sidebar-nav {
+  position: absolute;
+  top: 0;
+  width: 325px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-nav li {
+  line-height: 50px;
+  text-indent: 20px;
+}
+
+.sidebar-nav li a {
+  color: #B9BCC7;
+  display: block;
+  text-decoration: none;
+}
+
+.sidebar-nav li li {
+  line-height: 40px;
+  text-indent: 10px;
+}
+
+.sidebar-nav li li a {
+  color: #B9BCC7;
+  display: block;
+  text-decoration: none;
+}
+
+.sidebar-nav li a:hover {
+  color: #DADCE6;
+  background: rgba(255,255,255,0.2);
+  text-decoration: none;
+}
+
+.sidebar-nav li a:active,
+.sidebar-nav li a:focus {
+  text-decoration: none;
+}
+
+.sidebar-nav > .sidebar-brand {
+  height: 65px;
+  width: 325px;
+  line-height: 70px;
+  font-size: 40px;
+  color: #795EDB;
+  font-weight: bold;
+  background: #2D3136;
+}
+
+.sidebar-nav > .sidebar-brand a {
+  color: #999999;
+}
+
+.sidebar-nav > .sidebar-brand a:hover {
+  color: #fff;
+  background: none;
+}
+
+.content-header {
+  height: 65px;
+  line-height: 65px;
+  background: #2D3136;
+  text-align: center;
+}
+
+.content-header h1 {
+  margin: 0;
+  margin-left: 20px;
+  line-height: 65px;
+  display: inline-block;
+  font-weight: bold;
+  color: #DADCE6;
+}
+
+#menu-toggle {
+  display: none;
+}
+
+.inset {
+  margin-left: auto;
+  margin-right: auto;
+  width: 60%;
+}
+
+@media (max-width:767px) {
+
+#wrapper {
+  padding-left: 0;
+}
+
+#sidebar-wrapper {
+  left: 0;
+}
+
+#wrapper.active {
+  position: relative;
+  left: 325px;
+}
+
+#wrapper.active #sidebar-wrapper {
+  left: 325px;
+  width: 325px;
+  transition: all 0.4s ease 0s;
+}
+
+#menu-toggle {
+  display: inline-block;
+}
+
+.inset {
+  padding: 15px;
+}
+
+}
+
+#banner {
+  height: 65px;
+  line-height: 65px;
+  background: #2D3136;
+  text-align: center;
+  margin-top: 50px;
+}
+
+#banner_contents {
+  width: 100%;
+}
