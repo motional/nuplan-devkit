@@ -141,8 +141,9 @@
   background: #2D3136;
   text-align: center;
   margin-top: 50px;
+  color: #DADCE6;
 }
 
 #banner_contents {
-  width: 100%;
+  width: 400px;
 }
