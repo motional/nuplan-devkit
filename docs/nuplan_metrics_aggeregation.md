@@ -1,7 +1,3 @@
-
-
-
-
 # nuPlan Final Score Structure
 
 This document describes how metrics are aggregated to generate the final score structure for comparison of planners performance on AV in Nuplan.
