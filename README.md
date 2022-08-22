@@ -32,6 +32,8 @@ Stay tuned for the upcoming nuPlan ML planning challenges!
 ______________________________________________________________________
 
 ## Changelog
+- Aug 26 2022
+  * v0.5 Devkit: New map features, simulation improvements, open-loop detections with smart agents, iLQR tracker, metrics improvements and documentation.
 - Aug 05 2022
   * v0.4 Devkit: Database optimization, PYGEOS warning suppression, metrics improvements, scenario filter for training.
 - Jul 15 2022
