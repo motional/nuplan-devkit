@@ -1,3 +1,4 @@
+import logging
 import unittest
 
 import numpy as np
@@ -5,6 +6,8 @@ import numpy as np
 from nuplan.planning.training.data_augmentation.kinematic_agent_augmentation import KinematicAgentAugmentor
 from nuplan.planning.training.preprocessing.features.agents import Agents
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
+
+logger = logging.getLogger(__name__)
 
 
 class TestKinematicAgentAugmentation(unittest.TestCase):
@@ -131,8 +134,8 @@ class TestKinematicAgentAugmentation(unittest.TestCase):
             ],
         )
 
-        self.aug_targets_gt = {}
-        self.aug_targets_gt['trajectory'] = Trajectory(
+        self.gaussian_aug_targets_gt = {}
+        self.gaussian_aug_targets_gt['trajectory'] = Trajectory(
             data=np.array(
                 [
                     [4.1521129e-01, 1.1039978e-01, 4.1797668e-01],
@@ -151,27 +154,67 @@ class TestKinematicAgentAugmentation(unittest.TestCase):
             )
         )
 
+        self.uniform_aug_targets_gt = {}
+        self.uniform_aug_targets_gt['trajectory'] = Trajectory(
+            data=np.array(
+                [
+                    [0.05273135, -0.04831281, -0.08689969],
+                    [0.11795828, -0.05359042, -0.07457177],
+                    [0.22317114, -0.06049316, -0.05645524],
+                    [0.3684539, -0.06721046, -0.03595094],
+                    [0.553826, -0.07214818, -0.01731013],
+                    [0.77925223, -0.0745298, -0.00381898],
+                    [1.0446922, -0.07455366, 0.00363919],
+                    [1.3501287, -0.07300503, 0.00650118],
+                    [1.6955612, -0.07065626, 0.00709759],
+                    [2.080992, -0.06789713, 0.00721934],
+                    [2.5064206, -0.06473273, 0.00765666],
+                    [2.9717717, -0.06097136, 0.00850872],
+                ]
+            )
+        )
+
         N = 12
         dt = 0.1
         augment_prob = 1.0
         mean = [0.3, 0.1, np.pi / 12]
         std = [0.5, 0.1, np.pi / 12]
-        self.augmentor = KinematicAgentAugmentor(N, dt, mean, std, augment_prob)
+        low = [-0.1, -0.1, -0.1]
+        high = [0.1, 0.1, 0.1]
+        self.gaussian_augmentor = KinematicAgentAugmentor(
+            N, dt, mean, std, low, high, augment_prob, use_uniform_noise=False
+        )
+        self.uniform_augmentor = KinematicAgentAugmentor(
+            N, dt, mean, std, low, high, augment_prob, use_uniform_noise=True
+        )
 
-    def test_augment(self) -> None:
+    def test_gaussian_augment(self) -> None:
         """
-        Test augmentation.
+        Test gaussian augmentation.
         """
-        aug_feature, aug_targets = self.augmentor.augment(self.features, self.targets)
+        aug_feature, aug_targets = self.gaussian_augmentor.augment(self.features, self.targets)
         self.assertTrue((aug_feature['agents'].ego[0] - self.aug_feature_gt['agents'].ego[0] < 1e-04).all())
-        self.assertTrue((aug_targets['trajectory'].data - self.aug_targets_gt['trajectory'].data < 1e-04).all())
+        self.assertTrue(
+            (aug_targets['trajectory'].data - self.gaussian_aug_targets_gt['trajectory'].data < 1e-04).all()
+        )
+
+    def test_uniform_augment(self) -> None:
+        """
+        Test uniform augmentation.
+        """
+        features_ego = self.features['agents'].ego[0].copy()
+        aug_feature, aug_targets = self.uniform_augmentor.augment(self.features, self.targets)
+        self.assertTrue((abs(aug_feature['agents'].ego[0] - features_ego) <= 0.1).all())
+        self.assertTrue(
+            (abs(aug_targets['trajectory'].data - self.uniform_aug_targets_gt['trajectory'].data) <= 0.1).all()
+        )
 
     def test_no_augment(self) -> None:
         """
         Test no augmentation when aug_prob is set to 0.
         """
-        self.augmentor._augment_prob = 0.0
-        aug_feature, aug_targets = self.augmentor.augment(self.features, self.targets)
+        self.gaussian_augmentor._augment_prob = 0.0
+        aug_feature, aug_targets = self.gaussian_augmentor.augment(self.features, self.targets)
         self.assertTrue((aug_feature['agents'].ego[0] == self.features['agents'].ego[0]).all())
         self.assertTrue((aug_targets['trajectory'].data == self.targets['trajectory'].data).all())
 
@@ -181,11 +224,11 @@ class TestKinematicAgentAugmentation(unittest.TestCase):
         """
         features = {'agents': None, 'test_feature': None}
         targets = {'trajectory': None, 'test_target': None}
-        self.augmentor.validate(features, targets)
+        self.gaussian_augmentor.validate(features, targets)
 
         features = {'test_feature': None}
         targets = {'test_target': None}
-        self.assertRaises(AssertionError, self.augmentor.validate, features, targets)
+        self.assertRaises(AssertionError, self.gaussian_augmentor.validate, features, targets)
 
 
 if __name__ == '__main__':

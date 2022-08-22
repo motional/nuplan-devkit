@@ -102,7 +102,7 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
                 # Skip if column key is excluded or the value is None
                 if column_key in excluded_columns or column_value is None:
                     continue
-                if column_key in self._multiple_metrics:
+                if self._multiple_metrics and column_key in self._multiple_metrics:
                     multiple_factor *= column_value
                 else:
                     weight = self._get_metric_weight(metric_name=column_key)

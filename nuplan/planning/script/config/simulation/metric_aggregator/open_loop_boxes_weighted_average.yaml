@@ -1,0 +1,13 @@
+weighted_average_metric_aggregator:
+  _target_: nuplan.planning.metrics.aggregator.weighted_average_metric_aggregator.WeightedAverageMetricAggregator
+  name: 'weighted_average_metric_aggregator'
+  metric_weights:  # Below we list the metrics used in the scenario scoring function and their corresponsing weights to calculate a weighted average score for each scenario,
+  # if not specified, the weight is set as default.
+    # metric name : metric weight in the weighted average function
+    planner_expert_average_l2_error: 5
+    planner_expert_final_l2_error: 10
+    default: 1.0
+  file_name: weighted_average_metrics_${now:${date_format}}
+  # The scenario score is defined as the weighted average score of the metrics listed above, multiplied by the score of the multiple_metrics below.
+  multiple_metrics:
+    - planner_miss_rate

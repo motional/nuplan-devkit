@@ -85,6 +85,7 @@ class NuBoard:
             {"/": bokeh_app},
             io_loop=io_loop,
             port=self._port_number,
+            allow_websocket_origin=["*"],
             extra_patterns=[(r"/resource/(.*)", StaticFileHandler, {"path": str(self._resource_path)})],
         )
         server.start()
@@ -140,5 +141,6 @@ class NuBoard:
         self._doc.add_root(scenario_tab.scalar_log_name_select)
         self._doc.add_root(scenario_tab.scalar_scenario_name_select)
         self._doc.add_root(scenario_tab.time_series_layout)
+        self._doc.add_root(scenario_tab.ego_expert_states_layout)
         self._doc.add_root(scenario_tab.scenario_score_layout)
         self._doc.add_root(scenario_tab.simulation_tile_layout)

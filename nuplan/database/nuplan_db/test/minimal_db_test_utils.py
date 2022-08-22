@@ -165,7 +165,10 @@ def _generate_mapping_keys(db_generation_parameters: DBGenerationParameters) -> 
         }
         token_dicts["lidar_pc"].append(next_lidar_pc)
 
-        token_dicts["ego_pose"].append({"token": ego_pose_token, "lidar_pc_timestamp": timestamp})
+        # Ego pose timestamp can be slightly off from lidar_pc timestamp.
+        # This should never be used by most queries.
+        # So adjust the value by a slight amount to make it obvious when the wrong column is selected.
+        token_dicts["ego_pose"].append({"token": ego_pose_token, "timestamp": timestamp + 333})
 
         token_dicts["lidar"].append(
             {
@@ -351,7 +354,7 @@ def _generate_ego_pose_table(mapping_key_dicts: List[Dict[str, Any]], file_path:
         rows.append(
             (
                 _int_to_token(mapping_dict["token"]),
-                mapping_dict["lidar_pc_timestamp"],
+                mapping_dict["timestamp"],
                 idx,
                 idx + 1,
                 idx + 2,

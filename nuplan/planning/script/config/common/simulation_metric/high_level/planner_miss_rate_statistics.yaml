@@ -1,0 +1,12 @@
+planner_miss_rate_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.planner_miss_rate.PlannerMissRateStatistics
+  _convert_: 'all'
+  name: 'planner_miss_rate'
+  category: 'Planning'
+
+  max_displacement_threshold: 2.0
+  max_miss_rate_threshold: 0.3
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    planner_expert_average_l2_error_metric: planner_expert_average_l2_error_statistics

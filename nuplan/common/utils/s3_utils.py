@@ -63,7 +63,11 @@ def check_s3_path_exists(s3_path: str) -> bool:
     return 'Contents' in response
 
 
-def expand_s3_dir(s3_path: str, client: Optional[boto3.client] = None, filter_suffix: str = '') -> List[str]:
+def expand_s3_dir(
+    s3_path: str,
+    client: Optional[boto3.client] = None,
+    filter_suffix: str = '',
+) -> List[str]:
     """
     Expand S3 path dir to a list of S3 path files.
     :param s3_path: S3 path dir to expand.
@@ -76,9 +80,44 @@ def expand_s3_dir(s3_path: str, client: Optional[boto3.client] = None, filter_su
     url = parse.urlparse(s3_path)
 
     paginator = client.get_paginator('list_objects_v2')
-    page_iterator = paginator.paginate(Bucket=url.netloc, Prefix=url.path.lstrip('/'))
 
+    page_iterator = paginator.paginate(Bucket=url.netloc, Prefix=url.path.lstrip('/'))
     filenames = [str(content['Key']) for page in page_iterator for content in page['Contents']]
     filenames = [f's3://{url.netloc}/{path}' for path in filenames if path.endswith(filter_suffix)]
+
+    return filenames
+
+
+def get_cache_metadata_paths(
+    s3_path: str,
+    client: Optional[boto3.client] = None,
+    metadata_folder: str = 'metadata',
+    filter_suffix: str = 'csv',
+) -> List[str]:
+    """
+    Find metadata file paths in S3 cache path provided.
+    :param s3_path: S3 path dir to expand.
+    :param client: Boto3 client to use, if None create a new one.
+    :param metadata_folder: Metadata folder name.
+    :param filter_suffix: Optional suffix to filter S3 filenames with.
+    :return: List of S3 filenames discovered.
+    """
+    client = get_s3_client() if client is None else client
+
+    url = parse.urlparse(s3_path)
+
+    paginator = client.get_paginator('list_objects_v2')
+
+    logger.info('Attempting to find directory metadata for faster listing...')
+    page_iterator = paginator.paginate(Bucket=url.netloc, Prefix=url.path.lstrip('/') + metadata_folder)
+
+    filenames = []
+    try:
+        filenames = [str(content['Key']) for page in page_iterator for content in page['Contents']]
+        filenames = [f's3://{url.netloc}/{path}' for path in filenames if path.endswith(filter_suffix)]
+    except KeyError as err:
+        logger.info(
+            f'Error: {err}. No metadata found in directory provided! Please ensure cache contains metadata and directory provided is correct.'
+        )
 
     return filenames

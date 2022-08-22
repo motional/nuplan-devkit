@@ -1,0 +1,7 @@
+ego_lon_jerk_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_lon_jerk.EgoLonJerkStatistics
+  _convert_: 'all'
+  name: 'ego_lon_jerk'
+  category: 'Dynamics'
+
+  max_abs_lon_jerk: 4.13

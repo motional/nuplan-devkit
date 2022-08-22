@@ -14,6 +14,7 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/common/maps:abstract_map_factory",
         "//nuplan/planning/simulation/observation/idm:idm_agent",
         "//nuplan/planning/simulation/observation/idm:idm_agent_manager",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from shapely.geometry import LineString, Point, Polygon
 
@@ -187,6 +187,15 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
 
         return self.left_boundary.id == other.right_boundary.id
 
+    @property
+    @abc.abstractmethod
+    def adjacent_edges(self) -> Tuple[Optional[LaneGraphEdgeMapObject], Optional[LaneGraphEdgeMapObject]]:
+        """
+        Gets adjacent LaneGraphEdgeMapObjects
+        :return: Tuple of adjacent LaneGraphEdgeMapObjects where first element is the left lane and the second element is the right lane
+        """
+        pass
+
 
 class Lane(LaneGraphEdgeMapObject):
     """
@@ -221,6 +230,12 @@ class LaneConnector(LaneGraphEdgeMapObject):
         :param lane_connector_id: unique identifier of the lane.
         """
         super().__init__(lane_connector_id)
+
+    @property
+    def adjacent_edges(self) -> Tuple[Optional[LaneGraphEdgeMapObject], Optional[LaneGraphEdgeMapObject]]:
+        """Inherited from superclass."""
+        # Returns None for both elements since we currently don't have a way of telling if two lane connectors are adjacent
+        return None, None
 
 
 class PolylineMapObject(AbstractMapObject):

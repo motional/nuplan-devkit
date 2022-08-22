@@ -7,7 +7,6 @@ from functools import reduce
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 import cv2
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -16,11 +15,15 @@ from pyquaternion import Quaternion
 from scipy.spatial.transform import Rotation as R
 from shapely import geometry
 
+from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.nuplan_db_orm.frame import Frame
 from nuplan.database.utils.boxes.box3d import Box3D, box_in_image
 from nuplan.database.utils.geometry import view_points
 from nuplan.database.utils.label.label import Label
 from nuplan.database.utils.pointclouds.lidar import LidarPointCloud
+
+suppress_geopandas_warning()
+import geopandas as gpd  # noqa: E402
 
 # Importing directly would lead to circular imports.
 NuPlanDB = "NuPlanDB"

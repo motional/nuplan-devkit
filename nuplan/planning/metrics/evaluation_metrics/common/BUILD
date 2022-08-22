@@ -260,68 +260,94 @@ py_library(
 )
 
 py_library(
-    name = "ego_at_fault_collisions_with_pedestrians",
-    srcs = ["ego_at_fault_collisions_with_pedestrians.py"],
-    deps = [
-        "//nuplan/common/actor_state:tracked_objects_types",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/utils:collision_utils",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
-    name = "ego_at_fault_collisions_with_vehicles",
-    srcs = ["ego_at_fault_collisions_with_vehicles.py"],
-    deps = [
-        "//nuplan/common/actor_state:tracked_objects_types",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/utils:collision_utils",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
-    name = "ego_at_fault_collisions_with_bicycles",
-    srcs = ["ego_at_fault_collisions_with_bicycles.py"],
-    deps = [
-        "//nuplan/common/actor_state:tracked_objects_types",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/utils:collision_utils",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
-    name = "ego_at_fault_collisions_with_objects",
-    srcs = ["ego_at_fault_collisions_with_objects.py"],
-    deps = [
-        "//nuplan/common/actor_state:tracked_objects_types",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/base:violation_metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/utils:collision_utils",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/history:simulation_history",
-    ],
-)
-
-py_library(
     name = "ego_is_making_progress",
     srcs = ["ego_is_making_progress.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_progress_along_expert_route",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "planner_expert_average_l2_error",
+    srcs = ["planner_expert_average_l2_error.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/utils:expert_comparisons",
+        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "planner_expert_final_l2_error",
+    srcs = ["planner_expert_final_l2_error.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "planner_miss_rate",
+    srcs = ["planner_miss_rate.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "planner_expert_average_heading_error",
+    srcs = ["planner_expert_average_heading_error.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "planner_expert_final_heading_error",
+    srcs = ["planner_expert_final_heading_error.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/utils:state_extractors",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/history:simulation_history",
+    ],
+)
+
+py_library(
+    name = "driving_direction_violation",
+    srcs = ["driving_direction_violation.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map_objects",
+        "//nuplan/planning/metrics:metric_result",
+        "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/utils:route_extractor",
+        "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
     ],

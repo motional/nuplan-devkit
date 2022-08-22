@@ -7,6 +7,7 @@ import mock
 from omegaconf import DictConfig
 
 from nuplan.planning.script.builders.scenario_builder import extract_scenarios_from_cache, get_s3_scenario_cache
+from nuplan.planning.training.experiments.cache_metadata_entry import CacheMetadataEntry
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
 
@@ -68,7 +69,9 @@ class TestScenarioBuilder(unittest.TestCase):
         Gets mock get_s3_scenario_cache_patch function with scenario types.
         """
 
-        def mock_get_s3_scenario_cache_with_scenario_type(cache_path: str, feature_names: List[Any]) -> List[Path]:
+        def mock_get_s3_scenario_cache_with_scenario_type(
+            cache_path: str, feature_names: List[Any], worker: WorkerPool, load_from_metadata: bool = True
+        ) -> List[Path]:
             """
             Mock function for get_s3_scenario_cache
             :param cache_path: Parent of cache path
@@ -86,7 +89,11 @@ class TestScenarioBuilder(unittest.TestCase):
         Gets mock get_s3_scenario_cache_patch function without scenario types.
         """
 
-        def mock_get_s3_scenario_cache_without_scenario_type(cache_path: str, feature_names: List[Any]) -> List[Path]:
+        def mock_get_s3_scenario_cache_without_scenario_type(
+            cache_path: str,
+            feature_names: List[Any],
+            worker: WorkerPool,
+        ) -> List[Path]:
             """
             Mock function for get_s3_scenario_cache
             :param cache_path: Parent of cache path
@@ -116,14 +123,14 @@ class TestScenarioBuilder(unittest.TestCase):
 
     def _get_mock_expand_s3_dir(self) -> Callable[[str], List[str]]:
         """
-        Gets mock get_s3_scenario_cache_patch function without scenario types.
+        Gets mock expand_s3_dir function.
         """
 
         def mock_expand_s3_dir(cache_path: str) -> List[str]:
             """
-            Mock function for check_s3_path_exists
-            :param cache_path: Parent of cache path
-            :return: True
+            Mock function for expand_s3_dir.
+            :param cache_path: S3 cache path.
+            :return: List of mock s3 file paths fetched directly from s3 cache path provided.
             """
             return [
                 f'{cache_path}/mock_vehicle_log_123/mock_scenario_type_A/mock_token_{i}/{feature_name}.bin'
@@ -132,6 +139,21 @@ class TestScenarioBuilder(unittest.TestCase):
             ]
 
         return mock_expand_s3_dir
+
+    def _get_mock_fail_to_get_cache_metadata_paths(self) -> Callable[[str], List[str]]:
+        """
+        Gets mock get_cache_metadata_paths function.
+        """
+
+        def mock_fail_to_get_cache_metadata_paths(cache_path: str) -> List[str]:
+            """
+            Mock function for get_cache_metadata_paths.
+            :param cache_path: S3 cache path.
+            :return: List of mock s3 metadata file paths fetched from s3 cache path provided.
+            """
+            return []
+
+        return mock_fail_to_get_cache_metadata_paths
 
     def _get_mock_worker_map(self) -> Callable[..., List[Any]]:
         """
@@ -149,6 +171,30 @@ class TestScenarioBuilder(unittest.TestCase):
             return fn(input_objects)
 
         return mock_worker_map
+
+    def _get_mock_read_cache_metadata(self) -> Callable[..., List[CacheMetadataEntry]]:
+        """
+        Gets mock read_cache_metadata function.
+        """
+
+        def mock_read_cache_metadata(
+            cache_path: Path, metadata_filenames: List[str], worker: WorkerPool
+        ) -> List[CacheMetadataEntry]:
+            """
+            Mock function for read_cache_metadata
+            :param cache_path: Path to s3 cache.
+            :param metadata_filenames: Filenames of the metadata csv files.
+            :return: List of CacheMetadataEntry
+            """
+            return [
+                CacheMetadataEntry(
+                    f'{cache_path}/mock_vehicle_log_123/mock_scenario_type_A/mock_token_{i}/{feature_name}.bin'
+                )
+                for i in range(5)
+                for feature_name in ['agents', 'trajectory', 'vector_map']
+            ]
+
+        return mock_read_cache_metadata
 
     def test_extract_and_filter_scenarios_from_cache(self) -> None:
         """
@@ -271,21 +317,28 @@ class TestScenarioBuilder(unittest.TestCase):
         # Mock feature names
         mock_feature_names = set(self.specified_feature_names)
 
+        # Mock worker
+        mock_worker = Mock(WorkerPool)
+
         # Get mock functions
         mock_expand_s3_dir = self._get_mock_expand_s3_dir()
         mock_check_s3_path_exists = self._get_mock_check_s3_path_exists_patch()
-
+        mock_read_cache_metadata = self._get_mock_read_cache_metadata()
+        mock_fail_to_get_cache_metadata_paths = self._get_mock_fail_to_get_cache_metadata_paths()
         with mock.patch(
             "nuplan.planning.script.builders.scenario_builder.expand_s3_dir", mock_expand_s3_dir
         ), mock.patch(
             "nuplan.planning.script.builders.scenario_builder.check_s3_path_exists",
             mock_check_s3_path_exists,
+        ), mock.patch(
+            "nuplan.planning.script.builders.scenario_builder.read_cache_metadata", mock_read_cache_metadata
+        ), mock.patch(
+            "nuplan.planning.script.builders.scenario_builder.get_cache_metadata_paths",
+            mock_fail_to_get_cache_metadata_paths,
         ):
-
-            scenario_cache_paths = get_s3_scenario_cache(mock_cache_path, mock_feature_names)
+            scenario_cache_paths = get_s3_scenario_cache(mock_cache_path, mock_feature_names, mock_worker)
             msg = f'Expected S3 cache paths to be {self.expected_s3_paths} but got {scenario_cache_paths}'
             self.assertEqual(scenario_cache_paths, self.expected_s3_paths, msg=msg)
-            print(scenario_cache_paths)
 
 
 if __name__ == '__main__':

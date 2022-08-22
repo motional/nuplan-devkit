@@ -137,6 +137,11 @@ class SimulationTile:
         self._maps: Dict[str, AbstractMap] = {}
         self._figures: List[SimulationFigure] = []
 
+    @property
+    def get_figure_data(self) -> List[SimulationFigure]:
+        """Return figure data."""
+        return self._figures
+
     def _on_mouse_move(self, event: PointEvent, figure_index: int) -> None:
         """
         Event when mouse moving in a figure.
@@ -210,6 +215,7 @@ class SimulationTile:
 
         simulation_figure_data = SimulationFigure(
             figure=simulation_figure,
+            file_path_index=selected_scenario_key.nuboard_file_index,
             figure_title_name=presented_planner_name,
             slider=slider,
             video_button=video_button,
@@ -261,6 +267,7 @@ class SimulationTile:
             grid_layouts.append(
                 SimulationData(
                     planner_name=simulation_figure.planner_name,
+                    simulation_figure=simulation_figure,
                     plot=gridplot(
                         [[simulation_figure.slider], [simulation_figure.figure], [simulation_figure.video_button]],
                         toolbar_location="left",

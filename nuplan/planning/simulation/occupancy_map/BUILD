@@ -11,6 +11,7 @@ py_library(
     name = "geopandas_occupancy_map",
     srcs = ["geopandas_occupancy_map.py"],
     deps = [
+        "//nuplan/common/utils:helpers",
         "//nuplan/planning/simulation/occupancy_map:abstract_occupancy_map",
     ],
 )

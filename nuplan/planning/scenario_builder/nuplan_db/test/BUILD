@@ -49,3 +49,15 @@ py_test(
         "//nuplan/planning/utils/multithreading:worker_sequential",
     ],
 )
+
+py_test(
+    name = "test_nuplan_scenario_filter_utils",
+    size = "small",
+    srcs = ["test_nuplan_scenario_filter_utils.py"],
+    data = [
+    ],
+    deps = [
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_filter_utils",
+    ],
+)

@@ -46,8 +46,8 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
         selected_metrics = [selected_metrics]
 
     simulation_metrics = cfg.simulation_metric
-    common_metrics: DictConfig = simulation_metrics.get('common', {})
-    high_level_common_metrics: DictConfig = simulation_metrics.get('high_level_common', {})
+    low_level_metrics: DictConfig = simulation_metrics.get('low_level', {})
+    high_level_metrics: DictConfig = simulation_metrics.get('high_level', {})
 
     metric_engines = {}
     for scenario in scenarios:
@@ -60,10 +60,10 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
         # TODO: Add scope checks
         scenario_type = scenario.scenario_type
         scenario_metrics: DictConfig = simulation_metrics.get(scenario_type, {})
-        metrics_in_scope = common_metrics.copy()
+        metrics_in_scope = low_level_metrics.copy()
         metrics_in_scope.update(scenario_metrics)
 
-        high_level_metric_in_scope = high_level_common_metrics.copy()
+        high_level_metric_in_scope = high_level_metrics.copy()
         # We either pick the selected metrics if any is specified, or all metrics
         if selected_metrics is not None:
             metrics_in_scope = {
@@ -72,7 +72,7 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
                 if metric_name in metrics_in_scope
             }
             high_level_metric_in_scope = {
-                metric_name: high_level_common_metrics[metric_name]
+                metric_name: high_level_metrics[metric_name]
                 for metric_name in selected_metrics
                 if metric_name in high_level_metric_in_scope
             }
@@ -83,13 +83,13 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
         for metric in base_metrics.values():
             metric_engine.add_metric(metric)
 
-        # Add high level common metrics
+        # Add high level metrics
         for metric_name, metric in high_level_metric_in_scope.items():
-            high_level_common_metric = build_high_level_metric(cfg=metric, base_metrics=base_metrics)
-            metric_engine.add_metric(high_level_common_metric)
+            high_level_metric = build_high_level_metric(cfg=metric, base_metrics=base_metrics)
+            metric_engine.add_metric(high_level_metric)
 
             # Add the high-level metric to the base metrics, so that other high-level metrics can reuse it
-            base_metrics[metric_name] = high_level_common_metric
+            base_metrics[metric_name] = high_level_metric
 
         metric_engines[scenario_type] = metric_engine
 

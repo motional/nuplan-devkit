@@ -9,15 +9,23 @@ from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTr
 
 class MultiCallback(AbstractCallback):
     """
-    This class simply calls many callbacks for simplified code
+    This class simply calls many callbacks for simplified code.
     """
 
     def __init__(self, callbacks: List[AbstractCallback]):
         """
-        Initialize with multiple callbacks
-        :param callbacks: all callbacks that will be called sequentially
+        Initialize with multiple callbacks.
+        :param callbacks: all callbacks that will be called sequentially.
         """
         self._callbacks = callbacks
+
+    @property
+    def callbacks(self) -> List[AbstractCallback]:
+        """
+        Property to access callbacks.
+        :return: list of callbacks this MultiCallback runs.
+        """
+        return self._callbacks
 
     def on_initialization_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
         """Inherited, see superclass."""

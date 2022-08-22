@@ -202,7 +202,7 @@ class SpeedLimitViolationStatistics(ViolationMetricBase):
         :param scenario: Scenario running this metric
         :return: the estimated metric.
         """
-        ego_route = self._lane_change_metric.ego_route
+        ego_route = self._lane_change_metric.ego_driven_route
         extractor = SpeedLimitViolationExtractor(history=history, metric_name=self._name, category=self._category)
 
         extractor.extract_metric(ego_route=ego_route)

@@ -40,7 +40,8 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
         :param max_elements: maximum number of elements to extract per feature layer.
         :param max_points: maximum number of points per feature to extract per feature layer.
         :param radius:  [m ]The query radius scope relative to the current ego-pose.
-        :param interpolation_method: Interpolation method to apply when interpolating to maintain fixed size map elements.
+        :param interpolation_method: Interpolation method to apply when interpolating to maintain fixed size
+            map elements.
         :return: Vector set map data including map element coordinates and traffic light status info.
         """
         super().__init__()
@@ -53,6 +54,10 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
 
         # Sanitize feature building parameters
         for feature_name in self._map_features:
+            try:
+                VectorFeatureLayer[feature_name]
+            except KeyError:
+                raise ValueError(f"Object representation for layer: {feature_name} is unavailable!")
             if feature_name not in self._max_elements:
                 raise RuntimeError(f"Max elements unavailable for {feature_name} feature layer!")
             if feature_name not in self._max_points:
@@ -200,7 +205,7 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
                 list_feature_tl_data: List[torch.Tensor] = []
 
                 for element_tl_data in traffic_light_data[feature_name].to_vector():
-                    list_feature_tl_data.append(torch.tensor(element_tl_data, dtype=torch.int64))
+                    list_feature_tl_data.append(torch.tensor(element_tl_data, dtype=torch.float32))
                 list_tensor_data[f"traffic_light_data.{feature_name}"] = list_feature_tl_data
 
         return (
@@ -246,6 +251,7 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
                         VectorFeatureLayer.LANE.name,
                         VectorFeatureLayer.LEFT_BOUNDARY.name,
                         VectorFeatureLayer.RIGHT_BOUNDARY.name,
+                        VectorFeatureLayer.ROUTE_LANES.name,
                     ]
                     else None,
                 )

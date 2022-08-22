@@ -92,6 +92,7 @@ local2agent_type = {
     "trafficcone": "TRAFFIC_CONE",
     "barrier": "BARRIER",
     "czone_sign": "CZONE_SIGN",
+    "czone_signs": "CZONE_SIGN",
     "short_vehicle": "VEHICLE",
     "long_vehicle": "VEHICLE",
 }

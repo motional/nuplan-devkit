@@ -11,7 +11,7 @@
     },
     "ego": {
         "acceleration": [
-            1.0,
+            0.0,
             0.0
         ],
         "pose": [
@@ -25,43 +25,15 @@
         ],
         "time_us": 1000000
     },
-    "ego_future_states": [
-        {
-            "acceleration": [
-                0.0,
-                0.0
-            ],
-            "pose": [
-                664749.662199684,
-                3999457.8245754833,
-                -2.0080825581755435
-            ],
-            "velocity": [
-                1.0,
-                0.0
-            ],
-            "time_us": 2000000
-        },
-        {
-            "acceleration": [
-                0.0,
-                0.0
-            ],
-            "pose": [
-                664748.662199684,
-                3999455.2951032147,
-                -2.0894044289663976
-            ],
-            "velocity": [
-                1.0,
-                0.0
-            ],
-            "time_us": 3000000
-        }
-    ],
     "expected": {
         "statistics": [
-            ["COUNT", 1]
+            ["COUNT", 1],
+            ["COUNT", 1],
+            ["COUNT", 0],
+            ["COUNT", 0],
+            ["MAX", 1.5],
+            ["MIN", 1.5],
+            ["MEAN", 1.5]
         ],
         "time_series": {}
     },
@@ -80,16 +52,38 @@
         "version": "3.0.0"
     },
     "world": {
-        "bicycles": [],
+        "bicycles": [
+        {
+                "active": true,
+                "box": {
+                    "pose": [
+            664749.762199684,
+            3999457.8589363281,
+            -2.0460689239836234
+                    ],
+                    "size": [
+                        1,
+                        2
+                    ]
+                },
+                "id": 0,
+                "real": true,
+                "speed": 8,
+                "type": "Bicycle"
+            }
+            ],
         "pedestrians": [],
+        "genericobjects":[
+
+            ],
         "vehicles": [
             {
                 "active": true,
                 "box": {
                     "pose": [
-                        664747.455184,
-                        3999454.2055674633,
-                        -2.064083783361095
+                        664755.3100460604,
+                        3999465.8002803912,
+                        -2.0460689239836234
                     ],
                     "size": [
                         2.0,
@@ -100,59 +94,61 @@
                 "real": true,
                 "speed": 9.4007,
                 "type": "Vehicle"
+            },
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664760.4093684325,
+                        3999472.276646758,
+                        -2.043391284140373
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 2,
+                "real": true,
+                "speed": 6.5543,
+                "type": "Vehicle"
+            },
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664747.455184,
+                        3999453.2055674633,
+                        -2.064083783361095
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 3,
+                "real": true,
+                "speed": 3.0,
+                "type": "Vehicle"
+            },
+            {
+                "active": true,
+                "box": {
+                    "pose": [
+                        664752.2848684954,
+                        3999471.262603041,
+                        -2.053405313544694
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 4,
+                "real": true,
+                "speed": 5.0,
+                "type": "Vehicle"
             }
         ]
-    },
-    "world_future_states": [
-        {
-            "bicycles": [],
-            "genericobjects": [],
-            "pedestrians": [],
-            "vehicles": [
-                {
-                    "active": true,
-                    "box": {
-                        "pose": [
-                            664746.455184,
-                            3999451.2055674633,
-                            -2.064083783361095
-                        ],
-                        "size": [
-                            2.0,
-                            4.7
-                        ]
-                    },
-                    "id": 1,
-                    "real": true,
-                    "speed": 5.5543,
-                    "type": "Vehicle"
-                }
-            ]
-        },
-        {
-            "bicycles": [],
-            "genericobjects": [],
-            "pedestrians": [],
-            "vehicles": [
-                {
-                    "active": true,
-                    "box": {
-                        "pose": [
-                            664745.455184,
-                            3999450.04055674633,
-                            -2.064083783361095
-                        ],
-                        "size": [
-                            2.0,
-                            4.7
-                        ]
-                    },
-                    "id": 1,
-                    "real": true,
-                    "speed": 3.0,
-                    "type": "Vehicle"
-                }
-            ]
-        }
-    ]
+    }
 }

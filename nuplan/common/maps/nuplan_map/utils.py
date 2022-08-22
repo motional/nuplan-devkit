@@ -1,6 +1,5 @@
 from typing import Dict, List, Tuple, Union, cast
 
-import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -11,7 +10,11 @@ from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap, MapObject
 from nuplan.common.maps.abstract_map_objects import Lane, LaneConnector, RoadBlockGraphEdgeMapObject
 from nuplan.common.maps.maps_datatypes import RasterLayer, SemanticMapLayer, VectorLayer
+from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.maps_db.layer import MapLayer
+
+suppress_geopandas_warning()
+import geopandas as gpd  # noqa: E402
 
 
 def raster_layer_from_map_layer(map_layer: MapLayer) -> RasterLayer:
@@ -493,6 +496,16 @@ def compute_curvature(point1: geom.Point, point2: geom.Point, point3: geom.Point
     position = np.sign((point2.x - point1.x) * (point3.y - point1.y) - (point2.y - point1.y) * (point3.x - point1.x))
 
     return float(position * curvature)
+
+
+def get_distance_between_map_object_and_point(point: Point2D, map_object: MapObject) -> float:
+    """
+    Get distance between point and nearest surface of specified map object.
+    :param point: Point to calculate distance between.
+    :param map_object: MapObject (containing underlying polygon) to check distance between.
+    :return: Computed distance.
+    """
+    return float(geom.Point(point.x, point.y).distance(map_object.polygon))
 
 
 def extract_discrete_polyline(polyline: geom.LineString) -> List[StateSE2]:

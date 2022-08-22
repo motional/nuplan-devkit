@@ -5,7 +5,7 @@ import time
 from typing import List
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.simulation.callback.metric_callback import MetricCallback
+from nuplan.planning.simulation.callback.metric_callback import MetricCallback, run_metric_engine
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.runner.abstract_runner import AbstractRunner
 from nuplan.planning.simulation.runner.runner_report import RunnerReport
@@ -45,7 +45,8 @@ class MetricRunner(AbstractRunner):
                 self._simulation_log.scenario.log_name,
             )
         ]
-        self._metric_callback.run_metric_engine(
+        run_metric_engine(
+            metric_engine=self._metric_callback.metric_engine,
             scenario=self._simulation_log.scenario,
             history=self._simulation_log.simulation_history,
             planner_name=self._simulation_log.planner.name(),

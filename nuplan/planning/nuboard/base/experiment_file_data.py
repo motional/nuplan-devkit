@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
-from bokeh.palettes import Set1, Set2, Set3
+from bokeh.palettes import Dark2, Pastel1, Pastel2, Set1, Set2, Set3
 
 from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 from nuplan.planning.nuboard.base.data_class import NuBoardFile, SimulationScenarioKey
@@ -19,6 +19,7 @@ class ExperimentFileData:
 
     file_paths: List[NuBoardFile]  # Experiment file path
     color_palettes: List[str] = field(default_factory=list)  # Color choices
+    expert_color_palettes: List[str] = field(default_factory=list)  # Color choices for expert plots
     available_metric_statistics_names: List[str] = field(default_factory=list)  # Metric statistics name
     metric_statistics_dataframes: List[List[MetricStatisticsDataFrame]] = field(
         default_factory=list
@@ -42,6 +43,9 @@ class ExperimentFileData:
 
         if not self.color_palettes:
             self.color_palettes = Set1[9] + Set2[8] + Set3[12]
+
+        if not self.expert_color_palettes:
+            self.expert_color_palettes = Pastel2[8] + Pastel1[9] + Dark2[8]
 
         if not self.available_scenarios:
             # Scenario types -> scenario logs -> a list of scenario names
@@ -106,18 +110,33 @@ class ExperimentFileData:
                 base_path=Path(file_path.metric_main_path),
                 sub_folder=file_path.metric_folder,
             )
+            planner_names: List[str] = []
             if not metric_path.exists():
                 continue
 
-            planner_names: List[str] = []
             # Loop through metric parquet files
             for file in metric_path.iterdir():
                 try:
                     data_frame = MetricStatisticsDataFrame.load_parquet(file)
                     planner_names += data_frame.planner_names
-                except (FileNotFoundError, Exception):
+                except (FileNotFoundError, Exception) as e:
                     # Ignore the file
+                    logger.info(e)
                     pass
+
+            # Find from simulation data if no metrics found
+            if not planner_names:
+                simulation_path = self._get_base_path(
+                    current_path=file_path.current_path,
+                    base_path=Path(file_path.simulation_main_path),
+                    sub_folder=file_path.simulation_folder,
+                )
+                if not simulation_path.exists():
+                    continue
+                planner_name_paths = simulation_path.iterdir()
+                for planner_name_path in planner_name_paths:
+                    planner_name = planner_name_path.name
+                    planner_names.append(planner_name)
 
             # Remove duplicate planner names
             planner_names = list(set(planner_names))

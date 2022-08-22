@@ -1,7 +1,9 @@
 from collections import defaultdict
 from typing import Dict, List, Optional, Type
 
-from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType
+from nuplan.common.actor_state.tracked_objects import TrackedObject
+from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusType
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.observation.abstract_observation import AbstractObservation
@@ -9,6 +11,14 @@ from nuplan.planning.simulation.observation.idm.idm_agent_manager import IDMAgen
 from nuplan.planning.simulation.observation.idm.idm_agents_builder import build_idm_agents_on_map_rails
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Observation
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
+
+OPEN_LOOP_DETECTION_TYPES = [
+    TrackedObjectType.PEDESTRIAN,
+    TrackedObjectType.BARRIER,
+    TrackedObjectType.CZONE_SIGN,
+    TrackedObjectType.TRAFFIC_CONE,
+    TrackedObjectType.GENERIC_OBJECT,
+]
 
 
 class IDMAgents(AbstractObservation):
@@ -23,6 +33,7 @@ class IDMAgents(AbstractObservation):
         headway_time: float,
         accel_max: float,
         decel_max: float,
+        open_loop_detections_types: List[str],
         scenario: AbstractScenario,
         minimum_path_length: float = 20,
         planned_trajectory_samples: int = 6,
@@ -37,6 +48,7 @@ class IDMAgents(AbstractObservation):
         :param accel_max: [m/s^2] maximum acceleration
         :param decel_max: [m/s^2] maximum deceleration (positive value)
         :param scenario: scenario
+        :param open_loop_detections_types: The open-loop detection types to include.
         :param minimum_path_length: [m] The minimum path length
         :param planned_trajectory_samples: number of elements to sample for the planned trajectory.
         :param planned_trajectory_sample_interval: [s] time interval of sequence to sample from.
@@ -49,17 +61,31 @@ class IDMAgents(AbstractObservation):
         self._accel_max = accel_max
         self._decel_max = decel_max
         self._scenario = scenario
+        self._open_loop_detections_types: List[TrackedObjectType] = []
         self._minimum_path_length = minimum_path_length
         self._planned_trajectory_samples = planned_trajectory_samples
         self._planned_trajectory_sample_interval = planned_trajectory_sample_interval
 
         # Prepare IDM agent manager
         self._idm_agent_manager: Optional[IDMAgentManager] = None
+        self._initialize_open_loop_detection_types(open_loop_detections_types)
 
     def reset(self) -> None:
         """Inherited, see superclass."""
         self.current_iteration = 0
         self._idm_agent_manager = None
+
+    def _initialize_open_loop_detection_types(self, open_loop_detections: List[str]) -> None:
+        """
+        Initializes open-loop detections with the enum types from TrackedObjectType
+        :param open_loop_detections: A list of open-loop detections types as strings
+        :return: A list of open-loop detections types as strings as the corresponding TrackedObjectType
+        """
+        for _type in open_loop_detections:
+            try:
+                self._open_loop_detections_types.append(TrackedObjectType[_type])
+            except KeyError:
+                raise ValueError(f"The given detection type {_type} does not exist or is not supported!")
 
     def _get_idm_agent_manager(self) -> IDMAgentManager:
         """
@@ -75,6 +101,7 @@ class IDMAgents(AbstractObservation):
                 self._decel_max,
                 self._minimum_path_length,
                 self._scenario,
+                self._open_loop_detections_types,
             )
             self._idm_agent_manager = IDMAgentManager(agents, agent_occupancy, self._scenario.map_api)
 
@@ -93,6 +120,9 @@ class IDMAgents(AbstractObservation):
         detections = self._get_idm_agent_manager().get_active_agents(
             self.current_iteration, self._planned_trajectory_samples, self._planned_trajectory_sample_interval
         )
+        if self._open_loop_detections_types:
+            open_loop_detections = self._get_open_loop_track_objects(self.current_iteration)
+            detections.tracked_objects.tracked_objects.extend(open_loop_detections)
         return detections
 
     def update_observation(
@@ -101,9 +131,7 @@ class IDMAgents(AbstractObservation):
         """Inherited, see superclass."""
         self.current_iteration = next_iteration.index
         tspan = next_iteration.time_s - iteration.time_s
-        traffic_light_data: List[TrafficLightStatusData] = self._scenario.get_traffic_light_status_at_iteration(
-            self.current_iteration
-        )
+        traffic_light_data = self._scenario.get_traffic_light_status_at_iteration(self.current_iteration)
 
         # Extract traffic light data into Dict[traffic_light_status, lane_connector_ids]
         traffic_light_status: Dict[TrafficLightStatusType, List[str]] = defaultdict(list)
@@ -112,4 +140,19 @@ class IDMAgents(AbstractObservation):
             traffic_light_status[data.status].append(str(data.lane_connector_id))
 
         ego_state, _ = history.current_state
-        self._get_idm_agent_manager().propagate_agents(ego_state, tspan, self.current_iteration, traffic_light_status)
+        self._get_idm_agent_manager().propagate_agents(
+            ego_state,
+            tspan,
+            self.current_iteration,
+            traffic_light_status,
+            self._get_open_loop_track_objects(self.current_iteration),
+        )
+
+    def _get_open_loop_track_objects(self, iteration: int) -> List[TrackedObject]:
+        """
+        Get open-loop tracked objects from scenario.
+        :param iteration: The simulation iteration.
+        :return: A list of TrackedObjects.
+        """
+        detections = self._scenario.get_tracked_objects_at_iteration(iteration)
+        return detections.tracked_objects.get_tracked_objects_of_types(self._open_loop_detections_types)  # type: ignore

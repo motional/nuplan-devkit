@@ -18,6 +18,7 @@ from nuplan.common.maps.nuplan_map.utils import (
     connect_trimmed_lane_conn_successor,
     extract_polygon_from_map_object,
     extract_roadblock_objects,
+    get_distance_between_map_object_and_point,
     get_roadblock_ids_from_trajectory,
     group_blp_lane_segments,
     split_blp_lane_segments,
@@ -431,6 +432,64 @@ def test_get_roadblock_ids_from_trajectory(scene: Dict[str, Any]) -> None:
 
     for roadblock_id in roadblock_ids:
         assert isinstance(roadblock_id, str)
+
+
+@nuplan_test(path='json/baseline/baseline_in_intersection.json')
+def test_get_distance_between_map_object_and_point_lanes_roadblocks(scene: Dict[str, Any]) -> None:
+    """
+    Test get distance between point and nearest surface of specified map object.
+    Tests lane/connectors and roadblock/connectors.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+    radius = 35
+    pose = scene["markers"][0]["pose"]
+    point = Point2D(pose[0], pose[1])
+
+    layer_names = [
+        SemanticMapLayer.LANE,
+        SemanticMapLayer.LANE_CONNECTOR,
+        SemanticMapLayer.ROADBLOCK,
+        SemanticMapLayer.ROADBLOCK_CONNECTOR,
+    ]
+    layers = nuplan_map.get_proximal_map_objects(point, radius, layer_names)
+    for layer_name in layer_names:
+        map_objects = layers[layer_name]
+        assert len(map_objects) > 0
+        dist = get_distance_between_map_object_and_point(point, map_objects[0])
+        assert dist <= radius
+
+
+@nuplan_test(path='json/crosswalks/nearby.json')
+def test_get_distance_between_map_object_and_point_crosswalks(scene: Dict[str, Any]) -> None:
+    """
+    Test get distance between point and nearest surface of specified map object. Tests crosswalks.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+    radius = 35
+    pose = scene["markers"][0]["pose"]
+    point = Point2D(pose[0], pose[1])
+    layers = nuplan_map.get_proximal_map_objects(point, radius, [SemanticMapLayer.CROSSWALK])
+    map_objects = layers[SemanticMapLayer.CROSSWALK]
+    assert len(map_objects) > 0
+    dist = get_distance_between_map_object_and_point(point, map_objects[0])
+    assert dist <= radius
+
+
+@nuplan_test(path='json/stop_lines/nearby.json')
+def test_get_distance_between_map_object_and_point_stop_lines(scene: Dict[str, Any]) -> None:
+    """
+    Test get distance between point and nearest surface of specified map object. Tests stop lines.
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+    radius = 35
+    pose = scene["markers"][0]["pose"]
+    point = Point2D(pose[0], pose[1])
+
+    layers = nuplan_map.get_proximal_map_objects(point, radius, [SemanticMapLayer.STOP_LINE])
+    map_objects = layers[SemanticMapLayer.STOP_LINE]
+    assert len(map_objects) > 0
+    dist = get_distance_between_map_object_and_point(point, map_objects[0])
+    assert dist <= radius
 
 
 if __name__ == "__main__":

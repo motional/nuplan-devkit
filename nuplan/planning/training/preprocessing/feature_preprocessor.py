@@ -6,6 +6,7 @@ import traceback
 from typing import List, Optional, Tuple, Type, Union
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.training.experiments.cache_metadata_entry import CacheMetadataEntry
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import (
     AbstractFeatureBuilder,
@@ -74,18 +75,26 @@ class FeaturePreprocessor:
         """
         return [builder.get_feature_type() for builder in self._target_builders]
 
-    def compute_features(self, scenario: AbstractScenario) -> Tuple[FeaturesType, TargetsType]:
+    def compute_features(
+        self, scenario: AbstractScenario
+    ) -> Tuple[FeaturesType, TargetsType, List[CacheMetadataEntry]]:
         """
         Compute features for a scenario, in case cache_path is set, features will be stored in cache,
         otherwise just recomputed
         :param scenario for which features and targets should be computed
-        :return: model features and targets
+        :return: model features and targets and cache metadata
         """
         try:
-            all_features: FeaturesType = self._compute_all_features(scenario, self._feature_builders)
-            all_targets: TargetsType = self._compute_all_features(scenario, self._target_builders)
+            all_features: FeaturesType
+            all_feature_cache_metadata: List[CacheMetadataEntry]
+            all_targets: TargetsType
+            all_targets_cache_metadata: List[CacheMetadataEntry]
 
-            return all_features, all_targets
+            all_features, all_feature_cache_metadata = self._compute_all_features(scenario, self._feature_builders)
+            all_targets, all_targets_cache_metadata = self._compute_all_features(scenario, self._target_builders)
+
+            all_cache_metadata = all_feature_cache_metadata + all_targets_cache_metadata
+            return all_features, all_targets, all_cache_metadata
         except Exception as error:
             msg = (
                 f"Failed to compute features for scenario token {scenario.token} in log {scenario.log_name}\n"
@@ -98,20 +107,22 @@ class FeaturePreprocessor:
 
     def _compute_all_features(
         self, scenario: AbstractScenario, builders: List[Union[AbstractFeatureBuilder, AbstractTargetBuilder]]
-    ) -> Union[FeaturesType, TargetsType]:
+    ) -> Tuple[Union[FeaturesType, TargetsType], List[Optional[CacheMetadataEntry]]]:
         """
         Compute all features/targets from builders for scenario
         :param scenario: for which features should be computed
         :param builders: to use for feature computation
-        :return: computed features/targets
+        :return: computed features/targets and the metadata entries for the computed features/targets
         """
         # Features to be computed
         all_features: FeaturesType = {}
+        all_features_metadata_entries: List[CacheMetadataEntry] = []
 
         for builder in builders:
-            feature = compute_or_load_feature(
+            feature, feature_metadata_entry = compute_or_load_feature(
                 scenario, self._cache_path, builder, self._storing_mechanism, self._force_feature_computation
             )
             all_features[builder.get_feature_unique_name()] = feature
+            all_features_metadata_entries.append(feature_metadata_entry)
 
-        return all_features
+        return all_features, all_features_metadata_entries

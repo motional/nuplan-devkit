@@ -44,6 +44,7 @@ class IDMAgent:
         route: List[LaneGraphEdgeMapObject],
         policy: IDMPolicy,
         minimum_path_length: float,
+        max_route_len: int = 5,
     ):
         """
         Constructor for IDMAgent.
@@ -52,11 +53,12 @@ class IDMAgent:
         :param route: agent initial route plan
         :param policy: policy controlling the agent behavior
         :param minimum_path_length: [m] The minimum path length
+        :param max_route_len: The max number of route elements to store
         """
         self._start_iteration = start_iteration  # scenario iteration where agent first appears
         self._initial_state = initial_state
         self._state = IDMAgentState(initial_state.path_progress, initial_state.velocity.x)
-        self._route: Deque[LaneGraphEdgeMapObject] = deque(route, maxlen=len(route))
+        self._route: Deque[LaneGraphEdgeMapObject] = deque(route, maxlen=max_route_len)
         self._path = self._convert_route_to_path()
         self._policy = policy
         self._minimum_path_length = minimum_path_length
@@ -88,6 +90,10 @@ class IDMAgent:
     def polygon(self) -> Polygon:
         """:return: the agent as a Agent object"""
         return self.agent.box.geometry
+
+    def get_route(self) -> List[LaneGraphEdgeMapObject]:
+        """:return: The route the IDM agent is following."""
+        return list(self._route)
 
     @property
     def projected_footprint(self) -> Polygon:

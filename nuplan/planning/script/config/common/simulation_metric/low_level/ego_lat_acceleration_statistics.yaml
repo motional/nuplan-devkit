@@ -1,0 +1,7 @@
+ego_lat_acceleration_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_lat_acceleration.EgoLatAccelerationStatistics
+  _convert_: 'all'
+  name: 'ego_lat_acceleration'
+  category: 'Dynamics'
+
+  max_abs_lat_accel: 4.89

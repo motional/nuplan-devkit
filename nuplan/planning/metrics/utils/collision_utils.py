@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import IntEnum
 from typing import Dict, List
 
@@ -8,7 +7,19 @@ from nuplan.common.actor_state.agent import Agent
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.scene_object import SceneObject
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
-from nuplan.planning.metrics.metric_result import MetricViolation
+from nuplan.planning.metrics.metric_result import MetricStatisticsType, Statistic
+
+VRU_types = [
+    TrackedObjectType.PEDESTRIAN,
+    TrackedObjectType.BICYCLE,
+]
+
+object_types = [
+    TrackedObjectType.TRAFFIC_CONE,
+    TrackedObjectType.BARRIER,
+    TrackedObjectType.CZONE_SIGN,
+    TrackedObjectType.GENERIC_OBJECT,
+]
 
 
 class CollisionType(IntEnum):
@@ -21,31 +32,20 @@ class CollisionType(IntEnum):
     ACTIVE_LATERAL_COLLISION = 4
 
 
-@dataclass
-class AtFaultCollision:
-    """
-    Class to retain information about the collisions at a particular timestamp.
-    """
-
-    timestamp: int  # The timestamp at time of collision
-    duration: float  # Duration of collision, we assume collision is only evaluated at the first timestamp of collision
-    collision_ego_delta_v: float  # Energy in collision
-    collision_type: CollisionType  # Type of collision
-
-
 def ego_delta_v_collision(
     ego_state: EgoState, scene_object: SceneObject, ego_mass: float = 2000, agent_mass: float = 2000
 ) -> float:
     """
-    Computes the ego delta V (loss of velocity during the collision). Delta V represents the intensity of the collision
+    Compute the ego delta V (loss of velocity during the collision). Delta V represents the intensity of the collision
     of the ego with other agents.
-    :param ego_state: The state of ego
-    :param scene_object: The scene_object ego is colliding with
-    :param ego_mass: mass of ego
-    :param agent_mass: mass of the agent
-    :return The delta V measure for ego
+    :param ego_state: The state of ego.
+    :param scene_object: The scene_object ego is colliding with.
+    :param ego_mass: mass of ego.
+    :param agent_mass: mass of the agent.
+    :return The delta V measure for ego.
     """
-    # Collision metric is defined as the ratio of agent mass to the overall mass of ego and agent, times the changes in velocity defined as sqrt(ego_speed^2 + agent_speed^2 - 2 * ego_speed * agent_speed * cos(heading_difference))
+    # Collision metric is defined as the ratio of agent mass to the overall mass of ego and agent, times the changes in velocity defined as
+    # sqrt(ego_speed^2 + agent_speed^2 - 2 * ego_speed * agent_speed * cos(heading_difference))
     ego_mass_ratio = agent_mass / (agent_mass + ego_mass)
 
     scene_object_speed = scene_object.velocity.magnitude() if isinstance(scene_object, Agent) else 0
@@ -62,50 +62,56 @@ def ego_delta_v_collision(
     return ego_mass_ratio * velocity_component
 
 
-def compute_collision_violation(
-    at_fault_collision: AtFaultCollision,
-    metric_name: str,
-    metric_category: str,
-) -> MetricViolation:
+def get_fault_type_statistics(
+    all_at_fault_collisions: Dict[TrackedObjectType, List[float]],
+) -> List[Statistic]:
     """
-    Computes the violation metric for an at fault collision.
+    :param all_at_fault_collisions: Dict of at_fault collisions.
+    :return: List of Statistics for all collision track types.
+    """
+    statistics = []
+    track_types_collisions_energy_dict: Dict[str, List[float]] = {}
 
-    :param metric_name: Metric name
-    :param metric_category: Metric category
-    :return: MetricViolation at the current timestamp.
-    """
-    return MetricViolation(
-        metric_computator=metric_name,
-        name=metric_name,
-        metric_category=metric_category,
-        unit="meters_per_second",
-        start_timestamp=at_fault_collision.timestamp,
-        duration=at_fault_collision.duration,
-        extremum=at_fault_collision.collision_ego_delta_v,
-        mean=at_fault_collision.collision_ego_delta_v,
-    )
-
-
-def get_fault_type_violation(
-    track_types: List[TrackedObjectType],
-    all_at_fault_collisions: Dict[TrackedObjectType, List[AtFaultCollision]],
-    name: str,
-    category: str,
-) -> List[MetricViolation]:
-    """
-    :param object_types: List of track types
-    :param all_at_fault_collisions: Dict of at_fault collisions
-    :param name: metric name
-    :param category: metric category
-    :return: List of MetricViolation for the given track type
-    """
-    all_violations = [
-        compute_collision_violation(
-            at_fault_collision,
-            name,
-            category,
+    for collision_track_type, collision_name in zip(
+        [VRU_types, [TrackedObjectType.VEHICLE], object_types], ['VRUs', 'vehicles', 'objects']
+    ):
+        track_types_collisions_energy_dict[collision_name] = [
+            colision_energy
+            for track_type in collision_track_type
+            for colision_energy in all_at_fault_collisions[track_type]
+        ]
+        statistics.extend(
+            [
+                Statistic(
+                    name=f'number_of_at_fault_collisions_with_{collision_name}',
+                    unit=MetricStatisticsType.COUNT.unit,
+                    value=len(track_types_collisions_energy_dict[collision_name]),
+                    type=MetricStatisticsType.COUNT,
+                )
+            ]
         )
-        for track_type in track_types
-        for at_fault_collision in all_at_fault_collisions[track_type]
-    ]
-    return all_violations
+    for collision_name, track_types_collisions_energy in track_types_collisions_energy_dict.items():
+        if len(track_types_collisions_energy) > 0:
+            statistics.extend(
+                [
+                    Statistic(
+                        name=f'max_collision_energy_with_{collision_name}',
+                        unit="meters_per_second",
+                        value=max(track_types_collisions_energy),
+                        type=MetricStatisticsType.MAX,
+                    ),
+                    Statistic(
+                        name=f'min_collision_energy_with_{collision_name}',
+                        unit="meters_per_second",
+                        value=min(track_types_collisions_energy),
+                        type=MetricStatisticsType.MIN,
+                    ),
+                    Statistic(
+                        name=f'mean_collision_energy_with_{collision_name}',
+                        unit="meters_per_second",
+                        value=np.mean(track_types_collisions_energy),
+                        type=MetricStatisticsType.MEAN,
+                    ),
+                ]
+            )
+    return statistics

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
@@ -28,8 +28,8 @@ class LightningModuleWrapper(pl.LightningModule):
         objectives: List[AbstractObjective],
         metrics: List[AbstractTrainingMetric],
         batch_size: int,
-        optimizer: DictConfig,
-        lr_scheduler: DictConfig,
+        optimizer: Optional[DictConfig] = None,
+        lr_scheduler: Optional[DictConfig] = None,
         objective_aggregate_mode: str = 'mean',
     ) -> None:
         """
@@ -39,8 +39,8 @@ class LightningModuleWrapper(pl.LightningModule):
         :param objectives: list of learning objectives used for supervision at each step
         :param metrics: list of planning metrics computed at each step
         :param batch_size: batch_size taken from dataloader config
-        :param optimizer: config for instantiating optimizer
-        :param lr_scheduler: config for instantiating lr_scheduler
+        :param optimizer: config for instantiating optimizer. Can be 'None' for older models.
+        :param lr_scheduler: config for instantiating lr_scheduler. Can be 'None' for older models and when an lr_scheduler is not being used.
         :param objective_aggregate_mode: how should different objectives be combined, can be 'sum', 'mean', and 'max'.
         """
         super().__init__()
@@ -184,6 +184,9 @@ class LightningModuleWrapper(pl.LightningModule):
 
         :return: optimizer or dictionary of optimizers and schedules
         """
+        if self.optimizer is None:
+            raise RuntimeError("To train, optimizer must not be None.")
+
         optimizer_dict: Dict[str, Any] = {}
 
         optimizer: torch.optim.Optimizer = instantiate(

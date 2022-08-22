@@ -71,12 +71,16 @@
             "time_us": 6000000
         }
     ],
-    "expected": {
+    "expected": [{
         "statistics": [
-            ["BOOLEAN", false],
-            ["BOOLEAN", true]
+            ["BOOLEAN", false]
         ]
     },
+    {
+        "statistics": [
+            ["BOOLEAN", false]
+        ]
+    }],
     "goal": {
         "pose": []
     },

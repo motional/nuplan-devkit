@@ -16,7 +16,7 @@ def test_ego_progress_to_goal(scene: Dict[str, Any]) -> None:
     :param scene: the json scene
     """
     metric = EgoProgressAlongExpertRouteStatistics(
-        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=0.1
+        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=2
     )
     metric_statistic_test(scene=scene, metric=metric)
 
@@ -28,7 +28,7 @@ def test_ego_no_progress_to_goal(scene: Dict[str, Any]) -> None:
     :param scene: the json scene
     """
     metric = EgoProgressAlongExpertRouteStatistics(
-        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=0.1
+        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=2
     )
     metric_statistic_test(scene=scene, metric=metric)
 
@@ -40,7 +40,19 @@ def test_no_route(scene: Dict[str, Any]) -> None:
     :param scene: the json scene
     """
     metric = EgoProgressAlongExpertRouteStatistics(
-        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=0.1
+        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=2
+    )
+    metric_statistic_test(scene=scene, metric=metric)
+
+
+@nuplan_test(path='json/ego_progress_along_expert_route/ego_drives_backward.json')
+def test_ego_backward_driving(scene: Dict[str, Any]) -> None:
+    """
+    Tests ego progress metric when ego drives backward.
+    :param scene: the json scene
+    """
+    metric = EgoProgressAlongExpertRouteStatistics(
+        "ego_progress_along_expert_route_statistics", "Dynamics", score_progress_threshold=2
     )
     metric_statistic_test(scene=scene, metric=metric)
 

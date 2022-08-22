@@ -10,7 +10,7 @@ hydra:
 defaults:
   - default_common
   - simulation_metric:
-      - default_metric
+      - default_metrics
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging
 

@@ -1,0 +1,11 @@
+kinematic_history_agent_augmentation:
+  _target_: nuplan.planning.training.data_augmentation.kinematic_history_agent_augmentation.KinematicHistoryAgentAugmentor
+  _convert_: 'all'
+
+  dt: 0.5  # the time interval between trajectory points
+  mean: [1.0, 0.0, 0.0]  # the mean vector of the Gaussian noise on [x, y, heading]
+  std: [1.0, 1.0, 0.5]  # the std vector of the Gaussian noise on [x, y, heading]
+  low: [0.0, -2.0, -0.75]  # lower bound on Uniform noise on [x, y, heading], used only if use_uniform_noise == true
+  high: [2.0, 2.0, 0.75]  # upper bound on Uniform noise on [x, y, heading], used only if use_uniform_noise == true
+  augment_prob: 0.5  # probability of applying data augmentation for training
+  use_uniform_noise: true  # use uniform noise instead of gaussian noise

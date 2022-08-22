@@ -26,14 +26,21 @@ class TestVectorSetMapFeatureBuilder(unittest.TestCase):
         self.batch_size = 1
         self.radius = 35
         self.interpolation_method = 'linear'
-        self.map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE']
+        self.map_features = [
+            'LANE',
+            'LEFT_BOUNDARY',
+            'RIGHT_BOUNDARY',
+            'STOP_LINE',
+            'CROSSWALK',
+            'ROUTE_LANES',
+        ]
         self.max_elements = {
             'LANE': 30,
             'LEFT_BOUNDARY': 30,
             'RIGHT_BOUNDARY': 30,
             'STOP_LINE': 20,
             'CROSSWALK': 20,
-            'ROUTE': 30,
+            'ROUTE_LANES': 30,
         }
         self.max_points = {
             'LANE': 20,
@@ -41,7 +48,7 @@ class TestVectorSetMapFeatureBuilder(unittest.TestCase):
             'RIGHT_BOUNDARY': 20,
             'STOP_LINE': 20,
             'CROSSWALK': 20,
-            'ROUTE': 20,
+            'ROUTE_LANES': 20,
         }
 
         self.feature_builder = VectorSetMapFeatureBuilder(

@@ -380,7 +380,28 @@ body {
   height: 100%;
 }
 
+.scenario-plot-section .scenario-table-ego-expert-states-row {
+  height: 10%;
+  background: #fff;
+  display: none;
+  min-height: 400px;
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+}
+
+.scenario-plot-section .scenario-table-ego-expert-states-row .bk-root {
+  padding-top: 24px;
+  height: 100%;
+}
+
 .scenario-score-layout {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.scenario-ego-expert-states-layout {
   width: 100% !important;
   height: 100% !important;
   margin: auto !important;

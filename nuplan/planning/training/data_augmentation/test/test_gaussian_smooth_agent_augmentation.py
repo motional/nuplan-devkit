@@ -59,7 +59,7 @@ class TestGaussianSmoothAgentAugmentation(unittest.TestCase):
                         [4.32596400e-03, -6.96468630e-04, -9.31633710e-06],
                         [2.43536170e-03, -3.77532090e-04, 4.77897310e-06],
                         [1.13521280e-03, -1.27310400e-04, 3.80405140e-05],
-                        [-2.79207866e-01, 1.23733238e-01, 1.21955765e-01],
+                        [2.67742378e-01, 5.87639301e-02, 3.05916953e-01],
                     ]
                 )
             ],
@@ -131,22 +131,42 @@ class TestGaussianSmoothAgentAugmentation(unittest.TestCase):
             ],
         )
 
-        self.aug_targets_gt = {}
-        self.aug_targets_gt['trajectory'] = Trajectory(
+        self.gaussian_aug_targets_gt = {}
+        self.gaussian_aug_targets_gt['trajectory'] = Trajectory(
             data=np.array(
                 [
-                    [-3.05143267e-01, 6.34933542e-02, 3.88459056e-02],
-                    [-9.05095569e-02, 3.76481991e-02, -2.14787043e-02],
-                    [1.04601096e-01, 3.52352304e-02, -2.09794331e-02],
-                    [3.61774919e-01, 1.28206118e-02, -1.48434895e-02],
-                    [9.21066916e-01, -8.26164336e-03, -3.80704726e-03],
-                    [1.84169033e00, -1.90395200e-02, -4.84469474e-03],
-                    [3.09319638e00, -3.42040445e-02, -7.79489218e-03],
-                    [4.62972602e00, -5.14802886e-02, -4.72468032e-03],
-                    [6.41902945e00, -6.32929286e-02, -6.67336481e-05],
-                    [8.42536180e00, -6.25500571e-02, 3.91751674e-03],
-                    [1.05772661e01, -4.42665087e-02, 7.14091509e-03],
-                    [1.19537652e01, -2.90897778e-02, 8.73378411e-03],
+                    [1.79909768e-01, 3.46292143e-02, 1.69823954e-01],
+                    [1.08605770e-01, 1.97756017e-02, 4.24424040e-02],
+                    [9.55989353e-02, 7.18025938e-03, 1.04373998e-02],
+                    [3.29352870e-01, -9.20384090e-04, 9.19450476e-04],
+                    [9.15527184e-01, -7.88396897e-03, -3.40438637e-03],
+                    [1.84272996e00, -1.88512783e-02, -6.17531861e-03],
+                    [3.09345437e00, -3.44966704e-02, -7.26242050e-03],
+                    [4.62998953e00, -5.14234703e-02, -4.48675278e-03],
+                    [6.41906077e00, -6.32653042e-02, -1.90822629e-05],
+                    [8.42530270e00, -6.25461260e-02, 3.95074816e-03],
+                    [1.05772538e01, -4.42685352e-02, 7.14697555e-03],
+                    [1.19537668e01, -2.90942382e-02, 8.73650844e-03],
+                ]
+            )
+        )
+
+        self.uniform_aug_targets_gt = {}
+        self.uniform_aug_targets_gt['trajectory'] = Trajectory(
+            data=np.array(
+                [
+                    [-1.23269903e-02, 3.95750476e-03, -3.66945959e-03],
+                    [5.23398530e-03, 8.76677051e-03, 4.82984929e-03],
+                    [8.11338362e-02, 2.87675577e-03, -2.47428679e-03],
+                    [3.41575812e-01, -2.56694967e-03, -2.36505408e-03],
+                    [9.19201714e-01, -8.57337111e-03, -3.99194094e-03],
+                    [1.84200781e00, -1.91452871e-02, -6.89646769e-03],
+                    [3.09258798e00, -3.46222537e-02, -7.60822625e-03],
+                    [4.62963856e00, -5.14547445e-02, -4.56260133e-03],
+                    [6.41901491e00, -6.32771927e-02, -4.26804288e-05],
+                    [8.42531047e00, -6.25500536e-02, 3.93445970e-03],
+                    [1.05772518e01, -4.42706406e-02, 7.13952217e-03],
+                    [1.19537637e01, -2.90951136e-02, 8.73232027e-03],
                 ]
             )
         )
@@ -154,23 +174,42 @@ class TestGaussianSmoothAgentAugmentation(unittest.TestCase):
         augment_prob = 1.0
         mean = [0.3, 0.1, np.pi / 12]
         std = [0.5, 0.1, np.pi / 12]
+        low = [-0.1, -0.1, -0.1]
+        high = [0.1, 0.1, 0.1]
         sigma = 5.0
-        self.augmentor = GaussianSmoothAgentAugmentor(mean, std, sigma, augment_prob)
+        self.gaussian_augmentor = GaussianSmoothAgentAugmentor(
+            mean, std, low, high, sigma, augment_prob, use_uniform_noise=False
+        )
+        self.uniform_augmentor = GaussianSmoothAgentAugmentor(
+            mean, std, low, high, sigma, augment_prob, use_uniform_noise=True
+        )
 
-    def test_augment(self) -> None:
+    def test_gaussian_augment(self) -> None:
         """
-        Test augmentation.
+        Test gaussian augmentation.
         """
-        aug_feature, aug_targets = self.augmentor.augment(self.features, self.targets)
+        aug_feature, aug_targets = self.gaussian_augmentor.augment(self.features, self.targets)
+        print(aug_feature, aug_targets)
         self.assertTrue((aug_feature['agents'].ego[0] - self.aug_feature_gt['agents'].ego[0] < 1e-04).all())
-        self.assertTrue((aug_targets['trajectory'].data - self.aug_targets_gt['trajectory'].data < 1e-04).all())
+        self.assertTrue(
+            (aug_targets['trajectory'].data - self.gaussian_aug_targets_gt['trajectory'].data < 1e-04).all()
+        )
+
+    def test_uniform_augment(self) -> None:
+        """
+        Test uniform augmentation.
+        """
+        original_features_ego = self.features['agents'].ego[0].copy()
+        aug_feature, aug_targets = self.uniform_augmentor.augment(self.features, self.targets)
+        self.assertTrue((abs(aug_feature['agents'].ego[0] - original_features_ego) < 0.1).all())
+        self.assertTrue((aug_targets['trajectory'].data - self.uniform_aug_targets_gt['trajectory'].data < 1e-04).all())
 
     def test_no_augment(self) -> None:
         """
         Test no augmentation when aug_prob is set to 0.
         """
-        self.augmentor._augment_prob = 0.0
-        aug_feature, aug_targets = self.augmentor.augment(self.features, self.targets)
+        self.gaussian_augmentor._augment_prob = 0.0
+        aug_feature, aug_targets = self.gaussian_augmentor.augment(self.features, self.targets)
         self.assertTrue((aug_feature['agents'].ego[0] == self.features['agents'].ego[0]).all())
         self.assertTrue((aug_targets['trajectory'].data == self.targets['trajectory'].data).all())
 

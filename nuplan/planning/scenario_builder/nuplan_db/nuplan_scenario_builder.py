@@ -16,7 +16,7 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils imp
     discover_log_dbs,
     filter_num_scenarios_per_type,
     filter_total_num_scenarios,
-    get_scenarios_from_db_file,
+    get_scenarios_from_log_file,
     scenario_dict_to_list,
 )
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping, absolute_path_to_log_name
@@ -66,7 +66,7 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         self._max_workers = max_workers
         self._verbose = verbose
         self._ground_truth_predictions = ground_truth_predictions
-        self._scenario_mapping = scenario_mapping if scenario_mapping is not None else ScenarioMapping({})
+        self._scenario_mapping = scenario_mapping if scenario_mapping is not None else ScenarioMapping({}, None)
         self._vehicle_parameters = vehicle_parameters if vehicle_parameters is not None else get_pacifica_parameters()
 
     def __reduce__(self) -> Tuple[Type[NuPlanScenarioBuilder], Tuple[Any, ...]]:
@@ -121,25 +121,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         :param worker: Worker pool for concurrent scenario processing.
         :return: Constructed scenario dictionary.
         """
-
-        def get_scenarios_from_log_file(parameters: List[GetScenariosFromDbFileParams]) -> List[ScenarioDict]:
-            """
-            Gets all scenarios from a log file that match the provided parameters.
-            :param parameters: The parameters to use for scenario extraction.
-            :return: The extracted scenarios.
-            """
-            output_dict: ScenarioDict = {}
-            for parameter in parameters:
-                this_dict = get_scenarios_from_db_file(parameter)
-
-                for key in this_dict:
-                    if key not in output_dict:
-                        output_dict[key] = this_dict[key]
-                    else:
-                        output_dict[key] += this_dict[key]
-
-            return [output_dict]
-
         allowable_log_names = set(scenario_filter.log_names) if scenario_filter.log_names is not None else None
         map_parameters = [
             GetScenariosFromDbFileParams(

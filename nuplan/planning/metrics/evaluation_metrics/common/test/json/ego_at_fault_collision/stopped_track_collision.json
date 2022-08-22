@@ -61,7 +61,13 @@
     ],
     "expected": {
         "statistics": [
-            ["COUNT", 1]
+            ["COUNT", 1],
+            ["COUNT", 0],
+            ["COUNT", 1],
+            ["COUNT", 0],
+            ["MAX", 0.5],
+            ["MIN", 0.5],
+            ["MEAN", 0.5]
         ],
         "time_series": {}
     },

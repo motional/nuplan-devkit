@@ -22,7 +22,13 @@ def test_idm_observations(scene: Dict[str, Any]) -> None:
 
     # Create Observation
     observation = IDMAgents(
-        target_velocity=10, min_gap_to_lead_agent=0.5, headway_time=1.5, accel_max=1.0, decel_max=2.0, scenario=scenario
+        target_velocity=10,
+        min_gap_to_lead_agent=0.5,
+        headway_time=1.5,
+        accel_max=1.0,
+        decel_max=2.0,
+        scenario=scenario,
+        open_loop_detections_types=[],
     )
 
     # Simulate

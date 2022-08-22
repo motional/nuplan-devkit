@@ -33,6 +33,15 @@ py_test(
 )
 
 py_test(
+    name = "test_kinematic_history_agent_augmentation",
+    srcs = ["test_kinematic_history_agent_augmentation.py"],
+    deps = [
+        "//nuplan/planning/training/data_augmentation:kinematic_history_agent_augmentation",
+        "//nuplan/planning/training/preprocessing/features:agents",
+    ],
+)
+
+py_test(
     name = "test_agent_dropout_augmentation",
     srcs = ["test_agent_dropout_augmentation.py"],
     deps = [

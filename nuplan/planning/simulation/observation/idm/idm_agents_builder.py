@@ -15,7 +15,10 @@ from nuplan.planning.simulation.observation.idm.idm_agent import IDMAgent, IDMIn
 from nuplan.planning.simulation.observation.idm.idm_agent_manager import UniqueIDMAgents
 from nuplan.planning.simulation.observation.idm.idm_policy import IDMPolicy
 from nuplan.planning.simulation.occupancy_map.abstract_occupancy_map import OccupancyMap
-from nuplan.planning.simulation.occupancy_map.strtree_occupancy_map import STRTreeOccupancyMapFactory
+from nuplan.planning.simulation.occupancy_map.strtree_occupancy_map import (
+    STRTreeOccupancyMap,
+    STRTreeOccupancyMapFactory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,7 @@ def build_idm_agents_on_map_rails(
     decel_max: float,
     minimum_path_length: float,
     scenario: AbstractScenario,
+    open_loop_detections_types: List[TrackedObjectType],
 ) -> Tuple[UniqueIDMAgents, OccupancyMap]:
     """
     Build unique agents from a scenario. InterpolatedPaths are created for each agent according to their driven path
@@ -68,6 +72,7 @@ def build_idm_agents_on_map_rails(
     :param decel_max: maximum deceleration (positive value) [m/s^2]
     :param minimum_path_length: [m] The minimum path length
     :param scenario: scenario
+    :param open_loop_detections_types: The open-loop detection types to include.
     :return: a dictionary of IDM agent uniquely identified by a track_token
     """
     unique_agents: UniqueIDMAgents = {}
@@ -76,8 +81,13 @@ def build_idm_agents_on_map_rails(
     map_api = scenario.map_api
     ego_agent = scenario.get_ego_state_at_iteration(0).agent
 
-    agent_occupancy = STRTreeOccupancyMapFactory.get_from_boxes([ego_agent])
+    open_loop_detections = detections.tracked_objects.get_tracked_objects_of_types(open_loop_detections_types)
+    # An occupancy map used only for collision checking
+    init_agent_occupancy = STRTreeOccupancyMapFactory.get_from_boxes(open_loop_detections)
+    init_agent_occupancy.insert(ego_agent.token, ego_agent.box.geometry)
 
+    # Initialize occupancy map
+    occupancy_map = STRTreeOccupancyMap({})
     desc = "Converting detections to smart agents"
 
     agent: Agent
@@ -100,10 +110,14 @@ def build_idm_agents_on_map_rails(
             )
 
             # Check for collision
-            if not agent_occupancy.intersects(box_on_baseline.geometry).is_empty():
+            if not init_agent_occupancy.intersects(box_on_baseline.geometry).is_empty():
                 continue
 
-            agent_occupancy.insert(agent.track_token, box_on_baseline.geometry)
+            # Add to init_agent_occupancy for collision checking
+            init_agent_occupancy.insert(agent.track_token, box_on_baseline.geometry)
+
+            # Add to occupancy_map to pass on to IDMAgentManger
+            occupancy_map.insert(agent.track_token, box_on_baseline.geometry)
 
             # Project velocity into local frame
             if np.isnan(agent.velocity.array).any():
@@ -131,4 +145,5 @@ def build_idm_agents_on_map_rails(
                 policy=IDMPolicy(target_velocity, min_gap_to_lead_agent, headway_time, accel_max, decel_max),
                 minimum_path_length=minimum_path_length,
             )
-    return unique_agents, agent_occupancy
+
+    return unique_agents, occupancy_map

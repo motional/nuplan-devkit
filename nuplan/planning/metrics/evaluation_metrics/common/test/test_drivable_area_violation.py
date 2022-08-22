@@ -53,7 +53,7 @@ def test_works_with_small_violations(scene: Dict[str, Any]) -> None:
     lane_change_metric.compute(history, mock_abstract_scenario)
     metric = DrivableAreaViolationStatistics('drivable_area_violation', 'Violations', lane_change_metric, 0.3)
     metric.compute(history, mock_abstract_scenario)
-    assert np.isclose(metric.results[0].statistics[1].value, 1, atol=1e-2)
+    assert np.isclose(metric.results[0].statistics[0].value, 0, atol=1e-2)
 
 
 if __name__ == '__main__':

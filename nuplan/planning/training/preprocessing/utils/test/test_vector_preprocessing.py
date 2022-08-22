@@ -86,7 +86,7 @@ class TestVectorPreprocessing(unittest.TestCase):
             self.interpolation,
         )
         self.assertIsInstance(coords_tensor, torch.DoubleTensor)
-        self.assertIsInstance(tl_data_tensor, torch.LongTensor)
+        self.assertIsInstance(tl_data_tensor, torch.FloatTensor)
         self.assertIsInstance(avails_tensor, torch.BoolTensor)
 
         self.assertEqual(coords_tensor.shape, (self.max_elements, self.max_points, 2))

@@ -30,6 +30,8 @@ py_test(
     srcs = ["test_dataloader_ray.py"],
     deps = [
         ":skeleton_test_dataloader",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
+        "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_ray",
     ],
 )
@@ -40,6 +42,8 @@ py_test(
     srcs = ["test_dataloader_sequential.py"],
     deps = [
         ":skeleton_test_dataloader",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
+        "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_sequential",
     ],
 )

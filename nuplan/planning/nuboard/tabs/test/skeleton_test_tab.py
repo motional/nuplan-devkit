@@ -11,6 +11,7 @@ from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatis
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.nuboard.utils.test.utils import create_sample_simulation_log
+from nuplan.planning.simulation.main_callback.metric_file_callback import MetricFileCallback
 
 
 class SkeletonTestTab(unittest.TestCase):
@@ -93,12 +94,20 @@ class SkeletonTestTab(unittest.TestCase):
         # Set up a dummy metric engine and save the results to a metric file.
         metric_engine = MetricsEngine(main_save_path=metric_path, timestamp=0)
 
-        metric_files = {"ego_acceleration": [MetricFile(key=key, metric_statistics=[result])]}
+        metric_files = {scenario_name: [MetricFile(key=key, metric_statistics=[result])]}
 
         metric_engine.write_to_files(metric_files=metric_files)
 
+        # Set up metric file callback
+        metric_file_callback = MetricFileCallback(
+            metric_file_output_path=str(metric_path), scenario_metric_paths=[str(metric_path)]
+        )
+        metric_file_callback.on_run_simulation_end()
+
     def setUp(self) -> None:
-        """Set up a histogram tab."""
+        """
+        Set up common data for nuboard unit tests.
+        """
         self.doc = Document()
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.nuboard_file = NuBoardFile(

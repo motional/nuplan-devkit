@@ -239,6 +239,15 @@ def get_route_baseline_roadblock_linkedlist(
     return route_baseline_roadblock_list
 
 
+def get_distance_of_closest_baseline_point_to_its_start(base_line: PolylineMapObject, pose: Point2D) -> float:
+    """Computes distance of "closest point on the baseline to pose" to the beginning of the baseline
+    :param base_line: A baseline path
+    :param pose: An ego pose
+    :return: distance to start.
+    """
+    return float(base_line.linestring.project(Point(*pose)))
+
+
 @dataclass
 class CornersGraphEdgeMapObject:
     """class containing list of lane/lane connectors of each corner of ego's orientedbox."""

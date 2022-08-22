@@ -1,0 +1,5 @@
+ego_acceleration_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_acceleration.EgoAccelerationStatistics
+  _convert_: 'all'
+  name: 'ego_acceleration'
+  category: 'Dynamics'

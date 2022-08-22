@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional, Tuple, Type
 
 
 @dataclass
@@ -61,6 +63,21 @@ class VehicleParameters(BoxParameters):
         self.height = height
         self.vehicle_name = vehicle_name
         self.vehicle_type = vehicle_type
+
+    def __reduce__(self) -> Tuple[Type[VehicleParameters], Tuple[Any, ...]]:
+        """
+        :return: tuple of class and its constructor parameters, this is used to pickle the class
+        """
+        return self.__class__, (
+            self.width,
+            self.front_length,
+            self.rear_length,
+            self.cog_position_from_rear_axle,
+            self.wheel_base,
+            self.vehicle_name,
+            self.vehicle_type,
+            self.height,
+        )
 
     @property
     def rear_axle_to_center(self) -> float:

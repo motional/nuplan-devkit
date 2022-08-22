@@ -27,6 +27,9 @@
     },
     "expected": {
         "statistics": [
+            ["COUNT", 0],
+            ["COUNT", 0],
+            ["COUNT", 0],
             ["COUNT", 0]
         ],
         "time_series": {}

@@ -49,6 +49,14 @@ class TestTrackedObjects(unittest.TestCase):
         self.assertEqual(3, len(agents))
         self.assertEqual(0, len(static_objects))
 
+    def test_get_tracked_objects_of_types(self) -> None:
+        """Test get_tracked_objects_of_types()"""
+        tracked_objects = TrackedObjects(self.agents)
+        track_types = [TrackedObjectType.PEDESTRIAN, TrackedObjectType.VEHICLE]
+        tracks = tracked_objects.get_tracked_objects_of_types(track_types)
+
+        self.assertEqual(3, len(tracks))
+
 
 if __name__ == '__main__':
     unittest.main()

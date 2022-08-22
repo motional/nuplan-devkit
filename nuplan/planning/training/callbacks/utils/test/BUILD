@@ -13,8 +13,10 @@ py_test(
         "//nuplan/planning/training/callbacks:scenario_scoring_callback",
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_loader:scenario_dataset",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/test:dummy_vectormap_builder",
+        "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )
 

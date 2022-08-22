@@ -60,7 +60,7 @@ def convert_feature_layer_to_fixed_size(
     coords_tensor = torch.zeros((max_elements, max_points, 2), dtype=torch.float64)
     avails_tensor = torch.zeros((max_elements, max_points), dtype=torch.bool)
     tl_data_tensor = (
-        torch.zeros((max_elements, max_points, traffic_light_encoding_dim), dtype=torch.int64)
+        torch.zeros((max_elements, max_points, traffic_light_encoding_dim), dtype=torch.float32)
         if feature_tl_data is not None
         else None
     )

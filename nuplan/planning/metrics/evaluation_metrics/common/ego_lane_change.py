@@ -161,7 +161,7 @@ class EgoLaneChangeStatistics(MetricBase):
         self._max_fail_rate = max_fail_rate
 
         # Store to re-use in high-level metrics
-        self.ego_route: List[List[Optional[GraphEdgeMapObject]]] = []
+        self.ego_driven_route: List[List[Optional[GraphEdgeMapObject]]] = []
         self.corners_route: List[CornersGraphEdgeMapObject] = [CornersGraphEdgeMapObject([], [], [], [])]
         self.timestamps_in_common_or_connected_route_objs: List[int] = []
         self.results: List[MetricStatistics] = []
@@ -177,10 +177,8 @@ class EgoLaneChangeStatistics(MetricBase):
         ego_states = history.extract_ego_state
         ego_poses = extract_ego_center(ego_states)
 
-        # Get the list of lane or lane_connectors associated to ego at each time instance.
-        ego_route = get_route(history.map_api, ego_poses)
-        # Store ego_route to load in other metrics
-        self.ego_route = ego_route
+        # Get the list of lane or lane_connectors associated to ego at each time instance, and store to use in other metrics
+        self.ego_driven_route = get_route(history.map_api, ego_poses)
 
         # Extract ego timepoints
         ego_timestamps = extract_ego_time_point(ego_states)

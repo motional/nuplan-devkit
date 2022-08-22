@@ -1,0 +1,7 @@
+planner_expert_average_l2_error_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.planner_expert_average_l2_error.PlannerExpertAverageL2ErrorStatistics
+  _convert_: 'all'
+  name: 'planner_expert_average_l2_error'
+  category: 'Planning'
+  comparison_horizon: 4 #seconds
+  comparison_frequency: 2 #Hz

@@ -116,21 +116,33 @@ class TestSimpleAgentAugmentation(unittest.TestCase):
         augment_prob = 1.0
         mean = [0.3, 0.1, np.pi / 12]
         std = [0.5, 0.1, np.pi / 12]
-        self.augmentor = SimpleAgentAugmentor(mean, std, augment_prob)
+        low = [-0.1, -0.1, -0.1]
+        high = [0.1, 0.1, 0.1]
+        self.gaussian_augmentor = SimpleAgentAugmentor(mean, std, low, high, augment_prob, use_uniform_noise=False)
+        self.uniform_augmentor = SimpleAgentAugmentor(mean, std, low, high, augment_prob, use_uniform_noise=True)
 
-    def test_augment(self) -> None:
+    def test_gaussian_augment(self) -> None:
         """
-        Test augmentation.
+        Test gaussian augmentation.
         """
-        aug_feature, _ = self.augmentor.augment(self.features, self.targets)
+        aug_feature, _ = self.gaussian_augmentor.augment(self.features, self.targets)
         self.assertTrue((aug_feature['agents'].ego[0] - self.aug_feature_gt['agents'].ego[0] < 1e-04).all())
+
+    def test_uniform_augment(self) -> None:
+        """
+        Test uniform augmentation.
+        """
+        original_feature_ego = self.features['agents'].ego[0].copy()
+        aug_feature, _ = self.uniform_augmentor.augment(self.features, self.targets)
+        print(f'{original_feature_ego}, \n {aug_feature}')
+        self.assertTrue((abs(aug_feature['agents'].ego[0] - original_feature_ego) <= 0.1).all())
 
     def test_no_augment(self) -> None:
         """
         Test no augmentation when aug_prob is set to 0.
         """
-        self.augmentor._augment_prob = 0.0
-        aug_feature, _ = self.augmentor.augment(self.features, self.targets)
+        self.gaussian_augmentor._augment_prob = 0.0
+        aug_feature, _ = self.gaussian_augmentor.augment(self.features, self.targets)
         self.assertTrue((aug_feature['agents'].ego[0] == self.features['agents'].ego[0]).all())
 
 

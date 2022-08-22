@@ -49,7 +49,7 @@ class TestMetricCallback(TestCase):
         mc.on_simulation_end(self.mock_setup, self.mock_planner, self.mock_history)
 
         # Expectations check
-        logger.info.assert_has_calls(
+        logger.debug.assert_has_calls(
             [
                 call("Starting metrics computation..."),
                 call("Finished metrics computation!"),

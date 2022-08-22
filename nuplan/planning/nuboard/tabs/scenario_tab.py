@@ -4,20 +4,22 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
 from math import ceil
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import numpy.typing as npt
 import pandas
 from bokeh.document.document import Document
 from bokeh.layouts import LayoutDOM, column, gridplot, layout
-from bokeh.models import CheckboxGroup, ColumnDataSource, Div, HoverTool, Select
+from bokeh.models import BasicTickFormatter, CheckboxGroup, ColumnDataSource, Div, HoverTool, Select
 from bokeh.models.callbacks import CustomJS
 from bokeh.plotting.figure import Figure
 
+from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
+from nuplan.planning.nuboard.base.plot_data import SimulationData
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile
 from nuplan.planning.nuboard.style import PLOT_PALETTE, default_div_style, scenario_tab_style
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
@@ -64,6 +66,8 @@ class ScenarioTimeSeriesData:
 
 # Type for scenario metric score data type: {log name: {scenario name: metric score data}}
 scenario_metric_score_dict_type = Dict[str, Dict[str, List[ScenarioMetricScoreData]]]
+# Type for scenario ego expert states: {planner_name: {state_key: [state_values]}}
+scenario_ego_expert_state_figure_type = Dict[str, Dict[str, List[float]]]
 
 
 class ScenarioTab(BaseTab):
@@ -127,7 +131,18 @@ class ScenarioTab(BaseTab):
             css_classes=["scenario-time-series-layout"],
             name="time_series_layout",
         )
-
+        self._default_ego_expert_states_div = Div(
+            text=""" <p> No expert and ego states, please add more experiments or
+                        adjust the search filter.</p>""",
+            css_classes=['scenario-default-div'],
+            margin=default_div_style['margin'],
+            width=default_div_style['width'],
+        )
+        self._ego_expert_states_layout = column(
+            self._default_ego_expert_states_div,
+            css_classes=["scenario-ego-expert-states-layout"],
+            name="ego_expert_states_layout",
+        )
         self._default_simulation_div = Div(
             text=""" <p> No simulation data, please add more experiments or
                 adjust the search filter.</p>""",
@@ -171,7 +186,7 @@ class ScenarioTab(BaseTab):
         self._scenario_metric_score_data_figure_sizes = scenario_tab_style['scenario_metric_score_figure_sizes']
         self._scenario_metric_score_data: scenario_metric_score_dict_type = {}
         self._time_series_data: Dict[str, List[ScenarioTimeSeriesData]] = {}
-        self._simulation_figure_data: List[Any] = []
+        self._simulation_figure_data: List[SimulationData] = []
         self._available_scenario_names: List[str] = []
         self._simulation_plots: Optional[column] = None
 
@@ -208,6 +223,20 @@ class ScenarioTab(BaseTab):
             name='scenario_map_checkbox_group',
         )
         self._map_checkbox_group.on_change('active', self._map_checkbox_group_active_on_change)
+        self.plot_state_keys = [
+            'x [m]',
+            'y [m]',
+            'heading [rad]',
+            'velocity_x [m/s]',
+            'velocity_y [m/s]',
+            'speed [m/s]',
+            'acceleration_x [m/s^2]',
+            'acceleration_y [m/s^2]',
+            'acceleration [m/s^2]',
+            'steering_angle [rad]',
+            'yaw_rate [rad/s]',
+        ]
+        self.expert_planner_key = 'Expert'
         self._init_selection()
 
     @property
@@ -254,6 +283,11 @@ class ScenarioTab(BaseTab):
     def simulation_tile_layout(self) -> column:
         """Return simulation_tile_layout."""
         return self._simulation_tile_layout
+
+    @property
+    def ego_expert_states_layout(self) -> column:
+        """Return time_series_state_layout."""
+        return self._ego_expert_states_layout
 
     def _update_glyph_checkbox_group(self, glyph_names: List[str]) -> None:
         """
@@ -351,19 +385,24 @@ class ScenarioTab(BaseTab):
 
         # Render simulation
         filtered_simulation_figures = [
-            data.plot for data in self._simulation_figure_data if data.planner_name in self.enable_planner_names
+            data for data in self._simulation_figure_data if data.planner_name in self.enable_planner_names
         ]
         if not filtered_simulation_figures:
             simulation_layouts = column(self._default_simulation_div)
+            ego_expert_state_layouts = column(self._default_ego_expert_states_div)
         else:
             simulation_layouts = gridplot(
-                filtered_simulation_figures,
+                [simulation_figure.plot for simulation_figure in filtered_simulation_figures],
                 ncols=self.get_plot_cols(
                     plot_width=self.simulation_figure_sizes[0], offset_width=scenario_tab_style['col_offset_width']
                 ),
                 toolbar_location=None,
             )
+            ego_expert_state_layouts = self._render_ego_expert_states(
+                simulation_figure_data=filtered_simulation_figures
+            )
         self._simulation_tile_layout.children[0] = layout(simulation_layouts)
+        self._ego_expert_states_layout.children[0] = layout(ego_expert_state_layouts)
 
     def _update_simulation_layouts(self) -> None:
         """Update simulation layouts."""
@@ -372,6 +411,7 @@ class ScenarioTab(BaseTab):
     def _update_scenario_plot(self) -> None:
         """Update scenario plots when selection is made."""
         start_time = time.perf_counter()
+        self._simulation_figure_data = []
 
         # Render scenario metric score figure data
         scenario_metric_score_figure_data = self._render_scenario_metric_score()
@@ -401,6 +441,10 @@ class ScenarioTab(BaseTab):
 
         # Render simulations.
         self._simulation_plots = self._render_simulations()
+
+        # render ego and expert states, call after rendering simulation
+        ego_expert_state_layout = self._render_ego_expert_states(simulation_figure_data=self._simulation_figure_data)
+        self._ego_expert_states_layout.children[0] = layout(ego_expert_state_layout)
 
         # Make sure the simulation plot upgrades at the last
         self._doc.add_next_tick_callback(self._update_simulation_layouts)
@@ -435,6 +479,8 @@ class ScenarioTab(BaseTab):
         available_log_names = self.load_log_name(scenario_type=self._scalar_scenario_type_select.value)
         self._scalar_log_name_select.options = [""] + available_log_names
         self._scalar_log_name_select.value = ""
+        self._scalar_scenario_name_select.options = [""]
+        self._scalar_scenario_name_select.value = ""
 
     def _scalar_log_name_select_on_change(self, attr: str, old: str, new: str) -> None:
         """
@@ -474,6 +520,7 @@ class ScenarioTab(BaseTab):
         self._scalar_scenario_name_select.value = ""
         self._scalar_scenario_name_select.options = []
         self._available_scenario_names = []
+        self._simulation_figure_data = []
 
         if len(self._scalar_scenario_type_select.options) == 0:
             self._scalar_scenario_type_select.options = [""] + self.experiment_file_data.available_scenario_types
@@ -831,11 +878,12 @@ class ScenarioTab(BaseTab):
             if legend:
                 figure_plot.legend.label_text_font_size = scenario_tab_style["plot_legend_label_text_font_size"]
                 figure_plot.legend.background_fill_alpha = 0.0
+                figure_plot.legend.click_policy = "hide"
             figure_plot_list.append(figure_plot)
 
         grid_plot = gridplot(
             figure_plot_list,
-            ncols=self.get_plot_cols(plot_width=plot_width, offset_width=scenario_tab_style['col_offset_width']),
+            ncols=self.get_plot_cols(plot_width=plot_width),
             toolbar_location="left",
         )
         return grid_plot
@@ -852,7 +900,7 @@ class ScenarioTab(BaseTab):
         :return A bokeh column layout.
         """
         if not figure_data:
-            return column(self._default_time_series_div)
+            return column(default_div)
 
         grid_plot = self._render_grid_plot(figures=figure_data, plot_width=plot_width, legend=legend)
         scenario_metric_layout = column(grid_plot)
@@ -895,3 +943,165 @@ class ScenarioTab(BaseTab):
             )
 
         return simulation_layouts
+
+    @staticmethod
+    def _get_ego_expert_states(state_key: str, ego_state: EgoState) -> float:
+        """
+        Get states based on the state key.
+        :param state_key: Ego state key.
+        :param ego_state: Ego state.
+        :return ego state based on the key.
+        """
+        if state_key == 'x [m]':
+            return cast(float, ego_state.car_footprint.center.x)
+        elif state_key == 'y [m]':
+            return cast(float, ego_state.car_footprint.center.y)
+        elif state_key == 'velocity_x [m/s]':
+            return cast(float, ego_state.dynamic_car_state.rear_axle_velocity_2d.x)
+        elif state_key == 'velocity_y [m/s]':
+            return cast(float, ego_state.dynamic_car_state.rear_axle_velocity_2d.y)
+        elif state_key == 'speed [m/s]':
+            return cast(float, ego_state.dynamic_car_state.speed)
+        elif state_key == 'acceleration_x [m/s^2]':
+            return cast(float, ego_state.dynamic_car_state.rear_axle_acceleration_2d.x)
+        elif state_key == 'acceleration_y [m/s^2]':
+            return cast(float, ego_state.dynamic_car_state.rear_axle_acceleration_2d.y)
+        elif state_key == 'acceleration [m/s^2]':
+            return cast(float, ego_state.dynamic_car_state.acceleration)
+        elif state_key == 'heading [rad]':
+            return cast(float, ego_state.car_footprint.center.heading)
+        elif state_key == 'steering_angle [rad]':
+            return cast(float, ego_state.dynamic_car_state.tire_steering_rate)
+        elif state_key == 'yaw_rate [rad/s]':
+            return cast(float, ego_state.dynamic_car_state.angular_velocity)
+        else:
+            raise ValueError(f"{state_key} not available!")
+
+    def _render_ego_expert_state_glyph(
+        self,
+        ego_expert_plot_aggregated_states: scenario_ego_expert_state_figure_type,
+        ego_expert_plot_colors: Dict[str, str],
+    ) -> column:
+        """
+        Render line and circle glyphs on ego_expert_state figures and get a grid plot.
+        :param ego_expert_plot_aggregated_states: Aggregated ego and expert states over frames.
+        :param ego_expert_plot_colors: Colors for different planners.
+        :return Column layout for ego and expert states.
+        """
+        # Render figures with the state keys
+        ego_expert_state_figures: Dict[str, Figure] = defaultdict()
+        for plot_state_key in self.plot_state_keys:
+            hover = HoverTool(
+                tooltips=[
+                    ("Frame", "@x"),
+                    ("Value", "@y{0.0000}"),
+                    ("Planner", "$name"),
+                ]
+            )
+            ego_expert_state_figure = self._render_scalar_figure(
+                title='',
+                y_axis_label=plot_state_key,
+                x_axis_label='frame',
+                hover=hover,
+                sizes=scenario_tab_style["ego_expert_state_figure_sizes"],
+            )
+            # Disable scientific notation
+            ego_expert_state_figure.yaxis.formatter = BasicTickFormatter(use_scientific=False)
+            ego_expert_state_figures[plot_state_key] = ego_expert_state_figure
+
+        for planner_name, plot_states in ego_expert_plot_aggregated_states.items():
+            color = ego_expert_plot_colors[planner_name]
+            for plot_state_key, plot_state_values in plot_states.items():
+                ego_expert_state_figure = ego_expert_state_figures[plot_state_key]
+                data_source = ColumnDataSource(
+                    dict(
+                        x=list(range(len(plot_state_values))),
+                        y=np.round(plot_state_values, 2),
+                    )
+                )
+                if self.expert_planner_key in planner_name:
+                    ego_expert_state_figure.circle(
+                        x="x",
+                        y="y",
+                        name=planner_name,
+                        color=color,
+                        legend_label=planner_name,
+                        source=data_source,
+                        size=2,
+                    )
+                else:
+                    ego_expert_state_figure.line(
+                        x="x",
+                        y="y",
+                        name=planner_name,
+                        color=color,
+                        legend_label=planner_name,
+                        source=data_source,
+                        line_width=1,
+                    )
+
+            # Make layout horizontally
+        ego_expert_states_layout = self._render_grid_plot(
+            figures=ego_expert_state_figures,
+            plot_width=scenario_tab_style["ego_expert_state_figure_sizes"][0],
+            legend=True,
+        )
+        return ego_expert_states_layout
+
+    def _get_ego_expert_plot_color(self, planner_name: str, file_path_index: int, figure_planer_name: str) -> str:
+        """
+        Get color for ego expert plot states based on the planner name.
+        :param planner_name: Plot planner name.
+        :param file_path_index: File path index for the plot.
+        :param figure_planer_name: Figure original planner name.
+        """
+        return cast(
+            str,
+            self.experiment_file_data.expert_color_palettes[file_path_index]
+            if self.expert_planner_key in planner_name
+            else self.experiment_file_data.file_path_colors[file_path_index][figure_planer_name],
+        )
+
+    def _render_ego_expert_states(self, simulation_figure_data: List[SimulationData]) -> column:
+        """
+        Render expert and ego time series states. Make sure it is called after _render_simulation.
+        :param simulation_figure_data: Simulation figure data after rendering simulation.
+        :return Column layout for ego and expert states.
+        """
+        if not simulation_figure_data:
+            return column(self._default_ego_expert_states_div)
+
+        # Aggregate data, {planner_name: {state_key: A list of values for the state}}
+        ego_expert_plot_aggregated_states: scenario_ego_expert_state_figure_type = defaultdict(
+            lambda: defaultdict(list)
+        )
+        ego_expert_plot_colors: Dict[str, str] = defaultdict()
+        for figure_data in simulation_figure_data:
+            experiment_file_index = figure_data.simulation_figure.file_path_index
+            experiment_name = self.get_file_path_last_name(experiment_file_index)
+            expert_planner_name = f'{self.expert_planner_key} - ({experiment_name})'
+            ego_planner_name = f'{figure_data.planner_name} - ({experiment_name})'
+            ego_expert_states = {
+                expert_planner_name: figure_data.simulation_figure.scenario.get_expert_ego_trajectory(),
+                ego_planner_name: figure_data.simulation_figure.simulation_history.extract_ego_state,
+            }
+            for planner_name, planner_states in ego_expert_states.items():
+                # Get expert color
+                ego_expert_plot_colors[planner_name] = self._get_ego_expert_plot_color(
+                    planner_name=planner_name,
+                    figure_planer_name=figure_data.planner_name,
+                    file_path_index=figure_data.simulation_figure.file_path_index,
+                )
+
+                if planner_name in ego_expert_plot_aggregated_states:
+                    continue
+                for planner_state in planner_states:
+                    for plot_state_key in self.plot_state_keys:
+                        state_key_value = self._get_ego_expert_states(state_key=plot_state_key, ego_state=planner_state)
+                        ego_expert_plot_aggregated_states[planner_name][plot_state_key].append(state_key_value)
+
+        ego_expert_states_layout = self._render_ego_expert_state_glyph(
+            ego_expert_plot_aggregated_states=ego_expert_plot_aggregated_states,
+            ego_expert_plot_colors=ego_expert_plot_colors,
+        )
+        return ego_expert_states_layout

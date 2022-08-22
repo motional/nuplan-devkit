@@ -19,6 +19,7 @@ py_library(
         "//nuplan/planning/nuboard/utils/test:utils",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
         "//nuplan/planning/simulation:simulation_log",
+        "//nuplan/planning/simulation/main_callback:metric_file_callback",
     ],
 )
 
