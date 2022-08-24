@@ -47,7 +47,8 @@ class TestNuBoard(unittest.TestCase):
     def test_main_page(self) -> None:
         """Test if successfully construct a bokeh main page."""
         self.nuboard.main_page(doc=self.doc)
-        self.assertEqual(len(self.doc.roots), 19)
+        # Number of elements in the main page, change if we add more elements
+        self.assertEqual(len(self.doc.roots), 20)
 
     def tearDown(self) -> None:
         """Remove temporary folders and files."""

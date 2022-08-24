@@ -4,27 +4,29 @@ import numpy as np
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
-from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.maps.nuplan_map.map_factory import get_maps_api
+from nuplan.database.tests.nuplan_db_test_utils import NUPLAN_MAP_VERSION, NUPLAN_MAPS_ROOT
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, TimeSeries
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
+from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
+from nuplan.planning.simulation.planner.abstract_planner import PlannerInput
+from nuplan.planning.simulation.planner.simple_planner import SimplePlanner
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
-from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
 from nuplan.planning.utils.serialization.from_scene import from_scene_to_tracked_objects
 
 
 def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> SimulationHistory:
     """
-    Mocks the history with a mock scenario. The scenario contains the map api, and markers present in the scene are
-    used to build a list of ego poses
-    :param scene: The json scene
-    :param scenario: Scenario object
+    Mock the history with a mock scenario. The scenario contains the map api, and markers present in the scene are
+    used to build a list of ego poses.
+    :param scene: The json scene.
+    :param scenario: Scenario object.
     :return The mock history.
     """
-    # Update expert driving if there is
+    # Update expert driving if exist in .json file
     if 'expert_ego_states' in scene:
         expert_ego_states = scene['expert_ego_states']
         expert_egos = []
@@ -49,11 +51,9 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
         if len(expert_egos):
             scenario.get_expert_ego_trajectory = lambda: expert_egos
 
-    maps_db = get_test_maps_db()
-
     # Load map
     map_name = scene['map']['area']
-    map_api = NuPlanMapFactory(maps_db).build_map_from_name(map_name)
+    map_api = get_maps_api(NUPLAN_MAPS_ROOT, NUPLAN_MAP_VERSION, map_name)
 
     # Extract Agent Box
     tracked_objects = from_scene_to_tracked_objects(scene['world'])
@@ -108,33 +108,24 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
         ego_states.append(ego_state)
         observations.append(DetectionsTracks(future_tracked_objects))
 
-    # Add simulation iterations and trajectories based on a series of ego states
+    # Add simulation iterations and trajectory for each iteration
     simulation_iterations = []
     trajectories = []
     for index, ego_state in enumerate(ego_states):
         simulation_iterations.append(SimulationIteration(ego_state.time_point, index))
-        if (index + 1) < len(ego_states):
-            next_ego_state = ego_states[index + 1]
-        else:
-            repeated_last_state = EgoState.build_from_rear_axle(
-                time_point=TimePoint(ego_states[-1].time_us + 1000000),
-                rear_axle_pose=StateSE2(
-                    x=ego_states[-1].rear_axle.x, y=ego_states[-1].rear_axle.y, heading=ego_states[-1].rear_axle.heading
-                ),
-                rear_axle_velocity_2d=StateVector2D(
-                    x=ego_states[-1].dynamic_car_state.rear_axle_velocity_2d.x,
-                    y=ego_states[-1].dynamic_car_state.rear_axle_velocity_2d.y,
-                ),
-                rear_axle_acceleration_2d=StateVector2D(
-                    x=ego_states[-1].dynamic_car_state.rear_axle_acceleration_2d.x,
-                    y=ego_states[-1].dynamic_car_state.rear_axle_acceleration_2d.y,
-                ),
-                vehicle_parameters=scenario.ego_vehicle_parameters,
-                tire_steering_angle=ego_states[-1].tire_steering_angle,
-            )
-            next_ego_state = repeated_last_state
-
-        trajectories.append(InterpolatedTrajectory([ego_state, next_ego_state]))
+        # Create a dummy history buffer
+        history_buffer = SimulationHistoryBuffer.initialize_from_list(
+            buffer_size=10,
+            ego_states=[ego_states[index]],
+            observations=[observations[index]],
+            sample_interval=1,
+        )
+        # Create trajectory using simple planner
+        planner_input = PlannerInput(
+            iteration=SimulationIteration(ego_states[index].time_point, 0), history=history_buffer
+        )
+        planner = SimplePlanner(horizon_seconds=10.0, sampling_time=1, acceleration=[0.0, 0.0])
+        trajectories.append(planner.compute_trajectory([planner_input])[0])
 
     # Create simulation histories
     history = SimulationHistory(map_api, scenario.get_mission_goal())
@@ -156,9 +147,9 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
 
 def build_mock_history_scenario_test(scene: Dict[str, Any]) -> Tuple[SimulationHistory, MockAbstractScenario]:
     """
-    A common template to create a test history and scenario
-    :param scene: A json format to represent a scene
-    :return The mock history and scenario
+    A common template to create a test history and scenario.
+    :param scene: A json format to represent a scene.
+    :return The mock history and scenario.
     """
     goal_pose = None
     if 'goal' in scene and 'pose' in scene['goal'] and scene['goal']['pose']:
@@ -166,42 +157,47 @@ def build_mock_history_scenario_test(scene: Dict[str, Any]) -> Tuple[SimulationH
     mock_abstract_scenario = MockAbstractScenario()
     if goal_pose is not None:
         mock_abstract_scenario.get_mission_goal = lambda: goal_pose
-    history = setup_history(scene, scenario=mock_abstract_scenario)
+    history = setup_history(scene, mock_abstract_scenario)
 
     return history, mock_abstract_scenario
 
 
 def metric_statistic_test(scene: Dict[str, Any], metric: AbstractMetricBuilder) -> MetricStatistics:
     """
-    A common template to test metric statistics
-    :param scene: A json format to represent a scene
-    :param metric: An evaluation metric
+    A common template to test metric statistics.
+    :param scene: A json format to represent a scene.
+    :param metric: An evaluation metric.
     :return Metric statistics.
     """
     history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
-    metric_result = metric.compute(history, mock_abstract_scenario)[0]
-    statistics = metric_result.statistics
-    expected_statistics = scene['expected']['statistics']
-    assert len(expected_statistics) == len(statistics), (
-        f"Length of actual ({len(statistics)}) and expected " f"({len(expected_statistics)}) statistics must be same!"
-    )
-    for expected_statistic, statistic in zip(expected_statistics, statistics):
-        expected_type, expected_value = expected_statistic
-        assert expected_type == str(statistic.type), (
-            f"Statistic types don't match. Actual: {statistic.type}, " f"Expected: {expected_type}"
+    metric_results = metric.compute(history, mock_abstract_scenario)
+    expected_statistics_list = scene['expected']
+    if not isinstance(expected_statistics_list, list):
+        expected_statistics_list = [expected_statistics_list]
+    for ind, metric_result in enumerate(metric_results):
+        statistics = metric_result.statistics
+        expected_statistic = expected_statistics_list[ind]['statistics']
+        assert len(expected_statistic) == len(statistics), (
+            f"Length of actual ({len(statistics)}) and expected "
+            f"({len(expected_statistic)}) statistics must be same!"
         )
-        assert np.isclose(expected_value, statistic.value, atol=1e-2), (
-            f"Statistic values don't match. Actual: {statistic.value}, " f"Expected: {expected_value}"
-        )
+        for expected_statistic, statistic in zip(expected_statistic, statistics):
+            expected_type, expected_value = expected_statistic
+            assert expected_type == str(statistic.type), (
+                f"Statistic types don't match. Actual: {statistic.type}, " f"Expected: {expected_type}"
+            )
+            assert np.isclose(expected_value, statistic.value, atol=1e-2), (
+                f"Statistic values don't match. Actual: {statistic.value}, " f"Expected: {expected_value}"
+            )
 
-    expected_time_series = scene['expected'].get('time_series', None)
-    if expected_time_series and metric_result.time_series is not None:
-        time_series = metric_result.time_series
-        expected_time_series = scene['expected']['time_series']
-        assert isinstance(time_series, TimeSeries), 'Time series type not correct.'
-        assert time_series.time_stamps == expected_time_series['time_stamps'], 'Time stamps are not correct.'
-        assert np.all(
-            np.round(time_series.values, 2) == expected_time_series['values']
-        ), 'Time stamp values are not correct.'
+        expected_time_series = expected_statistics_list[ind].get('time_series', None)
+        if expected_time_series and metric_result.time_series is not None:
+            time_series = metric_result.time_series
+            expected_time_series = expected_statistics_list[ind]['time_series']
+            assert isinstance(time_series, TimeSeries), 'Time series type not correct.'
+            assert time_series.time_stamps == expected_time_series['time_stamps'], 'Time stamps are not correct.'
+            assert np.all(
+                np.round(time_series.values, 2) == expected_time_series['values']
+            ), 'Time stamp values are not correct.'
 
     return metric_result

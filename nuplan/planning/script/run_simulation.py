@@ -8,7 +8,10 @@ from omegaconf import DictConfig, OmegaConf
 
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
 from nuplan.planning.script.builders.simulation_builder import build_simulations
-from nuplan.planning.script.builders.simulation_callback_builder import build_simulation_callbacks
+from nuplan.planning.script.builders.simulation_callback_builder import (
+    build_callbacks_worker,
+    build_simulation_callbacks,
+)
 from nuplan.planning.script.utils import run_runners, set_default_path, set_up_common_builder
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 
@@ -35,7 +38,7 @@ def run_simulation(cfg: DictConfig, planners: Optional[Union[AbstractPlanner, Li
     be specified via config or directly passed as argument.
     :param cfg: Configuration that is used to run the experiment.
         Already contains the changes merged from the experiment's config to default config.
-    :param planners: Pre-built planner(s) to run in simulation. Can either be a single planner or list of planners
+    :param planners: Pre-built planner(s) to run in simulation. Can either be a single planner or list of planners.
     """
     # Fix random seed
     pl.seed_everything(cfg.seed, workers=True)
@@ -46,8 +49,9 @@ def run_simulation(cfg: DictConfig, planners: Optional[Union[AbstractPlanner, Li
     # Build scenario builder
     scenario_builder = build_scenario_builder(cfg=cfg)
 
-    # Run scenario simulations
-    callbacks = build_simulation_callbacks(cfg=cfg, output_dir=common_builder.output_dir)
+    # Build simulation callbacks
+    callbacks_worker_pool = build_callbacks_worker(cfg)
+    callbacks = build_simulation_callbacks(cfg=cfg, output_dir=common_builder.output_dir, worker=callbacks_worker_pool)
 
     # Remove planner from config to make sure run_simulation does not receive multiple planner specifications.
     if planners and 'planner' in cfg.keys():
@@ -66,6 +70,7 @@ def run_simulation(cfg: DictConfig, planners: Optional[Union[AbstractPlanner, Li
         scenario_builder=scenario_builder,
         worker=common_builder.worker,
         pre_built_planners=planners,
+        callbacks_worker=callbacks_worker_pool,
     )
 
     if common_builder.profiler:

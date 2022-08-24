@@ -2,7 +2,6 @@ import logging
 from typing import List, Optional
 
 import numpy as np
-from shapely.geometry import Point
 
 from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.maps.abstract_map_objects import PolylineMapObject
@@ -11,6 +10,7 @@ from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatis
 from nuplan.planning.metrics.utils.route_extractor import (
     RouteBaselineRoadBlockPair,
     RouteRoadBlockLinkedList,
+    get_distance_of_closest_baseline_point_to_its_start,
     get_route,
     get_route_baseline_roadblock_linkedlist,
     get_route_simplified,
@@ -34,15 +34,6 @@ class PerFrameProgressAlongRouteComputer:
         self.prev_distance_to_start = float(0)
         self.next_roadblock_pair: Optional[RouteBaselineRoadBlockPair] = None
         self.skipped_roadblock_pair: Optional[RouteBaselineRoadBlockPair] = None
-
-    @staticmethod
-    def get_distance_of_closest_baseline_point_to_its_start(base_line: PolylineMapObject, pose: Point2D) -> float:
-        """Computes distance of "closest point on the baseline to pose" to the beginning of the baseline
-        :param base_line: A baseline path
-        :param pose: An ego pose
-        :return: distance to start.
-        """
-        return float(base_line.linestring.project(Point(*pose)))
 
     @staticmethod
     def get_some_baseline_point(baseline: PolylineMapObject, ind: str) -> Optional[Point2D]:
@@ -70,16 +61,16 @@ class PerFrameProgressAlongRouteComputer:
             prev_roadblock_last_point = self.get_some_baseline_point(self.curr_roadblock_pair.base_line, 'last')
 
         self.skipped_roadblock_pair = self.next_roadblock_pair
-        skipped_distance_to_start = self.get_distance_of_closest_baseline_point_to_its_start(
+        skipped_distance_to_start = get_distance_of_closest_baseline_point_to_its_start(
             self.skipped_roadblock_pair.base_line, prev_roadblock_last_point
         )
         self.next_roadblock_pair = self.next_roadblock_pair.next
         next_roadblock_first_point = self.get_some_baseline_point(self.next_roadblock_pair.base_line, 'first')
-        next_baseline_start_dist_to_skipped = self.get_distance_of_closest_baseline_point_to_its_start(
+        next_baseline_start_dist_to_skipped = get_distance_of_closest_baseline_point_to_its_start(
             self.skipped_roadblock_pair.base_line, next_roadblock_first_point
         )
 
-        progress_for_skipped_roadblock = next_baseline_start_dist_to_skipped - skipped_distance_to_start
+        progress_for_skipped_roadblock: float = next_baseline_start_dist_to_skipped - skipped_distance_to_start
         return progress_for_skipped_roadblock
 
     def get_progress_including_skipped_roadblocks(
@@ -100,11 +91,11 @@ class PerFrameProgressAlongRouteComputer:
 
         self.curr_roadblock_pair = self.next_roadblock_pair
         # distance to start of the baseline corresponding to roadblock ego_pose is in
-        distance_to_start = self.get_distance_of_closest_baseline_point_to_its_start(
+        distance_to_start = get_distance_of_closest_baseline_point_to_its_start(
             self.curr_roadblock_pair.base_line, ego_pose
         )
         # distance of last_baseline_point to start of the baseline corresponding to roadblock ego_pose is in
-        last_baseline_point_dist_to_start = self.get_distance_of_closest_baseline_point_to_its_start(
+        last_baseline_point_dist_to_start = get_distance_of_closest_baseline_point_to_its_start(
             self.curr_roadblock_pair.base_line, prev_roadblock_last_point
         )
         # progress in new roadblock is computed as the difference between previous two variables
@@ -145,7 +136,7 @@ class PerFrameProgressAlongRouteComputer:
         :return: progress along the route.
         """
         # Compute distance to the beginning of the baseline that corresponds to ego's initial pose
-        self.prev_distance_to_start = self.get_distance_of_closest_baseline_point_to_its_start(
+        self.prev_distance_to_start = get_distance_of_closest_baseline_point_to_its_start(
             self.curr_roadblock_pair.base_line, ego_poses[0]
         )
 
@@ -156,7 +147,7 @@ class PerFrameProgressAlongRouteComputer:
         # (progress along the baseline of the roadblock ego is in now) + (progress along skipped roadblocks if any).
         for ego_pose in ego_poses[1:]:
             if self.curr_roadblock_pair.road_block.contains_point(ego_pose):
-                distance_to_start = self.get_distance_of_closest_baseline_point_to_its_start(
+                distance_to_start = get_distance_of_closest_baseline_point_to_its_start(
                     self.curr_roadblock_pair.base_line, ego_pose
                 )
                 self.progress.append(distance_to_start - self.prev_distance_to_start)
@@ -171,7 +162,7 @@ class PerFrameProgressAlongRouteComputer:
 class EgoProgressAlongExpertRouteStatistics(MetricBase):
     """Ego progress along the expert route metric."""
 
-    def __init__(self, name: str, category: str, score_progress_threshold: float = 0.1) -> None:
+    def __init__(self, name: str, category: str, score_progress_threshold: float = 2) -> None:
         """
         Initializes the EgoProgressAlongExpertRouteStatistics class
         :param name: Metric name
@@ -239,6 +230,13 @@ class EgoProgressAlongExpertRouteStatistics(MetricBase):
             ego_progress = ego_progress_computer(ego_poses=ego_poses)
             overall_ego_progress = np.sum(ego_progress)
 
+            # Compute expert's progress as baseline for comparison.
+            expert_progress_computer = PerFrameProgressAlongRouteComputer(
+                route_roadblocks=route_baseline_roadblock_pairs
+            )
+            expert_progress = expert_progress_computer(ego_poses=expert_poses)
+            overall_expert_progress = np.sum(expert_progress)
+
             # Ego is not allowed to fully drive backwards in our scenarios. Due to noise in data, in some scenarios where ego is stopped during the scenario
             # we may get a small negative value in overall_ego_progress up to -self._score_progress_threshold. We set ego's to expert progress ratio to 0 if
             # overall_ego_progress is less than this negative progress threshold
@@ -246,12 +244,6 @@ class EgoProgressAlongExpertRouteStatistics(MetricBase):
                 ego_expert_progress_along_route_ratio = 0
 
             else:
-                # Compute expert's progress as baseline for comparison.
-                expert_progress_computer = PerFrameProgressAlongRouteComputer(
-                    route_roadblocks=route_baseline_roadblock_pairs
-                )
-                expert_progress = expert_progress_computer(ego_poses=expert_poses)
-                overall_expert_progress = np.sum(expert_progress)
                 # Find the ratio of ego's to expert progress along the route and saturate it in [0,1]. We set this ratio to 1 if expert does not move
                 # more than some minimum progress threshold (e.g. expert is stopped for a red light for the entire scenario duration and so is the proposed ego trajectory)
                 ego_expert_progress_along_route_ratio = min(

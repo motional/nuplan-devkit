@@ -1,10 +1,14 @@
+import concurrent.futures
 import logging
 import time
 import traceback
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
+from nuplan.planning.simulation.callback.metric_callback import MetricCallback
+from nuplan.planning.simulation.callback.simulation_log_callback import SimulationLogCallback
 from nuplan.planning.simulation.runner.abstract_runner import AbstractRunner
 from nuplan.planning.simulation.runner.runner_report import RunnerReport
+from nuplan.planning.simulation.runner.simulations_runner import SimulationsRunner
 from nuplan.planning.utils.multithreading.worker_pool import Task, WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -13,9 +17,9 @@ logger = logging.getLogger(__name__)
 def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) -> List[RunnerReport]:
     """
     Proxy for calling simulation.
-    :param sim_runner: A simulation runner which will execute all batched simulations
-    :param exit_on_failure: If true, raises an exception when the simulation fails
-    :return report for the simulation
+    :param sim_runner: A simulation runner which will execute all batched simulations.
+    :param exit_on_failure: If true, raises an exception when the simulation fails.
+    :return report for the simulation.
     """
     # Store start time so that if the simulations fail, we know how long they ran for
     start_time = time.perf_counter()
@@ -69,11 +73,11 @@ def execute_runners(
 ) -> List[RunnerReport]:
     """
     Execute multiple simulation runners or metric runners.
-    :param runners: A list of simulations to be run
-    :param worker: for submitting tasks
-    :param num_gpus: if None, no GPU will be used, otherwise number (also fractional) of GPU used per simulation
-    :param num_cpus: if None, all available CPU threads are used, otherwise number of threads used
-    :param exit_on_failure: If true, raises an exception when the simulation fails
+    :param runners: A list of simulations to be run.
+    :param worker: for submitting tasks.
+    :param num_gpus: if None, no GPU will be used, otherwise number (also fractional) of GPU used per simulation.
+    :param num_cpus: if None, all available CPU threads are used, otherwise number of threads used.
+    :param exit_on_failure: If true, raises an exception when the simulation fails.
     """
     # Validating
     assert len(runners) > 0, 'No scenarios found to simulate!'
@@ -84,12 +88,40 @@ def execute_runners(
     reports: List[List[RunnerReport]] = worker.map(
         Task(fn=run_simulation, num_gpus=num_gpus, num_cpus=num_cpus), runners, exit_on_failure
     )
-    results: List[RunnerReport] = [report for batch in reports for report in batch]
+    # Store the results in a dictionary so we can easily store error tracebacks in the next step, if needed
+    results: Dict[Tuple[str, str, str], RunnerReport] = {
+        (report.scenario_name, report.planner_name, report.log_name): report for batch in reports for report in batch
+    }
+
+    # Iterate over runners, finding the callbacks which may have run asynchronously, and gathering their results
+    simulations_runners = (runner for runner in runners if isinstance(runner, SimulationsRunner))
+    relevant_simulations = ((simulation, runner) for runner in simulations_runners for simulation in runner.simulations)
+    callback_futures_lists = (
+        (callback.futures, simulation, runner)
+        for (simulation, runner) in relevant_simulations
+        for callback in simulation.callback.callbacks
+        if isinstance(callback, MetricCallback) or isinstance(callback, SimulationLogCallback)
+    )
+    callback_futures_map = {
+        future: (simulation.scenario.scenario_name, runner.planner.name(), simulation.scenario.log_name)
+        for (futures, simulation, runner) in callback_futures_lists
+        for future in futures
+    }
+    for future in concurrent.futures.as_completed(callback_futures_map.keys()):
+        try:
+            future.result()
+        except Exception:
+            error_message = traceback.format_exc()
+            runner_report = results[callback_futures_map[future]]
+            runner_report.error_message = error_message
+            runner_report.succeeded = False
+            runner_report.end_time = time.perf_counter()
 
     # Notify user about the result of simulations
     failed_simulations = str()
     number_of_successful = 0
-    for result in results:
+    runner_reports: List[RunnerReport] = list(results.values())
+    for result in runner_reports:
         if result.succeeded:
             number_of_successful += 1
         else:
@@ -104,4 +136,4 @@ def execute_runners(
     if number_of_failures > 0:
         logger.info(f"Failed simulations [log, token]:\n{failed_simulations}")
 
-    return results
+    return runner_reports

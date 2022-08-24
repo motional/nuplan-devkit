@@ -5,7 +5,7 @@ from shapely.geometry.base import CAP_STYLE
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
-from nuplan.common.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
 from nuplan.common.geometry.transform import rotate_angle
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.abstract_map_objects import StopLine
@@ -40,6 +40,7 @@ class IDMAgentManager:
         tspan: float,
         iteration: int,
         traffic_light_status: Dict[TrafficLightStatusType, List[str]],
+        open_loop_detections: List[TrackedObject],
     ) -> None:
         """
         Propagate each active agent forward in time.
@@ -48,18 +49,21 @@ class IDMAgentManager:
         :param tspan: the interval of time to simulate.
         :param iteration: the simulation iteration.
         :param traffic_light_status: {traffic_light_status: lane_connector_ids} A dictionary containing traffic light information.
+        :param open_loop_detections: A list of open loop detections the IDM agents should be responsive to.
         """
         self.agent_occupancy.set("ego", ego_state.car_footprint.geometry)
-
-        # Add stop lines into occupancy map if they have red light status.
-
-        stop_lines = self._get_stop_line_with_status(traffic_light_status, TrafficLightStatusType.RED)
-        # Keep track of the stop lines that were inserted. This is to remove them after all agents have been propagated.
-        inactive_stop_line_tokens = self._insert_stop_lines_into_occupancy_map(stop_lines)
+        track_ids = []
+        for track in open_loop_detections:
+            track_ids.append(track.track_token)
+            self.agent_occupancy.insert(track.track_token, track.box.geometry)
 
         for agent_token, agent in self.agents.items():
             if agent.is_active(iteration) and agent.has_valid_path():
                 agent.plan_route(traffic_light_status)
+                # Add stop lines into occupancy map if they are impacting the agent
+                stop_lines = self._get_relevant_stop_lines(agent, traffic_light_status)
+                # Keep track of the stop lines that were inserted. This is to remove them for each agent
+                inactive_stop_line_tokens = self._insert_stop_lines_into_occupancy_map(stop_lines)
 
                 # Check for agents that intersects THIS agent's path
                 agent_path = path_to_linestring(agent.get_path_to_go())
@@ -83,10 +87,13 @@ class IDMAgentManager:
                     elif 'stop_line' in nearest_id:
                         longitudinal_velocity = 0.0
                         relative_heading = 0.0
-                    else:
+                    elif nearest_id in self.agents:
                         nearest_agent = self.agents[nearest_id]
                         longitudinal_velocity = nearest_agent.velocity
                         relative_heading = nearest_agent.to_se2().heading - agent_heading
+                    else:
+                        longitudinal_velocity = 0.0
+                        relative_heading = 0.0
 
                     # Wrap angle to [-pi, pi]
                     relative_heading = principal_value(relative_heading)
@@ -107,7 +114,8 @@ class IDMAgentManager:
                     tspan,
                 )
                 self.agent_occupancy.set(agent_token, agent.projected_footprint)
-        self.agent_occupancy.remove(inactive_stop_line_tokens)
+                self.agent_occupancy.remove(inactive_stop_line_tokens)
+        self.agent_occupancy.remove(track_ids)
 
     def get_active_agents(self, iteration: int, num_samples: int, sampling_time: float) -> DetectionsTracks:
         """
@@ -127,21 +135,22 @@ class IDMAgentManager:
             )
         )
 
-    def _get_stop_line_with_status(
-        self, traffic_light_status: Dict[TrafficLightStatusType, List[str]], status: TrafficLightStatusType
+    def _get_relevant_stop_lines(
+        self, agent: IDMAgent, traffic_light_status: Dict[TrafficLightStatusType, List[str]]
     ) -> List[StopLine]:
         """
-        Retrieve the stop lines that has is labelled with the given TrafficLightStatusType.
+        Retrieve the stop lines that are affecting the given agent.
+        :param agent: The IDM agent of interest.
         :param traffic_light_status: {traffic_light_status: lane_connector_ids} A dictionary containing traffic light information.
-        :param status: Traffic light status.
         :return: A list of stop lines associated with the given traffic light status.
         """
-        lane_connector_ids = traffic_light_status[status]
+        relevant_lane_connectors = list(
+            {segment.id for segment in agent.get_route()} & set(traffic_light_status[TrafficLightStatusType.RED])
+        )
         lane_connectors = [
-            self._map_api.get_map_object(lc_id, SemanticMapLayer.LANE_CONNECTOR) for lc_id in lane_connector_ids
+            self._map_api.get_map_object(lc_id, SemanticMapLayer.LANE_CONNECTOR) for lc_id in relevant_lane_connectors
         ]
-        stop_lines = [stop_line for lc in lane_connectors if lc for stop_line in lc.stop_lines]
-        return stop_lines
+        return [stop_line for lc in lane_connectors if lc for stop_line in lc.stop_lines]
 
     def _insert_stop_lines_into_occupancy_map(self, stop_lines: List[StopLine]) -> List[str]:
         """

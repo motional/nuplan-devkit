@@ -48,7 +48,9 @@ py_test(
         "//nuplan/planning/script/builders/utils:utils_config",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/data_loader:log_splitter",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:raster_model",
+        "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )
 
@@ -247,7 +249,9 @@ py_test(
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/data_loader:log_splitter",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:raster_model",
+        "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )
 
@@ -293,7 +297,9 @@ py_test(
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/data_loader:log_splitter",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:lanegcn_utils",
         "//nuplan/planning/training/modeling/models:simple_vector_map_model",
+        "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )

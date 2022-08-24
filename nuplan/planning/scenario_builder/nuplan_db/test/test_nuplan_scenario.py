@@ -190,7 +190,7 @@ class TestNuPlanScenario(unittest.TestCase):
             download_file_patch_fxn,
         ):
             scenario = self._make_test_scenario()
-            self.assertEqual(0.05, scenario.database_interval)
+            self.assertEqual(0.1, scenario.database_interval)
 
     def test_get_number_of_iterations(self) -> None:
         """

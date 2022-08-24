@@ -276,6 +276,7 @@ py_library(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
+        "//nuplan/common/utils:helpers",
         "//nuplan/database/nuplan_db_orm:frame",
         "//nuplan/database/utils:geometry",
         "//nuplan/database/utils/boxes:box3d",

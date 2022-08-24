@@ -35,6 +35,9 @@ class BokehAgentStates(NamedTuple):
     track_token: List[str]  # A list of agent's track token
     center_xs: List[float]  # [m], a list of center in x.
     center_ys: List[float]  # [m], a list of center in y.
+    velocity_xs: List[float]  # [m/s], A list of velocity in x (body frame).
+    velocity_ys: List[float]  # [m/s], A list of velocity in y (body frame).
+    speeds: List[float]  # [m/s], A list of speed.
     headings: List[float]  # [m], a list of headings
 
 
@@ -225,7 +228,15 @@ class EgoStatePlot:
                     tooltips=[
                         ("center_x [m]", "@center_x{0.2f}"),
                         ("center_y [m]", "@center_y{0.2f}"),
+                        ("velocity_x [m/s]", "@velocity_x{0.2f}"),
+                        ("velocity_y [m/s]", "@velocity_y{0.2f}"),
+                        ("speed [m/s", "@speed{0.2f}"),
+                        ("acceleration_x [m/s^2]", "@acceleration_x{0.2f}"),
+                        ("acceleration_y [m/s^2]", "@acceleration_y{0.2f}"),
+                        ("acceleration [m/s^2]", "@acceleration{0.2f}"),
                         ("heading [rad]", "@heading{0.2f}"),
+                        ("steering_angle [rad]", "@steering_angle{0.2f}"),
+                        ("yaw_rate [rad/s]", "@yaw_rate{0.2f}"),
                         ("type", "Ego"),
                     ],
                 )
@@ -258,6 +269,7 @@ class EgoStatePlot:
         with self.condition:
             for frame_index, sample in enumerate(history.data):
                 ego_pose = sample.ego_state.car_footprint
+                dynamic_car_state = sample.ego_state.dynamic_car_state
                 ego_corners = ego_pose.all_corners()
 
                 corner_xs = [corner.x for corner in ego_corners]
@@ -270,7 +282,15 @@ class EgoStatePlot:
                     dict(
                         center_x=[ego_pose.center.x],
                         center_y=[ego_pose.center.y],
+                        velocity_x=[dynamic_car_state.rear_axle_velocity_2d.x],
+                        velocity_y=[dynamic_car_state.rear_axle_velocity_2d.y],
+                        speed=[dynamic_car_state.speed],
+                        acceleration_x=[dynamic_car_state.rear_axle_acceleration_2d.x],
+                        acceleration_y=[dynamic_car_state.rear_axle_acceleration_2d.y],
+                        acceleration=[dynamic_car_state.acceleration],
                         heading=[ego_pose.center.heading],
+                        steering_angle=[sample.ego_state.tire_steering_angle],
+                        yaw_rate=[sample.ego_state.dynamic_car_state.angular_velocity],
                         xs=[[[corner_xs]]],
                         ys=[[[corner_ys]]],
                     )
@@ -333,8 +353,8 @@ class EgoStateTrajectoryPlot:
                 x_coords = []
                 y_coords = []
                 for state in trajectory:
-                    x_coords.append(state.rear_axle.x)
-                    y_coords.append(state.rear_axle.y)
+                    x_coords.append(state.center.x)
+                    y_coords.append(state.center.y)
 
                 source = ColumnDataSource(dict(xs=x_coords, ys=y_coords))
                 self.data_sources[frame_index] = source
@@ -409,6 +429,9 @@ class AgentStatePlot:
                         tooltips=[
                             ("center_x [m]", "@center_xs{0.2f}"),
                             ("center_y [m]", "@center_ys{0.2f}"),
+                            ("velocity_x [m/s]", "@velocity_xs{0.2f}"),
+                            ("velocity_y [m/s]", "@velocity_ys{0.2f}"),
+                            ("speed [m/s]", "@speeds{0.2f}"),
                             ("heading [rad]", "@headings{0.2f}"),
                             ("type", "@agent_type"),
                             ("track token", "@track_token"),
@@ -441,6 +464,9 @@ class AgentStatePlot:
                     agent_types = []
                     center_xs = []
                     center_ys = []
+                    velocity_xs = []
+                    velocity_ys = []
+                    speeds = []
                     headings = []
 
                     for tracked_object in tracked_objects.get_tracked_objects_of_type(tracked_object_type):
@@ -453,6 +479,9 @@ class AgentStatePlot:
                         corner_ys.append([[corners_y]])
                         center_xs.append(tracked_object.center.x)
                         center_ys.append(tracked_object.center.y)
+                        velocity_xs.append(tracked_object.velocity.x)
+                        velocity_ys.append(tracked_object.velocity.y)
+                        speeds.append(tracked_object.velocity.magnitude())
                         headings.append(tracked_object.center.heading)
                         agent_types.append(tracked_object_type.fullname)
                         track_ids.append(self._get_track_id(tracked_object.track_token))
@@ -466,6 +495,9 @@ class AgentStatePlot:
                         agent_type=agent_types,
                         center_xs=center_xs,
                         center_ys=center_ys,
+                        velocity_xs=velocity_xs,
+                        velocity_ys=velocity_ys,
+                        speeds=speeds,
                         headings=headings,
                     )
 
@@ -570,6 +602,7 @@ class SimulationFigure:
 
     # Rendering objects
     figure: Figure  # Bokeh figure
+    file_path_index: int  # Experiment file index
     slider: Slider  # Bokeh slider to this figure
     video_button: Button  # Bokeh video button to this figure
     figure_title_name: str  # Figure title name
@@ -890,4 +923,5 @@ class SimulationData:
     """Simulation figure data."""
 
     planner_name: str  # Planner name
+    simulation_figure: SimulationFigure  # Simulation figure data
     plot: LayoutDOM  # Figure plot

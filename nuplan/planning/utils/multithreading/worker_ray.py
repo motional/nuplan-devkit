@@ -25,17 +25,17 @@ def initialize_ray(
     log_to_driver: bool = True,
 ) -> WorkerResources:
     """
-    Initialize ray worker
-    ENV_VAR_MASTER_NODE_IP="master node IP"
-    ENV_VAR_MASTER_NODE_PASSWORD="password to the master node"
-    ENV_VAR_NUM_NODES="number of nodes available"
+    Initialize ray worker.
+    ENV_VAR_MASTER_NODE_IP="master node IP".
+    ENV_VAR_MASTER_NODE_PASSWORD="password to the master node".
+    ENV_VAR_NUM_NODES="number of nodes available".
     :param master_node_ip: if available, ray will connect to remote cluster.
     :param threads_per_node: Number of threads to use per node.
     :param log_to_driver: If true, the output from all of the worker
             processes on all nodes will be directed to the driver.
     :param local_mode: If true, the code will be executed serially. This
             is useful for debugging.
-    :return: created WorkerResources
+    :return: created WorkerResources.
     """
     # Env variables which are set through SLURM script
     env_var_master_node_ip = 'ip_head'
@@ -45,6 +45,8 @@ def initialize_ray(
     # Read number of CPU cores on current machine
     number_of_cpus_per_node = threads_per_node if threads_per_node else cpu_count(logical=True)
     number_of_gpus_per_node = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    if not number_of_gpus_per_node:
+        logger.info("Not using GPU in ray")
 
     # Find a way in how the ray should be initialized
     if master_node_ip:
@@ -87,7 +89,7 @@ def initialize_ray(
 
 class RayDistributed(WorkerPool):
     """
-    This worker uses ray to distribute work across all available threads
+    This worker uses ray to distribute work across all available threads.
     """
 
     def __init__(
@@ -100,7 +102,7 @@ class RayDistributed(WorkerPool):
         logs_subdir: Optional[str] = 'logs',
     ):
         """
-        Initialize ray worker
+        Initialize ray worker.
         :param master_node_ip: if available, ray will connect to remote cluster.
         :param threads_per_node: Number of threads to use per node.
         :param debug_mode: If true, the code will be executed serially. This
@@ -115,13 +117,12 @@ class RayDistributed(WorkerPool):
         self._local_mode = debug_mode
         self._log_to_driver = log_to_driver
         self._log_dir: Optional[Path] = Path(output_dir) / (logs_subdir or '') if output_dir is not None else None
-
         super().__init__(self.initialize())
 
     def initialize(self) -> WorkerResources:
         """
-        Initialize ray
-        :return: created WorkerResources
+        Initialize ray.
+        :return: created WorkerResources.
         """
         # In case ray was already running, shut it down. This occurs mainly in tests
         if ray.is_initialized():
@@ -137,7 +138,7 @@ class RayDistributed(WorkerPool):
 
     def shutdown(self) -> None:
         """
-        Shutdown the worker and clear memory
+        Shutdown the worker and clear memory.
         """
         ray.shutdown()
 
@@ -145,8 +146,8 @@ class RayDistributed(WorkerPool):
         """Inherited, see superclass."""
         return ray_map(task, *item_lists, log_dir=self._log_dir)  # type: ignore
 
-    def submit(self, task: Task, *args: Any) -> Future[Any]:
+    def submit(self, task: Task, *args: Any, **kwargs: Any) -> Future[Any]:
         """Inherited, see superclass."""
         remote_fn = ray.remote(task.fn).options(num_gpus=task.num_gpus, num_cpus=task.num_cpus)
-        object_ids: ray._raylet.ObjectRef = remote_fn.remote(*args)
+        object_ids: ray._raylet.ObjectRef = remote_fn.remote(*args, **kwargs)
         return object_ids.future()  # type: ignore

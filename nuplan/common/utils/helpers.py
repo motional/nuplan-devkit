@@ -1,5 +1,6 @@
 import logging
 import time
+import warnings
 from typing import Any, Callable, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
@@ -72,3 +73,13 @@ def keep_trying(
             time.sleep(sleep_time)
 
     raise TimeoutError(f"Timeout on function call {fn}({args}{kwargs}) catching {errors}")
+
+
+def suppress_geopandas_warning() -> None:
+    """
+    Filters warning message about incompatible PyGEOS verions. The underlying cause is a pip packaging error that will
+    hopefully be fixed in the future, and available workarounds complicate installation. Must run before geopandas import.
+    It's possible for the error to still appear if geopandas is imported elsewhere, but this covers the main case when
+    running simulations.
+    """
+    warnings.filterwarnings('ignore', '.*The Shapely GEOS version .* is incompatible with the GEOS version PyGEOS.*')

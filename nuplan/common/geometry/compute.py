@@ -120,7 +120,9 @@ def l2_euclidean_corners_distance(box1: OrientedBox, box2: OrientedBox) -> float
     return float(np.linalg.norm(distances))
 
 
-def se2_box_distances(query: StateSE2, targets: list[StateSE2], box_size: Dimension) -> List[float]:
+def se2_box_distances(
+    query: StateSE2, targets: list[StateSE2], box_size: Dimension, consider_flipped: bool = True
+) -> List[float]:
     """
     Computes the minimal distance [m] from a query to a list of targets. The distance is computed using the norm of the
     euclidean distances between the corners of a box spawned using the pose as center and given dimensions.
@@ -128,18 +130,22 @@ def se2_box_distances(query: StateSE2, targets: list[StateSE2], box_size: Dimens
     :param query: The query pose.
     :param targets: The targets to compute the distance.
     :param box_size: The size of the box to be constructed.
+    :param consider_flipped: Whether to also check for the same query pose, but rotated by 180 degrees.
     :return: A list of distances [m] from query to targets
     """
     query_box = OrientedBox(query, box_size.length, box_size.width, box_size.height)
     backwards_query_box = OrientedBox.from_new_pose(query_box, StateSE2(query.x, query.y, query.heading + np.pi))
     target_boxes = [OrientedBox(target, box_size.length, box_size.width, box_size.height) for target in targets]
-    return [
-        min(
-            l2_euclidean_corners_distance(query_box, target_box),
-            l2_euclidean_corners_distance(backwards_query_box, target_box),
-        )
-        for target_box in target_boxes
-    ]
+    if consider_flipped:
+        return [
+            min(
+                l2_euclidean_corners_distance(query_box, target_box),
+                l2_euclidean_corners_distance(backwards_query_box, target_box),
+            )
+            for target_box in target_boxes
+        ]
+    else:
+        return [l2_euclidean_corners_distance(query_box, target_box) for target_box in target_boxes]
 
 
 class AngularInterpolator:

@@ -75,7 +75,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             return ["filename"]
 
         with mock.patch(
-            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils.get_scenarios_from_db_file",
             db_file_patch,
         ), mock.patch(
             "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
@@ -141,7 +141,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             return ["filename1", "filename2", "filename3"]
 
         with mock.patch(
-            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils.get_scenarios_from_db_file",
             db_file_patch,
         ), mock.patch(
             "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
@@ -211,7 +211,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             return ["filename1", "filename2", "filename3"]
 
         with mock.patch(
-            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils.get_scenarios_from_db_file",
             db_file_patch,
         ), mock.patch(
             "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",
@@ -276,7 +276,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             return ["filename1", "filename2", "filename3"]
 
         with mock.patch(
-            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.get_scenarios_from_db_file",
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils.get_scenarios_from_db_file",
             db_file_patch,
         ), mock.patch(
             "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder.discover_log_dbs",

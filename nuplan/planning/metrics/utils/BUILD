@@ -63,10 +63,12 @@ py_test(
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
+        "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/observation/idm:utils",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/planner:simple_planner",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
-        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
         "//nuplan/planning/utils/serialization:from_scene",
     ],
 )

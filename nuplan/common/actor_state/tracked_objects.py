@@ -112,3 +112,15 @@ class TrackedObjects:
         :return: The number of tracked objects in the class
         """
         return len(self.tracked_objects)
+
+    def get_tracked_objects_of_types(self, tracked_object_types: List[TrackedObjectType]) -> List[TrackedObject]:
+        """
+        Gets the sublist of agents of particular TrackedObjectTypes
+        :param tracked_object_types: The query TrackedObjectTypes
+        :return: List of the present agents of the query types. Throws an error if the key is invalid.
+        """
+        open_loop_tracked_objects = []
+        for _type in tracked_object_types:
+            open_loop_tracked_objects.extend(self.get_tracked_objects_of_type(_type))
+
+        return open_loop_tracked_objects

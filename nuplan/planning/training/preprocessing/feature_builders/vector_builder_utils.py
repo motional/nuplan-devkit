@@ -7,13 +7,14 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from nuplan.common.actor_state.state_representation import Point2D
-from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map import AbstractMap, MapObject
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer, TrafficLightStatusData, TrafficLightStatusType
 from nuplan.common.maps.nuplan_map.utils import (
     build_lane_segments_from_blps_with_trim,
     connect_trimmed_lane_conn_predecessor,
     connect_trimmed_lane_conn_successor,
     extract_polygon_from_map_object,
+    get_distance_between_map_object_and_point,
 )
 
 
@@ -37,7 +38,7 @@ class VectorFeatureLayer(IntEnum):
     RIGHT_BOUNDARY = 2
     STOP_LINE = 3
     CROSSWALK = 4
-    ROUTE = 5
+    ROUTE_LANES = 5
 
     @classmethod
     def deserialize(cls, layer: str) -> VectorFeatureLayer:
@@ -269,18 +270,24 @@ def get_lane_polylines(
     layer_names = [SemanticMapLayer.LANE, SemanticMapLayer.LANE_CONNECTOR]
     layers = map_api.get_proximal_map_objects(point, radius, layer_names)
 
+    map_objects: List[MapObject] = []
+
     for layer_name in layer_names:
-        for map_obj in layers[layer_name]:
-            # center lane
-            baseline_path_polyline = [Point2D(node.x, node.y) for node in map_obj.baseline_path.discrete_path]
-            lanes_mid.append(baseline_path_polyline)
+        map_objects += layers[layer_name]
+    # sort by distance to query point
+    map_objects.sort(key=lambda map_obj: float(get_distance_between_map_object_and_point(point, map_obj)))
 
-            # boundaries
-            lanes_left.append([Point2D(node.x, node.y) for node in map_obj.left_boundary.discrete_path])
-            lanes_right.append([Point2D(node.x, node.y) for node in map_obj.right_boundary.discrete_path])
+    for map_obj in map_objects:
+        # center lane
+        baseline_path_polyline = [Point2D(node.x, node.y) for node in map_obj.baseline_path.discrete_path]
+        lanes_mid.append(baseline_path_polyline)
 
-            # lane ids
-            lane_ids.append(map_obj.id)
+        # boundaries
+        lanes_left.append([Point2D(node.x, node.y) for node in map_obj.left_boundary.discrete_path])
+        lanes_right.append([Point2D(node.x, node.y) for node in map_obj.right_boundary.discrete_path])
+
+        # lane ids
+        lane_ids.append(map_obj.id)
 
     return (
         MapObjectPolylines(lanes_mid),
@@ -301,22 +308,21 @@ def get_map_object_polygons(
     :param layer_name: semantic layer to query.
     :return extracted map object polygons.
     """
-    polygons: List[List[Point2D]] = []
-    layers = map_api.get_proximal_map_objects(point, radius, [layer_name])
-
-    for map_obj in layers[layer_name]:
-        polygon = extract_polygon_from_map_object(map_obj)
-        polygons.append(polygon)
+    map_objects = map_api.get_proximal_map_objects(point, radius, [layer_name])[layer_name]
+    # sort by distance to query point
+    map_objects.sort(key=lambda map_obj: get_distance_between_map_object_and_point(point, map_obj))
+    polygons = [extract_polygon_from_map_object(map_obj) for map_obj in map_objects]
 
     return MapObjectPolylines(polygons)
 
 
 def get_route_polygon_from_roadblock_ids(map_api: AbstractMap, route_roadblock_ids: List[str]) -> MapObjectPolylines:
     """
-    Extract route polygon from map for route specified by list of roadblock ids.
+    Extract route polygon from map for route specified by list of roadblock ids. Polygon is represented as collection of
+        polygons of roadblocks/roadblock connectors encompassing route.
     :param map_api: map to perform extraction on.
     :param route_roadblock_ids: ids of roadblocks/roadblock connectors specifying route.
-    :return route as sequence of roadblock/roadblock connector polygons.
+    :return: A route as sequence of roadblock/roadblock connector polygons.
     """
     route_polygons: List[List[Point2D]] = []
 
@@ -333,6 +339,42 @@ def get_route_polygon_from_roadblock_ids(map_api: AbstractMap, route_roadblock_i
             route_polygons.append(polygon)
 
     return MapObjectPolylines(route_polygons)
+
+
+def get_route_lane_polylines_from_roadblock_ids(
+    map_api: AbstractMap, point: Point2D, route_roadblock_ids: List[str]
+) -> MapObjectPolylines:
+    """
+    Extract route polylines from map for route specified by list of roadblock ids. Route is represented as collection of
+        baseline polylines of all children lane/lane connectors or roadblock/roadblock connectors encompassing route.
+    :param map_api: map to perform extraction on.
+    :param point: [m] x, y coordinates in global frame.
+    :param route_roadblock_ids: ids of roadblocks/roadblock connectors specifying route.
+    :return: A route as sequence of lane/lane connector polylines.
+    """
+    route_lane_polylines: List[List[Point2D]] = []  # shape: [num_lanes, num_points_per_lane (variable), 2]
+    map_objects = []
+
+    for route_roadblock_id in route_roadblock_ids:
+        # roadblock
+        roadblock_obj = map_api.get_map_object(route_roadblock_id, SemanticMapLayer.ROADBLOCK)
+
+        # roadblock connector
+        if not roadblock_obj:
+            roadblock_obj = map_api.get_map_object(route_roadblock_id, SemanticMapLayer.ROADBLOCK_CONNECTOR)
+
+        # represent roadblock/connector by interior lanes/connectors
+        if roadblock_obj:
+            map_objects += roadblock_obj.interior_edges
+
+    # sort by distance to query point
+    map_objects.sort(key=lambda map_obj: float(get_distance_between_map_object_and_point(point, map_obj)))
+
+    for map_obj in map_objects:
+        baseline_path_polyline = [Point2D(node.x, node.y) for node in map_obj.baseline_path.discrete_path]
+        route_lane_polylines.append(baseline_path_polyline)
+
+    return MapObjectPolylines(route_lane_polylines)
 
 
 def get_on_route_status(
@@ -524,9 +566,9 @@ def get_neighbor_vector_set_map(
             coords[VectorFeatureLayer.RIGHT_BOUNDARY.name] = MapObjectPolylines(lanes_right.polylines)
 
     # extract route
-    if VectorFeatureLayer.ROUTE in feature_layers:
-        route_polygons = get_route_polygon_from_roadblock_ids(map_api, route_roadblock_ids)
-        coords[VectorFeatureLayer.ROUTE.name] = route_polygons
+    if VectorFeatureLayer.ROUTE_LANES in feature_layers:
+        route_polylines = get_route_lane_polylines_from_roadblock_ids(map_api, point, route_roadblock_ids)
+        coords[VectorFeatureLayer.ROUTE_LANES.name] = route_polylines
 
     # extract generic map objects
     for feature_layer in feature_layers:

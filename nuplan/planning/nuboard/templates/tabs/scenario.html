@@ -77,7 +77,18 @@
                  </div>
              </div>
          </div>
-             <div class="row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
+          <div class="row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
+             'scenario-table-ego-expert-states-row', 'scenario-table-ego-expert-states-svg-path')">
+              Ego and Expert States
+              <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                  <path id="scenario-table-ego-expert-states-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                  </path>
+              </svg>
+          </div>
+          <div class="scenario-table-ego-expert-states-row" id="scenario-table-ego-expert-states-row">
+              {{ embed(roots.ego_expert_states_layout) }}
+          </div>
+          <div class="row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
              'scenario-table-time-series-row', 'scenario-table-time-series-svg-path')">
               Time Series Metrics
               <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">

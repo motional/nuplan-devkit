@@ -34,3 +34,12 @@ py_library(
         "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )
+
+py_library(
+    name = "cache_metadata_entry",
+    srcs = ["cache_metadata_entry.py"],
+    deps = [
+        "//nuplan/database/common/blob_store:s3_store",
+        "//nuplan/planning/utils/multithreading:worker_pool",
+    ],
+)

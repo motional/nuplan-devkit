@@ -198,7 +198,13 @@ def to_scene_box(tracked_object: TrackedObject, track_id: str) -> Dict[str, Any]
         },
         'id': track_id,
         'type': tracked_object.tracked_object_type.fullname,
-        'tooltip': f"track_id: {track_id}\ntype: {tracked_object.tracked_object_type.fullname}",
+        'tooltip': f"avtest_track_id: {track_id}\n"
+        f"track_token: {tracked_object.metadata.track_token}\n"
+        f"token: {tracked_object.metadata.token}\n"
+        f"category_name: {tracked_object.metadata.category_name}\n"
+        f"track_id: {tracked_object.metadata.track_id}\n"
+        f"type: {tracked_object.tracked_object_type.fullname}\n"
+        f"velocity: {tracked_object.velocity}",
     }
     if tracked_object.tracked_object_type == TrackedObjectType.PEDESTRIAN:
         scene['box']['radius'] = 0.5

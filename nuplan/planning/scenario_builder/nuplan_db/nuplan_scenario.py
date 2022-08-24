@@ -86,6 +86,18 @@ class NuPlanScenario(AbstractScenario):
         self._ego_vehicle_parameters = ego_vehicle_parameters
         self._ground_truth_predictions = ground_truth_predictions
 
+        # If scenario extraction info is provided, check that the subsample ratio is valid
+        if self._scenario_extraction_info is not None:
+            skip_rows = 1.0 / self._scenario_extraction_info.subsample_ratio
+            if abs(int(skip_rows) - skip_rows) > 1e-3:
+                raise ValueError(
+                    f"Subsample ratio is not valid. Must resolve to an integer number of skipping rows, instead received {self._scenario_extraction_info.subsample_ratio}, which would skip {skip_rows} rows."
+                )
+
+        # The interval between successive rows in the DB.
+        # This is necessary for functions that sample the rows, such as get_ego_future_trajectory
+        self._database_row_interval = 0.05
+
         # Typically, the log file will already be downloaded by the scenario_builder by this point
         #   So most of the time, this should be a trivial translation.
         #
@@ -189,7 +201,9 @@ class NuPlanScenario(AbstractScenario):
     @property
     def database_interval(self) -> float:
         """Inherited, see superclass."""
-        return 0.05  # 20Hz
+        if self._scenario_extraction_info is None:
+            return 0.05  # 20Hz
+        return float(0.05 / self._scenario_extraction_info.subsample_ratio)
 
     def get_number_of_iterations(self) -> int:
         """Inherited, see superclass."""
@@ -251,7 +265,7 @@ class NuPlanScenario(AbstractScenario):
     ) -> Generator[EgoState, None, None]:
         """Inherited, see superclass."""
         num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
-        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._database_row_interval)
 
         return cast(
             Generator[EgoState, None, None],
@@ -263,7 +277,7 @@ class NuPlanScenario(AbstractScenario):
     ) -> Generator[EgoState, None, None]:
         """Inherited, see superclass."""
         num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
-        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._database_row_interval)
 
         return cast(
             Generator[EgoState, None, None],
@@ -318,7 +332,7 @@ class NuPlanScenario(AbstractScenario):
         :return: lidar_pcs matching to database indices
         """
         num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
-        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._database_row_interval)
 
         return cast(
             Generator[LidarPc, None, None],

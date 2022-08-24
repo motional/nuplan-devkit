@@ -4,9 +4,8 @@ import numpy as np
 from shapely.geometry import Point
 from sympy import Point2D
 
-from nuplan_devkit.nuplan.common.maps.abstract_map import AbstractMap
-from nuplan_devkit.nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject
-
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject
 from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.planning.metrics.evaluation_metrics.base.metric_base import MetricBase
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
@@ -123,9 +122,9 @@ class DrivableAreaViolationStatistics(MetricBase):
         map_api = history.map_api
         all_ego_corners = extract_ego_corners(ego_states)  # 4 corners of oriented box (FL, RL, RR, FR)
         corners_lane_lane_connector_list = self._lane_change_metric.corners_route
-        center_route = self._lane_change_metric.ego_route
+        center_route = self._lane_change_metric.ego_driven_route
 
-        corners_not_in_drivable_area = []
+        corners_in_drivable_area = []
         far_from_drivable_area = False
 
         for ego_corners, corners_lane_lane_connector, center_lane_lane_connector in zip(
@@ -134,9 +133,9 @@ class DrivableAreaViolationStatistics(MetricBase):
             not_in_drivable_area, far_from_drivable_area = self.compute_violation_for_iteration(
                 map_api, ego_corners, corners_lane_lane_connector, center_lane_lane_connector, far_from_drivable_area
             )
-            corners_not_in_drivable_area.append(float(not_in_drivable_area))
+            corners_in_drivable_area.append(float(not not_in_drivable_area))
 
-        return corners_not_in_drivable_area, far_from_drivable_area
+        return corners_in_drivable_area, far_from_drivable_area
 
     def compute_score(
         self,
@@ -145,7 +144,7 @@ class DrivableAreaViolationStatistics(MetricBase):
         time_series: Optional[TimeSeries] = None,
     ) -> float:
         """Inherited, see superclass."""
-        return float(not metric_statistics[1].value)
+        return float(metric_statistics[0].value)
 
     def compute(self, history: SimulationHistory, scenario: AbstractScenario) -> List[MetricStatistics]:
         """
@@ -154,27 +153,35 @@ class DrivableAreaViolationStatistics(MetricBase):
         :param scenario: Scenario running this metric.
         :return: the estimated metric.
         """
-        corners_not_in_drivable_area, far_from_drivable_area = self.extract_metric(history=history)
+        corners_in_drivable_area, far_from_drivable_area = self.extract_metric(history=history)
 
         time_stamps = extract_ego_time_point(history.extract_ego_state)
-        time_series = TimeSeries(unit='boolean', time_stamps=list(time_stamps), values=corners_not_in_drivable_area)
+        time_series = TimeSeries(unit='boolean', time_stamps=list(time_stamps), values=corners_in_drivable_area)
         statistics = [
-            Statistic(
-                name='all_corners_in_drivable_area',
-                unit=MetricStatisticsType.BOOLEAN.unit,
-                value=float(not np.any(corners_not_in_drivable_area)),
-                type=MetricStatisticsType.BOOLEAN,
-            ),
             Statistic(
                 name=f'no_{self.name}',
                 unit=MetricStatisticsType.BOOLEAN.unit,
-                value=float(far_from_drivable_area),
+                value=float(not far_from_drivable_area),
                 type=MetricStatisticsType.BOOLEAN,
-            ),
+            )
         ]
         # Save to load in high level metrics
-        self.results = self._construct_metric_results(
-            metric_statistics=statistics, scenario=scenario, time_series=time_series
+        self.results = self._construct_metric_results(metric_statistics=statistics, scenario=scenario)
+        corners_statistics = [
+            Statistic(
+                name='corners_in_drivable_area',
+                unit=MetricStatisticsType.BOOLEAN.unit,
+                value=float(np.all(corners_in_drivable_area)),
+                type=MetricStatisticsType.BOOLEAN,
+            )
+        ]
+        corners_statistics_result = MetricStatistics(
+            metric_computator=self.name,
+            name='corners_in_drivable_area',
+            statistics=corners_statistics,
+            time_series=time_series,
+            metric_category=self.category,
         )
+        self.results.append(corners_statistics_result)
 
         return self.results

@@ -9,6 +9,24 @@ from nuplan.common.geometry.compute import principal_value
 from nuplan.planning.metrics.utils.state_extractors import calculate_ego_progress_to_goal
 
 
+def compute_traj_heading_errors(
+    ego_traj: List[StateSE2],
+    expert_traj: List[StateSE2],
+) -> npt.NDArray:  # type:ignore
+    """
+    Compute the heading (yaw) errors between the ego trajectory and expert trajectory
+    :param ego_traj: a list of StateSE2 that describe ego position with yaw
+    :param expert_traj: a list of StateSE2 that describe expert position with yaw
+    :return An array of yaw errors.
+    """
+    yaw_displacements: npt.NDArray[np.float32] = np.array(
+        [ego_traj[i].heading - expert_traj[i].heading for i in range(len(ego_traj))]
+    )
+    heading_errors = np.abs(principal_value(yaw_displacements))
+
+    return heading_errors  # type:ignore
+
+
 def compute_traj_errors(
     ego_traj: Union[List[Point2D], List[StateSE2]],
     expert_traj: Union[List[Point2D], List[StateSE2]],
@@ -23,7 +41,7 @@ def compute_traj_errors(
     be discounted by a factor of discount_factor^k., defaults to 1.0
     :param heading_diff_weight: factor to weight heading differences if yaw errors are also
     considered, defaults to 1.0
-    :return array of errors.
+    :return an array of displacement errors.
     """
     traj_len = len(ego_traj)
     expert_traj_len = len(expert_traj)
@@ -40,10 +58,7 @@ def compute_traj_errors(
     dist_seq = np.hypot(displacements[:, 0], displacements[:, 1])
 
     if isinstance(ego_traj[0], StateSE2) and isinstance(expert_traj[0], StateSE2) and heading_diff_weight != 0:
-        yaw_displacements: npt.NDArray[np.float32] = np.array(
-            [ego_traj[i].heading - expert_traj[i].heading for i in range(traj_len)]
-        )
-        heading_errors = np.abs(principal_value(yaw_displacements))
+        heading_errors = compute_traj_heading_errors(ego_traj, expert_traj)
         weighted_heading_errors = heading_errors * heading_diff_weight
         dist_seq = dist_seq + weighted_heading_errors
 

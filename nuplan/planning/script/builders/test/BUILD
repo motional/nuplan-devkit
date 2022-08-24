@@ -26,6 +26,7 @@ py_test(
     srcs = ["test_scenario_builder.py"],
     deps = [
         "//nuplan/planning/script/builders:scenario_builder",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",

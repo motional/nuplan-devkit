@@ -8,18 +8,21 @@ import warnings
 from functools import lru_cache
 from typing import List, Sequence
 
-import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pyogrio
 import rasterio
 
+from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.common.blob_store.creator import BlobStoreCreator
 from nuplan.database.common.blob_store.local_store import LocalStore
 from nuplan.database.maps_db import layer_dataset_ops
 from nuplan.database.maps_db.imapsdb import IMapsDB
 from nuplan.database.maps_db.layer import MapLayer
 from nuplan.database.maps_db.metadata import MapLayerMeta
+
+suppress_geopandas_warning()
+import geopandas as gpd  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

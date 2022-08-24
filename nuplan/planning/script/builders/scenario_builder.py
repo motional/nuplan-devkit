@@ -5,18 +5,26 @@ from typing import Dict, List, Set, cast
 
 from omegaconf import DictConfig
 
-from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir
+from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir, get_cache_metadata_paths
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
 from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
+from nuplan.planning.training.experiments.cache_metadata_entry import (
+    extract_field_from_cache_metadata_entries,
+    read_cache_metadata,
+)
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
 
 logger = logging.getLogger(__name__)
 
 
-def get_s3_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[Path]:
+def get_s3_scenario_cache(
+    cache_path: str,
+    feature_names: Set[str],
+    worker: WorkerPool,
+) -> List[Path]:
     """
     Get a list of cached scenario paths from a remote (S3) cache.
     :param cache_path: Root path of the remote cache dir.
@@ -25,8 +33,17 @@ def get_s3_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[Path
     """
     # Retrieve all filenames contained in the remote location.
     assert check_s3_path_exists(cache_path), 'Remote cache {cache_path} does not exist!'
-    s3_filenames = expand_s3_dir(cache_path)
-    assert len(s3_filenames) > 0, 'No files found in the remote cache {cache_path}!'
+
+    # Get metadata files from s3 cache path provided
+    metadata_files = get_cache_metadata_paths(cache_path)
+    if len(metadata_files) > 0:
+        logger.info("Reading s3 directory from metadata.")
+        cache_metadata_entries = read_cache_metadata(cache_path, metadata_files, worker)
+        s3_filenames = extract_field_from_cache_metadata_entries(cache_metadata_entries, 'file_name')
+    else:  # If cache does not have any metadata csv files, fetch files directly from s3
+        logger.warning("Not using metadata! This will be slow...")
+        s3_filenames = expand_s3_dir(cache_path)
+    assert len(s3_filenames) > 0, f'No files found in the remote cache {cache_path}!'
 
     # Create a 3-level hash with log names, scenario types and scenario tokens as keys and the set of contained features as values.
     cache_map: Dict[str, Dict[str, Dict[str, Set[str]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
@@ -88,7 +105,7 @@ def extract_scenarios_from_cache(
 
     # Get cached scenario paths locally or remotely
     scenario_cache_paths = (
-        get_s3_scenario_cache(cache_path, feature_names)
+        get_s3_scenario_cache(cache_path, feature_names, worker)
         if cache_path.startswith('s3://')
         else get_local_scenario_cache(cache_path, feature_names)
     )

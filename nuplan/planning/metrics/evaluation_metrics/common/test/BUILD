@@ -234,68 +234,6 @@ py_test(
 )
 
 py_test(
-    name = "test_ego_collisions_pedestrian",
-    srcs = ["test_ego_collisions_pedestrian.py"],
-    data = [
-        ":test_json",
-    ],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_pedestrians",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_collisions_object",
-    srcs = ["test_ego_collisions_object.py"],
-    data = [
-        ":test_json",
-    ],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_objects",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_collisions_bicycle",
-    srcs = ["test_ego_collisions_bicycle.py"],
-    data = [
-        ":test_json",
-    ],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_bicycles",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
-    name = "test_ego_collisions_vehicle",
-    srcs = ["test_ego_collisions_vehicle.py"],
-    data = [
-        ":test_json",
-    ],
-    deps = [
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions_with_vehicles",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/utils:testing_utils",
-    ],
-)
-
-py_test(
     name = "test_ego_is_making_progress",
     srcs = ["test_ego_is_making_progress.py"],
     data = [
@@ -305,6 +243,87 @@ py_test(
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_is_making_progress",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_progress_along_expert_route",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_planner_expert_average_l2_error",
+    srcs = ["test_planner_expert_average_l2_error.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_planner_expert_final_l2_error",
+    srcs = ["test_planner_expert_final_l2_error.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_final_l2_error",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_planner_miss_rate",
+    srcs = ["test_planner_miss_rate.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_miss_rate",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_planner_expert_average_heading_error",
+    srcs = ["test_planner_expert_average_heading_error.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_heading_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_planner_expert_final_heading_error",
+    srcs = ["test_planner_expert_final_heading_error.py"],
+    data = [
+        ":test_json",
+    ],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_final_heading_error",
+        "//nuplan/planning/metrics/utils:testing_utils",
+    ],
+)
+
+py_test(
+    name = "test_driving_direction_violation",
+    srcs = ["test_driving_direction_violation.py"],
+    data = [":test_json"],
+    deps = [
+        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/planning/metrics/evaluation_metrics/common:driving_direction_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )

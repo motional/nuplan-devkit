@@ -39,6 +39,7 @@ py_library(
         "//nuplan/common/maps/nuplan_map:polygon_map_object",
         "//nuplan/common/maps/nuplan_map:stop_line",
         "//nuplan/common/maps/nuplan_map:utils",
+        "//nuplan/common/utils:helpers",
         "//nuplan/database/maps_db:imapsdb",
         "//nuplan/database/maps_db:layer",
         "//nuplan/database/nuplan_db_orm:utils",
@@ -53,6 +54,7 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/utils:helpers",
         "//nuplan/database/maps_db:layer",
     ],
 )

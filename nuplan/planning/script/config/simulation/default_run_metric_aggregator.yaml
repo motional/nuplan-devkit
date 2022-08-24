@@ -9,7 +9,7 @@ hydra:
 defaults:
   # Hyperparameters need to be specified
   - metric_aggregator:
-      - weighted_average_metric_aggregator
+      - default_weighted_average
 
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging

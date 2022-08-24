@@ -45,7 +45,7 @@ class ScenarioDataset(torch.utils.data.Dataset):
         """
         scenario = self._scenarios[idx]
 
-        features, targets = self._feature_preprocessor.compute_features(scenario)
+        features, targets, _ = self._feature_preprocessor.compute_features(scenario)
 
         if self._augmentors is not None:
             for augmentor in self._augmentors:

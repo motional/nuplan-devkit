@@ -1,0 +1,19 @@
+defaults:
+  # - common_metrics  # Uncomment this for common information about the scenario as specified in the config
+  - low_level: # Low level metrics
+      - ego_lane_change_statistics
+      - ego_jerk_statistics
+      - ego_lat_acceleration_statistics
+      - ego_lon_acceleration_statistics
+      - ego_lon_jerk_statistics
+      - ego_yaw_acceleration_statistics
+      - ego_yaw_rate_statistics
+      - ego_progress_along_expert_route_statistics
+  - high_level:  # High level metrics that depend on low level metrics, they can also rely on the previously called high level metrics
+      - drivable_area_violation_statistics
+      - ego_at_fault_collisions_statistics
+      - time_to_collision_statistics
+      - speed_limit_violation_statistics
+      - ego_is_comfortable_statistics
+      - ego_is_making_progress_statistics
+      - driving_direction_violation_statistics

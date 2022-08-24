@@ -4,7 +4,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Dict, Generator, List, Optional, Tuple, cast
+from typing import Dict, Generator, List, Optional, Tuple, Union, cast
 
 from nuplan.common.actor_state.agent import Agent
 from nuplan.common.actor_state.tracked_objects import TrackedObject, TrackedObjects
@@ -55,13 +55,31 @@ class ScenarioMapping:
     Structure that maps each scenario type to instructions used in extracting it.
     """
 
-    def __init__(self, scenario_map: Dict[str, Tuple[float, float, float]]) -> None:
+    def __init__(
+        self,
+        scenario_map: Dict[str, Union[Tuple[float, float, float], Tuple[float, float]]],
+        subsample_ratio_override: Optional[float],
+    ) -> None:
         """
         Initializes the scenario mapping class.
         :param scenario_map: Dictionary with scenario name/type as keys and
                              tuples of (scenario duration, extraction offset, subsample ratio) as values.
+        :subsample_ratio_override: The override for the subsample ratio if not provided.
         """
-        self.mapping = {name: ScenarioExtractionInfo(name, *value) for name, value in scenario_map.items()}
+        self.mapping: Dict[str, ScenarioExtractionInfo] = {}
+        self.subsample_ratio_override = (
+            subsample_ratio_override if subsample_ratio_override is not None else DEFAULT_SUBSAMPLE_RATIO
+        )
+
+        for name in scenario_map:
+            this_ratio: float = scenario_map[name][2] if len(scenario_map[name]) == 3 else self.subsample_ratio_override  # type: ignore
+
+            self.mapping[name] = ScenarioExtractionInfo(
+                scenario_name=name,
+                scenario_duration=scenario_map[name][0],
+                extraction_offset=scenario_map[name][1],
+                subsample_ratio=this_ratio,
+            )
 
     def get_extraction_info(self, scenario_type: str) -> Optional[ScenarioExtractionInfo]:
         """
@@ -70,7 +88,11 @@ class ScenarioMapping:
         :param scenario_type: Scenario type to query for.
         :return: Scenario extraction information for the queried scenario type.
         """
-        return self.mapping[scenario_type] if scenario_type in self.mapping else ScenarioExtractionInfo()
+        return (
+            self.mapping[scenario_type]
+            if scenario_type in self.mapping
+            else ScenarioExtractionInfo(subsample_ratio=self.subsample_ratio_override)
+        )
 
 
 def download_file_if_necessary(data_root: str, potentially_remote_path: str) -> str:

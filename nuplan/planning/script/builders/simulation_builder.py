@@ -31,14 +31,15 @@ def build_simulations(
     scenario_builder: AbstractScenarioBuilder,
     worker: WorkerPool,
     callbacks: List[AbstractCallback],
+    callbacks_worker: Optional[WorkerPool] = None,
     pre_built_planners: Optional[List[AbstractPlanner]] = None,
 ) -> List[SimulationsRunner]:
     """
     Build simulations.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
-    :param scenario_builder: Scenario builder used to extract scenarios
+    :param scenario_builder: Scenario builder used to extract scenarios.
     :param callbacks: Callbacks for simulation.
-    :param worker: Worker for job execution
+    :param worker: Worker for job execution.
     :param pre_built_planners: List of pre-built planners to run in simulation.
     :return A dict of simulation engines with challenge names.
     """
@@ -90,9 +91,14 @@ def build_simulations(
             # Metric Engine
             metric_engine = metric_engines_map.get(scenario.scenario_type, None)
             if metric_engine is not None:
-                metric_callbacks = [MetricCallback(metric_engine=metric_engine)]
+                stateful_callbacks = [MetricCallback(metric_engine=metric_engine, worker_pool=callbacks_worker)]
             else:
-                metric_callbacks = []
+                stateful_callbacks = []
+
+            if "simulation_log_callback" in cfg.callback:
+                stateful_callbacks.append(
+                    instantiate(cfg.callback["simulation_log_callback"], worker_pool=callbacks_worker)
+                )
 
             # Construct simulation and manager
             simulation_setup = SimulationSetup(
@@ -104,7 +110,7 @@ def build_simulations(
 
             simulation = Simulation(
                 simulation_setup=simulation_setup,
-                callback=MultiCallback(callbacks + metric_callbacks),
+                callback=MultiCallback(callbacks + stateful_callbacks),
                 simulation_history_buffer_duration=cfg.simulation_history_buffer_duration,
             )
             simulations.append(SimulationsRunner([simulation], planner))

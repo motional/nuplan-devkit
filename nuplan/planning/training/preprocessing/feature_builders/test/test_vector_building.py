@@ -18,6 +18,7 @@ from nuplan.planning.training.preprocessing.feature_builders.vector_builder_util
     get_neighbor_vector_map,
     get_neighbor_vector_set_map,
     get_on_route_status,
+    get_route_lane_polylines_from_roadblock_ids,
     get_route_polygon_from_roadblock_ids,
 )
 
@@ -37,8 +38,8 @@ class TestVectorUtils(unittest.TestCase):
         self.route_roadblock_ids = scenario.get_route_roadblock_ids()
         self.traffic_light_data = scenario.get_traffic_light_status_at_iteration(0)
 
-        self.radius = 20
-        self.map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE']
+        self.radius = 35
+        self.map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES']
 
     def test_get_lane_polylines(self) -> None:
         """
@@ -65,6 +66,14 @@ class TestVectorUtils(unittest.TestCase):
         Test extracting route polygon from map given list of roadblock ids.
         """
         route = get_route_polygon_from_roadblock_ids(self.map_api, self.route_roadblock_ids)
+
+        assert type(route) == MapObjectPolylines
+
+    def test_get_route_lane_polylines_from_roadblock_ids(self) -> None:
+        """
+        Test extracting route lane polylines from map given list of roadblock ids.
+        """
+        route = get_route_lane_polylines_from_roadblock_ids(self.map_api, self.ego_coords, self.route_roadblock_ids)
 
         assert type(route) == MapObjectPolylines
 

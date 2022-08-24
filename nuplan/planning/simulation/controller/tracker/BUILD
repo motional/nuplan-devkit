@@ -37,3 +37,17 @@ py_library(
         "//nuplan/common/geometry:compute",
     ],
 )
+
+py_library(
+    name = "ilqr_tracker",
+    srcs = ["ilqr_tracker.py"],
+    deps = [
+        "//nuplan/common/actor_state:dynamic_car_state",
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/planning/simulation/controller/tracker:abstract_tracker",
+        "//nuplan/planning/simulation/controller/tracker/ilqr:ilqr_solver",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+    ],
+)

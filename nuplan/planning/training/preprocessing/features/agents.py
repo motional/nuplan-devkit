@@ -101,7 +101,8 @@ class Agents(AbstractModelFeature):
     def to_device(self, device: torch.device) -> Agents:
         """Implemented. See interface."""
         return Agents(
-            ego=[ego.to(device=device) for ego in self.ego], agents=[agents.to(device=device) for agents in self.agents]
+            ego=[to_tensor(ego).to(device=device) for ego in self.ego],
+            agents=[to_tensor(agents).to(device=device) for agents in self.agents],
         )
 
     @classmethod
@@ -126,14 +127,14 @@ class Agents(AbstractModelFeature):
         """
         :return: ego state dimension
         """
-        return 3
+        return EgoFeatureIndex.dim()
 
     @staticmethod
     def agents_states_dim() -> int:
         """
         :return: agent state dimension
         """
-        return 8
+        return AgentFeatureIndex.dim()
 
     @property
     def num_frames(self) -> int:
@@ -198,7 +199,7 @@ class Agents(AbstractModelFeature):
         :param sample_idx: the batch index of interest
         :return: <FeatureDataType: 2>. (x, y) positions of the ego's center at sample index
         """
-        return self.get_present_ego_in_sample(sample_idx)[:2]
+        return self.get_present_ego_in_sample(sample_idx)[: EgoFeatureIndex.y() + 1]
 
     def get_agents_centers_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
@@ -206,7 +207,7 @@ class Agents(AbstractModelFeature):
         :param sample_idx: the batch index of interest
         :return: <FeatureDataType: num_agents, 2>. (x, y) positions of the agents' centers at the sample index
         """
-        return self.get_present_agents_in_sample(sample_idx)[:, :2]
+        return self.get_present_agents_in_sample(sample_idx)[:, : AgentFeatureIndex.y() + 1]
 
     def get_agents_length_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
@@ -214,7 +215,7 @@ class Agents(AbstractModelFeature):
         :param sample_idx: the batch index of interest
         :return: <FeatureDataType: num_agents>. lengths of all the agents at the sample index
         """
-        return self.get_present_agents_in_sample(sample_idx)[:, 6]
+        return self.get_present_agents_in_sample(sample_idx)[:, AgentFeatureIndex.length()]
 
     def get_agents_width_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
@@ -222,7 +223,7 @@ class Agents(AbstractModelFeature):
         :param sample_idx: the batch index of interest
         :return: <FeatureDataType: num_agents>. width of all the agents at the sample index
         """
-        return self.get_present_agents_in_sample(sample_idx)[:, 7]
+        return self.get_present_agents_in_sample(sample_idx)[:, AgentFeatureIndex.width()]
 
     def get_agent_corners_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
@@ -361,17 +362,17 @@ class AgentFeatureIndex:
         return 5
 
     @staticmethod
-    def width() -> int:
+    def length() -> int:
         """
-        The dimension corresponding to the width of the agent.
+        The dimension corresponding to the length of the agent.
         :return: index
         """
         return 6
 
     @staticmethod
-    def length() -> int:
+    def width() -> int:
         """
-        The dimension corresponding to the height of the agent.
+        The dimension corresponding to the width of the agent.
         :return: index
         """
         return 7

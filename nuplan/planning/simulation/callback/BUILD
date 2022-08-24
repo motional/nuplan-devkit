@@ -22,6 +22,7 @@ py_library(
         "//nuplan/planning/simulation/callback:abstract_callback",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )
 
@@ -90,5 +91,6 @@ py_library(
         "//nuplan/planning/simulation/callback:abstract_callback",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )

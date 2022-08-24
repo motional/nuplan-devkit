@@ -3,7 +3,8 @@ import itertools
 import logging
 import os
 import uuid
-from typing import Dict, List, Union, cast
+from pathlib import Path
+from typing import Dict, List, Optional, Union, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -16,6 +17,11 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils imp
 from nuplan.planning.script.builders.model_builder import build_torch_module_wrapper
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
 from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
+from nuplan.planning.training.experiments.cache_metadata_entry import (
+    CacheMetadataEntry,
+    CacheResult,
+    save_cache_metadata,
+)
 from nuplan.planning.training.preprocessing.feature_preprocessor import FeaturePreprocessor
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
 from nuplan.planning.utils.multithreading.worker_sequential import Sequential
@@ -24,7 +30,7 @@ from nuplan.planning.utils.multithreading.worker_utils import chunk_list, worker
 logger = logging.getLogger(__name__)
 
 
-def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[Dict[str, int]]:
+def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[CacheResult]:
     """
     Performs the caching of scenario DB files in parallel.
     :param args: A list of dicts containing the following items:
@@ -38,7 +44,7 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
     # This way, everything will go out of scope, allowing the python GC to clean up after the function.
     #
     # This is necessary to save memory when running on large datasets.
-    def cache_scenarios_oneshot_internal(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[Dict[str, int]]:
+    def cache_scenarios_oneshot_internal(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[CacheResult]:
         node_id = int(os.environ.get("NODE_RANK", 0))
         thread_id = str(uuid.uuid4())
         db_files: List[str] = [cast(str, a["db_file"]) for a in args]
@@ -79,6 +85,7 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
         logger.info("Extracted %s scenarios for thread_id=%s, node_id=%s.", str(len(scenarios)), thread_id, node_id)
         num_failures = 0
         num_successes = 0
+        all_file_cache_metadata: List[Optional[CacheMetadataEntry]] = []
         for idx, scenario in enumerate(scenarios):
             logger.info(
                 "Processing scenario %s / %s in thread_id=%s, node_id=%s",
@@ -88,7 +95,7 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
                 node_id,
             )
 
-            features, targets = preprocessor.compute_features(scenario)
+            features, targets, file_cache_metadata = preprocessor.compute_features(scenario)
 
             scenario_num_failures = sum(
                 0 if feature.is_valid else 1 for feature in itertools.chain(features.values(), targets.values())
@@ -96,9 +103,10 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
             scenario_num_successes = len(features.values()) + len(targets.values()) - scenario_num_failures
             num_failures += scenario_num_failures
             num_successes += scenario_num_successes
+            all_file_cache_metadata += file_cache_metadata
 
         logger.info("Finished processing scenarios for thread_id=%s, node_id=%s", thread_id, node_id)
-        return [{"failures": num_failures, "successes": num_successes}]
+        return [CacheResult(failures=num_failures, successes=num_successes, cache_metadata=all_file_cache_metadata)]
 
     result = cache_scenarios_oneshot_internal(args)
 
@@ -108,7 +116,9 @@ def cache_scenarios_oneshot(args: List[Dict[str, Union[List[str], DictConfig]]])
     return result
 
 
-def cache_scenarios_parallel_oneshot(current_chunk: List[str], cfg: DictConfig, worker: WorkerPool) -> None:
+def cache_scenarios_parallel_oneshot(
+    current_chunk: List[str], cfg: DictConfig, worker: WorkerPool
+) -> List[CacheMetadataEntry]:
     """
     Perform the scenario caching in "one shot".
     That is, read in the scenario and perform feature computation in a single function.
@@ -118,16 +128,25 @@ def cache_scenarios_parallel_oneshot(current_chunk: List[str], cfg: DictConfig, 
     :param current_chunk: The chunk of files to process.
     :param cfg: The configuration to use for the feature builders and scenario builders.
     :param worker: The worker pool to user for parallelization.
+    :return: File_names for each of the valid cached features and targets
     """
     data_points = [{"db_file": cc, "cfg": cfg} for cc in current_chunk]
 
     logger.info("Starting dataset caching of %s files...", str(len(data_points)))
 
-    successes_and_fails = worker_map(worker, cache_scenarios_oneshot, data_points)
-    num_success = sum(v["successes"] for v in successes_and_fails)
-    num_fail = sum(v["failures"] for v in successes_and_fails)
+    cache_results = worker_map(worker, cache_scenarios_oneshot, data_points)
+    num_success = sum(result.successes for result in cache_results)
+    num_fail = sum(result.failures for result in cache_results)
     num_total = num_success + num_fail
     logger.info("Completed dataset caching! Failed features and targets: %s out of %s", str(num_fail), str(num_total))
+
+    valid_cache_metadata_entries = [
+        cache_metadata_entry
+        for cache_result in cache_results
+        for cache_metadata_entry in cache_result.cache_metadata
+        if cache_metadata_entry is not None
+    ]
+    return valid_cache_metadata_entries
 
 
 def cache_data(cfg: DictConfig, worker: WorkerPool) -> None:
@@ -149,7 +168,12 @@ def cache_data(cfg: DictConfig, worker: WorkerPool) -> None:
 
     logger.info("Found %s to process.", str(len(log_db_files)))
 
-    cache_scenarios_parallel_oneshot(log_db_files, cfg, worker)
+    cached_metadata = cache_scenarios_parallel_oneshot(log_db_files, cfg, worker)
+
+    node_id = int(os.environ.get("NODE_RANK", 0))
+    logger.info(f"Node {node_id}: Storing metadata csv file containing cache paths for valid features and targets...")
+    save_cache_metadata(cached_metadata, Path(cfg.cache.cache_path), node_id)
+    logger.info("Done storing metadata csv file.")
 
 
 def split_and_extract_file_chunks_for_current_node(cfg: DictConfig) -> List[str]:

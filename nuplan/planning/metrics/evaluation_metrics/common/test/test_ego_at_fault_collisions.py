@@ -13,7 +13,7 @@ from nuplan.planning.metrics.utils.testing_utils import build_mock_history_scena
 
 
 @nuplan_test(path='json/ego_at_fault_collision/agent_not_colliding.json')
-def test_ego_not_collision(scene: Dict[str, Any]) -> None:
+def test_no_collision(scene: Dict[str, Any]) -> None:
     """
     Tests there is no collision as expected.
     :param scene: the json scene

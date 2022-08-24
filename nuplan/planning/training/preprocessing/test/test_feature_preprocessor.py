@@ -78,7 +78,7 @@ class TestFeaturePreprocessor(unittest.TestCase):
 
         mock_tracked_objects_fn.return_value = DetectionsTracks(TrackedObjects([]))  # scenario has no agents
         scenario = get_test_nuplan_scenario()
-        features, _ = feature_preprocessor.compute_features(scenario)
+        features, _, _ = feature_preprocessor.compute_features(scenario)
 
         self.assertFalse(features['agents'].is_valid)
 
@@ -91,7 +91,7 @@ class TestFeaturePreprocessor(unittest.TestCase):
         :param number_of_features: Number of expected features.
         :param number_of_targets: Number of expected targets.
         """
-        features, targets = feature_preprocessor.compute_features(sample)
+        features, targets, _ = feature_preprocessor.compute_features(sample)
         self.assertEqual(len(targets), number_of_targets)
         self.assertEqual(len(features), number_of_features)
 

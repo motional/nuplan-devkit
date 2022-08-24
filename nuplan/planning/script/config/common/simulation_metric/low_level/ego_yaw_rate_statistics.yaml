@@ -1,0 +1,7 @@
+ego_yaw_rate_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_yaw_rate.EgoYawRateStatistics
+  _convert_: 'all'
+  name: 'ego_yaw_rate'
+  category: 'Dynamics'
+
+  max_abs_yaw_rate: 0.95

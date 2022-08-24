@@ -39,6 +39,17 @@ py_library(
 )
 
 py_library(
+    name = "kinematic_history_agent_augmentation",
+    srcs = ["kinematic_history_agent_augmentation.py"],
+    deps = [
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",
+        "//nuplan/planning/training/data_augmentation:data_augmentation_util",
+        "//nuplan/planning/training/modeling:types",
+    ],
+)
+
+py_library(
     name = "simple_agent_augmentation",
     srcs = ["simple_agent_augmentation.py"],
     deps = [

@@ -17,7 +17,7 @@ from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 from nuplan.planning.training.preprocessing.test.dummy_vectormap_builder import DummyVectorMapFeature
 
 
-def mock_compute_features(scenario: AbstractScenario) -> Tuple[FeaturesType, TargetsType]:
+def mock_compute_features(scenario: AbstractScenario) -> Tuple[FeaturesType, TargetsType, None]:
     """
     Mock feature computation.
     :param scenario: Input scenario to extract features from.
@@ -30,8 +30,8 @@ def mock_compute_features(scenario: AbstractScenario) -> Tuple[FeaturesType, Tar
 
     mock_feature = DummyVectorMapFeature(data1=[data1], data2=[data2], data3=[{"test": data3}])
     mock_output = {'mock_feature': mock_feature}
-
-    return mock_output, mock_output
+    mock_cache_metadata = None
+    return mock_output, mock_output, mock_cache_metadata
 
 
 def mock_predict(features: FeaturesType) -> FeaturesType:

@@ -1,0 +1,6 @@
+ego_progress_along_expert_route_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_progress_along_expert_route.EgoProgressAlongExpertRouteStatistics
+  _convert_: 'all'
+  name: 'ego_progress_along_expert_route'
+  category: 'Planning'
+  score_progress_threshold: 2 # [m]

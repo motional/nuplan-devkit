@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pandas as pd
 from shapely.geometry import Polygon
@@ -113,6 +113,46 @@ class NuPlanLane(Lane):
     def polygon(self) -> Polygon:
         """Inherited from superclass."""
         return self._get_lane().geometry
+
+    @cached_property
+    def adjacent_edges(self) -> Tuple[Optional[LaneGraphEdgeMapObject], Optional[LaneGraphEdgeMapObject]]:
+        """Inherited from superclass."""
+        lane_group_fid = self._get_lane()["lane_group_fid"]
+        all_lanes = get_all_rows_with_value(self._lanes_df, "lane_group_fid", lane_group_fid)
+
+        lane_index = self._get_lane()["lane_index"]
+        # According to the map attributes, lanes are numbered left to right with smaller indices being on the left and larger indices being on the right
+        left_lane_id = all_lanes[all_lanes["lane_index"] == int(lane_index) - 1]['fid']
+        right_lane_id = all_lanes[all_lanes["lane_index"] == int(lane_index) + 1]['fid']
+
+        left_lane = (
+            NuPlanLane(
+                left_lane_id.item(),
+                self._lanes_df,
+                self._lane_connectors_df,
+                self._baseline_paths_df,
+                self._boundaries_df,
+                self._stop_lines_df,
+                self._lane_connector_polygon_df,
+            )
+            if not left_lane_id.empty
+            else None
+        )
+        right_lane = (
+            NuPlanLane(
+                right_lane_id.item(),
+                self._lanes_df,
+                self._lane_connectors_df,
+                self._baseline_paths_df,
+                self._boundaries_df,
+                self._stop_lines_df,
+                self._lane_connector_polygon_df,
+            )
+            if not right_lane_id.empty
+            else None
+        )
+
+        return left_lane, right_lane
 
     def _get_lane(self) -> pd.Series:
         """

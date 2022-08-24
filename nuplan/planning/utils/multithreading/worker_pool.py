@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 def get_max_size_of_arguments(*item_lists: Iterable[List[Any]]) -> int:
     """
-    Find the argument with most elements
-    e.g. [db, [arg1, arg2] -> 2
-    :param item_lists: arguments where some of the arguments is a list
-    :return: size of largest list
+    Find the argument with most elements.
+        e.g. [db, [arg1, arg2] -> 2.
+    :param item_lists: arguments where some of the arguments is a list.
+    :return: size of largest list.
     """
     lengths = [len(items) for items in item_lists if isinstance(items, list)]
     if len(list(set(lengths))) > 1:
@@ -24,9 +24,9 @@ def get_max_size_of_arguments(*item_lists: Iterable[List[Any]]) -> int:
 
 def align_size_of_arguments(*item_lists: Iterable[List[Any]]) -> Tuple[int, Iterable[List[Any]]]:
     """
-    Align item lists by repeating elements in order to achieve the same size
-    from [db, [arg1, arg2] -> [[db, db], [arg1, arg2]]
-    :param item_lists: multiple arguments which will be used to call a function
+    Align item lists by repeating elements in order to achieve the same size.
+        eg. [db, [arg1, arg2] -> [[db, db], [arg1, arg2]].
+    :param item_lists: multiple arguments which will be used to call a function.
     :return: arguments with same dimension, e.g., [[db, db], [arg1, arg1]].
     """
     max_size = get_max_size_of_arguments(*item_lists)
@@ -36,7 +36,7 @@ def align_size_of_arguments(*item_lists: Iterable[List[Any]]) -> Tuple[int, Iter
 
 @dataclass(frozen=True)
 class Task:
-    """This class represents a task that can be submitted to a worker with specific resource requirements"""
+    """This class represents a task that can be submitted to a worker with specific resource requirements."""
 
     fn: Callable[..., Any]  # Function that should be called with arguments
 
@@ -52,8 +52,8 @@ class Task:
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
-        Call function with args
-        :return: output from fn
+        Call function with args.
+        :return: output from fn.
         """
         return self.fn(*args, **kwargs)
 
@@ -71,27 +71,27 @@ class WorkerResources:
     @property
     def number_of_threads(self) -> int:
         """
-        :return: the number of available threads across all nodes
+        :return: the number of available threads across all nodes.
         """
         return self.number_of_nodes * self.number_of_cpus_per_node
 
     @staticmethod
     def current_node_cpu_count() -> int:
         """
-        :return: the number of logical cores on the current machine
+        :return: the number of logical cores on the current machine.
         """
         return cpu_count(logical=True)  # type: ignore
 
 
 class WorkerPool(abc.ABC):
     """
-    This class executed function on list of arguments. This can either be distributed/parallel or sequential worker
+    This class executed function on list of arguments. This can either be distributed/parallel or sequential worker.
     """
 
     def __init__(self, config: WorkerResources):
         """
-        Initialize worker with resource description
-        :param config: setup of this worker
+        Initialize worker with resource description.
+        :param config: setup of this worker.
         """
         self.config = config
 
@@ -104,11 +104,11 @@ class WorkerPool(abc.ABC):
     def map(self, task: Task, *item_lists: Iterable[List[Any]], verbose: bool = False) -> List[Any]:
         """
         Run function with arguments from item_lists, this function will make sure all arguments have the same
-        number of elements
-        :param task: function to be run
-        :param item_lists: arguments to the function
+        number of elements.
+        :param task: function to be run.
+        :param item_lists: arguments to the function.
         :param verbose: Whether to increase logger verbosity.
-        :return: type from the fn
+        :return: type from the fn.
         """
         max_size, aligned_item_lists = align_size_of_arguments(*item_lists)
 
@@ -121,33 +121,34 @@ class WorkerPool(abc.ABC):
     def _map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
         """
         Run function with arguments from item_lists. This function can assume that all the args in item_lists have
-        the same number of elements
-        :param fn: function to be run
-        :param item_lists: arguments to the function
-        :param number_of_elements: number of calls to the function
-        :return: type from the fn
+        the same number of elements.
+        :param fn: function to be run.
+        :param item_lists: arguments to the function.
+        :param number_of_elements: number of calls to the function.
+        :return: type from the fn.
         """
 
     @abc.abstractmethod
-    def submit(self, task: Task, *args: Any) -> Future[Any]:
+    def submit(self, task: Task, *args: Any, **kwargs: Any) -> Future[Any]:
         """
-        Submit a task to the worker
-        :param task: to be submitted
-        :param args: arguments for the task
-        :return: future
+        Submit a task to the worker.
+        :param task: to be submitted.
+        :param args: arguments for the task.
+        :param kwargs: keyword arguments for the task.
+        :return: future.
         """
         pass
 
     @property
     def number_of_threads(self) -> int:
         """
-        :return: the number of available threads across all nodes
+        :return: the number of available threads across all nodes.
         """
         return self.config.number_of_threads
 
     def __str__(self) -> str:
         """
-        :return: string with information about this worker
+        :return: string with information about this worker.
         """
         return (
             f'Number of nodes: {self.config.number_of_nodes}\n'

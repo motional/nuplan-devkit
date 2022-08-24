@@ -1,0 +1,6 @@
+ego_lane_change_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change.EgoLaneChangeStatistics
+  _convert_: 'all'
+  name: 'ego_lane_change'
+  category: 'Planning'
+  max_fail_rate: 0.3

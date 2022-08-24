@@ -418,7 +418,9 @@ def get_sampled_ego_states_from_db(
                 ep.qx,
                 ep.qy,
                 ep.qz,
-                ep.timestamp,
+                -- ego_pose and lidar_pc timestamps are not the same, even when linked by token!
+                -- use the lidar_pc timestamp for compatibility with older code.
+                o.timestamp,
                 ep.vx,
                 ep.vy,
                 ep.acceleration_x,
@@ -430,7 +432,7 @@ def get_sampled_ego_states_from_db(
         -- ROW_NUMBER() starts at 1, where consumers will expect sample_indexes to be 0-indexed
         WHERE (o.row_num - 1) IN ({('?,'*len(sample_indexes))[:-1]})
 
-        ORDER BY ep.timestamp ASC;
+        ORDER BY o.timestamp ASC;
     """
 
     args = [bytearray.fromhex(initial_token)] + sample_indexes  # type: ignore
@@ -461,7 +463,9 @@ def get_ego_state_for_lidarpc_token_from_db(log_file: str, token: str) -> EgoSta
                 ep.qx,
                 ep.qy,
                 ep.qz,
-                ep.timestamp,
+                -- ego_pose and lidar_pc timestamps are not the same, even when linked by token!
+                -- use lidar_pc timestamp for backwards compatibility.
+                lp.timestamp,
                 ep.vx,
                 ep.vy,
                 ep.acceleration_x,

@@ -88,6 +88,8 @@ class SkeletonTestDataloader(unittest.TestCase):
                 dt=0.1,
                 mean=[0.3, 0.1, np.pi / 12],
                 std=[0.5, 0.1, np.pi / 12],
+                low=[-0.2, 0.0, 0.0],
+                high=[0.8, 0.2, np.pi / 6],
                 augment_prob=0.5,
             )
         ]

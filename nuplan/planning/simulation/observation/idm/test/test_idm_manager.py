@@ -33,7 +33,11 @@ def test_idm_manager(scene: Dict[str, Any]) -> None:
 
     for step in range(simulation_step):
         idm_manager.propagate_agents(
-            ego_state=ego_agent, tspan=0.5, iteration=0, traffic_light_status=traffic_light_status
+            ego_state=ego_agent,
+            tspan=0.5,
+            iteration=0,
+            traffic_light_status=traffic_light_status,
+            open_loop_detections=[],
         )
 
     # Check that there is no collision at the end of simulation

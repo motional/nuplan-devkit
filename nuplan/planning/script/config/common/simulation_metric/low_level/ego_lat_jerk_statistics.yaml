@@ -1,0 +1,5 @@
+ego_lat_jerk_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_lat_jerk.EgoLatJerkStatistics
+  _convert_: 'all'
+  name: 'ego_lat_jerk'
+  category: 'Dynamics'

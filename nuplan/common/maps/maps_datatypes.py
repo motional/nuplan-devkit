@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Dict
@@ -8,9 +7,9 @@ from typing import Any, Dict
 import numpy as np
 import numpy.typing as npt
 
-# Suppress pygeos warnings
-warnings.filterwarnings('ignore', '.*The Shapely GEOS version .* is incompatible with the GEOS version PyGEOS.*')
+from nuplan.common.utils.helpers import suppress_geopandas_warning
 
+suppress_geopandas_warning()
 import geopandas as gpd  # noqa: E402
 
 Transform = npt.NDArray[np.float32]  # 4x4 homogeneous transformation matrix
@@ -44,6 +43,7 @@ class SemanticMapLayer(IntEnum):
     PUDO = 16
     ROADBLOCK = 17
     ROADBLOCK_CONNECTOR = 18
+    PRECEDENCE_AREA = 19
 
     @classmethod
     def deserialize(cls, layer: str) -> SemanticMapLayer:

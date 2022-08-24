@@ -219,3 +219,26 @@ class GaussianNoise:
         :return: random multi-variant Gaussian vector sample
         """
         return self.rng.normal(self.mean, self.std).astype(np.float32)
+
+
+class UniformNoise:
+    """
+    UniformNoise draws samples from a uniform distribution with specified internal.
+    """
+
+    def __init__(self, low: List[float], high: List[float], random_seed: Optional[int] = 0):
+        """
+        :param low: vector for lower bound of Uniform random variables
+        :param high: vector for lower bound of Uniform random variables
+        :param random_seed: random seed for the random number generation
+        """
+        self.low: npt.NDArray[np.float32] = np.array(low, np.float32)
+        self.high: npt.NDArray[np.float32] = np.array(high, np.float32)
+        self.rng = np.random.default_rng(random_seed)
+
+    def sample(self) -> npt.NDArray[np.float32]:
+        """
+        Generate random Gaussian noise vector
+        :return: random multi-variant Gaussian vector sample
+        """
+        return self.rng.uniform(self.low, self.high).astype(np.float32)

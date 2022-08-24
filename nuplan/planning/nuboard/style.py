@@ -115,6 +115,7 @@ overview_tab_style: Dict[str, Any] = {
 scenario_tab_style: Dict[str, Any] = {
     "default_div_width": 800,
     "col_offset_width": 400,
+    "ego_expert_state_figure_sizes": [500, 250],
     "scenario_metric_score_figure_sizes": [400, 350],
     "time_series_figure_margins": [10, 20, 20, 30],
     "time_series_figure_title_text_font_size": "0.9em",

@@ -169,7 +169,10 @@ def coordinates_to_local_frame(
 
 
 def vector_set_coordinates_to_local_frame(
-    coords: torch.Tensor, avails: torch.Tensor, anchor_state: torch.Tensor
+    coords: torch.Tensor,
+    avails: torch.Tensor,
+    anchor_state: torch.Tensor,
+    output_precision: Optional[torch.dtype] = torch.float32,
 ) -> torch.Tensor:
     """
     Transform the vector set map element coordinates from global frame to ego vehicle frame, as specified by
@@ -178,6 +181,7 @@ def vector_set_coordinates_to_local_frame(
     :param avails: Availabilities mask identifying real vs zero-padded data in coords.
         <torch.Tensor: num_elements, num_points>.
     :param anchor_state: The coordinate frame to transform to, in the form [x, y, heading].
+    :param output_precision: The precision with which to allocate output tensors.
     :return: Transformed coordinates.
     :raise ValueError: If coordinates dimensions are not valid or don't match availabilities.
     """
@@ -195,8 +199,11 @@ def vector_set_coordinates_to_local_frame(
     # Apply transformation using adequate precision
     coords = coordinates_to_local_frame(coords.double(), anchor_state.double(), precision=torch.float64)
 
-    # Reshape to original dimensionality and output as 32-bit for training
-    coords = coords.reshape(num_map_elements, num_points_per_element, 2).float()
+    # Reshape to original dimensionality
+    coords = coords.reshape(num_map_elements, num_points_per_element, 2)
+
+    # Output with specified precision
+    coords = coords.to(output_precision)
 
     # ignore zero-padded data
     coords[~avails] = 0.0

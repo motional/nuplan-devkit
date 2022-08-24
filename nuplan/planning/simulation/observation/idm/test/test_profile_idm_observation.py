@@ -39,6 +39,7 @@ class TestProfileIDM(unittest.TestCase):
                 accel_max=1.0,
                 decel_max=2.0,
                 scenario=self.scenario,
+                open_loop_detections_types=[],
             )
 
             for step in range(self.scenario.get_number_of_iterations() - 1):

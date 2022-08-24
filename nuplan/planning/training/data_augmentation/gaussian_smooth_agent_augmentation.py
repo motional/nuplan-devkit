@@ -6,33 +6,39 @@ from scipy.ndimage import gaussian_filter1d
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
-from nuplan.planning.training.data_augmentation.data_augmentation_util import GaussianNoise
+from nuplan.planning.training.data_augmentation.data_augmentation_util import GaussianNoise, UniformNoise
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
 class GaussianSmoothAgentAugmentor(AbstractAugmentor):
     """
-    Augmentor that takes the perturbed ego current position and generates a smooth trajectory
-    over the current and future trajectory.
+    Augmentor that perturbs the ego's current position and future trajectory, then applies gaussian smoothing
+    to generates a smooth trajectory over the current and future trajectory.
     """
 
     def __init__(
         self,
         mean: List[float],
         std: List[float],
+        low: List[float],
+        high: List[float],
         sigma: float,
         augment_prob: float,
+        use_uniform_noise: bool = False,
     ) -> None:
         """
         Initialize the augmentor class.
-        :param mean: parameter to set mean vector of the Gaussian noise on [x, y, yaw].
-        :param std: parameter to set standard deviation vector of the Gaussian noise on [x, y, yaw].
-        :param sigma: parameter to control the Gaussian smooth level.
-        :param augment_prob: probability between 0 and 1 of applying the data augmentation.
+        :param mean: Parameter to set mean vector of the Gaussian noise on [x, y, yaw].
+        :param std: Parameter to set standard deviation vector of the Gaussian noise on [x, y, yaw].
+        :param low: Parameter to set lower bound vector of the Uniform noise on [x, y, yaw]. Used only if use_uniform_noise == True.
+        :param high: Parameter to set upper bound vector of the Uniform noise on [x, y, yaw]. Used only if use_uniform_noise == True.
+        :param sigma: Parameter to control the Gaussian smooth level.
+        :param augment_prob: Probability between 0 and 1 of applying the data augmentation.
+        :param use_uniform_noise: Parameter to decide to use uniform noise instead of gaussian noise if true.
         """
         self._sigma = sigma
         self._augment_prob = augment_prob
-        self._random_offset_generator = GaussianNoise(mean, std)
+        self._random_offset_generator = UniformNoise(low, high) if use_uniform_noise else GaussianNoise(mean, std)
 
     def augment(
         self, features: FeaturesType, targets: TargetsType, scenario: Optional[AbstractScenario] = None
@@ -45,11 +51,10 @@ class GaussianSmoothAgentAugmentor(AbstractAugmentor):
             [features['agents'].ego[0][-1:, :], targets['trajectory'].data]
         )
 
-        # TODO: Add self.mean and self.std to the noise
         trajectory_length, trajectory_dim = ego_trajectory.shape
-        ego_trajectory += np.random.randn(trajectory_length, trajectory_dim) * np.expand_dims(
-            np.exp(-np.arange(trajectory_length)), axis=1
-        )
+        ego_trajectory += np.array(
+            [self._random_offset_generator.sample() for _ in range(trajectory_length)]
+        ) * np.expand_dims(np.exp(-np.arange(trajectory_length)), axis=1)
 
         ego_x, ego_y, ego_yaw = ego_trajectory.T
         step_t = np.linspace(0, 1, len(ego_x))

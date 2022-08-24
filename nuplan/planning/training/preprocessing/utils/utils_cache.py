@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.training.experiments.cache_metadata_entry import CacheMetadataEntry
 from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import (
     AbstractFeatureBuilder,
     AbstractModelFeature,
@@ -21,7 +22,7 @@ def compute_or_load_feature(
     builder: Union[AbstractFeatureBuilder, AbstractTargetBuilder],
     storing_mechanism: FeatureCache,
     force_feature_computation: bool,
-) -> AbstractModelFeature:
+) -> Tuple[AbstractModelFeature, Optional[CacheMetadataEntry]]:
     """
     Compute features if non existent in cache, otherwise load them from cache
     :param scenario: for which features should be computed
@@ -29,7 +30,7 @@ def compute_or_load_feature(
     :param builder: which builder should compute the features
     :param storing_mechanism: a way to store features
     :param force_feature_computation: if true, even if cache exists, it will be overwritten
-    :return features computed with builder
+    :return features computed with builder and the metadata entry for the computed feature if feature is valid.
     """
     cache_path_available = cache_path is not None
 
@@ -61,4 +62,4 @@ def compute_or_load_feature(
         feature = storing_mechanism.load_computed_feature_from_folder(file_name, builder.get_feature_type())
         assert feature.is_valid, 'Invalid feature loaded from cache!'
 
-    return feature
+    return feature, CacheMetadataEntry(file_name=file_name) if feature.is_valid else None

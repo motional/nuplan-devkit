@@ -26,8 +26,12 @@ py_library(
     name = "executor",
     srcs = ["executor.py"],
     deps = [
+        "//nuplan/planning/simulation/callback:metric_callback",
+        "//nuplan/planning/simulation/callback:multi_callback",
+        "//nuplan/planning/simulation/callback:simulation_log_callback",
         "//nuplan/planning/simulation/runner:abstract_runner",
         "//nuplan/planning/simulation/runner:runner_report",
+        "//nuplan/planning/simulation/runner:simulations_runner",
         "//nuplan/planning/utils/multithreading:worker_pool",
     ],
 )

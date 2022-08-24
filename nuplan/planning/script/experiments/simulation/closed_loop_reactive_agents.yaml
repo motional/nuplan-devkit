@@ -5,3 +5,6 @@ defaults:
   - override /observation: idm_agents_observation
   - override /ego_controller: perfect_tracking_controller
   - override /planner: simple_planner
+  - override /simulation_metric: simulation_closed_loop_reactive_agents
+  - override /metric_aggregator:
+      - closed_loop_reactive_agents_weighted_average

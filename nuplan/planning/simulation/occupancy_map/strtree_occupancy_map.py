@@ -11,14 +11,14 @@ from nuplan.planning.simulation.occupancy_map.abstract_occupancy_map import Geom
 GeometryMap = Dict[str, Geometry]
 
 
-class SRTreeOccupancyMap(OccupancyMap):
+class STRTreeOccupancyMap(OccupancyMap):
     """
     OccupancyMap using an SR-tree to support efficient get-nearest queries.
     """
 
     def __init__(self, geom_map: GeometryMap):
         """
-        Constructor of SRTreeOccupancyMap.
+        Constructor of STRTreeOccupancyMap.
         :param geom_map: underlying geometries for occupancy map.
         """
         self._geom_map: GeometryMap = geom_map
@@ -35,7 +35,7 @@ class SRTreeOccupancyMap(OccupancyMap):
     def intersects(self, geometry: Geometry) -> OccupancyMap:
         """Inherited, see superclass."""
         strtree, index_by_id = self._build_strtree()
-        return SRTreeOccupancyMap(
+        return STRTreeOccupancyMap(
             {index_by_id[id(geom)]: geom for geom in strtree.query(geometry) if geom.intersects(geometry)}
         )
 
@@ -122,11 +122,11 @@ class STRTreeOccupancyMapFactory:
         :param scene_objects: list of SceneObject to be converted
         :return: STRTreeOccupancyMap
         """
-        return SRTreeOccupancyMap(
+        return STRTreeOccupancyMap(
             {
-                scene_object.token: scene_object.box.geometry
+                scene_object.track_token: scene_object.box.geometry
                 for scene_object in scene_objects
-                if scene_object.token is not None
+                if scene_object.track_token is not None
             }
         )
 
@@ -142,6 +142,6 @@ class STRTreeOccupancyMapFactory:
         :return: STRTreeOccupancyMap
         """
         if geometry_ids is None:
-            return SRTreeOccupancyMap({str(geom_id): geom for geom_id, geom in enumerate(geometries)})
+            return STRTreeOccupancyMap({str(geom_id): geom for geom_id, geom in enumerate(geometries)})
 
-        return SRTreeOccupancyMap({str(geom_id): geom for geom_id, geom in zip(geometry_ids, geometries)})
+        return STRTreeOccupancyMap({str(geom_id): geom for geom_id, geom in zip(geometry_ids, geometries)})

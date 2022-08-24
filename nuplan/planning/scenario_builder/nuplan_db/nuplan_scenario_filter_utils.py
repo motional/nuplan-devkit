@@ -201,7 +201,10 @@ def filter_num_scenarios_per_type(
     for scenario_type in scenario_dict:
         if randomize and num_scenarios_per_type < len(scenario_dict[scenario_type]):  # Sample scenarios randomly
             scenario_dict[scenario_type] = random.sample(scenario_dict[scenario_type], num_scenarios_per_type)
-        else:  # Sample the top k number of scenarios per type
+        else:  # Do equisampling for each scenario type
+            step = max(len(scenario_dict[scenario_type]) // num_scenarios_per_type, 1)
+            scenario_dict[scenario_type] = scenario_dict[scenario_type][::step]
+            # In the case that floor division results in more samples than desired, truncate the list
             scenario_dict[scenario_type] = scenario_dict[scenario_type][:num_scenarios_per_type]
 
     return scenario_dict
@@ -211,31 +214,99 @@ def filter_total_num_scenarios(
     scenario_dict: ScenarioDict, limit_total_scenarios: Union[int, float], randomize: bool
 ) -> ScenarioDict:
     """
-    Filter the total number of scenarios in a scenario dictionary.
+    Filter the total number of scenarios in a scenario dictionary to reach a certain percentage of
+    the original dataset (eg. 10% or 0.1 of the original dataset) or a fixed number of scenarios (eg. 100 scenarios).
+
+    In the scenario dataset, a small proportion of the scenarios are labelled with a scenario_type
+    (eg. stationary, following_lane_with_lead, etc). These labelled scenarios are snapshots in time,
+    labelled at regular intervals. The rest of the timesteps in between these labelled scenarios are
+    the unlabelled scenario types which are given a scenario_type of DEFAULT_SCENARIO_NAME ('unknown'),
+    making up a majority of the dataset.
+    This function filters the scenarios while preserving as much of the labelled scenarios as possible
+    by removing the unlabelled scenarios first, followed by the labelled scenarios if necessary.
+
+    Example:
+    Original dataset = 100 scenarios (90 unknown/5 stationary/5 following_lane_with_lead)
+    Setting limit_total_scenarios = 0.5 during caching => 50 scenarios in cache (40 unknown/5 stationary/5 following_lane_with_lead)
+    Setting limit_total_scenarios = 0.1 during caching => 10 scenarios in cache (5 stationary/5 following_lane_with_lead)
+    Setting limit_total_scnearios = 0.02 during caching => 2 scenarios in cache (1 stationary/1 following_lane_with_lead)
+
     :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type.
     :param limit_total_scenarios: Number of total scenarios to keep.
     :param randomize: Whether to randomly sample the scenarios.
     :return: Filtered scenario dictionary.
     """
-    scenario_list = scenario_dict_to_list(scenario_dict)
+    total_num_scenarios = sum(len(scenarios) for scenarios in scenario_dict.values())
 
     if isinstance(limit_total_scenarios, int):  # Exact number of scenarios to keep
-        max_scenarios = limit_total_scenarios
-        scenario_list = (
-            random.sample(scenario_list, max_scenarios)
-            if randomize and max_scenarios < len(scenario_list)
-            else scenario_list[:max_scenarios]
-        )
+        num_nodes = int(os.environ.get("NUM_NODES", 1))
+        required_num_scenarios = limit_total_scenarios // num_nodes  # Get number of scenarios to keep
+
+        # Only remove scenarios if the limit is less than the total number of scenarios
+        if required_num_scenarios < total_num_scenarios:
+            scenario_dict = _filter_scenarios(scenario_dict, total_num_scenarios, required_num_scenarios, randomize)
+
     elif isinstance(limit_total_scenarios, float):  # Percentage of scenarios to keep
         sample_ratio = limit_total_scenarios
         assert 0.0 < sample_ratio < 1.0, f'Sample ratio has to be between 0 and 1, got {sample_ratio}'
-        step = int(1.0 / sample_ratio)
-        if step < len(scenario_list):
-            scenario_list = scenario_list[::step]
+        required_num_scenarios = int(sample_ratio * total_num_scenarios)  # Get number of scenarios to keep
+
+        scenario_dict = _filter_scenarios(scenario_dict, total_num_scenarios, required_num_scenarios, randomize)
+
     else:
         raise TypeError('Scenario filter "limit_total_scenarios" must be of type int or float')
 
-    return scenario_list_to_dict(scenario_list)
+    return scenario_dict
+
+
+def _filter_scenarios(
+    scenario_dict: ScenarioDict, total_num_scenarios: int, required_num_scenarios: int, randomize: bool
+) -> ScenarioDict:
+    """
+    Filters scenarios until we reach the user specified number of scenarios. Scenarios with scenario_type DEFAULT_SCENARIO_NAME are removed first either randomly or with equisampling, and subsequently
+    the other scenarios are sampled randomly or with equisampling if necessary.
+    :param scenario_dict: Dictionary containining a mapping of scenario_type to a list of the AbstractScenario objects.
+    :param total_num_scenarios: Total number of scenarios in the scenario dictionary.
+    :param required_num_scenarios: Number of scenarios desired.
+    :param randomize: boolean to decide whether to randomize the sampling of scenarios.
+    :return: Scenario dictionary with the required number of scenarios.
+    """
+
+    def _filter_scenarios_from_scenario_list(
+        scenario_list: List[NuPlanScenario], num_scenarios_to_keep: int, randomize: bool
+    ) -> List[NuPlanScenario]:
+        """
+        Removes scenarios randomly or does equisampling of the scenarios.
+        :param scenario_list: List of scenarios.
+        :param num_scenarios_to_keep: Number of scenarios that should be in the final list.
+        :param randomize: Boolean for whether to randomly sample from scenario_list or carry out equisampling of scenarios.
+        """
+        total_num_scenarios = len(scenario_list)
+        step = max(total_num_scenarios // num_scenarios_to_keep, 1)
+        scenario_list = random.sample(scenario_list, num_scenarios_to_keep) if randomize else scenario_list[::step]
+        # In the case that floor division results in more samples than desired, truncate the list
+        scenario_list = scenario_list[:num_scenarios_to_keep]
+
+        return scenario_list
+
+    if DEFAULT_SCENARIO_NAME in scenario_dict:
+        num_default_scenarios = len(scenario_dict[DEFAULT_SCENARIO_NAME])
+
+        # if we can reach the desired number of scenarios by removing the default scenarios, we will not remove any known scenario types
+        if total_num_scenarios - required_num_scenarios <= num_default_scenarios:
+            num_default_scenarios_to_keep = num_default_scenarios - (total_num_scenarios - required_num_scenarios)
+            scenario_dict[DEFAULT_SCENARIO_NAME] = _filter_scenarios_from_scenario_list(
+                scenario_dict[DEFAULT_SCENARIO_NAME], num_default_scenarios_to_keep, randomize
+            )
+            return scenario_dict
+        else:  # if removing default scenarios is insufficient, remove all DEFAULT_SCENARIO_NAME scenarios first then remove from the known scenario types
+            scenario_dict.pop(DEFAULT_SCENARIO_NAME)
+
+    scenario_list = scenario_dict_to_list(scenario_dict)
+    scenario_list = _filter_scenarios_from_scenario_list(scenario_list, required_num_scenarios, randomize)
+    scenario_dict = scenario_list_to_dict(scenario_list)
+
+    return scenario_dict
 
 
 def filter_invalid_goals(scenario_dict: ScenarioDict, worker: WorkerPool) -> ScenarioDict:
@@ -288,3 +359,22 @@ def scenario_list_to_dict(scenario_list: List[NuPlanScenario]) -> ScenarioDict:
         scenario_dict[scenario.scenario_type].append(scenario)
 
     return scenario_dict
+
+
+def get_scenarios_from_log_file(parameters: List[GetScenariosFromDbFileParams]) -> List[ScenarioDict]:
+    """
+    Gets all scenarios from a log file that match the provided parameters.
+    :param parameters: The parameters to use for scenario extraction.
+    :return: The extracted scenarios.
+    """
+    output_dict: ScenarioDict = {}
+    for parameter in parameters:
+        this_dict = get_scenarios_from_db_file(parameter)
+
+        for key in this_dict:
+            if key not in output_dict:
+                output_dict[key] = this_dict[key]
+            else:
+                output_dict[key] += this_dict[key]
+
+    return [output_dict]

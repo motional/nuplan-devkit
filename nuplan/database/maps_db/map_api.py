@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional, Tuple, Union
 
-import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 from shapely import affinity
@@ -8,7 +7,11 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 
 from nuplan.common.maps.maps_datatypes import RasterLayer
 from nuplan.common.maps.nuplan_map.nuplan_map import NuPlanMap
+from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
+
+suppress_geopandas_warning()
+import geopandas as gpd  # noqa: E402
 
 # Define a map geometry type for polygons and lines.
 Geometry = Union[Polygon, LineString]

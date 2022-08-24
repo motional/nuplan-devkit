@@ -1,0 +1,8 @@
+ego_lon_acceleration_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.ego_lon_acceleration.EgoLonAccelerationStatistics
+  _convert_: 'all'
+  name: 'ego_lon_acceleration'
+  category: 'Dynamics'
+
+  min_lon_accel: -4.05
+  max_lon_accel: 2.40

@@ -12,7 +12,7 @@ defaults:
   - default_common
 
   - simulation_metric:
-      - default_metric
+      - default_metrics
   - callback:
       - simulation_log_callback
   - main_callback:
@@ -28,7 +28,7 @@ defaults:
   - planner: null
   - simulation_time_controller: step_simulation_time_controller
   - metric_aggregator:
-      - weighted_average_metric_aggregator
+      - default_weighted_average
 
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging
@@ -57,3 +57,6 @@ simulation_log_main_path: null
 
 # If false, continue running the simulation even it a scenario has failed
 exit_on_failure: false
+
+# Maximum number of workers to be used for running simulation callbacks outside the main process
+max_callback_workers: 4

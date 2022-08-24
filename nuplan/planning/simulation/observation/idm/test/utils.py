@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from nuplan.common.actor_state.agent import Agent
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
 from nuplan.planning.simulation.observation.idm.idm_agent import IDMAgent, IDMInitialState
@@ -151,7 +152,7 @@ def build_idm_manager(scene: Dict[str, Any], map_factory: AbstractMapFactory, po
     """
     map_name = scene["map"]["area"]
     map_maps_db = map_factory.build_map_from_name(map_name)
-    agents = from_scene_to_tracked_objects(scene["world"]).tracked_objects
+    agents = from_scene_to_tracked_objects(scene["world"]).get_tracked_objects_of_type(TrackedObjectType.VEHICLE)
     unique_agents = _build_idm_agents(agents, map_maps_db, policy)
     occupancy_map = STRTreeOccupancyMapFactory().get_from_boxes(agents)
     idm_manager = IDMAgentManager(unique_agents, occupancy_map, map_maps_db)
