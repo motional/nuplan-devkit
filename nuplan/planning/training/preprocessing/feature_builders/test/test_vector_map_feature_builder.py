@@ -38,7 +38,6 @@ class TestVectorMapFeatureBuilder(unittest.TestCase):
         meta_data = PlannerInitialization(
             map_api=self.scenario.map_api,
             mission_goal=self.scenario.get_mission_goal(),
-            expert_goal_state=ego_state.rear_axle,
             route_roadblock_ids=self.scenario.get_route_roadblock_ids(),
         )
 

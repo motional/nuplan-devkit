@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>S3 Explorer</title>
+<head>
+    <title>Cloud</title>
+</head>
+<div class="tab-content" id="cloud">
+    <div class="loading loading-lg" id="cloud-modal-loading"></div>
+    <div class="modal-dialog cloud-input-form" id="cloud-input-form">
+        <div class="modal-content">
+            <div class="modal-header modal-header-panel">
+                <button type="button" class="close" aria-hidden="true"
+                        onclick="closeModal(event, 'cloud-input-form')">&times;</button>
+                <h4 class="modal-title h4">S3 Explorer: Settings</h4>
+            </div>
+            <div class="modal-body">
+                <div class="col-md-18">
+                    <div class="panel panel-default">
+                        <div class="panel-body modal-input-group">
+                            <p><strong>Bucket</strong>: Please indicate which S3 bucket you want to explore.</p>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Bucket</span>
+                                 {{ embed(roots.s3_bucket_text_input) }}
+                            </div>
+                            <p><strong>Credentials</strong>: Your AWS credentials are kept in memory and used by AWS SDK for authentication. Your secret access key is used to sign API requests but it is <strong>not</strong> sent to the S3 service. </p>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Access Key ID</span>
+                                {{ embed(roots.s3_access_key_id_text_input) }}
+                            </div>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Secret Access Key</span>
+                                {{ embed(roots.s3_secret_access_key_password_input) }}
+                            </div>
+                            <p><strong>Options</strong>: If you want to start in a folder that is not the root folder then enter the initial prefix below, for example <em>songs/</em>.</p>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Initial Prefix</span>
+                                {{ embed(roots.s3_bucket_prefix_text_input) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10 modal-footer-btn-section">
+                        <button type="button" class="btn btn-default modal-btn"
+                                onclick="closeModal(event, 'cloud-input-form')">Cancel</button>
+                        &nbsp; {{ embed(roots.s3_modal_query_btn) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="cloud-tab-section">
+        <div class="col-lg-12 col-extend-height">
+            <div class="panel panel-primary dropzone panel-extend-height">
+                <div class="panel-heading clearfix">
+                    <div class="btn-group pull-left">
+                        <div class="title pull-left h5">
+                            S3 Explorer &nbsp;
+                        </div>
+                        <div class="pull-right">
+                            <div id="breadcrumb" class="pull-right breadcrumb h5">
+                                <a href="#">{{ embed(roots.s3_bucket_name) }}</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="navbuttons" class="pull-right">
+                            <div>
+                                <div class="btn-group">
+                                    <span id="bucket-settings" style="cursor: pointer;"
+                                          class="fa fa-cog fa-2x h5" title="Settings"
+                                          onclick="openModal(event, 'cloud-input-form')"></span>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                <div class="panel-body panel-body-top-input-form">
+                    <div class="input-group bottom-marg-10 cloud-download-section">
+                        {{ embed(roots.s3_download_text_input) }}
+                        &nbsp; {{ embed(roots.s3_download_button) }}
+                    </div>
+                </div>
+                <div class="panel-body panel-body-top-error-message">
+                    {{ embed(roots.s3_error_text) }}
+                </div>
+                <div class="panel-body panel-body-extend-height">
+                    <div class="table table-hover table-striped cloud-table-section" style="width:100%">
+                        {{ embed(roots.s3_data_table) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</html>

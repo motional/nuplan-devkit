@@ -13,11 +13,12 @@ py_test(
 )
 
 py_test(
-    name = "test_weight_decay_imitation_objective",
+    name = "test_trajectory_weight_decay_imitation_objective",
     size = "small",
-    srcs = ["test_weight_decay_imitation_objective.py"],
+    srcs = ["test_trajectory_weight_decay_imitation_objective.py"],
     deps = [
-        "//nuplan/planning/training/modeling/objectives:weight_decay_imitation_objective",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
+        "//nuplan/planning/training/modeling/objectives:trajectory_weight_decay_imitation_objective",
         "//nuplan/planning/training/preprocessing/features:trajectory",
     ],
 )

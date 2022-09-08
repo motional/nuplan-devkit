@@ -1,13 +1,21 @@
 from functools import cached_property
-from typing import List, Optional, cast
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
 from shapely.geometry import Point, Polygon
 
 import nuplan.common.maps.nuplan_map.lane as lane
-from nuplan.common.maps.abstract_map_objects import LaneConnector, LaneGraphEdgeMapObject, PolylineMapObject, StopLine
-from nuplan.common.maps.maps_datatypes import VectorLayer
+from nuplan.common.actor_state.state_representation import Point2D
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map_objects import (
+    LaneConnector,
+    LaneGraphEdgeMapObject,
+    PolylineMapObject,
+    RoadBlockGraphEdgeMapObject,
+    StopLine,
+)
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer, VectorLayer
 from nuplan.common.maps.nuplan_map.polyline_map_object import NuPlanPolylineMapObject
 from nuplan.common.maps.nuplan_map.stop_line import NuPlanStopLine
 from nuplan.common.maps.nuplan_map.utils import get_row_with_value
@@ -27,6 +35,7 @@ class NuPlanLaneConnector(LaneConnector):
         boundaries_df: VectorLayer,
         stop_lines_df: VectorLayer,
         lane_connector_polygon_df: VectorLayer,
+        map_data: AbstractMap,
     ):
         """
         Constructor of NuPlanLaneConnector.
@@ -46,6 +55,7 @@ class NuPlanLaneConnector(LaneConnector):
         self._stop_lines_df = stop_lines_df
         self._lane_connector_polygon_df = lane_connector_polygon_df
         self._lane_connector = None
+        self._map_data = map_data
 
     @cached_property
     def incoming_edges(self) -> List[LaneGraphEdgeMapObject]:
@@ -61,6 +71,7 @@ class NuPlanLaneConnector(LaneConnector):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
         ]
 
@@ -78,6 +89,7 @@ class NuPlanLaneConnector(LaneConnector):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
         ]
 
@@ -119,6 +131,11 @@ class NuPlanLaneConnector(LaneConnector):
         """Inherited from superclass."""
         return str(self._get_lane_connector()["lane_group_connector_fid"])
 
+    @cached_property
+    def parent(self) -> RoadBlockGraphEdgeMapObject:
+        """Inherited from superclass"""
+        return self._map_data.get_map_object(self.get_roadblock_id(), SemanticMapLayer.ROADBLOCK_CONNECTOR)
+
     def has_traffic_lights(self) -> bool:
         """Inherited from superclass."""
         return bool(self._get_lane_connector()["traffic_light_stop_line_fids"])
@@ -158,6 +175,16 @@ class NuPlanLaneConnector(LaneConnector):
         distances = [distance_to_stop_line(stop_line) for stop_line in candidate_stop_lines]
 
         return [candidate_stop_lines[np.argmin(distances)]]
+
+    def get_width_left_right(
+        self, point: Point2D, include_outside: bool = False
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """Inherited from superclass."""
+        raise NotImplementedError
+
+    def oriented_distance(self, point: Point2D) -> float:
+        """Inherited from superclass"""
+        raise NotImplementedError
 
     def _get_lane_connector(self) -> pd.Series:
         """

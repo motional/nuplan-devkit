@@ -31,8 +31,8 @@ py_library(
 )
 
 py_library(
-    name = "weight_decay_imitation_objective",
-    srcs = ["weight_decay_imitation_objective.py"],
+    name = "trajectory_weight_decay_imitation_objective",
+    srcs = ["trajectory_weight_decay_imitation_objective.py"],
     deps = [
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/modeling/objectives:abstract_objective",

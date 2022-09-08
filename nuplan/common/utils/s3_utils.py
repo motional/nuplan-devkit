@@ -20,21 +20,31 @@ S3_CLIENTS: Dict[str, Any] = {}
 S3_CLIENTS_LOCK_OBJ = threading.Lock()
 
 
-def get_s3_client(profile_name: Optional[str] = None, max_attempts: int = 10) -> boto3.client:
+def get_s3_client(
+    profile_name: Optional[str] = None,
+    max_attempts: int = 10,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> boto3.client:
     """
     Start a Boto3 session and retrieve the client.
     :param profile_name: S3 profile name to use when creating the session.
-    :param max_attemps: Maximum number of attempts in loading the client.
+    :param aws_access_key_id: Aws access key id.
+    :param aws_secret_access_key: Aws secret access key.
+    :param max_attempts: Maximum number of attempts in loading the client.
     :return: The instantiated client object.
     """
     global S3_CLIENTS
     global S3_CLIENTS_LOCK_OBJ
     profile_name = DEFAULT_S3_PROFILE if profile_name is None else profile_name
-
+    aws_credentials_configs = {}
+    if aws_access_key_id and aws_secret_access_key:
+        aws_credentials_configs['aws_access_key_id'] = aws_access_key_id
+        aws_credentials_configs['aws_secret_access_key'] = aws_secret_access_key
     with S3_CLIENTS_LOCK_OBJ:
         if profile_name not in S3_CLIENTS:
             try:
-                session = boto3.Session(profile_name=profile_name)
+                session = boto3.Session(profile_name=profile_name, **aws_credentials_configs)
             except BotoCoreError as e:
                 logger.info(
                     "Trying default AWS credential chain, since we got this exception "
@@ -44,7 +54,7 @@ def get_s3_client(profile_name: Optional[str] = None, max_attempts: int = 10) ->
 
             config = Config(retries={"max_attempts": max_attempts})
 
-            S3_CLIENTS[profile_name] = session.client('s3', config=config)
+            S3_CLIENTS[profile_name] = session.client('s3', config=config, **aws_credentials_configs)
 
     return S3_CLIENTS[profile_name]
 
@@ -109,7 +119,7 @@ def get_cache_metadata_paths(
     paginator = client.get_paginator('list_objects_v2')
 
     logger.info('Attempting to find directory metadata for faster listing...')
-    page_iterator = paginator.paginate(Bucket=url.netloc, Prefix=url.path.lstrip('/') + metadata_folder)
+    page_iterator = paginator.paginate(Bucket=url.netloc, Prefix=os.path.join(url.path.lstrip('/'), metadata_folder))
 
     filenames = []
     try:

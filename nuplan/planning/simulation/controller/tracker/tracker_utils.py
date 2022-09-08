@@ -7,6 +7,10 @@ from nuplan.common.geometry.compute import principal_value
 
 DoubleMatrix = npt.NDArray[np.float64]
 
+# Default regularization weight for initial curvature fit.  Users shouldn't really need to modify this,
+# we just want it positive and small for improved conditioning of the associated least squares problem.
+INITIAL_CURVATURE_PENALTY = 1e-10
+
 
 def _generate_profile_from_initial_condition_and_derivatives(
     initial_condition: float, derivatives: DoubleMatrix, discretization_time: float
@@ -26,29 +30,29 @@ def _generate_profile_from_initial_condition_and_derivatives(
     return profile  # type: ignore
 
 
-def _get_position_heading_displacements_from_poses(poses: DoubleMatrix) -> Tuple[DoubleMatrix, DoubleMatrix]:
+def _get_xy_heading_displacements_from_poses(poses: DoubleMatrix) -> Tuple[DoubleMatrix, DoubleMatrix]:
     """
     Returns position and heading displacements given a pose trajectory.
     :param poses: <np.ndarray: num_poses, 3> A trajectory of poses (x, y, heading).
-    :return: A tuple of position displacements and heading displacements.
+    :return: Tuple of xy displacements with shape (num_poses-1, 2) and heading displacements with shape (num_poses-1,).
     """
     assert len(poses.shape) == 2, "Expect a 2D matrix representing a trajectory of poses."
     assert poses.shape[0] > 1, "Cannot get displacements given an empty or single element pose trajectory."
     assert poses.shape[1] == 3, "Expect pose to have three elements (x, y, heading)."
 
-    # Compute linear/angular displacements that are used to complete the kinematic state and input.
+    # Compute displacements that are used to complete the kinematic state and input.
     pose_differences = np.diff(poses, axis=0)
-    position_displacements = np.linalg.norm(pose_differences[:, :2], axis=1)
+    xy_displacements = pose_differences[:, :2]
     heading_displacements = principal_value(pose_differences[:, 2])
 
-    return position_displacements, heading_displacements
+    return xy_displacements, heading_displacements
 
 
 def _make_banded_difference_matrix(number_rows: int) -> DoubleMatrix:
     """
     Returns a banded difference matrix with specified number_rows.
     When applied to a vector [x_1, ..., x_N], it returns [x_2 - x_1, ..., x_N - x_{N-1}].
-    :param number_rows: The row dimension of the banded difference matrix.
+    :param number_rows: The row dimension of the banded difference matrix (e.g. N-1 in the example above).
     :return: A banded difference matrix with shape (number_rows, number_rows+1).
     """
     banded_matrix: DoubleMatrix = -1.0 * np.eye(number_rows + 1, dtype=np.float64)[:-1, :]
@@ -82,33 +86,72 @@ def _convert_curvature_profile_to_steering_profile(
 
 
 def _fit_initial_velocity_and_acceleration_profile(
-    position_displacements: DoubleMatrix, discretization_time: float, jerk_penalty: float
-) -> DoubleMatrix:
+    xy_displacements: DoubleMatrix, heading_profile: DoubleMatrix, discretization_time: float, jerk_penalty: float
+) -> Tuple[float, DoubleMatrix]:
     """
     Estimates initial velocity (v_0) and acceleration ({a_0, ...}) using least squares with jerk penalty regularization.
-    Derivation here: https://confluence.ci.motional.com/confluence/x/huCdCg
-    :param position_displacements: [m] Deviations (norm of position differences) occurring between timesteps.
+    Derivation with details on A, y here: https://confluence.ci.motional.com/confluence/x/huCdCg
+    :param xy_displacements: [m] Deviations in x and y occurring between M+1 poses, a M by 2 matrix.
+    :param heading_profile: [rad] Headings associated to the starting timestamp for xy_displacements, a M-length vector.
     :param discretization_time: [s] Time discretization used for integration.
     :param jerk_penalty: A regularization parameter used to penalize acceleration differences.  Should be positive.
-    :return: Least squares solution for x = [v_0, a_0, ..., a_{M-1}], given M displacement values.
+    :return: Least squares solution for initial velocity (v_0) and acceleration profile ({a_0, ..., a_M-1})
+             for M displacement values.
     """
     assert discretization_time > 0.0, "Discretization time must be positive."
     assert jerk_penalty > 0, "Should have a positive jerk_penalty."
 
+    assert len(xy_displacements.shape) == 2, "Expect xy_displacements to be a matrix."
+    assert xy_displacements.shape[1] == 2, "Expect xy_displacements to have 2 columns."
+
+    num_displacements = len(xy_displacements)  # aka M in the docstring
+
+    assert heading_profile.shape == (
+        num_displacements,
+    ), "Expect the length of heading_profile to match that of xy_displacements."
+
     # Core problem: minimize_x ||y-Ax||_2
-    y = position_displacements
-    A: DoubleMatrix = np.tri(len(y), dtype=np.float64)  # lower triangular matrix
-    A *= discretization_time**2
-    A[:, 0] = discretization_time
+    y = xy_displacements.flatten()  # Flatten to a vector, [delta x_0, delta y_0, ...]
+
+    A: DoubleMatrix = np.zeros((2 * num_displacements, num_displacements), dtype=np.float64)
+    for idx_timestep, heading in enumerate(heading_profile):
+        start_row = 2 * idx_timestep  # Which row of A corresponds to x-coordinate information at timestep k.
+
+        # Related to v_0, initial velocity - column 0.
+        # We fill in rows for measurements delta x_k, delta y_k.
+        A[start_row : (start_row + 2), 0] = np.array(
+            [
+                np.cos(heading) * discretization_time,
+                np.sin(heading) * discretization_time,
+            ],
+            dtype=np.float64,
+        )
+
+        if idx_timestep > 0:
+            # Related to {a_0, ..., a_k-1}, acceleration profile - column 1 to k.
+            # We fill in rows for measurements delta x_k, delta y_k.
+            A[start_row : (start_row + 2), 1 : (1 + idx_timestep)] = np.array(
+                [
+                    [np.cos(heading) * discretization_time**2],
+                    [np.sin(heading) * discretization_time**2],
+                ],
+                dtype=np.float64,
+            )
 
     # Regularization using jerk penalty, i.e. difference of acceleration values.
-    banded_matrix = _make_banded_difference_matrix(len(y) - 2)
+    # If there are M displacements, then we have M - 1 acceleration values.
+    # That means we have M - 2 jerk values, thus we make a banded difference matrix of that size.
+    banded_matrix = _make_banded_difference_matrix(num_displacements - 2)
     R: DoubleMatrix = np.block([np.zeros((len(banded_matrix), 1)), banded_matrix])
 
     # Compute regularized least squares solution.
     x = np.linalg.pinv(A.T @ A + jerk_penalty * R.T @ R) @ A.T @ y
 
-    return x
+    # Extract profile from solution.
+    initial_velocity = x[0]
+    acceleration_profile = x[1:]
+
+    return initial_velocity, acceleration_profile
 
 
 def _fit_initial_curvature_and_curvature_rate_profile(
@@ -116,7 +159,8 @@ def _fit_initial_curvature_and_curvature_rate_profile(
     velocity_profile: DoubleMatrix,
     discretization_time: float,
     curvature_rate_penalty: float,
-) -> DoubleMatrix:
+    initial_curvature_penalty: float = INITIAL_CURVATURE_PENALTY,
+) -> Tuple[float, DoubleMatrix]:
     """
     Estimates initial curvature (curvature_0) and curvature rate ({curvature_rate_0, ...})
     using least squares with curvature rate regularization.
@@ -125,11 +169,13 @@ def _fit_initial_curvature_and_curvature_rate_profile(
     :param velocity_profile: [m/s] Estimated or actual velocities at the timesteps matching displacements.
     :param discretization_time: [s] Time discretization used for integration.
     :param curvature_rate_penalty: A regularization parameter used to penalize curvature_rate.  Should be positive.
-    :return: Least squares solution for x = [curvature_0, curvature_rate_0, ..., curvature_rate_{M-1}],
-             given M heading displacement values.
+    :param initial_curvature_penalty: A regularization parameter to handle zero initial speed.  Should be positive and small.
+    :return: Least squares solution for initial curvature (curvature_0) and curvature rate profile
+             (curvature_rate_0, ..., curvature_rate_{M-1}) for M heading displacement values.
     """
     assert discretization_time > 0.0, "Discretization time must be positive."
-    assert curvature_rate_penalty > 0, "Should have a positive curvature_rate_penalty."
+    assert curvature_rate_penalty > 0.0, "Should have a positive curvature_rate_penalty."
+    assert initial_curvature_penalty > 0.0, "Should have a positive initial_curvature_penalty."
 
     # Core problem: minimize_x ||y-Ax||_2
     y = heading_displacements
@@ -141,14 +187,20 @@ def _fit_initial_curvature_and_curvature_rate_profile(
             continue
         A[idx, 1:] *= velocity * discretization_time**2
 
-    # Regularization on curvature rate.
-    Q: DoubleMatrix = np.eye(len(y))
-    Q[0, 0] = 0.0
+    # Regularization on curvature rate.  We add a small but nonzero weight on initial curvature too.
+    # This is since the corresponding row of the A matrix might be zero if initial speed is 0, leading to singularity.
+    # We guarantee that Q is positive definite such that the minimizer of the least squares problem is unique.
+    Q: DoubleMatrix = curvature_rate_penalty * np.eye(len(y))
+    Q[0, 0] = initial_curvature_penalty
 
     # Compute regularized least squares solution.
-    x = np.linalg.pinv(A.T @ A + curvature_rate_penalty * Q) @ A.T @ y
+    x = np.linalg.pinv(A.T @ A + Q) @ A.T @ y
 
-    return x
+    # Extract profile from solution.
+    initial_curvature = x[0]
+    curvature_rate_profile = x[1:]
+
+    return initial_curvature, curvature_rate_profile
 
 
 def compute_steering_angle_feedback(
@@ -203,16 +255,17 @@ def complete_kinematic_state_and_inputs_from_poses(
     :return: kinematic_states (x, y, heading, velocity, steering_angle) and corresponding
             kinematic_inputs (acceleration, steering_rate).
     """
-    position_displacements, heading_displacements = _get_position_heading_displacements_from_poses(poses)
+    xy_displacements, heading_displacements = _get_xy_heading_displacements_from_poses(poses)
 
     # Compute initial velocity + acceleration least squares solution and extract results.
-    initial_velocity_and_acceleration_profile = _fit_initial_velocity_and_acceleration_profile(
-        position_displacements=position_displacements,
+    # Note: If we have M displacements, we require the M associated heading values.
+    #       Therefore, we exclude the last heading in the call below.
+    initial_velocity, acceleration_profile = _fit_initial_velocity_and_acceleration_profile(
+        xy_displacements=xy_displacements,
+        heading_profile=poses[:-1, 2],
         discretization_time=discretization_time,
         jerk_penalty=jerk_penalty,
     )
-    initial_velocity = initial_velocity_and_acceleration_profile[0]
-    acceleration_profile = initial_velocity_and_acceleration_profile[1:]
 
     velocity_profile = _generate_profile_from_initial_condition_and_derivatives(
         initial_condition=initial_velocity,
@@ -221,14 +274,12 @@ def complete_kinematic_state_and_inputs_from_poses(
     )
 
     # Compute initial curvature + curvature rate least squares solution and extract results.  It relies on velocity fit.
-    initial_curvature_and_curvature_rate_profile = _fit_initial_curvature_and_curvature_rate_profile(
+    initial_curvature, curvature_rate_profile = _fit_initial_curvature_and_curvature_rate_profile(
         heading_displacements=heading_displacements,
         velocity_profile=velocity_profile,
         discretization_time=discretization_time,
         curvature_rate_penalty=curvature_rate_penalty,
     )
-    initial_curvature = initial_curvature_and_curvature_rate_profile[0]
-    curvature_rate_profile = initial_curvature_and_curvature_rate_profile[1:]
 
     curvature_profile = _generate_profile_from_initial_condition_and_derivatives(
         initial_condition=initial_curvature,

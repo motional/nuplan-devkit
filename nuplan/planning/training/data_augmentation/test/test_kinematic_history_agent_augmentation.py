@@ -30,9 +30,21 @@ class TestKinematicHistoryAgentAugmentation(unittest.TestCase):
                         [1.1352128e-03, -1.2731040e-04, 3.8040514e-05],
                         [1.1641532e-10, 0.0000000e00, -3.0870851e-19],
                     ]
-                )
+                ),
+                np.array(
+                    [
+                        [6.9434252e-03, -1.0949150e-03, 2.1299818e-05],
+                        [4.3259640e-03, -6.9646863e-04, -9.3163371e-06],
+                        [2.4353617e-03, -3.7753209e-04, 4.7789731e-06],
+                        [1.1352128e-03, -1.2731040e-04, 3.8040514e-05],
+                        [1.1641532e-10, 0.0000000e00, -3.0870851e-19],
+                    ]
+                ),
             ],
-            agents=[np.random.randn(5, 1, 8)],
+            agents=[
+                np.random.randn(5, 1, 8),
+                np.random.randn(5, 1, 8),
+            ],
         )
 
         self.aug_feature_gt = {}
@@ -142,9 +154,9 @@ class TestKinematicHistoryAgentAugmentation(unittest.TestCase):
         """
         Test uniform augmentation.
         """
-        original_feature_ego = self.features['agents'].ego[0].copy()
+        original_feature_ego = self.features['agents'].ego[1].copy()
         aug_feature, _ = self.uniform_augmentor.augment(self.features, self.targets)
-        self.assertTrue((abs(aug_feature['agents'].ego[0] - original_feature_ego) <= 0.1).all())
+        self.assertTrue((abs(aug_feature['agents'].ego[1] - original_feature_ego) <= 0.1).all())
 
     def test_no_augment(self) -> None:
         """

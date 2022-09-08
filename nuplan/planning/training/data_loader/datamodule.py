@@ -5,14 +5,19 @@ from typing import Any, Dict, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.utils.data
+from omegaconf import DictConfig
+from torch.utils.data.sampler import WeightedRandomSampler
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import DEFAULT_SCENARIO_NAME
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
+from nuplan.planning.training.data_loader.distributed_sampler_wrapper import DistributedSamplerWrapper
 from nuplan.planning.training.data_loader.scenario_dataset import ScenarioDataset
 from nuplan.planning.training.data_loader.splitter import AbstractSplitter
 from nuplan.planning.training.modeling.types import FeaturesType, move_features_type_to_device
 from nuplan.planning.training.preprocessing.feature_collate import FeatureCollate
 from nuplan.planning.training.preprocessing.feature_preprocessor import FeaturePreprocessor
+from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +37,7 @@ def create_dataset(
     :param feature_preprocessor: Feature preprocessor object.
     :param dataset_fraction: Fraction of the dataset to load.
     :param dataset_name: Set name (train/val/test).
+    :param scenario_type_loss_weights: Dictionary of scenario type loss weights.
     :param augmentors: List of augmentor objects for providing data augmentation to data samples.
     :return: The instantiated torch dataset.
     """
@@ -45,6 +51,39 @@ def create_dataset(
         feature_preprocessor=feature_preprocessor,
         augmentors=augmentors,
     )
+
+
+def distributed_weighted_sampler_init(
+    scenario_dataset: ScenarioDataset, scenario_sampling_weights: Dict[str, float], replacement: bool = True
+) -> WeightedRandomSampler:
+    """
+    Initiliazes WeightedSampler object with sampling weights for each scenario_type and returns it.
+    :param scenario_dataset: ScenarioDataset object
+    :param replacement: Samples with replacement if True. By default set to True.
+    return: Initialized Weighted sampler
+    """
+    scenarios = scenario_dataset._scenarios
+    if not replacement:  # If we don't sample with replacement, then all sample weights must be nonzero
+        assert all(
+            w > 0 for w in scenario_sampling_weights.values()
+        ), "All scenario sampling weights must be positive when sampling without replacement."
+
+    scenario_sampling_weights_per_idx = [
+        scenario_sampling_weights[scenario.scenario_type]
+        if scenario.scenario_type in scenario_sampling_weights
+        else scenario_sampling_weights[DEFAULT_SCENARIO_NAME]
+        for scenario in scenarios
+    ]
+
+    # Create weighted sampler
+    weighted_sampler = WeightedRandomSampler(
+        weights=scenario_sampling_weights_per_idx,
+        num_samples=len(scenarios),
+        replacement=replacement,
+    )
+
+    distributed_weighted_sampler = DistributedSamplerWrapper(weighted_sampler)
+    return distributed_weighted_sampler
 
 
 class DataModule(pl.LightningDataModule):
@@ -61,6 +100,8 @@ class DataModule(pl.LightningDataModule):
         val_fraction: float,
         test_fraction: float,
         dataloader_params: Dict[str, Any],
+        scenario_type_sampling_weights: DictConfig,
+        worker: WorkerPool,
         augmentors: Optional[List[AbstractAugmentor]] = None,
     ) -> None:
         """
@@ -102,8 +143,14 @@ class DataModule(pl.LightningDataModule):
         self._all_samples = all_scenarios
         assert len(self._all_samples) > 0, 'No samples were passed to the datamodule'
 
+        # Scenario sampling weights
+        self._scenario_type_sampling_weights = scenario_type_sampling_weights
+
         # Augmentation setup
         self._augmentors = augmentors
+
+        # Worker for multiprocessing to speed up initialization of datasets
+        self._worker = worker
 
     @property
     def feature_and_targets_builder(self) -> FeaturePreprocessor:
@@ -121,21 +168,25 @@ class DataModule(pl.LightningDataModule):
 
         if stage == 'fit':
             # Training Dataset
-            train_samples = self._splitter.get_train_samples(self._all_samples)
+            train_samples = self._splitter.get_train_samples(self._all_samples, self._worker)
             assert len(train_samples) > 0, 'Splitter returned no training samples'
 
             self._train_set = create_dataset(
-                train_samples, self._feature_preprocessor, self._train_fraction, "train", self._augmentors
+                train_samples,
+                self._feature_preprocessor,
+                self._train_fraction,
+                "train",
+                self._augmentors,
             )
 
             # Validation Dataset
-            val_samples = self._splitter.get_val_samples(self._all_samples)
+            val_samples = self._splitter.get_val_samples(self._all_samples, self._worker)
             assert len(val_samples) > 0, 'Splitter returned no validation samples'
 
             self._val_set = create_dataset(val_samples, self._feature_preprocessor, self._val_fraction, "validation")
         elif stage == 'test':
             # Testing Dataset
-            test_samples = self._splitter.get_test_samples(self._all_samples)
+            test_samples = self._splitter.get_test_samples(self._all_samples, self._worker)
             assert len(test_samples) > 0, 'Splitter returned no test samples'
 
             self._test_set = create_dataset(test_samples, self._feature_preprocessor, self._test_fraction, "test")
@@ -159,8 +210,21 @@ class DataModule(pl.LightningDataModule):
         if self._train_set is None:
             raise DataModuleNotSetupError
 
+        # Initialize weighted sampler
+        if self._scenario_type_sampling_weights.enable:
+            weighted_sampler = distributed_weighted_sampler_init(
+                scenario_dataset=self._train_set,
+                scenario_sampling_weights=self._scenario_type_sampling_weights.scenario_type_weights,
+            )
+        else:
+            weighted_sampler = None
+
         return torch.utils.data.DataLoader(
-            dataset=self._train_set, **self._dataloader_params, shuffle=True, collate_fn=FeatureCollate()
+            dataset=self._train_set,
+            shuffle=weighted_sampler is None,
+            collate_fn=FeatureCollate(),
+            sampler=weighted_sampler,
+            **self._dataloader_params,
         )
 
     def val_dataloader(self) -> torch.utils.data.DataLoader:

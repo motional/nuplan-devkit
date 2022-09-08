@@ -13,7 +13,11 @@ from nuplan.planning.simulation.planner.abstract_planner import (
 )
 from nuplan.submission import challenge_pb2 as chpb
 from nuplan.submission import challenge_pb2_grpc as chpb_grpc
-from nuplan.submission.proto_converters import proto_traj_from_inter_traj, se2_from_proto_se2
+from nuplan.submission.proto_converters import (
+    proto_traj_from_inter_traj,
+    se2_from_proto_se2,
+    tl_status_data_from_proto_tl_status_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +45,13 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
         )
 
     def _build_planner_input(
-        self, planner_input_message: chpb.PlannerInput, buffer: Optional[SimulationHistoryBuffer]
+        self, planner_input_message: chpb.PlannerInput, buffer: Optional[SimulationHistoryBuffer], idx: int
     ) -> PlannerInput:
         """
         Builds a PlannerInput from a serialized PlannerInput message and an existing data buffer
         :param planner_input_message: the serialized message
         :param buffer: The history buffer
+        :param idx: Index of buffer wrt the list of buffers available.
         :return: PlannerInput object
         """
         simulation_iteration = self._extract_simulation_iteration(planner_input_message)
@@ -67,8 +72,12 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
             buffer = SimulationHistoryBuffer.initialize_from_list(
                 len(states), states, observations, new_data.sample_interval
             )
+            self.simulation_history_buffers[idx] = buffer
 
-        return PlannerInput(iteration=simulation_iteration, history=buffer)
+        tl_data_messages = planner_input_message.traffic_light_data
+        tl_data = [tl_status_data_from_proto_tl_status_data(tl_data_message) for tl_data_message in tl_data_messages]
+
+        return PlannerInput(iteration=simulation_iteration, history=buffer, traffic_light_data=tl_data)
 
     def _build_planner_inputs(self, planner_input_messages: List[chpb.PlannerInput]) -> List[PlannerInput]:
         """
@@ -78,8 +87,10 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
         """
         planner_inputs = []
 
-        for planner_input_message, buffer in zip(planner_input_messages, self.simulation_history_buffers):
-            planner_inputs.append(self._build_planner_input(planner_input_message, buffer))
+        for i, (planner_input_message, buffer) in enumerate(
+            zip(planner_input_messages, self.simulation_history_buffers)
+        ):
+            planner_inputs.append(self._build_planner_input(planner_input_message, buffer, i))
 
         return planner_inputs
 
@@ -92,18 +103,15 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
         :param context
         """
         logger.info("Initialization request received..")
-        logger.info(f"{planner_initialization_messages}")
         planner_initialization = []
 
         for planner_initialization_message in planner_initialization_messages.planner_initializations:
-            expert_goal_state = se2_from_proto_se2(planner_initialization_message.expert_goal_state)
             route_roadblock_ids = planner_initialization_message.route_roadblock_ids
             mission_goal = se2_from_proto_se2(planner_initialization_message.mission_goal)
 
             map_api = self.map_manager.get_map(planner_initialization_message.map_name)
             planner_initialization.append(
                 PlannerInitialization(
-                    expert_goal_state=expert_goal_state,
                     route_roadblock_ids=route_roadblock_ids,
                     mission_goal=mission_goal,
                     map_api=map_api,

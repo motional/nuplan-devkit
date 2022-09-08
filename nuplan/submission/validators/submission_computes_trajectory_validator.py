@@ -9,7 +9,7 @@ from nuplan.planning.simulation.planner.remote_planner import RemotePlanner
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 from nuplan.submission.submission_container_factory import SubmissionContainerFactory
 from nuplan.submission.submission_container_manager import SubmissionContainerManager
-from nuplan.submission.utils import container_name_from_image_name
+from nuplan.submission.utils.utils import container_name_from_image_name
 from nuplan.submission.validators.base_submission_validator import BaseSubmissionValidator
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,6 @@ class SubmissionComputesTrajectoryValidator(BaseSubmissionValidator):
         planner_initialization = PlannerInitialization(
             scenario.get_mission_goal(),
             scenario.get_route_roadblock_ids(),
-            scenario.get_expert_goal_state(),
             scenario.map_api,
         )
         planner.initialize([planner_initialization])

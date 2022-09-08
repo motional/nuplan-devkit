@@ -26,26 +26,31 @@ class MetricAggregatorCallback(AbstractMainCallback):
         if not self._metric_save_path.exists():
             return
 
-        # Load metric parquet files
-        metric_dataframes = {}
-        for file in self._metric_save_path.iterdir():
+        # Run a list of metric aggregators
+        for metric_aggregator in self._metric_aggregators:
+            # Load metric parquet files
+            metric_dataframes = {}
 
-            # Skip loading if the file cannot be loaded as parquet format
-            try:
-                if file.is_file():
+            metrics = self._metric_save_path.rglob("*")
+            if metric_aggregator.challenge is None:
+                challenge_metrics = list(metrics)
+            else:
+                challenge_metrics = [path for path in metrics if metric_aggregator.challenge in str(path)]
+
+            for file in challenge_metrics:
+                # Skip loading if the file cannot be loaded as parquet format
+                try:
                     metric_statistic_dataframe = MetricStatisticsDataFrame.load_parquet(file)
                     metric_statistic_name = metric_statistic_dataframe.metric_statistic_name
                     metric_dataframes[metric_statistic_name] = metric_statistic_dataframe
-            except (FileNotFoundError, Exception) as e:
-                logger.info(f"Cannot load the file: {file}, error: {e}")
+                except (FileNotFoundError, Exception) as e:
+                    logger.info(f"Cannot load the file: {file}, error: {e}")
 
-        # Run a list of metric aggregators if there are metric dataframes
-        if metric_dataframes:
-            for metric_aggregator in self._metric_aggregators:
+            if metric_dataframes:
                 logger.info(f"Running metric aggregator: {metric_aggregator.name}")
                 metric_aggregator(metric_dataframes=metric_dataframes)
-        else:
-            logger.info("No any metric files")
+            else:
+                logger.warning("No metric files found for aggregation!")
 
         end_time = time.perf_counter()
         elapsed_time_s = end_time - start_time

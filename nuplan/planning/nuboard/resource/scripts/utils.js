@@ -45,3 +45,17 @@ function openScenarioBar(evt, bar_name, svg_path_name) {
         scenario_bar_svg_path.setAttribute("d", "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z");
    }
 }
+
+function openModal(evt, modal_name) {
+  const overlay = document.getElementsByClassName("overlay")[0];
+  overlay.style.display = "block";
+
+  document.getElementsByClassName(modal_name)[0].style.display = "block";
+}
+
+function closeModal(evt, modal_name) {
+  const overlay = document.getElementsByClassName("overlay")[0];
+  overlay.style.display = "none";
+
+  document.getElementsByClassName(modal_name)[0].style.display = "none";
+}

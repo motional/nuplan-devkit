@@ -10,3 +10,12 @@ py_test(
         "//nuplan/submission/evalai:evalai_interface",
     ],
 )
+
+py_test(
+    name = "test_leaderboard_writer",
+    size = "small",
+    srcs = ["test_leaderboard_writer.py"],
+    deps = [
+        "//nuplan/submission/evalai:leaderboard_writer",
+    ],
+)

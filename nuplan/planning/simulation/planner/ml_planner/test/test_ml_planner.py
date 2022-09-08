@@ -101,7 +101,6 @@ class TestMlPlanner(unittest.TestCase):
         )
         # Initialize Planner
         initialization = PlannerInitialization(
-            expert_goal_state=scenario.get_expert_goal_state(),
             route_roadblock_ids=scenario.get_route_roadblock_ids(),
             mission_goal=scenario.get_mission_goal(),
             map_api=scenario.map_api,

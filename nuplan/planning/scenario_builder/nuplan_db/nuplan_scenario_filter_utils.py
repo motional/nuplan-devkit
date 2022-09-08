@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import random
 from collections import defaultdict
@@ -97,6 +98,12 @@ class GetScenariosFromDbFileParams:
     # If provided, the map names on which to filter (e.g. "[us-nv-las-vegas-strip, us-ma-boston]")
     filter_map_names: Optional[List[str]]
 
+    # If provided, whether to remove scenarios without a valid mission goal.
+    remove_invalid_goals: bool = False
+
+    # Verbosity, provides download progression
+    verbose: bool = False
+
 
 def get_db_filenames_from_load_path(load_path: str) -> List[str]:
     """
@@ -137,7 +144,7 @@ def discover_log_dbs(load_path: Union[List[str], str]) -> List[str]:
     :return: A list with all discovered log database filenames.
     """
     if isinstance(load_path, list):  # List of database paths
-        nested_db_filenames = [get_db_filenames_from_load_path(path) for path in sorted(load_path)]
+        nested_db_filenames = [get_db_filenames_from_load_path(path) for path in sorted(set(load_path))]
         db_filenames = [filename for filenames in nested_db_filenames for filename in filenames]
     else:
         db_filenames = get_db_filenames_from_load_path(load_path)
@@ -151,11 +158,17 @@ def get_scenarios_from_db_file(params: GetScenariosFromDbFileParams) -> Scenario
     :param params: The filter parameters to use.
     :return: A ScenarioDict containing the relevant scenarios.
     """
-    local_log_file_absolute_path = download_file_if_necessary(params.data_root, params.log_file_absolute_path)
+    local_log_file_absolute_path = download_file_if_necessary(
+        params.data_root, params.log_file_absolute_path, params.verbose
+    )
 
     scenario_dict: ScenarioDict = {}
     for row in get_scenarios_from_db(
-        local_log_file_absolute_path, params.filter_tokens, params.filter_types, params.filter_map_names
+        local_log_file_absolute_path,
+        params.filter_tokens,
+        params.filter_types,
+        params.filter_map_names,
+        not params.remove_invalid_goals,
     ):
         scenario_type = row["scenario_type"]
 
@@ -239,9 +252,11 @@ def filter_total_num_scenarios(
     total_num_scenarios = sum(len(scenarios) for scenarios in scenario_dict.values())
 
     if isinstance(limit_total_scenarios, int):  # Exact number of scenarios to keep
+        assert (
+            limit_total_scenarios > 0
+        ), "Number of samples kept should be more than 0 in order to not have an empty cache."
         num_nodes = int(os.environ.get("NUM_NODES", 1))
-        required_num_scenarios = limit_total_scenarios // num_nodes  # Get number of scenarios to keep
-
+        required_num_scenarios = math.ceil(limit_total_scenarios / num_nodes)  # Get number of scenarios to keep
         # Only remove scenarios if the limit is less than the total number of scenarios
         if required_num_scenarios < total_num_scenarios:
             scenario_dict = _filter_scenarios(scenario_dict, total_num_scenarios, required_num_scenarios, randomize)
@@ -249,7 +264,7 @@ def filter_total_num_scenarios(
     elif isinstance(limit_total_scenarios, float):  # Percentage of scenarios to keep
         sample_ratio = limit_total_scenarios
         assert 0.0 < sample_ratio < 1.0, f'Sample ratio has to be between 0 and 1, got {sample_ratio}'
-        required_num_scenarios = int(sample_ratio * total_num_scenarios)  # Get number of scenarios to keep
+        required_num_scenarios = math.ceil(sample_ratio * total_num_scenarios)  # Get number of scenarios to keep
 
         scenario_dict = _filter_scenarios(scenario_dict, total_num_scenarios, required_num_scenarios, randomize)
 
@@ -293,7 +308,7 @@ def _filter_scenarios(
         num_default_scenarios = len(scenario_dict[DEFAULT_SCENARIO_NAME])
 
         # if we can reach the desired number of scenarios by removing the default scenarios, we will not remove any known scenario types
-        if total_num_scenarios - required_num_scenarios <= num_default_scenarios:
+        if total_num_scenarios - required_num_scenarios < num_default_scenarios:
             num_default_scenarios_to_keep = num_default_scenarios - (total_num_scenarios - required_num_scenarios)
             scenario_dict[DEFAULT_SCENARIO_NAME] = _filter_scenarios_from_scenario_list(
                 scenario_dict[DEFAULT_SCENARIO_NAME], num_default_scenarios_to_keep, randomize

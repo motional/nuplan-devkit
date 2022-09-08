@@ -63,6 +63,25 @@ class StopLineType(IntEnum):
     YIELD = 4
 
 
+def stopline_type_to_gpkg(stopline_type: StopLineType) -> str:
+    """
+    Converts StopLineType to gpkg str
+    gpkg str, the layer name used in the GeoPandas database.
+    :param stopline_type: StopLine type to convert
+    :return: gpkg str corresponding to stopline_type
+    """
+    if stopline_type == StopLineType.PED_CROSSING:
+        return "PedCrossing"
+    elif stopline_type == StopLineType.STOP_SIGN:
+        return "StopSign"
+    elif stopline_type == StopLineType.TRAFFIC_LIGHT:
+        return "TrafficLight"
+    elif stopline_type == StopLineType.TURN_STOP:
+        return "TurnStop"
+    else:
+        return "Yield"
+
+
 class IntersectionType(IntEnum):
     """
     Enum for IntersectionType.

@@ -47,6 +47,7 @@ py_test(
         "//nuplan/planning/script/builders:worker_pool_builder",
         "//nuplan/planning/script/builders/utils:utils_config",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:log_splitter",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:raster_model",
@@ -83,6 +84,19 @@ py_test(
     ],
     deps = [
         ":skeleton_test_simulation",
+    ],
+)
+
+py_test(
+    name = "test_run_submission_planner",
+    size = "small",
+    srcs = ["test_run_submission_planner.py"],
+    data = [
+        "//nuplan/planning/script:yaml",
+    ],
+    deps = [
+        ":skeleton_test_simulation",
+        "//nuplan/planning/script:run_submission_planner",
     ],
 )
 
@@ -248,6 +262,7 @@ py_test(
         "//nuplan/planning/training/callbacks:scenario_scoring_callback",
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:log_splitter",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:raster_model",
@@ -296,6 +311,7 @@ py_test(
         "//nuplan/planning/training/callbacks:scenario_scoring_callback",
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:log_splitter",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:lanegcn_utils",

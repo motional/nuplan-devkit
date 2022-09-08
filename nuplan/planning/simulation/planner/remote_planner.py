@@ -14,11 +14,18 @@ from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner,
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.submission import challenge_pb2 as chpb
 from nuplan.submission import challenge_pb2_grpc as chpb_grpc
-from nuplan.submission.proto_converters import interp_traj_from_proto_traj, proto_se2_from_se2
+from nuplan.submission.proto_converters import (
+    interp_traj_from_proto_traj,
+    proto_se2_from_se2,
+    proto_tl_status_data_from_tl_status_data,
+)
 from nuplan.submission.submission_container_manager import SubmissionContainerManager
-from nuplan.submission.utils import find_free_port_number
+from nuplan.submission.utils.utils import find_free_port_number, get_submission_logger
 
 logger = logging.getLogger(__name__)
+submission_logger = get_submission_logger(__name__)
+
+NETWORK = 'localhost'
 
 
 class RemotePlanner(AbstractPlanner):
@@ -32,12 +39,14 @@ class RemotePlanner(AbstractPlanner):
         submission_container_manager: Optional[SubmissionContainerManager] = None,
         submission_image: Optional[str] = None,
         container_name: Optional[str] = None,
+        compute_trajectory_timeout: float = 1,
     ) -> None:
         """
         Prepares the remote container for planning.
         :param submission_container_manager: Optional manager, if provided a container will be started by RemotePlanner
         :param submission_image: Docker image name for the submission_container_factory
         :param container_name: Name to assign to the submission container
+        :param compute_trajectory_timeout: Timeout for computation of trajectory.
         """
         # If we are requested to start a container, assert all parameters are present
         if submission_container_manager:
@@ -58,6 +67,7 @@ class RemotePlanner(AbstractPlanner):
         self.serialized_states: Optional[List[List[bytes]]] = None
         self.sample_intervals: Optional[List[float]] = None
         self._consume_batched_inputs = False
+        self._compute_trajectory_timeout = compute_trajectory_timeout
 
     def __reduce__(
         self,
@@ -92,12 +102,14 @@ class RemotePlanner(AbstractPlanner):
         planner_initializations = []
 
         for init in initialization:
-            expert_goal_state = proto_se2_from_se2(init.expert_goal_state)
-            mission_goal = proto_se2_from_se2(init.mission_goal)
+            try:
+                mission_goal = proto_se2_from_se2(init.mission_goal)
+            except AttributeError as e:
+                logger.error("Mission goal was None!")
+                raise e
+
             planner_initializations.append(
-                chpb.PlannerInitializationLight(
-                    expert_goal_state=expert_goal_state, mission_goal=mission_goal, map_name=init.map_api.map_name
-                )
+                chpb.PlannerInitializationLight(mission_goal=mission_goal, map_name=init.map_api.map_name)
             )
 
         return chpb.MultiPlannerInitializationLight(planner_initializations=planner_initializations)
@@ -109,8 +121,6 @@ class RemotePlanner(AbstractPlanner):
         :param initialization: List of PlannerInitialization objects
         :param timeout: for planner initialization
         """
-        network = "submission"
-
         if self.submission_container_manager:
             submission_container = try_n_times(
                 self.submission_container_manager.get_submission_container,
@@ -123,29 +133,34 @@ class RemotePlanner(AbstractPlanner):
 
             submission_container.start()
             submission_container.wait_until_running(timeout=5)
-            network = "localhost"
 
         # As we might be running in a multiprocess environment, we need to make sure we have a unique port
-        self._channel = grpc.insecure_channel(f'{network}:{self.port}')
+        self._channel = grpc.insecure_channel(f'{NETWORK}:{self.port}')
         self._stub = chpb_grpc.DetectionTracksChallengeStub(self._channel)
 
         logger.info("Client sending planner initialization request...")
 
         planner_initializations_message = self._planner_initializations_to_message(initialization)
+        logger.info(f"Trying to communicate on port {NETWORK}:{self.port}")
 
-        initialization_response, elapsed_time = keep_trying(
-            self._stub.InitializePlanner,  # type: ignore
-            [planner_initializations_message],
-            {},
-            errors=(grpc.RpcError,),
-            timeout=timeout,
-        )
+        try:
+            initialization_response, elapsed_time = keep_trying(
+                self._stub.InitializePlanner,  # type: ignore
+                [planner_initializations_message],
+                {},
+                errors=(grpc.RpcError,),
+                timeout=timeout,
+            )
+        except Exception as e:
+            submission_logger.error("Planner initialization failed!")
+            submission_logger.error(e)
+            raise e
 
         # The initialization tells us if the RemotePlanner is able to handle batch inputs
         self._consume_batched_inputs = initialization_response.consume_batched_inputs
         logger.info("Planner initialized!")
 
-    def compute_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
         """
         Computes the ego vehicle trajectory.
         :param current_input: List of planner inputs for where for each of them trajectory should be computed
@@ -193,16 +208,28 @@ class RemotePlanner(AbstractPlanner):
                 chpb.SimulationHistoryBuffer(ego_states=state, observations=observation, sample_interval=None)
                 for state, observation in zip(self.serialized_states, self.serialized_observations)
             ]
+
+        tl_data = self._build_tl_message_from_planner_inputs(current_input)
+
         planner_inputs = [
             chpb.PlannerInput(
-                simulation_iteration=simulation_iteration, simulation_history_buffer=simulation_history_buffer
+                simulation_iteration=simulation_iteration,
+                simulation_history_buffer=simulation_history_buffer,
+                traffic_light_data=tl_data,
             )
             for simulation_iteration, simulation_history_buffer in zip(
                 serialized_simulation_iterations, serialized_buffers
             )
         ]
+        try:
+            trajectory_message = stub.ComputeTrajectory(
+                chpb.MultiPlannerInput(planner_inputs=planner_inputs), timeout=self._compute_trajectory_timeout
+            )
+        except grpc.RpcError as e:
+            submission_logger.error("Trajectory computation service failed!")
+            submission_logger.error(e)
+            raise e
 
-        trajectory_message = stub.ComputeTrajectory(chpb.MultiPlannerInput(planner_inputs=planner_inputs))
         trajectories = [interp_traj_from_proto_traj(proto_traj) for proto_traj in trajectory_message.trajectories]
 
         return trajectories
@@ -236,6 +263,22 @@ class RemotePlanner(AbstractPlanner):
                 multi_serialized_states[i] = [pickle.dumps(last_ego_state)]
                 multi_serialized_observations[i] = [pickle.dumps(last_observations)]
 
-        sample_intervals_: Optional[List[float]] = None if not self.sample_intervals else sample_intervals
+        sample_intervals_: Optional[List[float]] = sample_intervals if not self.sample_intervals else None
 
         return multi_serialized_states, multi_serialized_observations, sample_intervals_
+
+    @staticmethod
+    def _build_tl_message_from_planner_inputs(planner_inputs: List[PlannerInput]) -> List[chpb.TrafficLightStatusData]:
+        tl_data = []
+        for planner_input in planner_inputs:
+            tl_status_data: List[List[chpb.TrafficLightStatusData]]
+            if planner_input.traffic_light_data is None:
+                tl_status_data = [[]]
+            else:
+                tl_status_data = [
+                    proto_tl_status_data_from_tl_status_data(tl_status_data)
+                    for tl_status_data in planner_input.traffic_light_data
+                ]
+            tl_data.extend(tl_status_data)
+
+        return tl_data

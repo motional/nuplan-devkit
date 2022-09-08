@@ -46,6 +46,7 @@ class EvalaiInterface:
         """
         try:
             response = requests.request(method=method, url=url, headers=self._get_request_headers(), data=data)
+            response.raise_for_status()
         except requests.exceptions.RequestException as e:
             logger.error("Could not establish connection with EvalAI server at %s" % self.EVALAI_API_SERVER)
             raise e

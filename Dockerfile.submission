@@ -29,9 +29,10 @@ RUN curl -fsSLo Miniconda3-latest-Linux-x86_64.sh https://repo.anaconda.com/mini
 ARG NUPLAN_HOME=/nuplan_devkit
 WORKDIR $NUPLAN_HOME
 
-COPY requirements.txt requirements_submission.txt $NUPLAN_HOME/
+COPY requirements.txt requirements_torch.txt requirements_submission.txt $NUPLAN_HOME/
 
 RUN bash -c "python -m pip install --upgrade pip --pre && \
+    pip install --no-cache-dir -r $NUPLAN_HOME/requirements_torch.txt -f https://download.pytorch.org/whl/torch_stable.html && \
     pip install --no-cache-dir -r $NUPLAN_HOME/requirements.txt -f https://download.pytorch.org/whl/torch_stable.html && \
     pip install --no-cache-dir -r $NUPLAN_HOME/requirements_submission.txt"
 
@@ -39,6 +40,9 @@ RUN mkdir -p $NUPLAN_HOME/nuplan
 
 COPY setup.py $NUPLAN_HOME
 COPY nuplan $NUPLAN_HOME/nuplan
+# You can copy your own files with the following command.
+# $NUPLAN_HOME Here represents the absolute path /nuplan_devkit inside the container
+# COPY my_fabulous_model.ckpt $NUPLAN_HOME
 
 RUN bash -c "pip install -e ."
 
@@ -46,4 +50,6 @@ ENV NUPLAN_MAPS_ROOT=/data/sets/nuplan/maps \
     NUPLAN_DATA_ROOT=/data/sets/nuplan \
     NUPLAN_EXP_ROOT=/data/exp/nuplan
 
-CMD ["/bin/bash", "-c", "python nuplan/submission/submission_planner.py"]
+RUN bash -c 'mkdir -p {$NUPLAN_MAPS_ROOT,$NUPLAN_DATA_ROOT,$NUPLAN_EXP_ROOT}'
+
+CMD ["/nuplan_devkit/nuplan/entrypoint_submission.sh"]

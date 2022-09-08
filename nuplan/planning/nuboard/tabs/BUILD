@@ -27,6 +27,8 @@ py_library(
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/tabs/config:histogram_tab_config",
+        "//nuplan/planning/nuboard/tabs/js_code:histogram_tab_js_code",
     ],
 )
 
@@ -39,6 +41,7 @@ py_library(
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/tabs/config:overview_tab_config",
     ],
 )
 
@@ -53,6 +56,21 @@ py_library(
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/base:plot_data",
         "//nuplan/planning/nuboard/base:simulation_tile",
+        "//nuplan/planning/nuboard/tabs/config:scenario_tab_config",
+        "//nuplan/planning/nuboard/tabs/js_code:scenario_tab_js_code",
         "//nuplan/planning/scenario_builder:abstract_scenario_builder",
+    ],
+)
+
+py_library(
+    name = "cloud_tab",
+    srcs = ["cloud_tab.py"],
+    deps = [
+        ":configuration_tab",
+        "//nuplan/common/utils:s3_utils",
+        "//nuplan/planning/nuboard:style",
+        "//nuplan/planning/nuboard/tabs/config:cloud_tab_config",
+        "//nuplan/planning/nuboard/tabs/js_code:cloud_tab_js_code",
+        "//nuplan/planning/nuboard/utils:nuboard_cloud_utils",
     ],
 )

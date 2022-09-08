@@ -17,7 +17,7 @@ class MetricFileCallback(AbstractMainCallback):
     """Callback to handle metric files at the end of process."""
 
     def __init__(
-        self, metric_file_output_path: str, scenario_metric_paths: List[str], delete_scenario_metric_files: bool = True
+        self, metric_file_output_path: str, scenario_metric_paths: List[str], delete_scenario_metric_files: bool = False
     ):
         """
         Constructor of MetricFileCallback.

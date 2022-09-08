@@ -49,19 +49,26 @@ def set_default_path() -> None:
         os.environ['NUPLAN_EXP_ROOT'] = DEFAULT_EXP_ROOT
 
 
-def save_simulation_reports(reports: List[RunnerReport], output_dir: Path, report_name: str) -> None:
+def save_runner_reports(reports: List[RunnerReport], output_dir: Path, report_name: str) -> None:
     """
-    Save simulation reports to a parquet file in the output directory.
+    Save runner reports to a parquet file in the output directory.
     :param reports: Runner reports returned from each simulation.
     :param output_dir: Output directory to save the report.
     :param report_name: Report name.
     """
-    df = pd.DataFrame(map(lambda x: x.__dict__, reports))  # type: ignore
+    report_dicts = []
+    for report in map(lambda x: x.__dict__, reports):  # type: ignore
+        if (planner_report := report["planner_report"]) is not None:
+            planner_report_statistics = planner_report.compute_summary_statistics()
+            del report["planner_report"]
+            report.update(planner_report_statistics)
+        report_dicts.append(report)
+    df = pd.DataFrame(report_dicts)
     df['duration'] = df['end_time'] - df['start_time']
 
     save_path = output_dir / report_name
     df.to_parquet(save_path)
-    logger.info(f'Saved simulation reports to {save_path}')
+    logger.info(f'Saved runner reports to {save_path}')
 
 
 def set_up_common_builder(cfg: DictConfig, profiler_name: str) -> CommonBuilder:
@@ -132,11 +139,12 @@ def run_runners(
         num_gpus=cfg.number_of_gpus_used_for_one_simulation,
         num_cpus=cfg.number_of_cpus_used_for_one_simulation,
         exit_on_failure=cfg.exit_on_failure,
+        verbose=cfg.verbose,
     )
     logger.info('Finished executing runners!')
 
-    # Save SimulationReports as parquet file
-    save_simulation_reports(reports, common_builder.output_dir, cfg.sim_report_file)
+    # Save RunnerReports as parquet file
+    save_runner_reports(reports, common_builder.output_dir, cfg.runner_report_file)
 
     # Before run_simulation ends
     common_builder.multi_main_callback.on_run_simulation_end()

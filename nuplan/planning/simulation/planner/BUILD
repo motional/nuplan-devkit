@@ -10,6 +10,7 @@ py_library(
         "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/planner:planner_report",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
     ],
@@ -59,6 +60,11 @@ py_library(
         "//nuplan/submission:challenge_pb2_grpc",
         "//nuplan/submission:proto_converters",
         "//nuplan/submission:submission_container_manager",
-        "//nuplan/submission:utils",
+        "//nuplan/submission/utils",
     ],
+)
+
+py_library(
+    name = "planner_report",
+    srcs = ["planner_report.py"],
 )

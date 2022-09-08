@@ -3,7 +3,7 @@ ego_is_making_progress_statistics:
   _convert_: 'all'
   name: 'ego_is_making_progress'
   category: 'Planning'
-
+  metric_score_unit: 'bool'
   min_progress_threshold: 0.2
 
   required_metrics:

@@ -1,0 +1,259 @@
+.scenario-setting-form {
+  display: None;
+  position: fixed;
+  left: 30%;
+  top: 20%;
+  z-index: 3000;
+}
+
+.scenario-token-multi-choice .choices__inner {
+  height: 40px;
+}
+
+.scenario-setting-form .modal-input-group .input-group .bk-root .bk {
+  width: 100% !important;
+}
+
+.scenario-type-multi-choice {
+  width: auto !important;
+  background: #fff;
+}
+
+.scenario-type-multi-choice .choices__inner {
+  overflow: auto;
+  height: 50px;
+}
+
+.scenario-plot-section {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #f0f0f0;
+  height: 95%
+}
+
+.scenario-plot-section .panel-row {
+  padding: 10px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+  background: #fafafa;
+  height: 40px;
+  background: #fff;
+  font-size: 1.1em;
+}
+
+.scenario-plot-section .planner-search-row {
+  text-align: right;
+  padding: 5px 24px;
+  height: 30px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.scenario-plot-section .checkbox-group-row .bk-inline label {
+  text-align: left !important;
+  width: 10% !important;
+}
+
+.scenario-simulation-default-div {
+  width: 80% !important;
+  font-size: 14px !important;
+}
+
+.scenario-default-div {
+  width: 80% !important;
+  font-size: 1.2em !important;
+}
+
+.scenario-plot-section .scenario-simulation-row {
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+  height: 40%;
+  min-height: 600px;
+  background: #fff;
+  overflow-y: auto;
+}
+
+.scenario-plot-section .scenario-simulation-row .scenario-simulation-column {
+  height: 40%;
+  min-height: 600px;
+  border-right: 1px solid rgba(191, 191, 191, 0.6);
+}
+
+.scenario-plot-section .scenario-simulation-row .scenario-simulation-column .bk-root {
+  height: 100%;
+  background: #fff;
+}
+
+.scenario-plot-section .scenario-simulation-row .col-sm-3 {
+  padding-right: 5px;
+  padding-left: 0;
+}
+
+.scenario-plot-section .scenario-simulation-row .scenario-simulation-legend-section {
+  background: #fff;
+  height: 40%;
+  min-height: 600px;
+  border-left: 1px solid rgba(191, 191, 191, 0.6);
+}
+
+.scenario-tab-modal-query-btn {
+  width: unset !important;
+  height: unset !important;
+  margin: unset !important;
+}
+
+.scenario-tab-modal-query-btn .bk-btn-default {
+  background-color: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: white;
+}
+
+.scenario-tab-panel-title .bk-root {
+  display: inline-block;
+}
+
+.scenario-tab-title-div {
+  font-size: 12px !important;
+  height: unset !important;
+  width: unset !important;
+}
+
+.scenario-setting-form .input-group-option-title {
+  padding-top: 10px;
+  border-top: 1px solid rgba(191, 191, 191, 0.4);
+  font-size: 12px;
+}
+
+.scenario-legend-checkbox-group {
+  cursor: pointer;
+  width: 100% !important;
+}
+
+.scenario-legend-checkbox-group .first-item {
+  border-top: 1px solid rgba(191, 191, 191, 0.6);
+}
+
+.scenario-legend-checkbox-group .item {
+  background-color: white;
+  color: black;
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+  padding: 14px 28px;
+  font-size: 1.0em;
+  cursor: pointer;
+}
+
+.scenario-legend-checkbox-group .checkbox-group-item {
+  display: None;
+  height: 100%;
+}
+
+.scenario-traj-checkbox-group {
+  width: 100% !important;
+}
+
+.scenario-object-checkbox-group {
+  width: 100% !important;
+}
+
+.scenario-map-checkbox-group {
+  width: 100% !important;
+}
+
+.scenario-plot-section .scenario-legend-checkbox-group .checkbox-group-item .bk-input-group label {
+  color: black;
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+  padding: 14px 28px;
+  font-size: 0.9em;
+  width: 100% !important;
+}
+
+.scenario-plot-section .scenario-table-scenario-score-row {
+  height: 10%;
+  background: #fff;
+  min-height: 400px;
+  display: none;
+}
+
+.scenario-plot-section .scenario-table-scenario-score-row .bk-root {
+  padding-top: 24px;
+  height: 100%;
+}
+
+.scenario-plot-section .scenario-table-time-series-row {
+  height: 20%;
+  background: #fff;
+  display: none;
+  min-height: 400px;
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+}
+
+.scenario-plot-section .scenario-table-time-series-row .bk-root {
+  padding-top: 24px;
+  height: 100%;
+}
+
+.scenario-plot-section .scenario-table-ego-expert-states-row {
+  height: 10%;
+  background: #fff;
+  display: none;
+  min-height: 400px;
+  border-bottom: 1px solid rgba(191, 191, 191, 0.6);
+}
+
+.scenario-plot-section .scenario-table-ego-expert-states-row .bk-root {
+  padding-top: 24px;
+  height: 100%;
+}
+
+.scenario-score-layout {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.scenario-ego-expert-states-layout {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.scenario-time-series-layout {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.scenario-simulation-layout {
+  width: 100% !important;
+  margin: auto !important;
+}
+
+.bk .scenario-video-button {
+  width: 40% !important;
+}
+
+.bk .scenario-video-button button {
+  font-size: 12px;
+}
+
+.scalar-scenario-type-select {
+  width: auto !important;
+  background: #fff;
+}
+
+.scalar-scenario-name-select {
+  width: auto !important;
+  background: #fff;
+}
+
+#scenario-loading {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  visibility: hidden;
+}

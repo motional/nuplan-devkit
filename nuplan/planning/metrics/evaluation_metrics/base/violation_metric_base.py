@@ -17,14 +17,17 @@ from nuplan.planning.simulation.history.simulation_history import SimulationHist
 class ViolationMetricBase(MetricBase):
     """Base class for evaluation of violation metrics."""
 
-    def __init__(self, name: str, category: str, max_violation_threshold: int = 0) -> None:
+    def __init__(
+        self, name: str, category: str, max_violation_threshold: int = 0, metric_score_unit: Optional[str] = None
+    ) -> None:
         """
         Initializes the ViolationMetricBase class
         :param name: Metric name
         :param category: Metric category
         :param max_violation_threshold: Maximum threshold for the violation when computing the score.
+        :param metric_score_unit: Metric final score unit.
         """
-        super().__init__(name=name, category=category)
+        super().__init__(name=name, category=category, metric_score_unit=metric_score_unit)
         self._max_violation_threshold = max_violation_threshold
         self.number_of_violations = 0
 
@@ -45,13 +48,7 @@ class ViolationMetricBase(MetricBase):
         if not metric_violations:
             statistics = [
                 Statistic(
-                    name=f'number_of_{self.name}',
-                    unit=MetricStatisticsType.COUNT.unit,
-                    value=0,
-                    type=MetricStatisticsType.COUNT,
-                ),
-                Statistic(
-                    name=f'no_{self.name}',
+                    name=f'{self.name}',
                     unit=MetricStatisticsType.BOOLEAN.unit,
                     value=True,
                     type=MetricStatisticsType.BOOLEAN,
@@ -86,16 +83,22 @@ class ViolationMetricBase(MetricBase):
 
             statistics = [
                 Statistic(
-                    name=f'number_of_{self.name}',
+                    name=f'number_of_violations_of_{self.name}',
                     unit=MetricStatisticsType.COUNT.unit,
                     value=len(metric_violations),
                     type=MetricStatisticsType.COUNT,
                 ),
-                Statistic(name=f'max_violating_{self.name}', unit=unit, value=max_val, type=MetricStatisticsType.MAX),
-                Statistic(name=f'min_violating_{self.name}', unit=unit, value=min_val, type=MetricStatisticsType.MIN),
-                Statistic(name=f'mean_{self.name}', unit=unit, value=mean_val, type=MetricStatisticsType.MEAN),
                 Statistic(
-                    name=f'no_{self.name}',
+                    name=f'max_violation_of_{self.name}', unit=unit, value=max_val, type=MetricStatisticsType.MAX
+                ),
+                Statistic(
+                    name=f'min_violation_of_{self.name}', unit=unit, value=min_val, type=MetricStatisticsType.MIN
+                ),
+                Statistic(
+                    name=f'mean_violation_of_{self.name}', unit=unit, value=mean_val, type=MetricStatisticsType.MEAN
+                ),
+                Statistic(
+                    name=f'{self.name}',
                     unit=MetricStatisticsType.BOOLEAN.unit,
                     value=False,
                     type=MetricStatisticsType.BOOLEAN,
@@ -104,7 +107,10 @@ class ViolationMetricBase(MetricBase):
 
         self.number_of_violations = len(metric_violations)
         results: list[MetricStatistics] = self._construct_metric_results(
-            metric_statistics=statistics, scenario=scenario, time_series=time_series
+            metric_statistics=statistics,
+            scenario=scenario,
+            time_series=time_series,
+            metric_score_unit=self.metric_score_unit,
         )
         return results
 

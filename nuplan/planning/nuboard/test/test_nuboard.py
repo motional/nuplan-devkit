@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +21,8 @@ class TestNuBoard(unittest.TestCase):
         scenario_builder = MockAbstractScenarioBuilder()
 
         self.tmp_dir = tempfile.TemporaryDirectory()
+        if not os.getenv("NUPLAN_EXP_ROOT", None):
+            os.environ["NUPLAN_EXP_ROOT"] = self.tmp_dir.name
         self.nuboard_file = NuBoardFile(
             simulation_main_path=self.tmp_dir.name,
             metric_main_path=self.tmp_dir.name,
@@ -48,7 +51,7 @@ class TestNuBoard(unittest.TestCase):
         """Test if successfully construct a bokeh main page."""
         self.nuboard.main_page(doc=self.doc)
         # Number of elements in the main page, change if we add more elements
-        self.assertEqual(len(self.doc.roots), 20)
+        self.assertEqual(len(self.doc.roots), 34)
 
     def tearDown(self) -> None:
         """Remove temporary folders and files."""

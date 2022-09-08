@@ -15,8 +15,8 @@ class TestPublisherCallback(TestCase):
         """Setup mocks for the tests"""
         # Code execution
         fake_targets = {
-            "metrics": {"upload": True, "save_path": "some/path/to/save"},
-            "pictures": {"upload": True, "save_path": "some/path/to/pictures"},
+            "metrics": {"upload": True, "save_path": "some/path/to/save", "remote_path": "path/save"},
+            "pictures": {"upload": True, "save_path": "some/path/to/pictures", "remote_path": "path/pictures"},
         }
         self.fake_uploads = [
             UploadConfig("metrics", pathlib.Path("some/path/to/save"), pathlib.Path("user/image/path/save")),

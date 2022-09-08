@@ -3,6 +3,7 @@ ego_is_comfortable_statistics:
   _convert_: 'all'
   name: 'ego_is_comfortable'
   category: 'Violations'
+  metric_score_unit: 'bool'
 
   required_metrics:
     # Parameter: base metric name

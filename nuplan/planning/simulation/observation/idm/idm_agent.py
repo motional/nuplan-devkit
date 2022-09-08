@@ -64,6 +64,10 @@ class IDMAgent:
         self._minimum_path_length = minimum_path_length
         self._size = (initial_state.box.width, initial_state.box.length, initial_state.box.height)
 
+        # This variable is used to trigger when the _full_agent_state needs to be recalculated
+        self._requires_state_update: bool = True
+        self._full_agent_state: Optional[Agent] = None
+
     def propagate(self, lead_agent: IDMLeadAgentState, tspan: float) -> None:
         """
         Propagate agent forward according to the IDM policy.
@@ -80,6 +84,9 @@ class IDMAgent:
         )
         self._state.progress += solution.progress
         self._state.velocity = max(solution.velocity, 0)
+
+        # A caching flag to trigger re-computation of self.agent
+        self._requires_state_update = True
 
     @property
     def agent(self) -> Agent:
@@ -139,8 +146,7 @@ class IDMAgent:
         """
         :return: the agent as a StateSE2 object
         """
-        pose = self.get_agent_progress_state()
-        return StateSE2(x=pose.x, y=pose.y, heading=pose.heading)
+        return self._get_agent_at_progress(self._get_bounded_progress()).box.center
 
     def is_active(self, iteration: int) -> bool:
         """
@@ -156,13 +162,6 @@ class IDMAgent:
         :return: true if agent has a valid path, false otherwise
         """
         return self._path is not None
-
-    def get_agent_progress_state(self) -> ProgressStateSE2:
-        """
-        :return: agent pose at the current progress along the agent's path
-        """
-        progress = self._get_bounded_progress()
-        return self._path.get_state_at_progress(progress)
 
     def _get_bounded_progress(self) -> float:
         """
@@ -237,8 +236,11 @@ class IDMAgent:
         :param progress: the arc length along the agent's path
         :return: the agent as a Agent object at the given progress
         """
+        # Caching
+        if not self._requires_state_update:
+            return self._full_agent_state
+
         if self._path is not None:
-            progress = self._clamp_progress(progress)
             init_pose = self._path.get_state_at_progress(progress)
             box = OrientedBox.from_new_pose(
                 self._initial_state.box, StateSE2(init_pose.x, init_pose.y, init_pose.heading)
@@ -262,7 +264,8 @@ class IDMAgent:
                     for time, pose in zip(time_stamps, future_poses)
                 ]
                 future_trajectory = PredictedTrajectory(1.0, init_way_point + waypoints)
-            return Agent(
+
+            self._full_agent_state = Agent(
                 metadata=self._initial_state.metadata,
                 oriented_box=box,
                 velocity=self._velocity_to_global_frame(init_pose.heading),
@@ -270,13 +273,16 @@ class IDMAgent:
                 predictions=[future_trajectory] if future_trajectory is not None else [],
             )
 
-        return Agent(
-            metadata=self._initial_state.metadata,
-            oriented_box=self._initial_state.box,
-            velocity=self._initial_state.velocity,
-            tracked_object_type=self._initial_state.tracked_object_type,
-            predictions=self._initial_state.predictions,
-        )
+        else:
+            self._full_agent_state = Agent(
+                metadata=self._initial_state.metadata,
+                oriented_box=self._initial_state.box,
+                velocity=self._initial_state.velocity,
+                tracked_object_type=self._initial_state.tracked_object_type,
+                predictions=self._initial_state.predictions,
+            )
+        self._requires_state_update = False
+        return self._full_agent_state
 
     def _clamp_progress(self, progress: float) -> float:
         """

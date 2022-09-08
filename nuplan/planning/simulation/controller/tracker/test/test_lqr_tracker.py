@@ -193,6 +193,11 @@ class TestLQRTracker(unittest.TestCase):
         error = self.tracker._compute_error(state, reference, self.sampling_time)
         np_test.assert_allclose(error, expected)
 
+    def test__infer_refernce_velocity(self) -> None:
+        """Test _infer_refernce_velocity"""
+        result = self.tracker._infer_refernce_velocity(self.trajectory, TimePoint(int(1e6)))
+        self.assertAlmostEqual(1.0, result)
+
 
 if __name__ == "__main__":
     unittest.main()

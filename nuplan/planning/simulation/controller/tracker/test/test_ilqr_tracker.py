@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 import numpy.testing as np_test
 
 from nuplan.common.actor_state.state_representation import TimePoint
@@ -30,14 +31,17 @@ class TestILQRTracker(unittest.TestCase):
         # Set up the tracker.
         solver_params = ILQRSolverParameters(
             discretization_time=0.2,
-            q_diagonal_entries=[1.0, 1.0, 50.0, 0.0, 0.0],
-            r_diagonal_entries=[1e2, 1e4],
+            state_cost_diagonal_entries=[1.0, 1.0, 10.0, 0.0, 0.0],
+            input_cost_diagonal_entries=[1.0, 10.0],
+            state_trust_region_entries=[1.0] * 5,
+            input_trust_region_entries=[1.0] * 2,
             max_ilqr_iterations=100,
-            convergence_threshold=0.01,
-            alpha_trust_region=0.95,
-            min_velocity_linearization=0.01,
+            convergence_threshold=1e-6,
+            max_solve_time=0.05,
             max_acceleration=3.0,
+            max_steering_angle=np.pi / 3.0,
             max_steering_angle_rate=0.5,
+            min_velocity_linearization=0.01,
         )
 
         warm_start_params = ILQRWarmStartParameters(
@@ -50,7 +54,7 @@ class TestILQRTracker(unittest.TestCase):
         )
 
         self.tracker = ILQRTracker(
-            n_horizon=20,
+            n_horizon=40,
             ilqr_solver=ILQRSolver(solver_params=solver_params, warm_start_params=warm_start_params),
         )
 

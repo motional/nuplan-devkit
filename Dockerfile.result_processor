@@ -1,0 +1,9 @@
+FROM 300189864575.dkr.ecr.us-east-1.amazonaws.com/nuplan-evalservice-client
+
+ARG EVALAI_CHALLENGE_PK
+ARG EVALAI_PERSONAL_AUTH_TOKEN
+
+ENV EVALAI_CHALLENGE_PK $EVALAI_CHALLENGE_PK
+ENV EVALAI_PERSONAL_AUTH_TOKEN $EVALAI_PERSONAL_AUTH_TOKEN
+
+CMD ["/nuplan_devkit/nuplan/entrypoint_result_processor.sh"]

@@ -1,0 +1,13 @@
+driving_direction_compliance_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.driving_direction_compliance.DrivingDirectionComplianceStatistics
+  _convert_: 'all'
+  name: 'driving_direction_compliance'
+  category: 'Planning'
+  metric_score_unit: 'bool'
+
+  driving_direction_violation_threshold: 1 # [m] Backward driving threshold
+  time_horizon: 1 # [s] time horizon in which movement of the vehicle along baseline direction is computed.
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    lane_change_metric: ego_lane_change_statistics

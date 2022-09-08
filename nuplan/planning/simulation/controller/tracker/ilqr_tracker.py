@@ -55,7 +55,8 @@ class ILQRTracker(AbstractTracker):
         reference_trajectory = self._get_reference_trajectory(current_iteration, trajectory)
 
         # Run the iLQR solver to get the optimal input sequence to track the reference trajectory.
-        optimal_inputs = self._ilqr_solver.solve(current_state, reference_trajectory)
+        solutions = self._ilqr_solver.solve(current_state, reference_trajectory)
+        optimal_inputs = solutions[-1].input_trajectory
 
         # Extract optimal input to apply at the current timestep.
         accel_cmd = optimal_inputs[0, 0]

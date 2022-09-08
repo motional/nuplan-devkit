@@ -59,17 +59,19 @@ class TestRemotePlanner(TestCase):
         mock_map_api = Mock(map_name="test")
 
         mock_initializations = [
-            Mock(expert_goal_state=mock_state_1, mission_goal=mock_state_2, map_api=mock_map_api),
-            Mock(expert_goal_state=mock_state_2, mission_goal=mock_state_1, map_api=mock_map_api),
+            Mock(mission_goal=mock_state_2, map_api=mock_map_api),
+            Mock(mission_goal=mock_state_1, map_api=mock_map_api),
         ]
+
+        # Check raises on missing mission goal
+        with self.assertRaises(AttributeError):
+            self.planner._planner_initializations_to_message([Mock(mission_goal=None, map_api=mock_map_api)])
+
         initialization_message = self.planner._planner_initializations_to_message(mock_initializations)
         self.assertEqual(len(mock_initializations), len(initialization_message.planner_initializations))
 
         first_initialization_msg, second_initialization_msg = initialization_message.planner_initializations
 
-        self.assertAlmostEqual(mock_state_1.x, first_initialization_msg.expert_goal_state.x)
-        self.assertAlmostEqual(mock_state_1.y, first_initialization_msg.expert_goal_state.y)
-        self.assertAlmostEqual(mock_state_1.heading, first_initialization_msg.expert_goal_state.heading)
         self.assertAlmostEqual(mock_state_1.x, second_initialization_msg.mission_goal.x)
         self.assertAlmostEqual(mock_state_1.y, second_initialization_msg.mission_goal.y)
         self.assertAlmostEqual(mock_state_1.heading, second_initialization_msg.mission_goal.heading)
@@ -112,14 +114,15 @@ class TestRemotePlanner(TestCase):
     def test_compute_trajectory_interface(self, mock_compute_trajectory: Mock) -> None:
         """Tests that the interface for the trajectory computation request is called correctly."""
         mock_compute_trajectory.return_value = "trajectories"
-        mock_input = Mock()
+        mock_input = [Mock()]
 
         trajectories = self.planner.compute_trajectory(mock_input)
 
         mock_compute_trajectory.assert_called_with(self.planner._stub, current_input=mock_input)
         self.assertEqual("trajectories", trajectories)
 
-    @patch("nuplan.planning.simulation.planner.remote_planner.interp_traj_from_proto_traj")
+    @patch("nuplan.planning.simulation.planner.remote_planner.interp_traj_from_proto_traj", Mock)
+    @patch("nuplan.planning.simulation.planner.remote_planner.proto_tl_status_data_from_tl_status_data")
     @patch("nuplan.submission.challenge_pb2.PlannerInput")
     @patch("nuplan.submission.challenge_pb2.MultiPlannerInput")
     @patch("nuplan.submission.challenge_pb2.SimulationIteration")
@@ -130,17 +133,23 @@ class TestRemotePlanner(TestCase):
         simulation_iteration: Mock,
         multi_planner_input: Mock,
         planner_input: Mock,
-        interp_traj_from_proto: Mock,
+        mock_proto_tl_status_data: Mock,
     ) -> None:
         """Tests deserialization and serialization of the input/output for the trajectory computation interface."""
         with patch.object(self.planner, '_get_history_update', MagicMock()) as get_history_update:
             get_history_update.return_value = [["states"], ["observations"], ["intervals"]]
 
             mock_stub = MagicMock()
-
-            mock_input_1 = Mock(iteration=Mock(time_us=1, index=0), history=Mock(ego_states="fake_input"))
+            mock_tl_data = Mock()
+            mock_input_1 = Mock(
+                iteration=Mock(time_us=1, index=0), history=Mock(ego_states="fake_input"), traffic_light_data=None
+            )
             mock_input_1.history.ego_states = ["fake_input"]
-            mock_input_2 = Mock(iteration=Mock(time_us=2, index=1), history=Mock(ego_states="another_input"))
+            mock_input_2 = Mock(
+                iteration=Mock(time_us=2, index=1),
+                history=Mock(ego_states="another_input"),
+                traffic_light_data=[mock_tl_data],
+            )
 
             mock_input_2.history.ego_states = ["another_input"]
             mock_input = [mock_input_1, mock_input_2]
@@ -155,11 +164,20 @@ class TestRemotePlanner(TestCase):
 
             # Checks
             get_history_update.assert_called_once_with(mock_input)
+            mock_proto_tl_status_data.assert_called_once_with(mock_tl_data)
             simulation_iteration.assert_has_calls([call(time_us=1, index=0), call(time_us=2, index=1)])
-            planner_input.assert_has_calls([call(simulation_iteration="iter_1", simulation_history_buffer="hb_1")])
+            planner_input.assert_has_calls(
+                [
+                    call(
+                        simulation_iteration="iter_1",
+                        simulation_history_buffer="hb_1",
+                        traffic_light_data=[[], mock_proto_tl_status_data.return_value],
+                    )
+                ]
+            )
 
             multi_planner_input.assert_called_once_with(planner_inputs=[planner_input.return_value])
-            mock_stub.ComputeTrajectory.assert_called_once_with(multi_planner_input.return_value)
+            mock_stub.ComputeTrajectory.assert_called_once_with(multi_planner_input.return_value, timeout=1)
 
     @patch("pickle.dumps")
     def test_get_history_update(self, mock_dumps: Mock) -> None:
@@ -177,7 +195,7 @@ class TestRemotePlanner(TestCase):
         # Check that with cache only the last states are serialized
         self.planner.serialized_states = serialized_states
         self.planner.serialized_observations = serialized_observations
-        self.planner.sample_interval = sample_interval
+        self.planner.sample_intervals = sample_interval
         _, _, _ = self.planner._get_history_update(planner_input)
         calls = calls + [call(6), call(7)]
         mock_dumps.assert_has_calls(calls)

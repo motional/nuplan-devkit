@@ -48,3 +48,11 @@ py_library(
         "//nuplan/planning/training/preprocessing:feature_collate",
     ],
 )
+
+py_library(
+    name = "stepwise_augmentation_scheduler",
+    srcs = ["stepwise_augmentation_scheduler.py"],
+    deps = [
+        "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",
+    ],
+)

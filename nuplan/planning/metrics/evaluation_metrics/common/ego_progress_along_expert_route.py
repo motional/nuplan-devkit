@@ -162,14 +162,17 @@ class PerFrameProgressAlongRouteComputer:
 class EgoProgressAlongExpertRouteStatistics(MetricBase):
     """Ego progress along the expert route metric."""
 
-    def __init__(self, name: str, category: str, score_progress_threshold: float = 2) -> None:
+    def __init__(
+        self, name: str, category: str, score_progress_threshold: float = 2, metric_score_unit: Optional[str] = None
+    ) -> None:
         """
         Initializes the EgoProgressAlongExpertRouteStatistics class
         :param name: Metric name
         :param category: Metric category
         :param score_progress_threshold: Progress distance threshold for the score.
+        :param metric_score_unit: Metric final score unit.
         """
-        super().__init__(name=name, category=category)
+        super().__init__(name=name, category=category, metric_score_unit=metric_score_unit)
         self._score_progress_threshold = score_progress_threshold
 
         # Store results to re-use in high level metrics
@@ -277,7 +280,10 @@ class EgoProgressAlongExpertRouteStatistics(MetricBase):
             ]
             # Find results and save to re-use in high level metrics
             self.results = self._construct_metric_results(
-                metric_statistics=statistics, scenario=scenario, time_series=time_series
+                metric_statistics=statistics,
+                scenario=scenario,
+                time_series=time_series,
+                metric_score_unit=self.metric_score_unit,
             )
 
         return self.results

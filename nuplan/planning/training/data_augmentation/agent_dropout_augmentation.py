@@ -4,6 +4,7 @@ import numpy as np
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
+from nuplan.planning.training.data_augmentation.data_augmentation_util import ParameterToScale, ScalingDirection
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
@@ -43,3 +44,12 @@ class AgentDropoutAugmentor(AbstractAugmentor):
     def required_targets(self) -> List[str]:
         """Inherited, see superclass."""
         return []
+
+    @property
+    def augmentation_probability(self) -> ParameterToScale:
+        """Inherited, see superclass."""
+        return ParameterToScale(
+            param=self._augment_prob,
+            param_name=f'{self._augment_prob=}'.partition('=')[0].split('.')[1],
+            scaling_direction=ScalingDirection.MAX,
+        )

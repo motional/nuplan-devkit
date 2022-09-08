@@ -1,18 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
   <div class="tab-content" id="overview" style="display:block">
-      <table class="overview-table-section" id="overview-table-section">
-          <tr>
-              <th class="section-table-title"> Metric Aggregator</th>
-          </tr>
-          <tr class="planner-search-row">
-              <td>{{ embed(roots.overview_planner_checkbox_group) }}</td>
-          </tr>
-          <tr class="overview-table-row">
-              <td>
-                  {{ embed(roots.overview_table) }}
-              </td>
-          </tr>
-      </table>
+      <div class="overview-section" id="overview-section">
+        <div class="col-lg-12 col-extend-height">
+            <div class="panel panel-primary dropzone panel-extend-height">
+                <div class="panel-heading clearfix">
+                    <div class="btn-group pull-left">
+                        <div class="title pull-left h5">
+                            Overview &nbsp;
+                        </div>
+                    </div>
+                </div>
+                <div class="planner-search-row">
+                    {{ embed(roots.overview_planner_checkbox_group) }}
+                </div>
+                <div class="panel-body panel-body-extend-height">
+                    <div class="table table-hover table-striped overview-table-row" style="width:100%">
+                        {{ embed(roots.overview_table) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
   </div>
 </html>

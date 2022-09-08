@@ -24,6 +24,10 @@ class MockResponse:
         """
         return self.data
 
+    def raise_for_status(self) -> None:
+        """Mock response."""
+        pass
+
 
 def mocked_put_request(**kwargs: Dict[str, Any]) -> MockResponse:
     """Mocks a PUT request that returns the given payload."""

@@ -83,7 +83,7 @@ class AbstractMap(abc.ABC):
         Returns one map objects on a semantic layer that contains the given point x, y.
         :param point: [m] x, y coordinates in global frame.
         :param layer: A semantic layer to query.
-        :return: list of map objects.
+        :return: one map object if there is one map object else None if no map objects.
         @raise AssertionError if more than one object is found
         """
         pass
@@ -95,6 +95,7 @@ class AbstractMap(abc.ABC):
         :param point: [m] x, y coordinates in global frame.
         :param layer: A semantic layer to query.
         :return: True if [x, y] is in a layer, False if it is not.
+        @raise ValueError if layer does not exist
         """
         pass
 
@@ -112,12 +113,12 @@ class AbstractMap(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_map_object(self, object_id: str, layer: SemanticMapLayer) -> MapObject:
+    def get_map_object(self, object_id: str, layer: SemanticMapLayer) -> Optional[MapObject]:
         """
-        Gets the lane with the given lane id.
-        :param object_id: desired unique id of a lane that should be extracted.
+        Gets the map object with the given object id.
+        :param object_id: desired unique id of a map object that should be extracted.
         :param layer: A semantic layer to query.
-        :return: a map object.
+        :return: a map object if object corresponding to object_id exists else None.
         """
         pass
 
@@ -132,6 +133,18 @@ class AbstractMap(abc.ABC):
         :param layer: A semantic layer to query.
         :return: The surface ID and the distance to the surface if there is one. If there isn't, then -1 and np.NaN will
             be returned for the surface ID and distance to the surface respectively.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_distance_to_nearest_raster_layer(self, point: Point2D, layer: SemanticMapLayer) -> float:
+        """
+        Gets the distance (in meters) to the nearest raster layer; that distance is the L1 norm from the point to
+        the closest location on the surface.
+        :param point: [m] x, y coordinates in global frame.
+        :param layer: A semantic layer to query.
+        :return: he distance to the surface if available, else None if the associated spatial map query failed.
+        @raise ValueError if layer does not exist
         """
         pass
 

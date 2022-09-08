@@ -1,0 +1,15 @@
+time_to_collision_within_bound_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.time_to_collision_within_bound.TimeToCollisionStatistics
+  _convert_: 'all'
+  name: 'time_to_collision_within_bound'
+  category: 'Planning'
+  metric_score_unit: 'bool'
+
+  time_step_size: 0.1
+  time_horizon: 5.0
+  least_min_ttc: 0.95
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    ego_lane_change_metric: ego_lane_change_statistics
+    no_ego_at_fault_collisions_metric: no_ego_at_fault_collisions_statistics

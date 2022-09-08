@@ -1,0 +1,8 @@
+stepwise_augmentation_attribute_scheduler:
+  _target_: nuplan.planning.training.callbacks.stepwise_augmentation_scheduler.StepwiseAugmentationAttributeScheduler
+  _convert_: 'all'
+
+  pct_time_increasing: 0.8  # Percentage of the training time spent increasing augmentation probability
+  scheduling_strategy: linear  # Scheduling strategy for augmentation probability. Possible values [linear, milestones]
+  milestones: null   # List of milestones to be used if scheduling strategy is milestones. Eg [0.0, 0.5, 1.0] means that augmentation probability will increase at the 0%, 50% and 100% mark of training.
+  max_aug_attribute_pct_increase: 0.2  # Percentage increase in the augmentation attribute when training is completed.

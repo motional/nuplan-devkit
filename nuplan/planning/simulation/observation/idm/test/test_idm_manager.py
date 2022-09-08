@@ -38,6 +38,7 @@ def test_idm_manager(scene: Dict[str, Any]) -> None:
             iteration=0,
             traffic_light_status=traffic_light_status,
             open_loop_detections=[],
+            radius=100,
         )
 
     # Check that there is no collision at the end of simulation

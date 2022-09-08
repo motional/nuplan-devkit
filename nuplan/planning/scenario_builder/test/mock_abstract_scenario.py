@@ -91,6 +91,10 @@ class MockAbstractMap(AbstractMap):
         """Implemented. See interface."""
         raise NotImplementedError
 
+    def get_distance_to_nearest_raster_layer(self, point: Point2D, layer: SemanticMapLayer) -> float:
+        """Implemented. See interface."""
+        raise NotImplementedError
+
     def get_distances_matrix_to_nearest_map_object(
         self, points: List[Point2D], layer: SemanticMapLayer
     ) -> Optional[npt.NDArray[np.float64]]:

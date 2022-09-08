@@ -20,6 +20,9 @@ py_library(
 py_library(
     name = "runner_report",
     srcs = ["runner_report.py"],
+    deps = [
+        "//nuplan/planning/simulation/planner:abstract_planner",
+    ],
 )
 
 py_library(

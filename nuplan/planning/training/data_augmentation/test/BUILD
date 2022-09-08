@@ -46,6 +46,7 @@ py_test(
     srcs = ["test_agent_dropout_augmentation.py"],
     deps = [
         "//nuplan/planning/training/data_augmentation:agent_dropout_augmentation",
+        "//nuplan/planning/training/data_augmentation:data_augmentation_util",
         "//nuplan/planning/training/preprocessing/features:agents",
         "//nuplan/planning/training/preprocessing/features:trajectory",
     ],

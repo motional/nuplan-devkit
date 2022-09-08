@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -50,6 +50,9 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
 
         if len(expert_egos):
             scenario.get_expert_ego_trajectory = lambda: expert_egos
+            scenario.get_ego_future_trajectory = lambda iteration, time_horizon, num_samples: expert_egos[
+                iteration : iteration + time_horizon + 1 : time_horizon // num_samples
+            ][1 : num_samples + 1]
 
     # Load map
     map_name = scene['map']['area']
@@ -108,6 +111,10 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
         ego_states.append(ego_state)
         observations.append(DetectionsTracks(future_tracked_objects))
 
+    # Update the default Mock scenario duration and end_time based on the number of ego_states in the scene
+    if ego_states:
+        scenario.get_number_of_iterations = lambda: len(ego_states)
+
     # Add simulation iterations and trajectory for each iteration
     simulation_iterations = []
     trajectories = []
@@ -125,7 +132,7 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
             iteration=SimulationIteration(ego_states[index].time_point, 0), history=history_buffer
         )
         planner = SimplePlanner(horizon_seconds=10.0, sampling_time=1, acceleration=[0.0, 0.0])
-        trajectories.append(planner.compute_trajectory([planner_input])[0])
+        trajectories.append(planner.compute_single_trajectory(planner_input))
 
     # Create simulation histories
     history = SimulationHistory(map_api, scenario.get_mission_goal())
@@ -154,7 +161,19 @@ def build_mock_history_scenario_test(scene: Dict[str, Any]) -> Tuple[SimulationH
     goal_pose = None
     if 'goal' in scene and 'pose' in scene['goal'] and scene['goal']['pose']:
         goal_pose = StateSE2(x=scene['goal']['pose'][0], y=scene['goal']['pose'][1], heading=scene['goal']['pose'][2])
-    mock_abstract_scenario = MockAbstractScenario()
+    # Set the initial timepoint and time_step from the scene
+    if (
+        'ego' in scene
+        and 'time_us' in scene['ego']
+        and 'ego_future_states' in scene
+        and scene['ego_future_states']
+        and 'time_us' in scene['ego_future_states'][0]
+    ):
+        initial_time_us = TimePoint(time_us=scene['ego']['time_us'])
+        time_step = (scene['ego_future_states'][0]['time_us'] - scene['ego']['time_us']) * 1e-6
+        mock_abstract_scenario = MockAbstractScenario(initial_time_us=initial_time_us, time_step=time_step)
+    else:
+        mock_abstract_scenario = MockAbstractScenario()
     if goal_pose is not None:
         mock_abstract_scenario.get_mission_goal = lambda: goal_pose
     history = setup_history(scene, mock_abstract_scenario)
@@ -162,14 +181,22 @@ def build_mock_history_scenario_test(scene: Dict[str, Any]) -> Tuple[SimulationH
     return history, mock_abstract_scenario
 
 
-def metric_statistic_test(scene: Dict[str, Any], metric: AbstractMetricBuilder) -> MetricStatistics:
+def metric_statistic_test(
+    scene: Dict[str, Any],
+    metric: AbstractMetricBuilder,
+    history: Optional[SimulationHistory] = None,
+    mock_abstract_scenario: Optional[MockAbstractScenario] = None,
+) -> MetricStatistics:
     """
     A common template to test metric statistics.
     :param scene: A json format to represent a scene.
     :param metric: An evaluation metric.
+    :param history: A SimulationHistory history.
+    :param mock_abstract_scenario: A scenario.
     :return Metric statistics.
     """
-    history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
+    if not history or not mock_abstract_scenario:
+        history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
     metric_results = metric.compute(history, mock_abstract_scenario)
     expected_statistics_list = scene['expected']
     if not isinstance(expected_statistics_list, list):

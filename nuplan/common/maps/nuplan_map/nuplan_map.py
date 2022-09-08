@@ -164,7 +164,7 @@ class NuPlanMap(AbstractMap):
 
         return object_map
 
-    def get_map_object(self, object_id: str, layer: SemanticMapLayer) -> MapObject:
+    def get_map_object(self, object_id: str, layer: SemanticMapLayer) -> Optional[MapObject]:
         """Inherited, see superclass."""
         try:
             if object_id not in self._map_objects[layer]:
@@ -199,6 +199,10 @@ class NuPlanMap(AbstractMap):
             nearest_surface_distance = None
 
         return nearest_surface_id, nearest_surface_distance
+
+    def get_distance_to_nearest_raster_layer(self, point: Point2D, layer: SemanticMapLayer) -> float:
+        """Inherited from superclass"""
+        raise NotImplementedError
 
     def get_distances_matrix_to_nearest_map_object(
         self, points: List[Point2D], layer: SemanticMapLayer
@@ -316,7 +320,7 @@ class NuPlanMap(AbstractMap):
         :return: A list of map objects.
         """
         layer_df = self._get_vector_map_layer(layer)
-        map_object_ids = layer_df[layer_df['geometry'].intersects(patch)]["fid"]
+        map_object_ids = layer_df[layer_df['geometry'].intersects(patch)]['fid']
 
         return [self.get_map_object(map_object_id, layer) for map_object_id in map_object_ids]
 
@@ -335,6 +339,7 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.BOUNDARIES),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
                 self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
+                self,
             )
             if int(lane_id) in self._get_vector_map_layer(SemanticMapLayer.LANE)["lane_fid"].tolist()
             else None
@@ -355,6 +360,7 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.BOUNDARIES),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
                 self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
+                self,
             )
             if lane_connector_id in self._get_vector_map_layer(SemanticMapLayer.LANE_CONNECTOR)["fid"].tolist()
             else None
@@ -377,6 +383,7 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
                 self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
+                self,
             )
             if roadblock_id in self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK)["fid"].tolist()
             else None
@@ -399,6 +406,7 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
                 self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
+                self,
             )
             if roadblock_connector_id
             in self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR)["fid"].tolist()

@@ -46,9 +46,7 @@ class TestDetectionTracksChallengeServicer(TestCase):
         self.servicer.InitializePlanner(mock_input, mock_context)
 
         calls = [
-            call(initialization_1.expert_goal_state),
             call(initialization_1.mission_goal),
-            call(initialization_2.expert_goal_state),
             call(initialization_2.mission_goal),
         ]
         mock_s2_conversion.assert_has_calls(calls)
@@ -117,7 +115,7 @@ class TestDetectionTracksChallengeServicer(TestCase):
 
         with patch.object(self.servicer, '_extract_simulation_iteration', autospec=True) as extract_iteration:
             # Function call
-            result = self.servicer._build_planner_input(mock_message, buffer)
+            result = self.servicer._build_planner_input(mock_message, buffer, 0)
 
             # Post call checks
             extract_iteration.assert_called_with(mock_message)
@@ -142,7 +140,8 @@ class TestDetectionTracksChallengeServicer(TestCase):
 
         with patch.object(self.servicer, '_extract_simulation_iteration', autospec=True):
             # Function call
-            result = self.servicer._build_planner_input(mock_message, None)
+            self.servicer.simulation_history_buffers = [mock_serialized_buffer]
+            result = self.servicer._build_planner_input(mock_message, None, 0)
 
             # Post call checks
             buffer.initialize_from_list.assert_called_once_with(
@@ -155,7 +154,7 @@ class TestDetectionTracksChallengeServicer(TestCase):
         """Tests that planner inputs are correctly built in batch"""
         planner_inputs = [1, 2]
         self.servicer.simulation_history_buffers = ["buffer_1", "buffer_2"]
-        calls = [call(1, "buffer_1"), call(2, "buffer_2")]
+        calls = [call(1, "buffer_1", 0), call(2, "buffer_2", 1)]
         with patch.object(self.servicer, '_build_planner_input', autospec=True) as build_planner_input:
             build_planner_input.side_effect = ["planner_input_1", "planner_input_2"]
 

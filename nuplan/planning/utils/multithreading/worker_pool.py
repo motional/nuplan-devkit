@@ -114,11 +114,10 @@ class WorkerPool(abc.ABC):
 
         if verbose:
             logger.info(f'Submitting {max_size} tasks!')
-
-        return self._map(task, *aligned_item_lists)
+        return self._map(task, *aligned_item_lists, verbose=verbose)
 
     @abc.abstractmethod
-    def _map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
+    def _map(self, task: Task, *item_lists: Iterable[List[Any]], verbose: bool = False) -> List[Any]:
         """
         Run function with arguments from item_lists. This function can assume that all the args in item_lists have
         the same number of elements.

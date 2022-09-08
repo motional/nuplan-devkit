@@ -14,12 +14,12 @@ py_library(
 )
 
 py_test(
-    name = "test_drivable_area_violation",
-    srcs = ["test_drivable_area_violation.py"],
+    name = "test_drivable_area_compliance",
+    srcs = ["test_drivable_area_compliance.py"],
     data = [":test_json"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_compliance",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
@@ -131,26 +131,26 @@ py_test(
 )
 
 py_test(
-    name = "test_speed_limit_violation",
-    srcs = ["test_speed_limit_violation.py"],
+    name = "test_speed_limit_compliance",
+    srcs = ["test_speed_limit_compliance.py"],
     data = [":test_json"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/evaluation_metrics/common:speed_limit_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:speed_limit_compliance",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
 
 py_test(
-    name = "test_time_to_collision",
-    srcs = ["test_time_to_collision.py"],
+    name = "test_time_to_collision_within_bound",
+    srcs = ["test_time_to_collision_within_bound.py"],
     data = [":test_json"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
-        "//nuplan/planning/metrics/evaluation_metrics/common:time_to_collision",
+        "//nuplan/planning/metrics/evaluation_metrics/common:no_ego_at_fault_collisions",
+        "//nuplan/planning/metrics/evaluation_metrics/common:time_to_collision_within_bound",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
@@ -219,16 +219,16 @@ py_test(
 )
 
 py_test(
-    name = "test_ego_at_fault_collisions",
-    srcs = ["test_ego_at_fault_collisions.py"],
+    name = "test_no_ego_at_fault_collisions",
+    srcs = ["test_no_ego_at_fault_collisions.py"],
     data = [
         ":test_json",
     ],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics:metric_result",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/evaluation_metrics/common:no_ego_at_fault_collisions",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
@@ -248,81 +248,81 @@ py_test(
 )
 
 py_test(
-    name = "test_planner_expert_average_l2_error",
-    srcs = ["test_planner_expert_average_l2_error.py"],
+    name = "test_planner_expert_average_l2_error_within_bound",
+    srcs = ["test_planner_expert_average_l2_error_within_bound.py"],
     data = [
         ":test_json",
     ],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
 
 py_test(
-    name = "test_planner_expert_final_l2_error",
-    srcs = ["test_planner_expert_final_l2_error.py"],
+    name = "test_planner_expert_final_l2_error_within_bound",
+    srcs = ["test_planner_expert_final_l2_error_within_bound.py"],
     data = [
         ":test_json",
     ],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_final_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_final_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
 
 py_test(
-    name = "test_planner_miss_rate",
-    srcs = ["test_planner_miss_rate.py"],
+    name = "test_planner_miss_rate_within_bound",
+    srcs = ["test_planner_miss_rate_within_bound.py"],
     data = [
         ":test_json",
     ],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_miss_rate",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_miss_rate_within_bound",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
 
 py_test(
-    name = "test_planner_expert_average_heading_error",
-    srcs = ["test_planner_expert_average_heading_error.py"],
+    name = "test_planner_expert_average_heading_error_within_bound",
+    srcs = ["test_planner_expert_average_heading_error_within_bound.py"],
     data = [
         ":test_json",
     ],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_heading_error",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_heading_error_within_bound",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
 
 py_test(
-    name = "test_planner_expert_final_heading_error",
-    srcs = ["test_planner_expert_final_heading_error.py"],
+    name = "test_planner_expert_final_heading_error_within_bound",
+    srcs = ["test_planner_expert_final_heading_error_within_bound.py"],
     data = [
         ":test_json",
     ],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_final_heading_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_final_heading_error_within_bound",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],
 )
 
 py_test(
-    name = "test_driving_direction_violation",
-    srcs = ["test_driving_direction_violation.py"],
+    name = "test_driving_direction_compliance",
+    srcs = ["test_driving_direction_compliance.py"],
     data = [":test_json"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/planning/metrics/evaluation_metrics/common:driving_direction_violation",
+        "//nuplan/planning/metrics/evaluation_metrics/common:driving_direction_compliance",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
         "//nuplan/planning/metrics/utils:testing_utils",
     ],

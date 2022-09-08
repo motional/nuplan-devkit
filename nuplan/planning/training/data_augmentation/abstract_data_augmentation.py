@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.training.data_augmentation.data_augmentation_util import ParameterToScale
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
@@ -52,3 +53,20 @@ class AbstractAugmentor(ABC):
     def required_targets(self) -> List[str]:
         """List of required targets by the augmentor."""
         pass
+
+    @property
+    @abstractmethod
+    def augmentation_probability(self) -> ParameterToScale:
+        """
+        Augmentation probability
+        :return: Augmentation probability of the augmentor.
+        """
+        pass
+
+    @property
+    def get_schedulable_attributes(self) -> List[ParameterToScale]:
+        """
+        Gets attributes to be modified by augmentation scheduler callback.
+        :return: Attributes to be modified by augmentation scheduler callback.
+        """
+        return []

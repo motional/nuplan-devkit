@@ -11,6 +11,7 @@ py_library(
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/planner:planner_report",
         "//nuplan/planning/simulation/planner/ml_planner:model_loader",
         "//nuplan/planning/simulation/planner/ml_planner:transform_utils",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",

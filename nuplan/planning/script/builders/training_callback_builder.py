@@ -20,10 +20,19 @@ def build_callbacks(cfg: DictConfig) -> List[pl.Callback]:
 
     instantiated_callbacks = []
 
-    for callback_type in cfg.values():
+    for callback_type in cfg.callbacks.values():
         callback: pl.Callback = instantiate(callback_type)
         validate_type(callback, pl.Callback)
         instantiated_callbacks.append(callback)
+
+    # Instantiate augmentation scheduler
+    if 'data_augmentation_scheduler' in cfg:
+        instantiated_callbacks.extend(
+            [instantiate(scheduler) for scheduler in cfg.data_augmentation_scheduler.values()]
+        )
+
+    if cfg.lightning.trainer.params.gpus:
+        instantiated_callbacks.append(pl.callbacks.GPUStatsMonitor(intra_step_time=True, inter_step_time=True))
 
     logger.info('Building callbacks...DONE!')
 

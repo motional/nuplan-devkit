@@ -31,6 +31,7 @@ class EgoIsComfortableStatistics(MetricBase):
         ego_lon_jerk_metric: EgoLonJerkStatistics,
         ego_yaw_acceleration_metric: EgoYawAccelerationStatistics,
         ego_yaw_rate_metric: EgoYawRateStatistics,
+        metric_score_unit: Optional[str] = None,
     ) -> None:
         """
         Initializes the EgoIsComfortableStatistics class
@@ -42,8 +43,9 @@ class EgoIsComfortableStatistics(MetricBase):
         :param ego_lon_jerk_metric: Ego lon jerk metric
         :param ego_yaw_acceleration_metric: Ego yaw acceleration metric
         :param ego_yaw_rate_metric: Ego yaw rate metric.
+        :param metric_score_unit: Metric final score unit.
         """
-        super().__init__(name=name, category=category)
+        super().__init__(name=name, category=category, metric_score_unit=metric_score_unit)
         self._comfortability_metrics = [
             ego_jerk_metric,
             ego_lat_acceleration_metric,
@@ -92,6 +94,6 @@ class EgoIsComfortableStatistics(MetricBase):
         ]
 
         results: List[MetricStatistics] = self._construct_metric_results(
-            metric_statistics=statistics, time_series=None, scenario=scenario
+            metric_statistics=statistics, time_series=None, scenario=scenario, metric_score_unit=self.metric_score_unit
         )
         return results

@@ -10,10 +10,10 @@ defaults:
       - ego_yaw_rate_statistics
       - ego_progress_along_expert_route_statistics
   - high_level:  # High level metrics that depend on low level metrics, they can also rely on the previously called high level metrics
-      - drivable_area_violation_statistics
-      - ego_at_fault_collisions_statistics
-      - time_to_collision_statistics
-      - speed_limit_violation_statistics
+      - drivable_area_compliance_statistics
+      - no_ego_at_fault_collisions_statistics
+      - time_to_collision_within_bound_statistics
+      - speed_limit_compliance_statistics
       - ego_is_comfortable_statistics
       - ego_is_making_progress_statistics
-      - driving_direction_violation_statistics
+      - driving_direction_compliance_statistics

@@ -14,6 +14,7 @@ from tornado.web import StaticFileHandler
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
+from nuplan.planning.nuboard.tabs.cloud_tab import CloudTab
 from nuplan.planning.nuboard.tabs.configuration_tab import ConfigurationTab
 from nuplan.planning.nuboard.tabs.histogram_tab import HistogramTab
 from nuplan.planning.nuboard.tabs.overview_tab import OverviewTab
@@ -120,9 +121,21 @@ class NuBoard:
         configuration_tab = ConfigurationTab(
             experiment_file_data=experiment_file_data, doc=self._doc, tabs=[overview_tab, histogram_tab, scenario_tab]
         )
+        s3_tab = CloudTab(doc=self._doc, configuration_tab=configuration_tab)
 
         self._doc.add_root(configuration_tab.file_path_input)
         self._doc.add_root(configuration_tab.experiment_file_path_checkbox_group)
+
+        self._doc.add_root(s3_tab.s3_bucket_name)
+        self._doc.add_root(s3_tab.s3_bucket_text_input)
+        self._doc.add_root(s3_tab.s3_error_text)
+        self._doc.add_root(s3_tab.s3_access_key_id_text_input)
+        self._doc.add_root(s3_tab.s3_secret_access_key_password_input)
+        self._doc.add_root(s3_tab.s3_bucket_prefix_text_input)
+        self._doc.add_root(s3_tab.s3_modal_query_btn)
+        self._doc.add_root(s3_tab.s3_download_text_input)
+        self._doc.add_root(s3_tab.s3_download_button)
+        self._doc.add_root(s3_tab.data_table)
 
         self._doc.add_root(overview_tab.table)
         self._doc.add_root(overview_tab.planner_checkbox_group)
@@ -132,14 +145,18 @@ class NuBoard:
         self._doc.add_root(histogram_tab.planner_checkbox_group)
         self._doc.add_root(histogram_tab.histogram_plots)
         self._doc.add_root(histogram_tab.bin_spinner)
+        self._doc.add_root(histogram_tab.histogram_modal_query_btn)
 
         self._doc.add_root(scenario_tab.planner_checkbox_group)
+        self._doc.add_root(scenario_tab.scenario_title_div)
         self._doc.add_root(scenario_tab.object_checkbox_group)
         self._doc.add_root(scenario_tab.traj_checkbox_group)
         self._doc.add_root(scenario_tab.map_checkbox_group)
         self._doc.add_root(scenario_tab.scalar_scenario_type_select)
         self._doc.add_root(scenario_tab.scalar_log_name_select)
         self._doc.add_root(scenario_tab.scalar_scenario_name_select)
+        self._doc.add_root(scenario_tab.scenario_token_multi_choice)
+        self._doc.add_root(scenario_tab.scenario_modal_query_btn)
         self._doc.add_root(scenario_tab.time_series_layout)
         self._doc.add_root(scenario_tab.ego_expert_states_layout)
         self._doc.add_root(scenario_tab.scenario_score_layout)

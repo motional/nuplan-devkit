@@ -95,10 +95,11 @@ class ScenarioMapping:
         )
 
 
-def download_file_if_necessary(data_root: str, potentially_remote_path: str) -> str:
+def download_file_if_necessary(data_root: str, potentially_remote_path: str, verbose: bool = False) -> str:
     """
     Downloads the db file if necessary.
     :param potentially_remote_path: The path from which to download the file.
+    :param verbose: Verbosity level.
     :return: The local path for the file.
     """
     # If the file path is a local directory and exists, then return that.
@@ -113,7 +114,7 @@ def download_file_if_necessary(data_root: str, potentially_remote_path: str) -> 
     # Behavior seems to be different on our cluster vs locally regarding downloaded file paths.
     #
     # Use the underlying stores manually.
-    blob_store = BlobStoreCreator.create_nuplandb(data_root)
+    blob_store = BlobStoreCreator.create_nuplandb(data_root, verbose=verbose)
     local_store = LocalStore(data_root)
 
     # Only trigger the download if we have not already acquired the file.

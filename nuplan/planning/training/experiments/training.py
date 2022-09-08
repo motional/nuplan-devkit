@@ -56,7 +56,7 @@ def build_training_engine(cfg: DictConfig, worker: WorkerPool) -> TrainingEngine
     datamodule = build_lightning_datamodule(cfg, worker, torch_module_wrapper)
 
     if cfg.lightning.trainer.params.accelerator == 'ddp':  # Update the learning rate parameters to suit ddp
-        cfg = scale_cfg_for_distributed_training(cfg, datamodule=datamodule)
+        cfg = scale_cfg_for_distributed_training(cfg, datamodule=datamodule, worker=worker)
     else:
         logger.info(
             f'Updating configs based on {cfg.lightning.trainer.params.accelerator} strategy is currently not supported. Optimizer and LR Scheduler configs will not be updated.'

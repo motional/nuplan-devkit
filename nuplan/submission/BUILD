@@ -77,12 +77,5 @@ py_library(
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/planning/simulation/planner:abstract_planner",
-        "//nuplan/planning/simulation/planner:simple_planner",
     ],
-)
-
-py_library(
-    name = "utils",
-    srcs = ["utils.py"],
-    deps = [],
 )

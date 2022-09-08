@@ -142,8 +142,9 @@ class RayDistributed(WorkerPool):
         """
         ray.shutdown()
 
-    def _map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
+    def _map(self, task: Task, *item_lists: Iterable[List[Any]], verbose: bool = False) -> List[Any]:
         """Inherited, see superclass."""
+        del verbose
         return ray_map(task, *item_lists, log_dir=self._log_dir)  # type: ignore
 
     def submit(self, task: Task, *args: Any, **kwargs: Any) -> Future[Any]:

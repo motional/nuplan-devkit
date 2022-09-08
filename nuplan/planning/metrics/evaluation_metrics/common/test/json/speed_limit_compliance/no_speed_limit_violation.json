@@ -1,0 +1,45 @@
+{
+    "camera": {
+        "bearing": 0.5345000000000002,
+        "lookat": [
+            664751.662199684,
+            3999461.989363281,
+            -2.0085689660475055
+        ],
+        "pitch": 1.6,
+        "scale": 821598.6255879829
+    },
+    "ego": {
+        "acceleration": [0.0, 0.0],
+        "pose": [
+            664751.662199684,
+            3999461.989363281,
+            -2.0085689660475055
+        ],
+        "velocity": [10.0, 0.0],
+        "time_us": 1000000
+    },
+    "ego_future_states": [],
+    "goal": {
+        "pose": []
+    },
+    "expected": {
+        "statistics": [
+            ["BOOLEAN", true]
+        ],
+        "time_series": {}
+    },
+    "map": {
+        "area": "us-nv-las-vegas-strip"
+    },
+    "markers": [],
+    "meta": {
+        "version": "3.0.0"
+    },
+    "world": {
+        "bicycles": [],
+        "pedestrians": [],
+        "vehicles": []
+    },
+    "world_future_states": []
+}

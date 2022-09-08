@@ -29,7 +29,7 @@ py_library(
     deps = [
         ":base_submission_validator",
         "//nuplan/submission:submission_container",
-        "//nuplan/submission:utils",
+        "//nuplan/submission/utils",
     ],
 )
 
@@ -45,6 +45,6 @@ py_library(
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/submission:submission_container_factory",
         "//nuplan/submission:submission_container_manager",
-        "//nuplan/submission:utils",
+        "//nuplan/submission/utils",
     ],
 )

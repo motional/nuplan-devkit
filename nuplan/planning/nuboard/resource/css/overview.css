@@ -1,0 +1,77 @@
+.overview-table {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+  box-sizing: border-box !important;
+}
+
+.overview-table .slick-cell {
+  border-right: 1px solid #ddd;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  white-space: normal;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.overview-table .slick-row {
+  border-left: 1px solid #ddd !important;
+  border-bottom: 1px solid #ddd !important;
+  box-sizing: border-box !important;
+}
+
+.overview-table .slick-pane-header {
+  height: 30px;
+  border-top: 1px solid #ddd;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.overview-table .slick-pane-top {
+  border-top: 3px solid #ddd;
+}
+
+.overview-table .slick-header-column {
+  height: 30px !important;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  white-space: normal;
+  font-size: 12px;
+  font-weight: bold;
+  box-sizing: border-box !important;
+}
+
+.overview-section {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #f0f0f0;
+  height: 95%;
+}
+
+.overview-section .planner-search-row {
+  text-align: right;
+  padding: 5px 24px;
+  height: 30px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.overview-section .overview-table-row {
+  margin-top: 10px;
+  height: 95%;
+}
+
+.overview-section .overview-table-row .bk-root {
+  height: 100%;
+}
+
+#overview-loading {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  visibility: hidden;
+}

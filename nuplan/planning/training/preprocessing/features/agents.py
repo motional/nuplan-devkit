@@ -64,6 +64,10 @@ class Agents(AbstractModelFeature):
                 f"expected 3 [num_frames, num_agents, 8]"
             )
 
+        for i in range(len(self.ego)):
+            if int(self.ego[i].shape[0]) != self.num_frames or int(self.agents[i].shape[0]) != self.num_frames:
+                raise AssertionError("Agent feature samples have different number of frames!")
+
     @cached_property
     def is_valid(self) -> bool:
         """Inherited, see superclass."""
@@ -76,7 +80,6 @@ class Agents(AbstractModelFeature):
             and len(self.ego[0]) == len(self.agents[0]) > 0
             and self.ego[0].shape[-1] == self.ego_state_dim()
             and self.agents[0].shape[-1] == self.agents_states_dim()
-            and all(agents.shape[-2] > 0 for agents in self.agents)  # all batches have positive number of agents
         )
 
     @property
@@ -141,7 +144,7 @@ class Agents(AbstractModelFeature):
         """
         :return: number of frames.
         """
-        return int(self.agents[0].shape[0])
+        return int(self.ego[0].shape[0])
 
     @property
     def ego_feature_dim(self) -> int:
@@ -173,6 +176,19 @@ class Agents(AbstractModelFeature):
         :param sample_idx: the sample index of interest
         :return: <FeatureDataType: num_agents, num_frames x 8>] agent feature
         """
+        if self.num_agents_in_sample(sample_idx) == 0:
+            if isinstance(self.ego[sample_idx], torch.Tensor):
+                return torch.empty(
+                    (0, self.num_frames * AgentFeatureIndex.dim()),
+                    dtype=self.ego[sample_idx].dtype,
+                    device=self.ego[sample_idx].device,
+                )
+            else:
+                return np.empty(
+                    (0, self.num_frames * AgentFeatureIndex.dim()),
+                    dtype=self.ego[sample_idx].dtype,
+                )
+
         data = self.agents[sample_idx]
         axes = (1, 0) if isinstance(data, torch.Tensor) else (1, 0, 2)
         return data.transpose(*axes).reshape(data.shape[1], -1)

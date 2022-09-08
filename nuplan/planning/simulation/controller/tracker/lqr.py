@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
+import scipy.interpolate as sp_interp
 import sympy as sym
 from control import StateSpace, ctrb, dlqr
 from sympy import Matrix, cos, sin, tan
@@ -141,9 +142,10 @@ class LQRTracker(AbstractTracker):
         )
 
         try:
-            next_state = trajectory.get_state_at_time(
-                current_iteration.time_point + TimePoint(int(look_ahead_seconds * 1e6))
-            )
+            sample_time = current_iteration.time_point + TimePoint(int(look_ahead_seconds * 1e6))
+            next_state = trajectory.get_state_at_time(sample_time)
+            reference_velocity = self._infer_refernce_velocity(trajectory, sample_time)
+
         except AssertionError as e:
             raise AssertionError("Lookahead time exceeds trajectory length!") from e
 
@@ -152,7 +154,7 @@ class LQRTracker(AbstractTracker):
                 next_state.rear_axle.x,
                 next_state.rear_axle.y,
                 next_state.rear_axle.heading,
-                next_state.dynamic_car_state.rear_axle_velocity_2d.x,
+                reference_velocity,
                 next_state.tire_steering_angle,
             ]
         )
@@ -167,6 +169,23 @@ class LQRTracker(AbstractTracker):
             rear_axle_acceleration_2d=StateVector2D(accel_cmd, 0),
             tire_steering_rate=steering_rate_cmd,
         )
+
+    @staticmethod
+    def _infer_refernce_velocity(trajectory: AbstractTrajectory, sample_time: TimePoint) -> float:
+        """
+        Calculates the reference velocity from the give pose trajectory.
+        :param trajectory: The reference trajectory to track.
+        :param sample_time: The time point to sample the trajectory.
+        :return: [m/s] The velocity reference.
+        """
+        sampled_ego_trajectory = trajectory.get_sampled_trajectory()
+        rear_axle_poses: npt.NDArray[np.int32] = np.array(
+            [[*sample.rear_axle.point] for sample in sampled_ego_trajectory]
+        )
+        time_point: npt.NDArray[np.int32] = np.array([sample.time_point.time_us for sample in sampled_ego_trajectory])
+        approx_vel = np.diff(rear_axle_poses.transpose()) / np.diff(time_point * 1e-6)
+        interp = sp_interp.interp1d(time_point[:-1], approx_vel, axis=1)
+        return float(np.hypot(*interp(sample_time.time_us)))
 
     def _compute_control_action(
         self,

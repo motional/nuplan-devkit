@@ -1,0 +1,14 @@
+# @package _global_
+experiment_name: remote_closed_loop_nonreactive_agents
+
+defaults:
+  - override /observation: box_observation
+  - override /ego_controller: two_stage_controller
+  - override /planner: simple_planner
+  - override /simulation_metric: simulation_closed_loop_nonreactive_agents
+  - override /main_callback:
+      - time_callback
+      - completion_callback
+      - publisher_callback
+  - override /scenario_builder: nuplan_challenge
+  - override /scenario_filter: nuplan_challenge_scenarios

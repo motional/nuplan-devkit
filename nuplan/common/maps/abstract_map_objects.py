@@ -137,6 +137,14 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
         pass
 
     @abc.abstractmethod
+    def parent(self) -> RoadBlockGraphEdgeMapObject:
+        """
+        Getter function for obtaining the parent RoadBlockGraphEdgeMapObject containing the LaneGraphEdgeMapObject.
+        :return: RoadblockBlockGraphEdgeMapObject containing the LaneGraphEdgeMapObject.
+        """
+        pass
+
+    @abc.abstractmethod
     def has_traffic_lights(self) -> bool:
         """
         Returns whether this graph edge is controlled by traffic lights.
@@ -155,23 +163,25 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
 
     def is_same_roadblock(self, other: Lane) -> bool:
         """
-        :param other: Lane to check if it is in the same roadblock as self
-        :return: True if lanes are in the same roadblock
+        :param other: Lane to check if it is in the same roadblock as self.
+        :return: True if lanes are in the same roadblock.
         """
         return self.get_roadblock_id() == other.get_roadblock_id()
 
-    def is_other_adjacent(self, other: Lane) -> bool:
+    def is_adjacent_to(self, other: Lane) -> bool:
         """
-        :param other: Lane to check if it is adjacent to self
-        :return: True if self and other are in the same roadblock and adjacent
+        :param other: Lane to check if it is adjacent to self.
+        :return: True if self and other are in the same roadblock and adjacent.
         """
-        return self.is_same_roadblock(other) and (self.is_left_of(other) or self.is_right_of(other))
+        return self.is_same_roadblock(other) and (
+            self.right_boundary.id == other.left_boundary.id or self.left_boundary.id == other.right_boundary.id
+        )
 
     def is_left_of(self, other: Lane) -> bool:
         """
-        :param other: Lane to check if self is left of
-        :return: True if self is left of other
-        :raise AssertionError: if lanes are not in the same RoadBlock
+        :param other: Lane to check if self is left of.
+        :return: True if self and other are in the same RoadBlock and self is anywhere to the left of other.
+        :raise AssertionError: if lanes are not in the same RoadBlock.
         """
         assert self.is_same_roadblock(other)
 
@@ -179,9 +189,9 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
 
     def is_right_of(self, other: Lane) -> bool:
         """
-        :param other: Lane to check if self is right of
-        :return: True if self is right of other
-        :raise AssertionError: if lanes are not in the same RoadBlock
+        :param other: Lane to check if self is right of.
+        :return: True if self and other are in the same RoadBlock and self is anywhere to the right of other.
+        :raise AssertionError: if lanes are not in the same RoadBlock.
         """
         assert self.is_same_roadblock(other)
 
@@ -191,8 +201,33 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
     @abc.abstractmethod
     def adjacent_edges(self) -> Tuple[Optional[LaneGraphEdgeMapObject], Optional[LaneGraphEdgeMapObject]]:
         """
-        Gets adjacent LaneGraphEdgeMapObjects
-        :return: Tuple of adjacent LaneGraphEdgeMapObjects where first element is the left lane and the second element is the right lane
+        Gets adjacent LaneGraphEdgeMapObjects.
+        :return: Tuple of adjacent LaneGraphEdgeMapObjects where first element is the left lane and the second element is the right lane.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_width_left_right(
+        self, point: Point2D, include_outside: bool = False
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Gets distance to left and right sides of the lane from point.
+        :param point: Point in global frame.
+        :param include_outside: Allow point to be outside of lane.
+        :return: The distance to left and right sides of the lane else None if point is outside lane and include_outside is False.
+            If point is outside the LaneGraphEdgeMapObject and cannot be projected onto the LaneGraphEdgeMapObject and
+            include_outside is True then the distance to the edge on the nearest end is returned.
+        """
+        pass
+
+    @abc.abstractmethod
+    def oriented_distance(self, point: Point2D) -> float:
+        """
+        Calculate the distance between the edge and a point with an oriented distance.
+        :param point: Point global frame.
+        :return: The distance between the edge and a point with an oriented distance. If the point is outside of the interval of
+            the LaneGraphEdgeMapObject then the L1 distance to the nearest end is returned. The distance is positive if the
+            point is on the left side of the line, while it is negative if the point is on the right side of the line.
         """
         pass
 
@@ -346,6 +381,24 @@ class RoadBlockGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
+    @property
+    @abc.abstractmethod
+    def children_stop_lines(self) -> List[StopLine]:
+        """
+        Returns StopLines within this RoadBlockGraphEdgeMapObject.
+        :return: a list of StopLines.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def parallel_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
+        """
+        Returns adjacent parallel RoadBlockGraphEdgeMapObjects.
+        :return: a list of parallel RoadBlockGraphEdgeMapObjects.
+        """
+        pass
+
 
 class StopLine(PolygonMapObject):
     """
@@ -361,6 +414,24 @@ class StopLine(PolygonMapObject):
         super().__init__(stop_line_id)
         self.stop_line_type = stop_line_type
 
+    @property
+    @abc.abstractmethod
+    def intersection_from(self) -> Intersection:
+        """
+        Gets the related intersection.
+        :return: Intersection related to StopLine.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def layer_type(self) -> StopLineType:
+        """
+        Gets StopLineType for Stopline subtype.
+        :return: StopLineType subtype.
+        """
+        pass
+
 
 class Intersection(PolygonMapObject):
     """
@@ -375,3 +446,30 @@ class Intersection(PolygonMapObject):
         """
         super().__init__(intersection_id)
         self.intersection_type = intersection_type
+
+    @property
+    @abc.abstractmethod
+    def interior_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
+        """
+        Returns RoadBlockGraphEdgeMapObjects contained within the intersection.
+        :return: a list of RoadBlockGraphEdgeMapObject.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def incoming_edges(self) -> List[Lane]:
+        """
+        Returns incoming Lanes connecting to this intersection.
+        :return: a list of Lane.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def is_signaled(self) -> bool:
+        """
+        Returns if intersection is signaled.
+        :return: True if intersection is a traffic light or one of the interior edges has a traffic light is signaled else False.
+        """
+        pass

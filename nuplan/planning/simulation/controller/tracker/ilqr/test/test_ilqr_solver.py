@@ -1,14 +1,17 @@
+import time
 import unittest
+from functools import partial
 
 import numpy as np
 import numpy.testing as np_test
 
 from nuplan.planning.simulation.controller.tracker.ilqr.ilqr_solver import (
     DoubleMatrix,
+    ILQRInputPolicy,
+    ILQRIterate,
     ILQRSolver,
     ILQRSolverParameters,
     ILQRWarmStartParameters,
-    _run_lqr_backward_recursion,
 )
 
 
@@ -20,15 +23,18 @@ class TestILQRSolver(unittest.TestCase):
     def setUp(self) -> None:
         """Inherited, see superclass."""
         solver_params = ILQRSolverParameters(
-            discretization_time=0.1,
-            q_diagonal_entries=[1.0, 1.0, 50.0, 0.0, 0.0],
-            r_diagonal_entries=[1e2, 1e4],
+            discretization_time=0.2,
+            state_cost_diagonal_entries=[1.0, 1.0, 10.0, 0.0, 0.0],
+            input_cost_diagonal_entries=[1.0, 10.0],
+            state_trust_region_entries=[1.0] * 5,
+            input_trust_region_entries=[1.0] * 2,
             max_ilqr_iterations=100,
-            convergence_threshold=0.01,
-            alpha_trust_region=0.95,
-            min_velocity_linearization=0.01,
+            convergence_threshold=1e-6,
+            max_solve_time=0.05,
             max_acceleration=3.0,
+            max_steering_angle=np.pi / 3.0,
             max_steering_angle_rate=0.5,
+            min_velocity_linearization=0.01,
         )
 
         warm_start_params = ILQRWarmStartParameters(
@@ -45,360 +51,451 @@ class TestILQRSolver(unittest.TestCase):
         self.discretization_time = self.solver._solver_params.discretization_time
         self.n_states = self.solver._n_states
         self.n_inputs = self.solver._n_inputs
-        self.n_horizon = 20
+        self.n_horizon = 40
 
         self.min_velocity_linearization = self.solver._solver_params.min_velocity_linearization
         self.max_acceleration = self.solver._solver_params.max_acceleration
+        self.max_steering_angle = self.solver._solver_params.max_steering_angle
         self.max_steering_angle_rate = self.solver._solver_params.max_steering_angle_rate
 
         # Tolerances for np.allclose to pass.
         self.rtol = 1e-8
         self.atol = 1e-10
 
+        # Wrappers for allclose/assert_allclose that use specified tolerances.
+        self.check_if_allclose = partial(np.allclose, rtol=self.rtol, atol=self.atol)
+        self.assert_allclose = partial(np_test.assert_allclose, rtol=self.rtol, atol=self.atol)
+
         # Set up a constant velocity, no turning reference and initial state for testing.
-        self.reference_trajectory: DoubleMatrix = np.zeros((self.n_horizon, self.n_states), dtype=np.float64)
-        self.reference_trajectory[:, 0] = np.arange(self.n_horizon) * self.discretization_time  # x coordinate
-        self.reference_trajectory[:, 3] = 1.0  # constant velocity
+        constant_speed = 1.0
+        self.reference_trajectory: DoubleMatrix = np.zeros((self.n_horizon + 1, self.n_states), dtype=np.float64)
+        self.reference_trajectory[:, 0] = constant_speed * np.arange(self.n_horizon + 1) * self.discretization_time
+        self.reference_trajectory[:, 3] = constant_speed
 
-    def test__run_lqr_backward_recursion(self) -> None:
-        """
-        Given dynamics and cost matrices for a controllable but unstable system, ensure that LQR recursion works.
-        """
-        # Setup dynamics and cost matrices.
-        test_a_matrix: DoubleMatrix = (
-            self.discretization_time * np.tri(self.n_states, dtype=np.float64).T
-        )  # upper triangular
-        test_a_matrix[np.diag_indices(self.n_states)] = 1.1
-
-        test_b_matrix: DoubleMatrix = np.zeros((self.n_states, self.n_inputs), dtype=np.float64)
-        test_b_matrix[-1, -1] = 1.0
-
-        test_q_matrix: DoubleMatrix = np.eye(self.n_states, dtype=np.float64)
-        test_r_matrix: DoubleMatrix = np.eye(self.n_inputs, dtype=np.float64)
-
-        test_a_matrices: DoubleMatrix = np.tile(test_a_matrix, (self.n_horizon, 1, 1))
-        test_b_matrices: DoubleMatrix = np.tile(test_b_matrix, (self.n_horizon, 1, 1))
-        test_q_matrices: DoubleMatrix = np.tile(test_q_matrix, (self.n_horizon, 1, 1))
-        test_r_matrices: DoubleMatrix = np.tile(test_r_matrix, (self.n_horizon, 1, 1))
-        test_q_terminal = test_q_matrix
-
-        k_matrices, p_matrices = _run_lqr_backward_recursion(
-            test_a_matrices,
-            test_b_matrices,
-            test_q_matrices,
-            test_r_matrices,
-            test_q_terminal,
-        )
-
-        # Check that feedback gain and value function matrices are the correct shape.
-        self.assertEqual(k_matrices.shape, (self.n_horizon, self.n_inputs, self.n_states))
-        self.assertEqual(p_matrices.shape, (self.n_horizon, self.n_states, self.n_states))
-
-        # Check that the value function matrix is symmetric and positive semidefinite.
-        for p in p_matrices:
-            np_test.assert_allclose(p, p.T, atol=self.atol, rtol=self.rtol)
-            p_min_eigval = np.amin(np.linalg.eigvals(p))
-            self.assertGreaterEqual(p_min_eigval, 0.0)
+        reference_acceleration = np.diff(self.reference_trajectory[:, 3]) / self.discretization_time
+        reference_steering_rate = np.diff(self.reference_trajectory[:, 4]) / self.discretization_time
+        self.reference_inputs: DoubleMatrix = np.column_stack((reference_acceleration, reference_steering_rate))
 
     def test_solve(self) -> None:
         """
-        Test solve calls on a constant velocity reference without turning.
-        Note: modification of the reference will invalidate these checks.
+        Check that, for reasonable tuning parameters and small initial error, the tracking cost is non-increasing.
         """
-        # Case 1: There is no initial tracking error and the reference is constant velocity -> all zero inputs.
-        current_state_no_tracking_error: DoubleMatrix = np.copy(self.reference_trajectory[0])
-        inputs_no_tracking_error = self.solver.solve(current_state_no_tracking_error, self.reference_trajectory)
+        perturbed_current_state: DoubleMatrix = np.array([1.0, -1.0, 0.01, 1.0, -0.1], dtype=np.float64)
+        current_state = self.reference_trajectory[0, :] + perturbed_current_state
 
-        np_test.assert_allclose(inputs_no_tracking_error, 0.0, atol=self.atol, rtol=self.rtol)
+        start_time = time.perf_counter()
+        ilqr_solutions = self.solver.solve(current_state, self.reference_trajectory)
+        end_time = time.perf_counter()
 
-        # Case 2: There is some initial tracking error and "" -> not all zero inputs.
-        current_state_tracking_error: DoubleMatrix = self.reference_trajectory[0] + [0.1, -0.1, 0.01, 0.5, 0.01]
-        inputs_tracking_error = self.solver.solve(current_state_tracking_error, self.reference_trajectory)
+        print(f"Solve took {end_time - start_time} seconds for {len(ilqr_solutions)} iterations.")
 
-        with np_test.assert_raises(AssertionError):
-            np_test.assert_allclose(inputs_tracking_error, 0.0, atol=self.atol, rtol=self.rtol)
+        tracking_cost_history = [isol.tracking_cost for isol in ilqr_solutions]
+
+        self.assertTrue(np.all(np.diff(tracking_cost_history) <= 0.0))
+
+    def test__compute_tracking_cost(self) -> None:
+        """Check tracking cost computation."""
+        zero_input_trajectory: DoubleMatrix = np.zeros((self.n_horizon, self.n_inputs), dtype=np.float64)
+        zero_state_jacobian_trajectory: DoubleMatrix = np.zeros(
+            (self.n_horizon, self.n_states, self.n_states), dtype=np.float64
+        )
+        zero_input_jacobian_trajectory: DoubleMatrix = np.zeros(
+            (self.n_horizon, self.n_states, self.n_inputs), dtype=np.float64
+        )
+
+        test_iterate = ILQRIterate(
+            input_trajectory=np.zeros((self.n_horizon, self.n_inputs), dtype=np.float64),
+            state_trajectory=self.reference_trajectory,
+            state_jacobian_trajectory=zero_state_jacobian_trajectory,
+            input_jacobian_trajectory=zero_input_jacobian_trajectory,
+        )
+
+        cost_zero_error_zero_inputs = self.solver._compute_tracking_cost(
+            iterate=test_iterate,
+            reference_trajectory=self.reference_trajectory,
+        )
+
+        self.assert_allclose(0.0, cost_zero_error_zero_inputs)
+
+        # Larger norm values of inputs should increase cost, regardless of the sign.
+        for input_sign in [-1.0, 1.0]:
+            costs = []
+            for input_magnitude in [1.0, 5.0, 10.0, 100.0]:
+                test_input_trajectory = (
+                    input_sign * input_magnitude * np.ones((self.n_horizon, self.n_inputs), dtype=np.float64)
+                )
+
+                test_iterate = ILQRIterate(
+                    input_trajectory=test_input_trajectory,
+                    state_trajectory=self.reference_trajectory,
+                    state_jacobian_trajectory=zero_state_jacobian_trajectory,
+                    input_jacobian_trajectory=zero_input_jacobian_trajectory,
+                )
+
+                cost = self.solver._compute_tracking_cost(
+                    iterate=test_iterate,
+                    reference_trajectory=self.reference_trajectory,
+                )
+
+                costs.append(cost)
+
+            self.assertTrue(np.all(np.diff(costs) > 0.0))
+
+        # Larger norm deviations in state trajectory should increase cost, regardless of the sign.
+        for error_sign in [-1.0, 1.0]:
+            costs = []
+            for error_magnitude in [1.0, 5.0, 10.0, 100.0]:
+                test_state_trajectory = self.reference_trajectory + error_sign * error_magnitude * np.ones_like(
+                    self.reference_trajectory
+                )
+
+                test_iterate = ILQRIterate(
+                    input_trajectory=zero_input_trajectory,
+                    state_trajectory=test_state_trajectory,
+                    state_jacobian_trajectory=zero_state_jacobian_trajectory,
+                    input_jacobian_trajectory=zero_input_jacobian_trajectory,
+                )
+
+                cost = self.solver._compute_tracking_cost(
+                    iterate=test_iterate,
+                    reference_trajectory=self.reference_trajectory,
+                )
+
+                costs.append(cost)
+
+            self.assertTrue(np.all(np.diff(costs) > 0.0))
 
     def test__clip_inputs(self) -> None:
-        """Check that we can clip inputs within constraints."""
-        input_sinusoidal_array: DoubleMatrix = np.array(
-            [[np.cos(th), np.sin(th)] for th in np.arange(-np.pi, np.pi, 0.1)], dtype=np.float64
+        """Check that input clipping works."""
+        zero_inputs: DoubleMatrix = np.zeros(self.n_inputs, dtype=np.float64)
+        inputs_at_bounds: DoubleMatrix = np.array(
+            [self.max_acceleration, self.max_steering_angle_rate], dtype=np.float64
         )
+        inputs_within_bounds = 0.5 * inputs_at_bounds
+        inputs_outside_bounds = 2.0 * inputs_at_bounds
 
-        magnitude_within_bounds = [self.max_acceleration, self.max_steering_angle_rate]
-        magnitude_outside_bounds = [self.max_acceleration + 1.0, self.max_steering_angle_rate + 0.1]
+        for test_inputs, expect_same in zip(
+            [zero_inputs, inputs_within_bounds, inputs_at_bounds, inputs_outside_bounds], [True, True, True, False]
+        ):
+            for input_sign in [-1.0, 1.0]:
+                signed_test_inputs = input_sign * test_inputs
+                clipped_inputs = self.solver._clip_inputs(signed_test_inputs)
+                are_same = self.check_if_allclose(signed_test_inputs, clipped_inputs)
 
-        for (magnitude, expect_not_modified) in zip([magnitude_within_bounds, magnitude_outside_bounds], [True, False]):
-            inputs = magnitude * input_sinusoidal_array
-            clipped_inputs = self.solver._clip_inputs(inputs)
+                self.assertEqual(are_same, expect_same)
 
-            # Confirm input modification matches expectations.
-            inputs_are_not_modified = np.allclose(inputs, clipped_inputs, atol=self.atol, rtol=self.rtol)
-            self.assertEqual(inputs_are_not_modified, expect_not_modified)
+                self.assertTrue(np.all(np.sign(signed_test_inputs) == np.sign(clipped_inputs)))
 
-            # Confirm that the clipped inputs lie within bounds.
-            clipped_inputs_are_bounded = np.all(np.amax(np.abs(clipped_inputs), axis=0) <= magnitude_within_bounds)
-            self.assertTrue(clipped_inputs_are_bounded)
+    def test__clip_steering_angle(self) -> None:
+        """Check that steering angle clipping works."""
+        zero_steering_angle = 0.0
+        steering_angle_at_bounds = self.max_steering_angle
+        steering_angle_within_bounds = 0.5 * steering_angle_at_bounds
+        steering_angle_outside_bounds = 2.0 * steering_angle_at_bounds
 
-            # Confirm that clipping inputs does not change the sign of inputs.
-            np_test.assert_allclose(np.sign(clipped_inputs), np.sign(inputs), atol=self.atol, rtol=self.rtol)
+        for test_steering_angle, expect_same in zip(
+            [
+                zero_steering_angle,
+                steering_angle_within_bounds,
+                steering_angle_at_bounds,
+                steering_angle_outside_bounds,
+            ],
+            [True, True, True, False],
+        ):
+            for sign in [-1.0, 1.0]:
+                signed_steering_angle = sign * test_steering_angle
+                clipped_steering_angle = self.solver._clip_steering_angle(signed_steering_angle)
+                are_same = self.check_if_allclose(signed_steering_angle, clipped_steering_angle)
 
-            # Confirm we can apply clipping to an input vector (i.e. single timestep).
-            clipped_first_input = self.solver._clip_inputs(inputs[0])
-            self.assertTrue(np.all(np.abs(clipped_first_input) <= magnitude_within_bounds))
+                self.assertEqual(are_same, expect_same)
+
+                self.assertTrue(np.all(np.sign(signed_steering_angle) == np.sign(clipped_steering_angle)))
 
     def test__input_warm_start(self) -> None:
-        """
-        Test that we get a reasonable warm start trajectory within bounds when starting on/off the reference trajectory.
-        NOTE: This applies for the constant velocity, no turning case - modifications might invalidate these checks.
-        """
-        # Case 1: The initial state is exactly on the reference, expect all zeros for control input.
-        current_state_on_trajectory: DoubleMatrix = np.copy(self.reference_trajectory[0])
-        input_warm_start_on_trajectory = self.solver._input_warm_start(
-            current_state_on_trajectory, self.reference_trajectory
+        """Check first warm start generation under zero and nonzero initial tracking error."""
+        test_current_state = self.reference_trajectory[0, :]
+        warm_start_iterate = self.solver._input_warm_start(test_current_state, self.reference_trajectory)
+        self.assert_allclose(warm_start_iterate.input_trajectory, self.reference_inputs)
+
+        # Check that we apply feedback with just the first input in the warm start.
+        perturbed_current_state = self.reference_trajectory[0, :] + np.array(
+            [1.0, -1.0, 0.01, 1.0, -0.1], dtype=np.float64
         )
-        np_test.assert_allclose(input_warm_start_on_trajectory, 0.0, atol=self.atol, rtol=self.rtol)
-
-        # Case 2: The initial state is offset from the reference, the control input should not be all zeros.
-        current_state_off_trajectory: DoubleMatrix = self.reference_trajectory[0] + [-0.1, 0.1, 0.05, 0.5, 0.1]
-        input_warm_start_off_trajectory = self.solver._input_warm_start(
-            current_state_off_trajectory, self.reference_trajectory
+        perturbed_warm_start_iterate = self.solver._input_warm_start(perturbed_current_state, self.reference_trajectory)
+        first_input_close = self.check_if_allclose(
+            perturbed_warm_start_iterate.input_trajectory[0], self.reference_inputs[0]
         )
-        with np_test.assert_raises(AssertionError):
-            np_test.assert_allclose(input_warm_start_off_trajectory, 0.0, atol=self.atol, rtol=self.rtol)
+        self.assertFalse(first_input_close)
+        self.assert_allclose(perturbed_warm_start_iterate.input_trajectory[1, :], self.reference_inputs[1, :])
 
-        # Check conditions that should hold for both cases.
-        for input_trajectory in [input_warm_start_on_trajectory, input_warm_start_off_trajectory]:
-            # The input warm start trajectory should have expected shape.
-            self.assertEqual(input_trajectory.shape, (len(self.reference_trajectory) - 1, self.n_inputs))
+    def test__run_forward_dynamics_no_saturation(self) -> None:
+        """Check generation of a state trajectory from current state and inputs without steering angle saturation."""
+        test_current_state = self.reference_trajectory[0, :]
+        current_steering_angle = test_current_state[4]
 
-            # The input warm start trajectory should be within control input bounds.
-            infinity_norm_inputs = np.amax(np.abs(input_trajectory), axis=0)
-            warm_start_bounded = np.all(infinity_norm_inputs <= [self.max_acceleration, self.max_steering_angle_rate])
-            self.assertTrue(warm_start_bounded)
+        # We don't want to saturate the steering angle and thus need to know how long this will take.
+        time_to_saturation_s = (self.max_steering_angle - abs(current_steering_angle)) / self.max_steering_angle_rate
+        timesteps_to_saturation = np.ceil(time_to_saturation_s / self.discretization_time).astype(int)
+        assert timesteps_to_saturation >= 2, "We'd like at least two timesteps_to_saturation for the subsequent test."
 
-    def test__update_input_sequence_with_feedback_policy(self) -> None:
-        """
-        Try to run one iteration of ILQR (so basically just LQR).  If we are above the reference speed,
-        the input update should result in higher deceleration.
-        """
-        # Choose current_state to have some initial tracking error and go faster than the initial reference state.
-        current_state: DoubleMatrix = np.copy(self.reference_trajectory[0])
-        current_state += [0.1, -0.1, 0.01, 0.5, 0.01]
+        steering_rate_input = self.max_steering_angle_rate
+        acceleration_input = self.max_acceleration
 
-        input_trajectory = self.solver._input_warm_start(current_state, self.reference_trajectory)
-        state_trajectory, state_jacobian_trajectory, input_jacobian_trajectory = self.solver._run_forward_dynamics(
-            current_state, input_trajectory
+        # We pick a trajectory length short enough to avoid steering angle saturation.
+        test_input_trajectory: DoubleMatrix = np.ones((timesteps_to_saturation - 1, 2), dtype=np.float64)
+        test_input_trajectory[:, 0] = acceleration_input
+        test_input_trajectory[:, 1] = steering_rate_input
+
+        ilqr_iterate = self.solver._run_forward_dynamics(test_current_state, test_input_trajectory)
+
+        # Check 1: We did not saturate the steering angle - i.e. we never hit any of the limits.
+        self.assertLess(np.amax(np.abs(ilqr_iterate.state_trajectory[:, 4])), self.max_steering_angle)
+
+        # Check 2: We should not see any modification of steering rate.
+        steering_rate_unmodified = self.check_if_allclose(
+            ilqr_iterate.input_trajectory[:, 1], test_input_trajectory[:, 1]
+        )
+        self.assertTrue(steering_rate_unmodified)
+
+        # Check 3: Trivial check that final inputs are consistent with velocity and steering angle states.
+        acceleration_finite_differences = np.diff(ilqr_iterate.state_trajectory[:, 3]) / self.discretization_time
+        self.assert_allclose(acceleration_finite_differences, ilqr_iterate.input_trajectory[:, 0])
+
+        steering_rate_finite_differences = np.diff(ilqr_iterate.state_trajectory[:, 4]) / self.discretization_time
+        self.assert_allclose(steering_rate_finite_differences, ilqr_iterate.input_trajectory[:, 1])
+
+    def test__run_forward_dynamics_saturation(self) -> None:
+        """Check generation of a state trajectory from current state and inputs with steering angle saturation."""
+        test_current_state = self.reference_trajectory[0, :]
+        current_steering_angle = test_current_state[4]
+
+        # We try to saturate the steering angle and thus need to know how long this will take.
+        time_to_saturation_s = (self.max_steering_angle - abs(current_steering_angle)) / self.max_steering_angle_rate
+        timesteps_to_saturation = np.ceil(time_to_saturation_s / self.discretization_time).astype(int)
+        assert timesteps_to_saturation >= 2, "We'd like at least two timesteps_to_saturation for the subsequent test."
+
+        if np.abs(current_steering_angle) > 0.0:
+            # Keep the steering rate sign consistent with the current steering angle.
+            steering_rate_input = self.max_steering_angle_rate * np.sign(current_steering_angle)
+        else:
+            # We have zero current steering angle so just opt to reach +self.max_steering_angle.
+            steering_rate_input = self.max_steering_angle_rate
+
+        acceleration_input = self.max_acceleration
+
+        # Make an input trajectory with maxed inputs that is long enough to achieve saturation.
+        test_input_trajectory: DoubleMatrix = np.ones((timesteps_to_saturation + 1, 2), dtype=np.float64)
+        test_input_trajectory[:, 0] = acceleration_input
+        test_input_trajectory[:, 1] = steering_rate_input
+
+        ilqr_iterate = self.solver._run_forward_dynamics(test_current_state, test_input_trajectory)
+
+        # Check 1: We did actually saturate the steering angle - i.e. we hit the max by the penultimate timestep
+        #          and never went out of the limits.
+        self.assertEqual(np.abs(ilqr_iterate.state_trajectory[-2, 4]), self.max_steering_angle)
+        self.assertEqual(np.amax(np.abs(ilqr_iterate.state_trajectory[:, 4])), self.max_steering_angle)
+
+        # Check 2: We see a resulting impact on the steering rate input - the applied doesn't match the test values.
+        steering_rate_unmodified = self.check_if_allclose(
+            ilqr_iterate.input_trajectory[:, 1], test_input_trajectory[:, 1]
+        )
+        self.assertFalse(steering_rate_unmodified)
+
+        # Check 3: Trivial check that final inputs are consistent with velocity and steering angle states.
+        acceleration_finite_differences = np.diff(ilqr_iterate.state_trajectory[:, 3]) / self.discretization_time
+        steering_rate_finite_differences = np.diff(ilqr_iterate.state_trajectory[:, 4]) / self.discretization_time
+
+        self.assert_allclose(acceleration_finite_differences, ilqr_iterate.input_trajectory[:, 0])
+        self.assert_allclose(steering_rate_finite_differences, ilqr_iterate.input_trajectory[:, 1])
+
+    def test_dynamics_and_jacobian_constraints(self) -> None:
+        """Check application of constraints in dynamics."""
+        test_state_in_bounds: DoubleMatrix = np.array([0.0, 0.0, 0.1, 1.0, -0.01], dtype=np.float64)
+
+        # Test state where the steering angle is at its maximum value.
+        test_state_at_bounds: DoubleMatrix = np.copy(test_state_in_bounds)
+        test_state_at_bounds[4] = self.max_steering_angle
+
+        input_at_bounds: DoubleMatrix = np.array(
+            [self.max_acceleration, self.max_steering_angle_rate], dtype=np.float64
         )
 
-        (
-            state_jacobian_matrix_augmented_trajectory,
-            input_jacobian_matrix_augmented_trajectory,
-        ) = self.solver._linear_augmented_dynamics_matrices(state_jacobian_trajectory, input_jacobian_trajectory)
+        # Valid and invalid test inputs relative to input constraints.
+        test_input_in_bounds = 0.5 * input_at_bounds
+        test_input_outside_bounds = 2.0 * input_at_bounds
 
-        (
-            state_cost_matrix_augmented_trajectory,
-            input_cost_matrix_augmented_trajectory,
-            state_cost_matrix_augmented_terminal,
-        ) = self.solver._quadratic_augmented_cost_matrices(
-            input_trajectory, state_trajectory, self.reference_trajectory
-        )
+        test_cases_dict = {}
+        test_cases_dict["state_in_bounds_input_in_bounds"] = {
+            "state": test_state_in_bounds,
+            "input": test_input_in_bounds,
+            "expect_acceleration_modified": False,
+            "expect_steering_rate_modified": False,
+        }
+        test_cases_dict["state_at_bounds_input_in_bounds"] = {
+            "state": test_state_at_bounds,
+            "input": test_input_in_bounds,
+            "expect_acceleration_modified": False,
+            "expect_steering_rate_modified": True,
+        }
+        test_cases_dict["state_in_bounds_input_outside_bounds"] = {
+            "state": test_state_in_bounds,
+            "input": test_input_outside_bounds,
+            "expect_acceleration_modified": True,
+            "expect_steering_rate_modified": True,
+        }
+        test_cases_dict["state_at_bounds_input_outside_bounds"] = {
+            "state": test_state_at_bounds,
+            "input": test_input_outside_bounds,
+            "expect_acceleration_modified": True,
+            "expect_steering_rate_modified": True,
+        }
 
-        state_feedback_matrix_augmented_trajectory, _ = _run_lqr_backward_recursion(
-            a_matrices=state_jacobian_matrix_augmented_trajectory,
-            b_matrices=input_jacobian_matrix_augmented_trajectory,
-            q_matrices=state_cost_matrix_augmented_trajectory,
-            r_matrices=input_cost_matrix_augmented_trajectory,
-            q_terminal=state_cost_matrix_augmented_terminal,
-        )
-
-        input_trajectory_next = self.solver._update_input_sequence_with_feedback_policy(
-            input_trajectory, state_trajectory, state_feedback_matrix_augmented_trajectory
-        )
-
-        self.assertEqual(input_trajectory_next.shape, input_trajectory.shape)
-
-        # Since we are traveling faster than the reference at the initial timestep, we expect acceleration to be lower
-        # than the warm start - reflecting the initial speed error.
-        self.assertLessEqual(input_trajectory_next[0, 0], input_trajectory[0, 0])
-
-    def test__run_forward_dynamics(self) -> None:
-        """Try to run forward dynamics and make sure the results make sense."""
-        input_sinusoidal_array: DoubleMatrix = np.array(
-            [[np.cos(th), np.sin(th)] for th in np.arange(-np.pi, np.pi, 0.1)], dtype=np.float64
-        )
-        input_trajectory = [
-            self.max_acceleration,
-            self.max_steering_angle_rate,
-        ] * input_sinusoidal_array
-
-        current_state: DoubleMatrix = np.array([1.0, 5.0, 0.1, 2.0, 0.01], dtype=np.float64)
-        state_trajectory, state_jacobian_trajectory, input_jacobian_trajectory = self.solver._run_forward_dynamics(
-            current_state, input_trajectory
-        )
-
-        # The state trajectory should be 1 longer than the input trajectory and start at z_curr.
-        self.assertEqual(len(state_trajectory), 1 + len(input_trajectory))
-        np_test.assert_allclose(state_trajectory[0], current_state, atol=self.atol, rtol=self.rtol)
-
-        # The state jacobians should have the same length as the input trajectory and have expected shape.
-        self.assertEqual(len(state_jacobian_trajectory), len(input_trajectory))
-        self.assertEqual(state_jacobian_trajectory.shape[1:], (self.n_states, self.n_states))
-
-        # The input jacobians should have the same length as the input trajectory and have expected shape.
-        self.assertEqual(len(input_jacobian_trajectory), len(input_trajectory))
-        self.assertEqual(input_jacobian_trajectory.shape[1:], (self.n_states, self.n_inputs))
-
-    def test__dynamics_and_jacobian(self) -> None:
-        """Check that invalid steering angles and near-stopping velocities are handled correctly."""
-        current_state_base: DoubleMatrix = np.array([0.0, 0.0, 0.0, 1.0, 0.0], dtype=np.float64)
-        current_input_base: DoubleMatrix = np.array([1.0, 0.1], dtype=np.float64)
-
-        # Check 1: velocity above threshold should result in unmodified linearization.
-        next_state_base, state_jacobian_base, input_jacobian_base = self.solver._dynamics_and_jacobian(
-            current_state_base, current_input_base
-        )
-        velocity_inferred_base = (
-            np.hypot(state_jacobian_base[0, 2], state_jacobian_base[1, 2]) / self.discretization_time
-        )
-        np_test.assert_allclose(velocity_inferred_base, current_state_base[3], atol=self.atol, rtol=self.rtol)
-
-        # We also check the jacobian for this case using finite differencing with an epsilon perturbation.
-        epsilon = 1e-6
-        state_jacobian_finite_differencing = np.zeros_like(state_jacobian_base)
-        for state_idx in range(self.solver._n_states):
-            epsilon_array = epsilon * np.array([x == state_idx for x in range(self.solver._n_states)], dtype=np.float64)
-            next_state_plus, _, _ = self.solver._dynamics_and_jacobian(
-                current_state_base + epsilon_array, current_input_base
+        for test_name, test_config in test_cases_dict.items():
+            next_state, applied_input, _, _ = self.solver._dynamics_and_jacobian(
+                test_config["state"], test_config["input"]
             )
-            next_state_minus, _, _ = self.solver._dynamics_and_jacobian(
-                current_state_base - epsilon_array, current_input_base
+
+            # There can be variation between applied_input and the function argument input due to constraints.
+            # We check that constraints are correctly imposed by seeing if the input was modified and if it's expected.
+            self.assertEqual(
+                test_config["expect_acceleration_modified"],
+                not self.check_if_allclose(applied_input[0], test_config["input"][0]),
             )
+            self.assertEqual(
+                test_config["expect_steering_rate_modified"],
+                not self.check_if_allclose(applied_input[1], test_config["input"][1]),
+            )
+
+            # The steering angle of the next state must always be feasible.
+            self.assertLessEqual(np.abs(next_state[4]), self.max_steering_angle)
+
+    def test_dynamics_and_jacobian_linearization(self) -> None:
+        """
+        Check that Jacobian computation makes sense by comparison to finite difference estimate.
+        Also check that the minimum velocity linearization is triggered for the Jacobian computation.
+        """
+        test_state: DoubleMatrix = np.array([0.0, 0.0, 0.1, 1.0, -0.01], dtype=np.float64)
+        test_input: DoubleMatrix = np.array([1.0, 0.01], dtype=np.float64)
+        epsilon = 1e-6  # A small positive number used for finite difference computation.
+
+        _, applied_input, state_jacobian, input_jacobian = self.solver._dynamics_and_jacobian(test_state, test_input)
+
+        # We expect that the applied_input should be the same as the test_input, else constraints were applied.
+        # In this case, finite differencing to estimate the Jacobian won't be accurate.
+        self.assert_allclose(test_input, applied_input)
+
+        # State Jacobian check.
+        state_jacobian_finite_differencing = np.zeros_like(state_jacobian)
+        for state_idx in range(self.n_states):
+            epsilon_array = epsilon * np.array([x == state_idx for x in range(self.n_states)], dtype=np.float64)
+            next_state_plus, _, _, _ = self.solver._dynamics_and_jacobian(test_state + epsilon_array, test_input)
+            next_state_minus, _, _, _ = self.solver._dynamics_and_jacobian(test_state - epsilon_array, test_input)
             state_jacobian_finite_differencing[:, state_idx] = (next_state_plus - next_state_minus) / (2.0 * epsilon)
-        np_test.assert_allclose(state_jacobian_base, state_jacobian_finite_differencing, atol=self.atol, rtol=self.rtol)
+        self.assert_allclose(state_jacobian, state_jacobian_finite_differencing)
 
-        input_jacobian_finite_differencing = np.zeros_like(input_jacobian_base)
-        for input_idx in range(self.solver._n_inputs):
-            epsilon_array = epsilon * np.array([x == input_idx for x in range(self.solver._n_inputs)], dtype=np.float64)
-            next_state_plus, _, _ = self.solver._dynamics_and_jacobian(
-                current_state_base, current_input_base + epsilon_array
-            )
-            next_state_minus, _, _ = self.solver._dynamics_and_jacobian(
-                current_state_base, current_input_base - epsilon_array
-            )
+        # Input Jacobian check.
+        input_jacobian_finite_differencing = np.zeros_like(input_jacobian)
+        for input_idx in range(self.n_inputs):
+            epsilon_array = epsilon * np.array([x == input_idx for x in range(self.n_inputs)], dtype=np.float64)
+            next_state_plus, _, _, _ = self.solver._dynamics_and_jacobian(test_state, test_input + epsilon_array)
+            next_state_minus, _, _, _ = self.solver._dynamics_and_jacobian(test_state, test_input - epsilon_array)
             input_jacobian_finite_differencing[:, input_idx] = (next_state_plus - next_state_minus) / (2.0 * epsilon)
-        np_test.assert_allclose(input_jacobian_base, input_jacobian_finite_differencing, atol=self.atol, rtol=self.rtol)
+        self.assert_allclose(input_jacobian, input_jacobian_finite_differencing)
 
-        # Check 2: velocity below threshold should use a modified linearization.
-        current_state_slow: DoubleMatrix = np.copy(current_state_base)
-        current_input_slow: DoubleMatrix = np.copy(current_input_base)
-        current_state_slow[3] = 0.5 * self.min_velocity_linearization
+        # Check that we apply the minimum velocity linearization threshold - i.e. we don't use 0 for the state Jacobian.
+        test_state_stopped: DoubleMatrix = np.copy(test_state)
+        test_state_stopped[3] = 0.0
 
-        _, state_jacobian_slow, _ = self.solver._dynamics_and_jacobian(current_state_slow, current_input_slow)
-        velocity_inferred_slow = (
-            np.hypot(state_jacobian_slow[0, 2], state_jacobian_slow[1, 2]) / self.discretization_time
+        _, _, state_jacobian_stopped, _ = self.solver._dynamics_and_jacobian(test_state_stopped, test_input)
+        velocity_inferred_stopped = (
+            np.hypot(state_jacobian_stopped[0, 2], state_jacobian_stopped[1, 2]) / self.discretization_time
         )
-
         with np_test.assert_raises(AssertionError):
-            # The inferred velocity should not be the same as the current state velocity in this case.
-            np_test.assert_allclose(velocity_inferred_slow, current_state_slow[3], atol=self.atol, rtol=self.rtol)
+            self.assert_allclose(velocity_inferred_stopped, test_state_stopped[3])
+        self.assert_allclose(velocity_inferred_stopped, self.min_velocity_linearization)
 
-        # The inferred velocity should match the min_velocity_linearization in this case.
-        np_test.assert_allclose(velocity_inferred_slow, self.min_velocity_linearization, atol=self.atol, rtol=self.rtol)
+    def test__run_lqr_backward_recursion(self) -> None:
+        """Check some properties of the LQR input policy."""
+        test_current_state = self.reference_trajectory[0]
+        test_input_trajectory = self.reference_inputs
 
-        # Check 3: steering angle outside bounds should trigger an error.
-        current_state_invalid: DoubleMatrix = np.copy(current_state_base)
-        current_input_invalid: DoubleMatrix = np.copy(current_input_base)
-        current_state_invalid[4] = np.pi / 2.0
-        with self.assertRaises(AssertionError):
-            self.solver._dynamics_and_jacobian(current_state_invalid, current_input_invalid)
-
-    def test__linear_augmented_dynamics_matrices(self) -> None:
-        """Test that lifting the LTV system matrices is handled correctly."""
-        test_state_jacobian: DoubleMatrix = np.arange(self.n_states**2, dtype=np.float64).reshape(
-            self.n_states, self.n_states
+        # Add an initial input perturbation to the reference inputs to introduce tracking error.
+        input_perturbation: DoubleMatrix = np.array(
+            [-0.1 * self.max_acceleration, 0.1 * self.max_steering_angle], dtype=np.float64
         )
-        test_input_jacobian: DoubleMatrix = np.arange(self.n_states * self.n_inputs, dtype=np.float64).reshape(
-            self.n_states, self.n_inputs
-        )
+        test_input_trajectory[0] += input_perturbation
 
-        test_state_jacobians: DoubleMatrix = np.tile(test_state_jacobian, (self.n_horizon, 1, 1))
-        test_input_jacobians: DoubleMatrix = np.tile(test_input_jacobian, (self.n_horizon, 1, 1))
+        ilqr_iterate = self.solver._run_forward_dynamics(test_current_state, test_input_trajectory)
 
-        state_jacobians_augmented, input_jacobians_augmented = self.solver._linear_augmented_dynamics_matrices(
-            test_state_jacobians, test_input_jacobians
+        ilqr_input_policy = self.solver._run_lqr_backward_recursion(
+            current_iterate=ilqr_iterate,
+            reference_trajectory=self.reference_trajectory,
         )
 
-        # The number of matrices should not have changed.
-        self.assertEqual(len(state_jacobians_augmented), self.n_horizon)
-        self.assertEqual(len(input_jacobians_augmented), self.n_horizon)
+        state_feedback_matrices = ilqr_input_policy.state_feedback_matrices
+        feedforward_inputs = ilqr_input_policy.feedforward_inputs
 
-        for matrix_augmented, matrix_original in zip(state_jacobians_augmented, test_state_jacobians):
-            # The first block should match the original matrix.
-            np_test.assert_allclose(
-                matrix_augmented[: self.n_states, : self.n_states], matrix_original, atol=self.atol, rtol=self.rtol
-            )
+        # Check 1: We expect the feedforward input to somewhat compensate for the initial input perturbation.
+        # It basically should act like negative feedback so we expect the sign to oppose the perturbation.
+        self.assertTrue(np.all(np.sign(feedforward_inputs[0]) == -np.sign(input_perturbation)))
 
-            # Last row/column should be all zeros aside for the very last entry.
-            np_test.assert_allclose(matrix_augmented[-1, :-1], 0.0, atol=self.atol, rtol=self.rtol)
-            np_test.assert_allclose(matrix_augmented[:-1, -1], 0.0, atol=self.atol, rtol=self.rtol)
-            np_test.assert_allclose(matrix_augmented[-1, -1], 1.0, atol=self.atol, rtol=self.rtol)
+        # Check 2: We just simply check the shape of the state feedback matrix - numerical checks are somewhat flaky.
+        self.assertEqual(state_feedback_matrices.shape, (self.n_horizon, self.n_inputs, self.n_states))
 
-        for matrix_augmented, matrix_original in zip(input_jacobians_augmented, test_input_jacobians):
-            # The first block should match the original matrix.
-            np_test.assert_allclose(
-                matrix_augmented[: self.n_states, : self.n_inputs], matrix_original, atol=self.atol, rtol=self.rtol
-            )
+    def test__update_inputs_with_policy(self) -> None:
+        """Check how application of a specified input policy affects the next input trajectory."""
+        ilqr_iterate = self.solver._run_forward_dynamics(self.reference_trajectory[0], self.reference_inputs)
+        input_trajectory = ilqr_iterate.input_trajectory
+        state_trajectory = ilqr_iterate.state_trajectory
 
-            # Last row/column should be all zeros.
-            np_test.assert_allclose(matrix_augmented[-1, :], 0.0, atol=self.atol, rtol=self.rtol)
-            np_test.assert_allclose(matrix_augmented[:, -1], 0.0, atol=self.atol, rtol=self.rtol)
-
-    def test__quadratic_augmented_cost_matrices(self) -> None:
-        """
-        Test that the LTV system quadratic cost matrices are consistent with expectations.
-        """
-        current_state: DoubleMatrix = np.copy(self.reference_trajectory[0])
-        current_state += [0.1, -0.1, 0.01, 0.5, 0.01]
-
-        input_warm_start = self.solver._input_warm_start(current_state, self.reference_trajectory)
-        state_warm_start, _, _ = self.solver._run_forward_dynamics(current_state, input_warm_start)
-
-        (
-            state_cost_matrix_augmented_trajectory,
-            input_cost_matrix_augmented_trajectory,
-            state_cost_matrix_augmented_terminal,
-        ) = self.solver._quadratic_augmented_cost_matrices(
-            input_warm_start, state_warm_start, self.reference_trajectory
+        # Check 1: Test feedforward inputs alone, applying them without saturation should be reflected in next inputs.
+        angle_distance_to_saturation = self.max_steering_angle - np.amax(np.abs(state_trajectory[:, 4]))
+        test_feedforward_steering_rate = min(
+            0.5 * angle_distance_to_saturation / (self.n_horizon * self.discretization_time),
+            self.max_steering_angle_rate,
         )
 
-        self.assertEqual(len(state_cost_matrix_augmented_trajectory), len(input_warm_start))
-        self.assertEqual(len(input_cost_matrix_augmented_trajectory), len(input_warm_start))
+        feedforward_inputs = np.ones_like(input_trajectory)
+        feedforward_inputs[:, 0] = self.max_acceleration
+        feedforward_inputs[:, 1] = test_feedforward_steering_rate
+        feedforward_inputs[1::2] *= -1.0  # make this oscillatory so integral is 0.
 
-        # Check positive semidefiniteness of cost matrices.  The input cost may not be positive semidefinite due to
-        # lifting (i.e. we're using an augmented state).
-        for (q, r) in zip(state_cost_matrix_augmented_trajectory, input_cost_matrix_augmented_trajectory):
-            min_eigval_q = np.amin(np.linalg.eigvals(q))
-            self.assertGreaterEqual(min_eigval_q, 0.0)
-            np_test.assert_allclose(q, q.T, atol=self.atol, rtol=self.rtol)
+        state_feedback_matrices = np.zeros((len(feedforward_inputs), self.n_inputs, self.n_states))
 
-            min_eigval_r = np.amin(np.linalg.eigvals(r))
-            self.assertGreaterEqual(min_eigval_r, 0.0)
-            np_test.assert_allclose(r, r.T, atol=self.atol, rtol=self.rtol)
-
-        q_terminal = state_cost_matrix_augmented_terminal
-        min_eigval_q_terminal = np.amin(np.linalg.eigvals(q_terminal))
-        self.assertGreaterEqual(min_eigval_q_terminal, 0.0)
-        np_test.assert_allclose(q_terminal, q_terminal.T, atol=self.atol, rtol=self.rtol)
-
-        # The initial state cost matrix is a special case where we should only be applying the trust region penalty
-        # and no tracking error cost.
-        q_initial = state_cost_matrix_augmented_trajectory[0]
-        alpha_trust_region = self.solver._solver_params.alpha_trust_region
-        np_test.assert_allclose(
-            q_initial[:-1, :-1], alpha_trust_region * np.eye(self.n_states), atol=self.atol, rtol=self.rtol
+        lqr_input_policy = ILQRInputPolicy(
+            state_feedback_matrices=state_feedback_matrices, feedforward_inputs=feedforward_inputs
         )
-        np_test.assert_allclose(q_initial[-1, :], 0.0, atol=self.atol, rtol=self.rtol)
-        np_test.assert_allclose(q_initial[:, -1], 0.0, atol=self.atol, rtol=self.rtol)
+
+        input_next_trajectory = self.solver._update_inputs_with_policy(
+            current_iterate=ilqr_iterate,
+            lqr_input_policy=lqr_input_policy,
+        )
+
+        self.assert_allclose(feedforward_inputs, input_next_trajectory)
+
+        # Check 2: Suppose we apply an initial non-zero feedforward input perturbation with negative state feedback
+        #          matrices.  The second input should try to counteract the perturbation applied in the first.
+        test_input_perturbation = [self.max_acceleration, test_feedforward_steering_rate]
+        feedforward_inputs = np.zeros_like(input_trajectory)
+        feedforward_inputs[0, :] = test_input_perturbation
+
+        state_feedback_matrices = np.zeros((len(feedforward_inputs), self.n_inputs, self.n_states))
+        state_feedback_matrices[:, 0, 3] = -1.0  # i.e. acceleration is negative feedback on velocity.
+        state_feedback_matrices[:, 1, 4] = -1.0  # i.e. steering rate is negative feedback on steering angle.
+
+        lqr_input_policy = ILQRInputPolicy(
+            state_feedback_matrices=state_feedback_matrices, feedforward_inputs=feedforward_inputs
+        )
+
+        input_next_trajectory = self.solver._update_inputs_with_policy(
+            current_iterate=ilqr_iterate,
+            lqr_input_policy=lqr_input_policy,
+        )
+
+        first_delta_input = input_next_trajectory[0, :] - input_trajectory[0, :]
+        second_delta_input = input_next_trajectory[1, :] - input_trajectory[1, :]
+
+        self.assertTrue(np.all(np.sign(first_delta_input) == -np.sign(second_delta_input)))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ _convert_: 'all'
 
 # The default sampling rate for scenarios.
 # Will be used for all unknown scenarios as well as those with subsample ratio not specified
-subsample_ratio_override: 1.0
+subsample_ratio_override: 0.5
 
 # List of scenarios and their extraction instructions:
 #   scenario_name: name of scenario (e.g. ego overtaking)

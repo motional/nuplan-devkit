@@ -12,6 +12,7 @@ from torch.optim.lr_scheduler import OneCycleLR
 
 from nuplan.planning.script.builders.utils.utils_type import is_target_type
 from nuplan.planning.simulation.callback.timing_callback import TimingCallback
+from nuplan.planning.utils.multithreading.worker_utils import WorkerPool
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,9 @@ def scale_oclr_steps_per_epoch(num_train_batches: int, world_size: int, epochs: 
     return steps_per_epoch_per_gpu
 
 
-def scale_cfg_for_distributed_training(cfg: DictConfig, datamodule: pl.LightningDataModule) -> DictConfig:
+def scale_cfg_for_distributed_training(
+    cfg: DictConfig, datamodule: pl.LightningDataModule, worker: WorkerPool
+) -> DictConfig:
     """
     Adjusts parameters in cfg for ddp.
     :param cfg: Config with parameters for instantiation.
@@ -227,7 +230,7 @@ def scale_cfg_for_distributed_training(cfg: DictConfig, datamodule: pl.Lightning
     # Update lr_scheduler with yaml file config before building lightning module
     if 'lr_scheduler' in cfg:
         num_train_samples = int(
-            len(datamodule._splitter.get_train_samples(datamodule._all_samples)) * datamodule._train_fraction
+            len(datamodule._splitter.get_train_samples(datamodule._all_samples, worker)) * datamodule._train_fraction
         )
         cfg = update_distributed_lr_scheduler_config(
             cfg=cfg,

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from nuplan.submission.utils import find_free_port_number
+from nuplan.submission.utils.utils import find_free_port_number
 
 
 class TestUtils(unittest.TestCase):
@@ -19,3 +19,7 @@ class TestUtils(unittest.TestCase):
         mock_socket().close.assert_called_once()
 
         self.assertEqual(1234, port)
+
+
+if __name__ == '__main__':
+    unittest.main()

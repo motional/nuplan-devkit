@@ -12,6 +12,8 @@ py_test(
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/training/callbacks:scenario_scoring_callback",
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
+        "//nuplan/planning/training/data_augmentation:data_augmentation_util",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:scenario_dataset",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling:types",
@@ -30,5 +32,16 @@ py_test(
         "//nuplan/planning/training/preprocessing/features:raster",
         "//nuplan/planning/training/preprocessing/features:trajectory",
         "//nuplan/planning/training/preprocessing/features:vector_map",
+    ],
+)
+
+py_test(
+    name = "test_stepwise_augmentation_scheduler",
+    size = "small",
+    srcs = ["test_stepwise_augmentation_scheduler.py"],
+    deps = [
+        "//nuplan/planning/training/callbacks:stepwise_augmentation_scheduler",
+        "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",
+        "//nuplan/planning/training/data_augmentation:data_augmentation_util",
     ],
 )

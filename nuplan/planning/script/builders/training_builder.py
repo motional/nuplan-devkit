@@ -62,6 +62,8 @@ def build_lightning_datamodule(
         all_scenarios=scenarios,
         dataloader_params=cfg.data_loader.params,
         augmentors=augmentors,
+        worker=worker,
+        scenario_type_sampling_weights=cfg.scenario_type_weights.scenario_type_sampling_weights,
         **cfg.data_loader.datamodule,
     )
 
@@ -103,10 +105,7 @@ def build_trainer(cfg: DictConfig) -> pl.Trainer:
     """
     params = cfg.lightning.trainer.params
 
-    callbacks = build_callbacks(cfg.callbacks)
-
-    if params.gpus:
-        callbacks.append(pl.callbacks.GPUStatsMonitor(intra_step_time=True, inter_step_time=True))
+    callbacks = build_callbacks(cfg)
 
     plugins = [
         pl.plugins.DDPPlugin(find_unused_parameters=False, num_nodes=params.num_nodes),
