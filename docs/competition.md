@@ -11,9 +11,9 @@ The main focus of the nuPlan planning challenge is to evaluate a motion planning
 
 ### Competition Timeline
 
-*   September 5th, 2022 - Warm-up phase opens for submission
+*   September 9th, 2022 - Warm-up phase opens for submission
 *   September 15th, 2022 - Test phase opens for submission
-*   November 15th, 2022 - Competition closes
+*   November 20th, 2022 - Competition closes
 *   November 22nd, 2022 - Finalists are announced. Finalists are invited to share their code this us for verification
 *   November 29nd 2022 - Winners are announced
 
@@ -61,7 +61,7 @@ to 10 submissions. The submissions will be run on all three challenges. The scen
 are the same as the ones that will be used for the test phase. However, the number of scenarios run will be smaller
 and the data is not taken from the test split. The metrics and the overall scores will be displayed on the leaderboard.
 
-Start: September 5st, 2022
+Start: September 9th, 2022
 
 End: November 15th, 2022 
 
@@ -72,7 +72,7 @@ be invited to share their code with the organizers. Once the submissions from th
 organizers. The same scores are used to determine the winners of each challenge. Participants will be allowed to 
 submit a maximum of three submissions.
 
-Start: September 15th, 2022
+Start: September 20th, 2022
 
 End: November 15th, 2022 
 
