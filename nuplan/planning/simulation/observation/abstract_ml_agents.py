@@ -92,7 +92,6 @@ class AbstractMLAgents(AbstractObservation):
         # Construct input features
         # TODO: Rename PlannerInitialization to something that also applies to smart agents
         initialization = PlannerInitialization(
-            expert_goal_state=self._scenario.get_expert_goal_state(),
             mission_goal=self._scenario.get_mission_goal(),
             route_roadblock_ids=self._scenario.get_route_roadblock_ids(),
             map_api=self._scenario.map_api,

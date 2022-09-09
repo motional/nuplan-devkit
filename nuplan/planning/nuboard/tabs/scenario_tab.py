@@ -11,8 +11,16 @@ import numpy.typing as npt
 import pandas
 from bokeh.document.document import Document
 from bokeh.layouts import LayoutDOM, column, gridplot, layout
-from bokeh.models import BasicTickFormatter, CheckboxGroup, ColumnDataSource, Div, HoverTool, Select
-from bokeh.models.callbacks import CustomJS
+from bokeh.models import (
+    BasicTickFormatter,
+    Button,
+    CheckboxGroup,
+    ColumnDataSource,
+    Div,
+    HoverTool,
+    MultiChoice,
+    Select,
+)
 from bokeh.plotting.figure import Figure
 
 from nuplan.common.actor_state.ego_state import EgoState
@@ -22,6 +30,16 @@ from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
 from nuplan.planning.nuboard.base.plot_data import SimulationData
 from nuplan.planning.nuboard.base.simulation_tile import SimulationTile
 from nuplan.planning.nuboard.style import PLOT_PALETTE, default_div_style, scenario_tab_style
+from nuplan.planning.nuboard.tabs.config.scenario_tab_config import (
+    ScenarioTabModalQueryButtonConfig,
+    ScenarioTabScenarioTokenMultiChoiceConfig,
+    ScenarioTabTitleDivConfig,
+)
+from nuplan.planning.nuboard.tabs.js_code.scenario_tab_js_code import (
+    ScenarioTabLoadingEndJSCode,
+    ScenarioTabLoadingJSCode,
+    ScenarioTabUpdateWindowsSizeJSCode,
+)
 from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 
 logger = logging.getLogger(__name__)
@@ -62,6 +80,7 @@ class ScenarioTimeSeriesData:
     time_series_values: npt.NDArray[np.float64]  # A list of time series values
     time_series_timestamps: List[int]  # A list of time series timestamps
     time_series_unit: str  # Time series unit
+    time_series_selected_frames: Optional[List[int]]  # Time series selected frames
 
 
 # Type for scenario metric score data type: {log name: {scenario name: metric score data}}
@@ -93,6 +112,7 @@ class ScenarioTab(BaseTab):
         self._scenario_builder = scenario_builder
 
         # UI.
+        self._scenario_title_div = Div(**ScenarioTabTitleDivConfig.get_config())
         self._scalar_scenario_type_select = Select(
             name="scenario_scalar_scenario_type_select",
             css_classes=["scalar-scenario-type-select"],
@@ -103,22 +123,20 @@ class ScenarioTab(BaseTab):
             css_classes=["scalar-log-name-select"],
         )
         self._scalar_log_name_select.on_change("value", self._scalar_log_name_select_on_change)
-
         self._scalar_scenario_name_select = Select(
-            name="scenario_scalar_scenario_name_select",
+            name="scenario_scalar_name_select",
             css_classes=["scalar-scenario-name-select"],
         )
+        self._scalar_scenario_name_select.js_on_change("value", ScenarioTabUpdateWindowsSizeJSCode.get_js_code())
         self._scalar_scenario_name_select.on_change("value", self._scalar_scenario_name_select_on_change)
-        self._loading_js = CustomJS(
-            args={},
-            code="""
-            document.getElementById('scenario-loading').style.visibility = 'visible';
-            document.getElementById('scenario-plot-section').style.visibility = 'hidden';
-            cb_obj.tags = [window.outerWidth, window.outerHeight];
-        """,
-        )
-        self._scalar_scenario_name_select.js_on_change("value", self._loading_js)
-        self.planner_checkbox_group.js_on_change("active", self._loading_js)
+        self._scenario_token_multi_choice = MultiChoice(**ScenarioTabScenarioTokenMultiChoiceConfig.get_config())
+        self._scenario_token_multi_choice.on_change("value", self._scenario_token_multi_choice_on_change)
+
+        self._scenario_modal_query_btn = Button(**ScenarioTabModalQueryButtonConfig.get_config())
+        self._scenario_modal_query_btn.js_on_click(ScenarioTabLoadingJSCode.get_js_code())
+        self._scenario_modal_query_btn.on_click(self._scenario_modal_query_button_on_click)
+
+        self.planner_checkbox_group.js_on_change("active", ScenarioTabLoadingJSCode.get_js_code())
         self._default_time_series_div = Div(
             text=""" <p> No time series results, please add more experiments or
                 adjust the search filter.</p>""",
@@ -155,14 +173,8 @@ class ScenarioTab(BaseTab):
             css_classes=["scenario-simulation-layout"],
             name="simulation_tile_layout",
         )
-        self._end_loading_js = CustomJS(
-            args={},
-            code="""
-            document.getElementById('scenario-loading').style.visibility = 'hidden';
-            document.getElementById('scenario-plot-section').style.visibility = 'visible';
-        """,
-        )
-        self._simulation_tile_layout.js_on_change("children", self._end_loading_js)
+
+        self._simulation_tile_layout.js_on_change("children", ScenarioTabLoadingEndJSCode.get_js_code())
         self.simulation_tile = SimulationTile(
             map_factory=self._scenario_builder.get_map_factory(),
             doc=self._doc,
@@ -240,6 +252,11 @@ class ScenarioTab(BaseTab):
         self._init_selection()
 
     @property
+    def scenario_title_div(self) -> Div:
+        """Return scenario title div."""
+        return self._scenario_title_div
+
+    @property
     def scalar_scenario_type_select(self) -> Select:
         """Return scalar_scenario_type_select."""
         return self._scalar_scenario_type_select
@@ -253,6 +270,16 @@ class ScenarioTab(BaseTab):
     def scalar_scenario_name_select(self) -> Select:
         """Return scalar_scenario_name_select."""
         return self._scalar_scenario_name_select
+
+    @property
+    def scenario_token_multi_choice(self) -> MultiChoice:
+        """Return scenario_token multi choice."""
+        return self._scenario_token_multi_choice
+
+    @property
+    def scenario_modal_query_btn(self) -> Button:
+        """Return scenario_modal_query_button."""
+        return self._scenario_modal_query_btn
 
     @property
     def object_checkbox_group(self) -> CheckboxGroup:
@@ -429,7 +456,6 @@ class ScenarioTab(BaseTab):
         self._time_series_data = self._aggregate_time_series_data()
         # Render time series figure data
         time_series_figure_data = self._render_time_series(aggregated_time_series_data=self._time_series_data)
-
         # Render time series layout
         time_series_figures = self._render_scenario_metric_layout(
             figure_data=time_series_figure_data,
@@ -508,6 +534,30 @@ class ScenarioTab(BaseTab):
         if self._scalar_scenario_name_select.tags:
             self.window_width = self._scalar_scenario_name_select.tags[0]
             self.window_height = self._scalar_scenario_name_select.tags[1]
+
+    def _scenario_token_multi_choice_on_change(self, attr: str, old: List[str], new: List[str]) -> None:
+        """
+        Helper function to change event in scenario token multi choice.
+        :param attr: Attribute.
+        :param old: List of old values.
+        :param new: List of new values.
+        """
+        available_scenario_tokens = self._experiment_file_data.available_scenario_tokens
+        if not available_scenario_tokens or not new:
+            return
+        scenario_token_info = available_scenario_tokens.get(new[0])
+        if self._scalar_scenario_type_select.value != scenario_token_info.scenario_type:
+            self._scalar_scenario_type_select.value = scenario_token_info.scenario_type
+        if self._scalar_log_name_select.value != scenario_token_info.log_name:
+            self._scalar_log_name_select.value = scenario_token_info.log_name
+        if self._scalar_scenario_name_select.value != scenario_token_info.scenario_name:
+            self.scalar_scenario_name_select.value = scenario_token_info.scenario_name
+
+    def _scenario_modal_query_button_on_click(self) -> None:
+        """Helper function when click the modal query button."""
+        if self._scalar_scenario_name_select.tags:
+            self.window_width = self._scalar_scenario_name_select.tags[0]
+            self.window_height = self._scalar_scenario_name_select.tags[1]
         self._update_planner_names()
         self._update_scenario_plot()
 
@@ -528,6 +578,8 @@ class ScenarioTab(BaseTab):
         if len(self._scalar_scenario_type_select.options) > 0:
             self._scalar_scenario_type_select.value = self._scalar_scenario_type_select.options[0]
 
+        available_scenario_tokens = list(self._experiment_file_data.available_scenario_tokens.keys())
+        self._scenario_token_multi_choice.options = available_scenario_tokens
         self._update_planner_names()
 
     @staticmethod
@@ -651,7 +703,6 @@ class ScenarioTab(BaseTab):
         log_names = tuple([self._scalar_log_name_select.value]) if self._scalar_log_name_select.value else None
         if not len(self._scalar_scenario_name_select.value):
             return aggregated_time_series_data
-
         for index, metric_statistics_dataframes in enumerate(self.experiment_file_data.metric_statistics_dataframes):
             if index not in self._experiment_file_active_index:
                 continue
@@ -688,6 +739,7 @@ class ScenarioTab(BaseTab):
                         chain.from_iterable(time_series[metric_statistics_dataframe.time_series_timestamp_column])
                     )
                     time_series_unit = time_series[metric_statistics_dataframe.time_series_unit_column].iloc[0]
+                    time_series_selected_frames = metric_statistics_dataframe.get_time_series_selected_frames
 
                     scenario_time_series_data = ScenarioTimeSeriesData(
                         experiment_index=index,
@@ -695,6 +747,7 @@ class ScenarioTab(BaseTab):
                         time_series_values=time_series_values,
                         time_series_timestamps=time_series_timestamps,
                         time_series_unit=time_series_unit,
+                        time_series_selected_frames=time_series_selected_frames,
                     )
 
                     aggregated_time_series_data[metric_statistics_dataframe.metric_statistic_name].append(
@@ -735,16 +788,27 @@ class ScenarioTab(BaseTab):
                 planner_name = data.planner_name + f" ({self.get_file_path_last_name(data.experiment_index)})"
                 color = self.experiment_file_data.file_path_colors[data.experiment_index][data.planner_name]
                 time_series_figure = time_series_figures[metric_statistic_name]
+                # Get frame numbers based on timestamps
+                timestamp_frames = (
+                    data.time_series_selected_frames
+                    if data.time_series_selected_frames is not None
+                    else list(range(len(data.time_series_timestamps)))
+                )
                 data_source = ColumnDataSource(
                     dict(
-                        x=list(range(len(data.time_series_values))),
+                        x=timestamp_frames,
                         y=data.time_series_values,
                         time_us=data.time_series_timestamps,
                     )
                 )
-                time_series_figure.line(
-                    x="x", y="y", name=planner_name, color=color, legend_label=planner_name, source=data_source
-                )
+                if data.time_series_selected_frames is not None:
+                    time_series_figure.scatter(
+                        x="x", y="y", name=planner_name, color=color, legend_label=planner_name, source=data_source
+                    )
+                else:
+                    time_series_figure.line(
+                        x="x", y="y", name=planner_name, color=color, legend_label=planner_name, source=data_source
+                    )
 
         return time_series_figures
 
@@ -920,6 +984,7 @@ class ScenarioTab(BaseTab):
             and key.nuboard_file_index in self._experiment_file_active_index
         ]
         if not selected_keys:
+            self._scenario_title_div.text = "-"
             simulation_layouts = column(self._default_simulation_div)
         else:
             hidden_glyph_names = [
@@ -940,6 +1005,11 @@ class ScenarioTab(BaseTab):
                     plot_width=self.simulation_figure_sizes[0], offset_width=scenario_tab_style['col_offset_width']
                 ),
                 toolbar_location=None,
+            )
+            self._scenario_title_div.text = (
+                f"{self._scalar_scenario_type_select.value} - "
+                f"{self._scalar_log_name_select.value} - "
+                f"{self._scalar_scenario_name_select.value}"
             )
 
         return simulation_layouts
@@ -1008,9 +1078,10 @@ class ScenarioTab(BaseTab):
             # Disable scientific notation
             ego_expert_state_figure.yaxis.formatter = BasicTickFormatter(use_scientific=False)
             ego_expert_state_figures[plot_state_key] = ego_expert_state_figure
-
         for planner_name, plot_states in ego_expert_plot_aggregated_states.items():
-            color = ego_expert_plot_colors[planner_name]
+            color = ego_expert_plot_colors.get(planner_name, None)
+            if not color:
+                color = None
             for plot_state_key, plot_state_values in plot_states.items():
                 ego_expert_state_figure = ego_expert_state_figures[plot_state_key]
                 data_source = ColumnDataSource(
@@ -1092,7 +1163,6 @@ class ScenarioTab(BaseTab):
                     figure_planer_name=figure_data.planner_name,
                     file_path_index=figure_data.simulation_figure.file_path_index,
                 )
-
                 if planner_name in ego_expert_plot_aggregated_states:
                     continue
                 for planner_state in planner_states:

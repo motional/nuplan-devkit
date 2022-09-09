@@ -106,6 +106,7 @@ class TestDataLoader(unittest.TestCase):
             f'group={self.group.name}',
             f'cache.cache_path={self.cache_path}',
             'output_dir=${group}/${experiment}',
+            'scenario_type_weights=default_scenario_type_weights',
         ]
         with initialize_config_dir(config_dir=self.config_path):
             cfg = compose(

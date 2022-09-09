@@ -60,7 +60,6 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/preprocessing:feature_preprocessor",
-        "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:raster_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_map_feature_builder",
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",

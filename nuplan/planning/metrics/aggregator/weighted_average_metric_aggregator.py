@@ -27,6 +27,7 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
         file_name: str,
         aggregator_save_path: Path,
         multiple_metrics: List[str],
+        challenge_name: Optional[str] = None,
     ):
         """
         Initializes the WeightedAverageMetricAggregator class.
@@ -35,13 +36,20 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
         :param file_name: Saved file name.
         :param aggregator_save_path: Save path for this aggregated parquet file.
         :param multiple_metrics: A list if metric names used in multiple factor when computing scenario scores.
+        :param challenge_name: Optional, name of the challenge the metrics refer to, if set will be part of the
+        output file name and path.
         """
         self._name = name
         self._metric_weights = metric_weights
         self._file_name = file_name
+
         if not self._file_name.endswith('.parquet'):
             self._file_name += '.parquet'
+
         self._aggregator_save_path = aggregator_save_path
+
+        self._challenge_name = challenge_name
+
         if not self._aggregator_save_path.exists():
             self._aggregator_save_path.mkdir(exist_ok=True, parents=True)
         self._aggregator_type = 'weighted_average'
@@ -196,9 +204,13 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
                     final_score_metric_columns[final_score_column_name][key] = total_scenarios
                 else:
                     available_values: List[float] = []
-                    for value, num_scenario in zip(values, columns['num_scenarios']):
-                        if value is not None:
-                            available_values.append(value * num_scenario)
+                    if key == 'score':
+                        for value, num_scenario in zip(values, columns['num_scenarios']):
+                            if value is not None:
+                                available_values.append(value * num_scenario)
+                    else:
+                        available_values = [value for value in values if value is not None]
+
                     if not available_values:
                         total_values = None
                     else:
@@ -206,7 +218,6 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
                         total_values = np.sum(available_value_array) / total_scenarios
 
                     final_score_metric_columns[final_score_column_name][key] = total_values
-
         return final_score_metric_columns
 
     def _group_scenario_metrics(
@@ -231,7 +242,7 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
             # Get only dataframe with the planner names only
             dataframe = metric_dataframe.query_scenarios(planner_names=tuple([planner_name]))
             for _, data in dataframe.iterrows():
-                scenario_name = data['scenario_name']
+                scenario_name = data.get('scenario_name')
                 if scenario_name not in scenario_metric_columns:
                     scenario_metric_columns[scenario_name] = deepcopy(columns)
                 scenario_type = data['scenario_type']
@@ -314,3 +325,13 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
     def read_parquet(self) -> None:
         """Read a parquet file."""
         self._aggregated_metric_dataframe = pandas.read_parquet(self._parquet_file)
+
+    @property
+    def parquet_file(self) -> Path:
+        """Inherited, see superclass"""
+        return self._parquet_file
+
+    @property
+    def challenge(self) -> Optional[str]:
+        """Inherited, see superclass"""
+        return self._challenge_name

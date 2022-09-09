@@ -55,7 +55,7 @@ class TestConfigurationTab(unittest.TestCase):
         """Test add experiment file function."""
         attr = "value"
         old = "None"
-        self.configuration_tab._file_paths = []
+        self.configuration_tab.experiment_file_data.file_paths = []
         self.configuration_tab._add_experiment_file(
             attr=attr, old=pickle.dumps(old), new=base64.b64encode(pickle.dumps(self.nuboard_file.serialize()))
         )

@@ -1,0 +1,12 @@
+speed_limit_compliance_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.speed_limit_compliance.SpeedLimitComplianceStatistics
+  _convert_: 'all'
+  name: 'speed_limit_compliance'
+  category: 'Violations'
+  metric_score_unit: 'float'
+  max_violation_threshold: 1.0
+  max_overspeed_value_threshold: 2.23
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    lane_change_metric: ego_lane_change_statistics

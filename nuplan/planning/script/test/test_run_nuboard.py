@@ -41,6 +41,8 @@ class TestRunNuBoard(unittest.TestCase):
         self.search_path = f'hydra.searchpath=[{common_dir}, {experiment_dir}]'
 
         self.tmp_dir = tempfile.TemporaryDirectory()
+        if not os.getenv("NUPLAN_EXP_ROOT", None):
+            os.environ["NUPLAN_EXP_ROOT"] = self.tmp_dir.name
 
         # Default hydra overrides for quick unit testing
         self.simulation_overrides = [

@@ -69,3 +69,16 @@ py_test(
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
     ],
 )
+
+py_test(
+    name = "test_cloud_tab",
+    size = "medium",
+    srcs = ["test_cloud_tab.py"],
+    deps = [
+        "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/tabs:cloud_tab",
+        "//nuplan/planning/nuboard/tabs:configuration_tab",
+        "//nuplan/planning/nuboard/tabs:histogram_tab",
+    ],
+)

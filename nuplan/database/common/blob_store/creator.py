@@ -81,8 +81,11 @@ class BlobStoreCreator:
         # Default to S3 if environment variable is empty or not set.
         elif NUPLAN_DATA_STORE == "s3":
             if not conf.s3_root_url or not conf.s3_profile:
-                raise ValueError("S3 root url and profile to be specified if using s3 storage.")
-            store = S3Store(conf.s3_root_url, conf.s3_profile)
+                raise ValueError(
+                    "S3 root url and profile to be specified if using s3 storage. "
+                    f"s3_root_url: {conf.s3_root_url}, s3_profile: {conf.s3_profile}"
+                )
+            store = S3Store(conf.s3_root_url, conf.s3_profile, show_progress=verbose)
             # We don't want to cache on disk for training (there's too much data), but users
             # can set this environment variable if they want to cache data when working locally.
             if NUPLAN_CACHE_FROM_S3:

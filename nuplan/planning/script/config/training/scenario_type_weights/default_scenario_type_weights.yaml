@@ -1,0 +1,8 @@
+scenario_type_sampling_weights:
+  # scenario_name: scenario_type_weights
+  # If a scenario types weight is not specified by default its weight is 1.0.
+  # To sample with a lower probability set a weight lower than 1.0
+  # To sample with a higher probability set a weight higher than 1.0
+  enable: false
+  scenario_type_weights:
+    unknown: 1.0

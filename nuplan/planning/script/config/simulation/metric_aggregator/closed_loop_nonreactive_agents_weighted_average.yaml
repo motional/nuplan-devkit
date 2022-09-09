@@ -1,18 +1,19 @@
-weighted_average_metric_aggregator:
+closed_loop_nonreactive_agents_weighted_average:
   _target_: nuplan.planning.metrics.aggregator.weighted_average_metric_aggregator.WeightedAverageMetricAggregator
-  name: 'weighted_average_metric_aggregator'
+  name: 'closed_loop_nonreactive_agents_weighted_average'
   metric_weights:  # Below we list the metrics used in the scenario scoring function and their corresponsing weights to calculate a weighted average score for each scenario,
   # if not specified, the weight is set as default.
     # metric name : metric weight in the weighted average function
     ego_progress_along_expert_route: 5.0 # This metric has the highest weight equal to 5.0 in the weighted average function, its base score can take a value in [0,1] depending on the ratio of ego to expert progress
-    time_to_collision: 5.0 # This metric has the highest weight equal to 5.0 in the weighted average function, its base score can be 0 or 1 depending on the minimum time to collision threshold
-    speed_limit_violation: 4.0 # This metric has a weight equal to 4.0 in the weighted average function, its base score can take a value in [0,1] depending on the amount and duration of over-speeding
+    time_to_collision_within_bound: 5.0 # This metric has the highest weight equal to 5.0 in the weighted average function, its base score can be 0 or 1 depending on the minimum time to collision threshold
+    speed_limit_compliance: 4.0 # This metric has a weight equal to 4.0 in the weighted average function, its base score can take a value in [0,1] depending on the amount and duration of over-speeding
     ego_is_comfortable: 2.0 # This metric has the lowest weight equal to 2.0 in the weighted average function, its base score can be 0 or 1 depending on the comfort thresholds on acceleration, jerk and yaw.
     default: 1.0
-  file_name: weighted_average_metrics_${now:${date_format}}
+  file_name: closed_loop_nonreactive_agents_weighted_average_metrics_${now:${date_format}}
   # The scenario score is defined as the weighted average score of the metrics listed above, multiplied by the score of the multiple_metrics below.
   multiple_metrics:
-    - ego_at_fault_collisions # This metric score can be 0, 0.5 or 1 depending on whether there is an at fault collision with VRUs, vehicles or objects
-    - drivable_area_violation # This metric score can be 0 or 1 depending on whether ego drives outside the drivable area
+    - no_ego_at_fault_collisions # This metric score can be 0, 0.5 or 1 depending on whether there is an at fault collision with VRUs, vehicles or objects
+    - drivable_area_compliance # This metric score can be 0 or 1 depending on whether ego drives outside the drivable area
     - ego_is_making_progress # This metric score can be 0 or 1 depending on whether ego makes progress more than a minimum threshold compared to expert's progress
-    - driving_direction_violation # This metric score can be 0 or 1 depending on whether ego drives in the opposite direction more than a maximum threshold
+    - driving_direction_compliance # This metric score can be 0 or 1 depending on whether ego drives in the opposite direction more than a maximum threshold
+  challenge_name: closed_loop_nonreactive_agents

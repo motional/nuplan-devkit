@@ -16,11 +16,11 @@ In each scenario, selected metrics are aggregated to provide a score for the pro
 
 |  Metric Name        | Metric Score      | Weight in Scenario Score     |
 |--------------------|--------------------|---------------------------|
-|Miss Rate |0 if maximum displacement error between the planner proposed trajectory and expert trajectory is more than the `max_displacement_threshold` at the corresponding `comparison_horizon` in more than `max_miss_rate_threshold` of the time instances in the scenario, 1 otherwise.|NA/multiplying metric|
-|Average Displacement Error (ADE)          |0 if the average of ADEs over the `comparison_horizon` is more than `max_average_l2_error_threshold`, 1  otherwise.|1|
-|Final Displacement Error (FDE)          |0 if the average of ADEs over the `comparison_horizon` is more than `max_final_l2_error_threshold`, 1  otherwise.|1|
-|Average heading error          |0 if the average of heading errors over the `comparison_horizon` is more than `max_average_heading_error_threshold`, 1  otherwise.|2|
-|Final heading error          |0 if the average of heading errors over the `comparison_horizon` is more than `max_final_heading_error_threshold`, 1  otherwise.|2|
+|Miss Rate Within Bound|0 if maximum displacement error between the planner proposed trajectory and expert trajectory is more than the `max_displacement_threshold` at the corresponding `comparison_horizon` in more than `max_miss_rate_threshold` of the time instances in the scenario, 1 otherwise.|NA/multiplying metric|
+|Average Displacement Error (ADE)  Within Bound        |0 if the average of ADEs over the `comparison_horizon` is more than `max_average_l2_error_threshold`, 1  otherwise.|1|
+|Final Displacement Error (FDE)  Within Bound        |0 if the average of ADEs over the `comparison_horizon` is more than `max_final_l2_error_threshold`, 1  otherwise.|1|
+|Average heading error (AHE) Within Bound        |0 if the average of AHEs over the `comparison_horizon` is more than `max_average_heading_error_threshold`, 1  otherwise.|2|
+|Final heading error (FHE) Within Bound       |0 if the average of FHEs over the `comparison_horizon` is more than `max_final_heading_error_threshold`, 1  otherwise.|2|
 
 
 
@@ -41,13 +41,13 @@ Metrics scores, and how they are aggregated to compute the scenarios score is de
 
 |  Metric Name        | Metric Score      | Weight in Scenario Score     |
 |--------------------|--------------------|---------------------------|
-|Ego_at_fault_collisions |0 if there is an at_fault_collision with a vehicle or a vru, or multiple collisions with objects, 0.5 if there's a collision with a single object, 1 otherwise.|NA/multiplying metric|
-|drivable_area_violation          |0 if at any instance the distance of a corner of ego's bounding box from the drivable area is more than `max_violation_threshold`, 1  otherwise.|NA/multiplying metric|
-|driving_direction_violation          |0 if during the previous `time_horizon` (for each instance) ego has been driving against the traffic flow more than  `driving_direction_violation_threshold`, 1  otherwise.|NA/multiplying metric|
-|time_to_collision   |0 if time_to_collision is less than `least_min_ttc` threshold, 1 otherwise. |5|
-|speed_limit_violation          | Score is ``max(0, 1 - (speed_violation_integral /(max_overspeed_value_threshold * total_scenario_duration)))``  <br> where ``speed_violation_integral`` is area under the speed_violation vs time graph, ``max_overspeed_value_threshold`` is the maximum acceptable over-speeding threshold, currently set at 2.23 m/s (equivalent to ~5mph), and ``total_scenario_duration`` is the scenario duration in seconds. <br> Therefore, score is 1 if there is no speed limit violation and approaches to 0 as the violation increases.|4|
+|no_ego_at_fault_collisions |0 if there is an at-fault collision with a vehicle or a vru, or multiple at-fault collisions with objects, 0.5 if there's an at-fault collision with a single object, 1 otherwise.|NA/multiplying metric|
+|drivable_area_compliance          |0 if at any instance the distance of a corner of ego's bounding box from the drivable area is more than `max_violation_threshold`, 1  otherwise.|NA/multiplying metric|
+|driving_direction_compliance          |0 if during the previous `time_horizon` (for each instance) ego has been driving against the traffic flow more than  `driving_direction_violation_threshold`, 1  otherwise.|NA/multiplying metric|
+|time_to_collision_within_bound   |0 if time_to_collision is less than `least_min_ttc` threshold, 1 otherwise. |5|
+|speed_limit_compliance          | Score is ``max(0, 1 - (speed_violation_integral /(max_overspeed_value_threshold * total_scenario_duration)))``  <br> where ``speed_violation_integral`` is area under the speed_violation vs time graph, ``max_overspeed_value_threshold`` is the maximum acceptable over-speeding threshold, currently set at 2.23 m/s (equivalent to ~5mph), and ``total_scenario_duration`` is the scenario duration in seconds. <br> Therefore, score is 1 if there is no speed limit violation and approaches to 0 as the violation increases.|4|
 |ego_progress_along_expert_route         |Score is 0 if `overall_ego_progress<0`, otherwise it is `min(1.0, max(overall_ego_progress, score_progress_threshold)/ max(overall_expert_progress, score_progress_threshold)` <br> where `overall_ego_progress` is ego's overall progress along the expert route, and <br> `overall_expert_progress` is expert overall progress along its route, and <br> `score_progress_threshold` is a small threshold.|5|
-|ego_is_making_progress_statistics          | 0 if `ego_progress_along_expert_route` returns a value less than `min_progress_threshold`, 1 otherwise.  |NA/multiplying metric|
+|ego_is_making_progress          | 0 if `ego_progress_along_expert_route` returns a value less than `min_progress_threshold`, 1 otherwise.  |NA/multiplying metric|
 |Ego_is_comfortable  <small> <br> •  ego_jerk <br> •  ego_lat_acceleration <br> • ego_lon_acceleration <br> • ego_lon_jerk <br> •  ego_yaw_acceleration <br> • Ego_yaw_rate|0 if any of the comfort_metrics are not within comfort bounds/thresholds and 1 otherwise.|2|
 
 ## Planner score in each scenario type

@@ -25,25 +25,30 @@ def main(cfg: DictConfig) -> None:
     Execute metric aggregators with the simulation path.
     :param cfg: Hydra config dict.
     """
-    metric_save_path = Path(cfg.output_dir) / cfg.metric_folder_name
-    if not metric_save_path.exists():
-        metric_save_path.mkdir(exist_ok=True, parents=True)
-
+    cfg.scenario_metric_paths = cfg.scenario_metric_paths or []
     # Run metric_file integrator if it is set
-    if cfg.scenario_metric_paths:
-        metric_file_callback = MetricFileCallback(
-            scenario_metric_paths=cfg.scenario_metric_paths,
-            metric_file_output_path=str(metric_save_path),
-            delete_scenario_metric_files=cfg.delete_scenario_metric_files,
-        )
-        metric_file_callback.on_run_simulation_end()
+    for challenge in cfg.challenges:
+        challenge_save_path = Path(cfg.aggregator_save_path) / challenge
+
+        if not challenge_save_path.exists():
+            challenge_save_path.mkdir(exist_ok=True, parents=True)
+
+        if cfg.scenario_metric_paths:
+            challenge_metric_paths = [path for path in cfg.scenario_metric_paths if challenge in path]
+
+            metric_file_callback = MetricFileCallback(
+                scenario_metric_paths=challenge_metric_paths,
+                metric_file_output_path=str(challenge_save_path),
+                delete_scenario_metric_files=cfg.delete_scenario_metric_files,
+            )
+            metric_file_callback.on_run_simulation_end()
 
     # Build metric aggregators
     metric_aggregators = build_metrics_aggregators(cfg)
 
     # Build metric aggregator callback
     metric_aggregator_callback = MetricAggregatorCallback(
-        metric_save_path=str(metric_save_path), metric_aggregators=metric_aggregators
+        metric_save_path=cfg.aggregator_save_path, metric_aggregators=metric_aggregators
     )
     # Run the aggregator callback
     metric_aggregator_callback.on_run_simulation_end()

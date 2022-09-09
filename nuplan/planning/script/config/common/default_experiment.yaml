@@ -10,7 +10,7 @@ experiment: ${experiment_name}/${experiment_time}   # Unique name of the experim
 output_dir: ${group}/${experiment}                  # Output directory to save all training artifacts
 metric_dir: metrics                                 # Metric dir name to save metric results.
 aggregator_metric_dir: aggregator_metric            # Aggregator metric dir name to save aggregated metrics.
-sim_report_file: simulations_report.parquet         # Name of the parquet file the SimulationReports will be stored to
+runner_report_file: runner_report.parquet           # Name of the parquet file the RunnerReport will be stored to
 log_config: false                                   # Whether to log the final config after all overrides and interpolations
 
 # Execution

@@ -8,14 +8,30 @@ hydra:
 
 defaults:
   # Hyperparameters need to be specified
+
   - metric_aggregator:
-      - default_weighted_average
+      - open_loop_boxes_weighted_average
+      - closed_loop_nonreactive_agents_weighted_average
+      - closed_loop_reactive_agents_weighted_average
 
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging
 
-scenario_metric_paths: none                                # A list of existing scenario metric paths, e.g., scenario_metric_paths="[simulation_path_1/metrics, simulation_path_2/metrics]"
 delete_scenario_metric_files: false                        # Set True to delete scenario metric files after file integration
-output_dir: ???                                            # Output dir
+output_dir: ${oc.env:NUPLAN_EXP_ROOT}/exp                  # Output dir
 metric_folder_name: 'metrics'                              # Metric folder name
+scenario_metric_paths:
+  - ${output_dir}/${metric_folder_name}                               # A list of existing scenario metric paths, e.g., scenario_metric_paths="[simulation_path_1/metrics, simulation_path_2/metrics]"
 date_format: '%Y.%m.%d.%H.%M.%S'                           # Date format
+aggregated_metric_folder_name: 'aggregator_metric'         # Aggregated metric folder name
+
+aggregator_save_path: ${output_dir}/${aggregated_metric_folder_name}
+
+# Optional parameters for evaluation server aggregation
+contestant_id: null
+submission_id: null
+
+challenges:
+  - 'open_loop_boxes'
+  - 'closed_loop_nonreactive_agents'
+  - 'closed_loop_reactive_agents'

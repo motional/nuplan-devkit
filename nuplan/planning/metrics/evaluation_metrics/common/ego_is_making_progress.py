@@ -20,6 +20,7 @@ class EgoIsMakingProgressStatistics(MetricBase):
         category: str,
         ego_progress_along_expert_route_metric: EgoProgressAlongExpertRouteStatistics,
         min_progress_threshold: float,
+        metric_score_unit: Optional[str] = None,
     ) -> None:
         """
         Initializes the EgoIsMakingProgressStatistics class
@@ -27,8 +28,9 @@ class EgoIsMakingProgressStatistics(MetricBase):
         :param category: Metric category
         :param ego_progress_along_expert_route_metric: Ego progress along expert route metric
         :param min_progress_threshold: minimimum required progress threshold
+        :param metric_score_unit: Metric final score unit.
         """
-        super().__init__(name=name, category=category)
+        super().__init__(name=name, category=category, metric_score_unit=metric_score_unit)
         self._min_progress_threshold = min_progress_threshold
 
         # Initialize lower level metrics
@@ -63,6 +65,8 @@ class EgoIsMakingProgressStatistics(MetricBase):
             )
         ]
 
-        results = self._construct_metric_results(metric_statistics=statistics, time_series=None, scenario=scenario)
+        results = self._construct_metric_results(
+            metric_statistics=statistics, time_series=None, scenario=scenario, metric_score_unit=self.metric_score_unit
+        )
 
         return results  # type: ignore

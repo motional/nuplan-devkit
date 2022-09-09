@@ -79,6 +79,18 @@ class ConfigurationTab:
         """
         self._file_paths_on_change()
 
+    def add_nuboard_file_to_experiments(self, nuboard_file: NuBoardFile) -> None:
+        """
+        Add nuboard files to experiments.
+        :param nuboard_file: Added nuboard file.
+        """
+        nuboard_file.current_path = Path(nuboard_file.metric_main_path)
+        if nuboard_file not in self.experiment_file_data.file_paths:
+            self.experiment_file_data.update_data(file_paths=[nuboard_file])
+            self._experiment_file_path_checkbox_group.labels = self.experiment_file_path_stems
+            self._experiment_file_path_checkbox_group.active += [len(self.experiment_file_path_stems) - 1]
+            self._file_paths_on_change()
+
     def _add_experiment_file(self, attr: str, old: bytes, new: bytes) -> None:
         """
         Event responds to file change.
@@ -93,14 +105,8 @@ class ConfigurationTab:
             file_stream = io.BytesIO(decoded_string)
             data = pickle.load(file_stream)
             nuboard_file = NuBoardFile.deserialize(data=data)
-            nuboard_file.current_path = Path(nuboard_file.metric_main_path)
-            if nuboard_file not in self.experiment_file_data.file_paths:
-                self.experiment_file_data.update_data(file_paths=[nuboard_file])
-                self._experiment_file_path_checkbox_group.labels = self.experiment_file_path_stems
-                self._experiment_file_path_checkbox_group.active += [len(self.experiment_file_path_stems) - 1]
-                self._file_paths_on_change()
+            self.add_nuboard_file_to_experiments(nuboard_file=nuboard_file)
             file_stream.close()
-
         except (OSError, IOError) as e:
             logger.info(f"Error loading experiment file. {str(e)}.")
 

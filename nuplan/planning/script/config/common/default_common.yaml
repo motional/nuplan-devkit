@@ -9,3 +9,6 @@ defaults:
   - worker: ray_distributed
 
 selected_simulation_metrics: null
+
+# Sets verbosity level, in particular determines if progress bars are shown or not.
+verbose: false

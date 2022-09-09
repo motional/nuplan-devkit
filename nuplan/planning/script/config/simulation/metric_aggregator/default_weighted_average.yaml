@@ -8,3 +8,4 @@ weighted_average_metric_aggregator:
   file_name: weighted_average_metrics_${now:${date_format}}
   # The scenario score is defined as the weighted average score of the metrics listed above, multiplied by the score of the multiple_metrics below.
   multiple_metrics: null
+  challenge_name: null

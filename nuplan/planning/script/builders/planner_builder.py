@@ -1,4 +1,4 @@
-from typing import List, Type, cast
+from typing import List, Optional, Type, cast
 
 from hydra._internal.utils import _locate
 from hydra.utils import instantiate
@@ -12,7 +12,7 @@ from nuplan.planning.simulation.planner.ml_planner.ml_planner import MLPlanner
 from nuplan.planning.training.modeling.lightning_module_wrapper import LightningModuleWrapper
 
 
-def _build_planner(planner_cfg: DictConfig, scenario: AbstractScenario) -> AbstractPlanner:
+def _build_planner(planner_cfg: DictConfig, scenario: Optional[AbstractScenario]) -> AbstractPlanner:
     """
     Instantiate planner
     :param planner_cfg: config of a planner
@@ -38,6 +38,9 @@ def _build_planner(planner_cfg: DictConfig, scenario: AbstractScenario) -> Abstr
         planner_cls: Type[AbstractPlanner] = _locate(planner_cfg._target_)
 
         if planner_cls.requires_scenario:
+            assert scenario is not None, (
+                "Scenario was not provided to build the planner. " f"Planner {planner_cfg} can not be build!"
+            )
             planner = cast(AbstractPlanner, instantiate(planner_cfg, scenario=scenario))
         else:
             planner = cast(AbstractPlanner, instantiate(planner_cfg))
@@ -45,7 +48,7 @@ def _build_planner(planner_cfg: DictConfig, scenario: AbstractScenario) -> Abstr
     return planner
 
 
-def build_planners(planner_cfg: DictConfig, scenario: AbstractScenario) -> List[AbstractPlanner]:
+def build_planners(planner_cfg: DictConfig, scenario: Optional[AbstractScenario]) -> List[AbstractPlanner]:
     """
     Instantiate multiple planners by calling build_planner
     :param planner_cfg: config of a planner

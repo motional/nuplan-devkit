@@ -1,7 +1,7 @@
 import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, List, Optional, cast
 
 import pandas as pd
 
@@ -32,6 +32,16 @@ class CacheResult:
     cache_metadata: List[Optional[CacheMetadataEntry]]
 
 
+@dataclass(frozen=True)
+class ReadMetadataFromS3Input:
+    """
+    An internal class used to schematize the information needed to parallelize the reading of S3 metadata.
+    """
+
+    metadata_filename: str
+    cache_path: Path
+
+
 def save_cache_metadata(cache_metadata_entries: List[CacheMetadataEntry], cache_path: Path, node_id: int) -> None:
     """
     Saves list of CacheMetadataEntry to output csv file path.
@@ -51,6 +61,28 @@ def save_cache_metadata(cache_metadata_entries: List[CacheMetadataEntry], cache_
     pd.DataFrame(cache_metadata_entries_dicts).to_csv(cache_metadata_storage_path, index=False)
 
 
+def _read_metadata_from_s3(inputs: List[ReadMetadataFromS3Input]) -> List[CacheMetadataEntry]:
+    """
+    Reads metadata csv from s3.
+    :param inputs: The inputs to use for the function.
+    :returns: The read metadata.
+    """
+    outputs: List[CacheMetadataEntry] = []
+    if len(inputs) == 0:
+        return outputs
+
+    sanitized_cache_path = sanitise_s3_path(inputs[0].cache_path)
+    s3_store = S3Store(sanitized_cache_path)
+
+    for input_value in inputs:
+        df = pd.read_csv(s3_store.get(input_value.metadata_filename))
+        metadata_dict_list = df.to_dict("records")
+        for metadata_dict in metadata_dict_list:
+            outputs.append(CacheMetadataEntry(**metadata_dict))
+
+    return outputs
+
+
 def read_cache_metadata(
     cache_path: Path, metadata_filenames: List[str], worker: WorkerPool
 ) -> List[CacheMetadataEntry]:
@@ -61,22 +93,12 @@ def read_cache_metadata(
     :return: List of CacheMetadataEntry.
     """
     # Convert s3 path into proper string format
-    sanitised_cache_path = sanitise_s3_path(cache_path)
-    s3_store = S3Store(sanitised_cache_path)
-    metadata_dataframes = [pd.read_csv(s3_store.get(filename)) for filename in metadata_filenames]
-    metadata_dicts = [metadata_dict for df in metadata_dataframes for metadata_dict in df.to_dict('records')]
-    cache_metadata_entries = worker_map(worker, _construct_cache_metadata_entry_from_dict, metadata_dicts)
-    return cast(List[CacheMetadataEntry], cache_metadata_entries)
+    parallel_inputs = [
+        ReadMetadataFromS3Input(cache_path=cache_path, metadata_filename=mf) for mf in metadata_filenames
+    ]
 
-
-def _construct_cache_metadata_entry_from_dict(metadata_dicts: List[Dict[str, Any]]) -> List[CacheMetadataEntry]:
-    """
-    Constructs CacheMetadataEntry from list of metadata_dicts
-    :param metadata_dicts: List of metadata dictionaries.
-    :return: List of CacheMetadataEntry
-    """
-    cache_metadata_entries = [CacheMetadataEntry(**metadata_dict) for metadata_dict in metadata_dicts]
-    return cache_metadata_entries
+    result = worker_map(worker, _read_metadata_from_s3, parallel_inputs)
+    return cast(List[CacheMetadataEntry], result)
 
 
 def sanitise_s3_path(s3_path: Path) -> str:

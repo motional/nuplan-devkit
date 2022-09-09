@@ -104,3 +104,30 @@ py_binary(
         "//nuplan/planning/script/builders/utils:utils_config",
     ],
 )
+
+py_binary(
+    name = "run_result_processor_aws",
+    srcs = ["run_result_processor_aws.py"],
+    data = [
+        "//nuplan/planning/script:yaml",
+    ],
+    deps = [
+        ":run_metric_aggregator",
+        ":run_simulation",
+        "//nuplan/planning/script:utils",
+        "//nuplan/planning/simulation/main_callback:publisher_callback",
+        "//nuplan/submission/evalai:leaderboard_writer",
+        "//nuplan/submission/utils",
+        "//nuplan/submission/utils:aws_utils",
+    ],
+)
+
+py_binary(
+    name = "run_submission_planner",
+    srcs = ["run_submission_planner.py"],
+    deps = [
+        "//nuplan/planning/script:utils",
+        "//nuplan/planning/script/builders:planner_builder",
+        "//nuplan/submission:submission_planner",
+    ],
+)

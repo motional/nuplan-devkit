@@ -17,8 +17,9 @@ def interpolate_points(coords: torch.Tensor, max_points: int, interpolation: str
 
     x_coords = coords[:, 0].unsqueeze(0).unsqueeze(0)
     y_coords = coords[:, 1].unsqueeze(0).unsqueeze(0)
-    x_coords = torch.nn.functional.interpolate(x_coords, max_points, mode=interpolation)
-    y_coords = torch.nn.functional.interpolate(y_coords, max_points, mode=interpolation)
+    align_corners = False if interpolation == 'linear' else None
+    x_coords = torch.nn.functional.interpolate(x_coords, max_points, mode=interpolation, align_corners=align_corners)
+    y_coords = torch.nn.functional.interpolate(y_coords, max_points, mode=interpolation, align_corners=align_corners)
     coords = torch.stack((x_coords, y_coords), dim=-1).squeeze()
 
     return coords
@@ -68,7 +69,7 @@ def convert_feature_layer_to_fixed_size(
     for element_idx in range(min(len(feature_coords), max_elements)):
         element_coords = feature_coords[element_idx]
 
-        # TODO [PAC-2922 - christopher.eriksen]: Investigate best method for interpolation/filtering
+        # TODO: Investigate best method for interpolation/filtering
         # interpolate to maintain fixed size according to specified interpolation method if specified
         if interpolation is not None:
             num_points = max_points

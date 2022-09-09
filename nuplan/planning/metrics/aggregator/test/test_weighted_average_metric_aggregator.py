@@ -24,6 +24,7 @@ class TestWeightedAverageMetricAggregator(unittest.TestCase):
                     'scenario_type': ['unknown', 'ego_stop_at_stop_line', 'unknown'],
                     'planner_name': ['simple_planner', 'dummy_planner', 'dummy_planner'],
                     'metric_score': self.metric_scores[0],
+                    'metric_score_unit': 'float',
                 }
             ),
             pandas.DataFrame(
@@ -33,6 +34,7 @@ class TestWeightedAverageMetricAggregator(unittest.TestCase):
                     'scenario_type': ['unknown', 'unknown'],
                     'planner_name': ['simple_planner', 'dummy_planner'],
                     'metric_score': self.metric_scores[1],
+                    'metric_score_unit': 'float',
                 }
             ),
         ]
@@ -113,10 +115,15 @@ class TestWeightedAverageMetricAggregator(unittest.TestCase):
         for planner in expected_planners:
             planner_metric = aggregated_metric_dataframe[aggregated_metric_dataframe['planner_name'].isin([planner])]
             for name, expected_value in expected_values[planner].items():
-
                 # Fill NaN by -1.0
                 planner_values = np.round(planner_metric[name].fillna(-1.0).to_numpy(), 2).tolist()
                 self.assertEqual(expected_value, planner_values)
+
+    def test_parquet(self) -> None:
+        """Test property."""
+        self.assertEqual(
+            self.weighted_average_metric_aggregator.parquet_file, self.weighted_average_metric_aggregator._parquet_file
+        )
 
 
 if __name__ == '__main__':

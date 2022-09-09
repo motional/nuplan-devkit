@@ -135,6 +135,8 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 filter_tokens=scenario_filter.scenario_tokens,
                 filter_types=scenario_filter.scenario_types,
                 filter_map_names=scenario_filter.map_names,
+                remove_invalid_goals=scenario_filter.remove_invalid_goals,
+                verbose=self._verbose,
             )
             for log_file in self._db_files
             if (allowable_log_names is None) or (absolute_path_to_log_name(log_file) in allowable_log_names)

@@ -19,7 +19,7 @@ class MockAbstractMetricAggregator(AbstractMetricAggregator):
         self,
         aggregator_save_path: Path,
         name: str = 'dummy_metric_aggregator',
-        metric_weights: Dict[str, float] = {'default': 1.0},
+        metric_weights: Optional[Dict[str, float]] = None,
         file_name: str = 'dummy_metric_aggregator.parquet',
     ):
         """
@@ -30,7 +30,7 @@ class MockAbstractMetricAggregator(AbstractMetricAggregator):
         :param aggregator_save_path: Save path for this aggregated parquet file.
         """
         self._name = name
-        self._metric_weights = metric_weights
+        self._metric_weights = metric_weights or {'default': 1.0}
         self._file_name = file_name
         self._aggregator_save_path = aggregator_save_path
         if not self._aggregator_save_path.exists():
@@ -90,3 +90,13 @@ class MockAbstractMetricAggregator(AbstractMetricAggregator):
     def read_parquet(self) -> None:
         """Read a parquet file."""
         self._aggregated_metric_dataframe = pandas.read_parquet(self._parquet_file)
+
+    @property
+    def parquet_file(self) -> Path:
+        """Inherited, see superclass."""
+        return self._parquet_file
+
+    @property
+    def challenge(self) -> Optional[str]:
+        """Inherited, see superclass."""
+        return None

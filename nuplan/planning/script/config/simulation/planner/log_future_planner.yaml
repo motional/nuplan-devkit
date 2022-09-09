@@ -1,5 +1,5 @@
 log_future_planner:
   _target_: nuplan.planning.simulation.planner.log_future_planner.LogFuturePlanner
   _convert_: 'all'
-  num_poses: 12      # number of poses in a trajectory
-  future_time_horizon: 6.0  # [s] future time horizon over all poses
+  num_poses: 16      # number of poses in a trajectory
+  future_time_horizon: 8.0  # [s] future time horizon over all poses

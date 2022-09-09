@@ -12,14 +12,6 @@ from nuplan.planning.simulation.observation.idm.idm_agents_builder import build_
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Observation
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 
-OPEN_LOOP_DETECTION_TYPES = [
-    TrackedObjectType.PEDESTRIAN,
-    TrackedObjectType.BARRIER,
-    TrackedObjectType.CZONE_SIGN,
-    TrackedObjectType.TRAFFIC_CONE,
-    TrackedObjectType.GENERIC_OBJECT,
-]
-
 
 class IDMAgents(AbstractObservation):
     """
@@ -36,8 +28,9 @@ class IDMAgents(AbstractObservation):
         open_loop_detections_types: List[str],
         scenario: AbstractScenario,
         minimum_path_length: float = 20,
-        planned_trajectory_samples: int = 6,
-        planned_trajectory_sample_interval: float = 0.5,
+        planned_trajectory_samples: Optional[int] = None,
+        planned_trajectory_sample_interval: Optional[float] = None,
+        radius: float = 100,
     ):
         """
         Constructor for IDMAgents
@@ -49,9 +42,10 @@ class IDMAgents(AbstractObservation):
         :param decel_max: [m/s^2] maximum deceleration (positive value)
         :param scenario: scenario
         :param open_loop_detections_types: The open-loop detection types to include.
-        :param minimum_path_length: [m] The minimum path length
+        :param minimum_path_length: [m] The minimum path length to maintain.
         :param planned_trajectory_samples: number of elements to sample for the planned trajectory.
         :param planned_trajectory_sample_interval: [s] time interval of sequence to sample from.
+        :param radius: [m] Only agents within this radius around the ego will be simulated.
         """
         self.current_iteration = 0
 
@@ -65,6 +59,7 @@ class IDMAgents(AbstractObservation):
         self._minimum_path_length = minimum_path_length
         self._planned_trajectory_samples = planned_trajectory_samples
         self._planned_trajectory_sample_interval = planned_trajectory_sample_interval
+        self._radius = radius
 
         # Prepare IDM agent manager
         self._idm_agent_manager: Optional[IDMAgentManager] = None
@@ -146,6 +141,7 @@ class IDMAgents(AbstractObservation):
             self.current_iteration,
             traffic_light_status,
             self._get_open_loop_track_objects(self.current_iteration),
+            self._radius,
         )
 
     def _get_open_loop_track_objects(self, iteration: int) -> List[TrackedObject]:

@@ -5,7 +5,8 @@ import pandas as pd
 from shapely.geometry import Polygon
 
 import nuplan.common.maps.nuplan_map.roadblock as roadblock
-from nuplan.common.maps.abstract_map_objects import LaneGraphEdgeMapObject, RoadBlockGraphEdgeMapObject
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map_objects import LaneGraphEdgeMapObject, RoadBlockGraphEdgeMapObject, StopLine
 from nuplan.common.maps.maps_datatypes import VectorLayer
 from nuplan.common.maps.nuplan_map.lane_connector import NuPlanLaneConnector
 from nuplan.common.maps.nuplan_map.utils import get_all_rows_with_value, get_row_with_value
@@ -27,6 +28,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         roadblock_connectors_df: VectorLayer,
         stop_lines_df: VectorLayer,
         lane_connector_polygon_df: VectorLayer,
+        map_data: AbstractMap,
     ):
         """
         Constructor of NuPlanLaneConnector.
@@ -51,6 +53,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         self._stop_lines_df = stop_lines_df
         self._lane_connector_polygon_df = lane_connector_polygon_df
         self._roadblock_connector = None
+        self._map_data = map_data
 
     @cached_property
     def incoming_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
@@ -68,6 +71,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
         ]
 
@@ -87,6 +91,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
         ]
 
@@ -106,6 +111,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
             for lane_connector_id in lane_connector_ids.to_list()
         ]
@@ -114,6 +120,16 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
     def polygon(self) -> Polygon:
         """Inherited from superclass."""
         return self._get_roadblock_connector().geometry
+
+    @cached_property
+    def children_stop_lines(self) -> List[StopLine]:
+        """Inherited from superclass."""
+        raise NotImplementedError
+
+    @cached_property
+    def parallel_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
+        """Inherited from superclass."""
+        raise NotImplementedError
 
     def _get_roadblock_connector(self) -> pd.Series:
         """

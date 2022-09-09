@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -6,7 +6,12 @@ from scipy.ndimage import gaussian_filter1d
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
-from nuplan.planning.training.data_augmentation.data_augmentation_util import GaussianNoise, UniformNoise
+from nuplan.planning.training.data_augmentation.data_augmentation_util import (
+    GaussianNoise,
+    ParameterToScale,
+    ScalingDirection,
+    UniformNoise,
+)
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
 
 
@@ -86,3 +91,17 @@ class GaussianSmoothAgentAugmentor(AbstractAugmentor):
     def required_targets(self) -> List[str]:
         """Inherited, see superclass."""
         return ['trajectory']
+
+    @property
+    def augmentation_probability(self) -> ParameterToScale:
+        """Inherited, see superclass."""
+        return ParameterToScale(
+            param=self._augment_prob,
+            param_name=f'{self._augment_prob=}'.partition('=')[0].split('.')[1],
+            scaling_direction=ScalingDirection.MAX,
+        )
+
+    @property
+    def get_schedulable_attributes(self) -> List[ParameterToScale]:
+        """Inherited, see superclass."""
+        return cast(List[ParameterToScale], self._random_offset_generator.get_schedulable_attributes())

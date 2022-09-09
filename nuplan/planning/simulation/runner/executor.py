@@ -47,17 +47,18 @@ def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) ->
 
         # If one of the batch of simulations fails, all reports contain the same error
         reports = []
-        current_time = time.perf_counter()
+        end_time = time.perf_counter()
         for scenario in sim_runner.scenarios:
             reports.append(
                 RunnerReport(
-                    False,
-                    error,
-                    start_time,
-                    current_time,
-                    scenario.scenario_name,
-                    sim_runner.planner.name(),
-                    scenario.log_name,
+                    succeeded=False,
+                    error_message=error,
+                    start_time=start_time,
+                    end_time=end_time,
+                    planner_report=None,
+                    scenario_name=scenario.scenario_name,
+                    planner_name=sim_runner.planner.name(),
+                    log_name=scenario.log_name,
                 )
             )
 
@@ -70,6 +71,7 @@ def execute_runners(
     num_gpus: Optional[Union[int, float]],
     num_cpus: Optional[int],
     exit_on_failure: bool = False,
+    verbose: bool = False,
 ) -> List[RunnerReport]:
     """
     Execute multiple simulation runners or metric runners.
@@ -86,7 +88,7 @@ def execute_runners(
     number_of_sims = len(runners)
     logger.info(f"Starting {number_of_sims} simulations using {worker.__class__.__name__}!")
     reports: List[List[RunnerReport]] = worker.map(
-        Task(fn=run_simulation, num_gpus=num_gpus, num_cpus=num_cpus), runners, exit_on_failure
+        Task(fn=run_simulation, num_gpus=num_gpus, num_cpus=num_cpus), runners, exit_on_failure, verbose=verbose
     )
     # Store the results in a dictionary so we can easily store error tracebacks in the next step, if needed
     results: Dict[Tuple[str, str, str], RunnerReport] = {

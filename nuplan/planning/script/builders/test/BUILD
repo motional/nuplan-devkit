@@ -17,6 +17,7 @@ py_test(
     srcs = ["test_builder_utils.py"],
     deps = [
         "//nuplan/planning/script/builders/utils:utils_config",
+        "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )
 

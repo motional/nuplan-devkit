@@ -36,13 +36,14 @@ class MetricRunner(AbstractRunner):
         # Initialize reports for all the simulations that will run
         reports: List[RunnerReport] = [
             RunnerReport(
-                True,
-                None,
-                start_time,
-                None,
-                self._simulation_log.scenario.scenario_name,
-                self._simulation_log.planner.name(),
-                self._simulation_log.scenario.log_name,
+                succeeded=True,
+                error_message=None,
+                start_time=start_time,
+                end_time=None,
+                planner_report=None,
+                scenario_name=self._simulation_log.scenario.scenario_name,
+                planner_name=self._simulation_log.planner.name(),
+                log_name=self._simulation_log.scenario.log_name,
             )
         ]
         run_metric_engine(

@@ -89,8 +89,9 @@ def agents_box_to_scene(scene: Dict[str, Any], agents: UniqueIDMAgents) -> None:
     """
     for vehicle in scene["world"]["vehicles"]:
         agent_id = str(vehicle["id"])
-        vehicle["box"]["pose"] = agents[agent_id].to_se2().serialize()
-        vehicle["speed"] = agents[agent_id].velocity
+        if agent_id in agents:
+            vehicle["box"]["pose"] = agents[agent_id].to_se2().serialize()
+            vehicle["speed"] = agents[agent_id].velocity
 
 
 def agent_state_to_scene(scene: Dict[str, Any], agent: EgoState, agent_id: int) -> None:

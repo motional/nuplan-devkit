@@ -14,12 +14,14 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x63hallenge.proto\x12\x12\x63hallenge_protocol\"u\n\x17SimulationHistoryBuffer\x12\x12\n\nego_states\x18\x01 \x03(\x0c\x12\x14\n\x0cobservations\x18\x02 \x03(\x0c\x12\x1c\n\x0fsample_interval\x18\x03 \x01(\x02H\x00\x88\x01\x01\x42\x12\n\x10_sample_interval\"5\n\x13SimulationIteration\x12\x0f\n\x07time_us\x18\x01 \x01(\x03\x12\r\n\x05index\x18\x02 \x01(\x05\"\xa5\x01\n\x0cPlannerInput\x12\x45\n\x14simulation_iteration\x18\x01 \x01(\x0b\x32\'.challenge_protocol.SimulationIteration\x12N\n\x19simulation_history_buffer\x18\x02 \x01(\x0b\x32+.challenge_protocol.SimulationHistoryBuffer\"M\n\x11MultiPlannerInput\x12\x38\n\x0eplanner_inputs\x18\x01 \x03(\x0b\x32 .challenge_protocol.PlannerInput\"1\n\x08StateSE2\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\x0f\n\x07heading\x18\x03 \x01(\x02\"%\n\rStateVector2D\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\"\xb8\x01\n\x1aPlannerInitializationLight\x12\x37\n\x11\x65xpert_goal_state\x18\x01 \x01(\x0b\x32\x1c.challenge_protocol.StateSE2\x12\x1b\n\x13route_roadblock_ids\x18\x02 \x03(\t\x12\x32\n\x0cmission_goal\x18\x03 \x01(\x0b\x32\x1c.challenge_protocol.StateSE2\x12\x10\n\x08map_name\x18\x04 \x01(\t\"r\n\x1fMultiPlannerInitializationLight\x12O\n\x17planner_initializations\x18\x01 \x03(\x0b\x32..challenge_protocol.PlannerInitializationLight\"?\n\x1dPlannerInitializationResponse\x12\x1e\n\x16\x63onsume_batched_inputs\x18\x01 \x01(\x08\"\xa2\x02\n\x08\x45goState\x12\x34\n\x0erear_axle_pose\x18\x01 \x01(\x0b\x32\x1c.challenge_protocol.StateSE2\x12@\n\x15rear_axle_velocity_2d\x18\x02 \x01(\x0b\x32!.challenge_protocol.StateVector2D\x12\x44\n\x19rear_axle_acceleration_2d\x18\x03 \x01(\x0b\x32!.challenge_protocol.StateVector2D\x12\x1b\n\x13tire_steering_angle\x18\x04 \x01(\x02\x12\x0f\n\x07time_us\x18\x05 \x01(\x03\x12\x13\n\x0b\x61ngular_vel\x18\x06 \x01(\x02\x12\x15\n\rangular_accel\x18\x07 \x01(\x02\">\n\nTrajectory\x12\x30\n\nego_states\x18\x01 \x03(\x0b\x32\x1c.challenge_protocol.EgoState\"G\n\x0fMultiTrajectory\x12\x34\n\x0ctrajectories\x18\x01 \x03(\x0b\x32\x1e.challenge_protocol.Trajectory2\xfc\x01\n\x18\x44\x65tectionTracksChallenge\x12}\n\x11InitializePlanner\x12\x33.challenge_protocol.MultiPlannerInitializationLight\x1a\x31.challenge_protocol.PlannerInitializationResponse\"\x00\x12\x61\n\x11\x43omputeTrajectory\x12%.challenge_protocol.MultiPlannerInput\x1a#.challenge_protocol.MultiTrajectory\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x63hallenge.proto\x12\x12\x63hallenge_protocol\"u\n\x17SimulationHistoryBuffer\x12\x12\n\nego_states\x18\x01 \x03(\x0c\x12\x14\n\x0cobservations\x18\x02 \x03(\x0c\x12\x1c\n\x0fsample_interval\x18\x03 \x01(\x02H\x00\x88\x01\x01\x42\x12\n\x10_sample_interval\"5\n\x13SimulationIteration\x12\x0f\n\x07time_us\x18\x01 \x01(\x03\x12\r\n\x05index\x18\x02 \x01(\x05\"-\n\x16TrafficLightStatusType\x12\x13\n\x0bstatus_name\x18\x01 \x01(\t\"\x82\x01\n\x16TrafficLightStatusData\x12:\n\x06status\x18\x01 \x01(\x0b\x32*.challenge_protocol.TrafficLightStatusType\x12\x19\n\x11lane_connector_id\x18\x02 \x01(\x05\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\"\xed\x01\n\x0cPlannerInput\x12\x45\n\x14simulation_iteration\x18\x01 \x01(\x0b\x32\'.challenge_protocol.SimulationIteration\x12N\n\x19simulation_history_buffer\x18\x02 \x01(\x0b\x32+.challenge_protocol.SimulationHistoryBuffer\x12\x46\n\x12traffic_light_data\x18\x03 \x03(\x0b\x32*.challenge_protocol.TrafficLightStatusData\"M\n\x11MultiPlannerInput\x12\x38\n\x0eplanner_inputs\x18\x01 \x03(\x0b\x32 .challenge_protocol.PlannerInput\"1\n\x08StateSE2\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\x0f\n\x07heading\x18\x03 \x01(\x02\"%\n\rStateVector2D\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\"\x7f\n\x1aPlannerInitializationLight\x12\x1b\n\x13route_roadblock_ids\x18\x01 \x03(\t\x12\x32\n\x0cmission_goal\x18\x02 \x01(\x0b\x32\x1c.challenge_protocol.StateSE2\x12\x10\n\x08map_name\x18\x03 \x01(\t\"r\n\x1fMultiPlannerInitializationLight\x12O\n\x17planner_initializations\x18\x01 \x03(\x0b\x32..challenge_protocol.PlannerInitializationLight\"?\n\x1dPlannerInitializationResponse\x12\x1e\n\x16\x63onsume_batched_inputs\x18\x01 \x01(\x08\"\xa2\x02\n\x08\x45goState\x12\x34\n\x0erear_axle_pose\x18\x01 \x01(\x0b\x32\x1c.challenge_protocol.StateSE2\x12@\n\x15rear_axle_velocity_2d\x18\x02 \x01(\x0b\x32!.challenge_protocol.StateVector2D\x12\x44\n\x19rear_axle_acceleration_2d\x18\x03 \x01(\x0b\x32!.challenge_protocol.StateVector2D\x12\x1b\n\x13tire_steering_angle\x18\x04 \x01(\x02\x12\x0f\n\x07time_us\x18\x05 \x01(\x03\x12\x13\n\x0b\x61ngular_vel\x18\x06 \x01(\x02\x12\x15\n\rangular_accel\x18\x07 \x01(\x02\">\n\nTrajectory\x12\x30\n\nego_states\x18\x01 \x03(\x0b\x32\x1c.challenge_protocol.EgoState\"G\n\x0fMultiTrajectory\x12\x34\n\x0ctrajectories\x18\x01 \x03(\x0b\x32\x1e.challenge_protocol.Trajectory2\xfc\x01\n\x18\x44\x65tectionTracksChallenge\x12}\n\x11InitializePlanner\x12\x33.challenge_protocol.MultiPlannerInitializationLight\x1a\x31.challenge_protocol.PlannerInitializationResponse\"\x00\x12\x61\n\x11\x43omputeTrajectory\x12%.challenge_protocol.MultiPlannerInput\x1a#.challenge_protocol.MultiTrajectory\"\x00\x62\x06proto3')
 
 
 
 _SIMULATIONHISTORYBUFFER = DESCRIPTOR.message_types_by_name['SimulationHistoryBuffer']
 _SIMULATIONITERATION = DESCRIPTOR.message_types_by_name['SimulationIteration']
+_TRAFFICLIGHTSTATUSTYPE = DESCRIPTOR.message_types_by_name['TrafficLightStatusType']
+_TRAFFICLIGHTSTATUSDATA = DESCRIPTOR.message_types_by_name['TrafficLightStatusData']
 _PLANNERINPUT = DESCRIPTOR.message_types_by_name['PlannerInput']
 _MULTIPLANNERINPUT = DESCRIPTOR.message_types_by_name['MultiPlannerInput']
 _STATESE2 = DESCRIPTOR.message_types_by_name['StateSE2']
@@ -43,6 +45,20 @@ SimulationIteration = _reflection.GeneratedProtocolMessageType('SimulationIterat
   # @@protoc_insertion_point(class_scope:challenge_protocol.SimulationIteration)
   })
 _sym_db.RegisterMessage(SimulationIteration)
+
+TrafficLightStatusType = _reflection.GeneratedProtocolMessageType('TrafficLightStatusType', (_message.Message,), {
+  'DESCRIPTOR' : _TRAFFICLIGHTSTATUSTYPE,
+  '__module__' : 'challenge_pb2'
+  # @@protoc_insertion_point(class_scope:challenge_protocol.TrafficLightStatusType)
+  })
+_sym_db.RegisterMessage(TrafficLightStatusType)
+
+TrafficLightStatusData = _reflection.GeneratedProtocolMessageType('TrafficLightStatusData', (_message.Message,), {
+  'DESCRIPTOR' : _TRAFFICLIGHTSTATUSDATA,
+  '__module__' : 'challenge_pb2'
+  # @@protoc_insertion_point(class_scope:challenge_protocol.TrafficLightStatusData)
+  })
+_sym_db.RegisterMessage(TrafficLightStatusData)
 
 PlannerInput = _reflection.GeneratedProtocolMessageType('PlannerInput', (_message.Message,), {
   'DESCRIPTOR' : _PLANNERINPUT,
@@ -122,26 +138,30 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _SIMULATIONHISTORYBUFFER._serialized_end=156
   _SIMULATIONITERATION._serialized_start=158
   _SIMULATIONITERATION._serialized_end=211
-  _PLANNERINPUT._serialized_start=214
-  _PLANNERINPUT._serialized_end=379
-  _MULTIPLANNERINPUT._serialized_start=381
-  _MULTIPLANNERINPUT._serialized_end=458
-  _STATESE2._serialized_start=460
-  _STATESE2._serialized_end=509
-  _STATEVECTOR2D._serialized_start=511
-  _STATEVECTOR2D._serialized_end=548
-  _PLANNERINITIALIZATIONLIGHT._serialized_start=551
-  _PLANNERINITIALIZATIONLIGHT._serialized_end=735
-  _MULTIPLANNERINITIALIZATIONLIGHT._serialized_start=737
-  _MULTIPLANNERINITIALIZATIONLIGHT._serialized_end=851
-  _PLANNERINITIALIZATIONRESPONSE._serialized_start=853
-  _PLANNERINITIALIZATIONRESPONSE._serialized_end=916
-  _EGOSTATE._serialized_start=919
-  _EGOSTATE._serialized_end=1209
-  _TRAJECTORY._serialized_start=1211
-  _TRAJECTORY._serialized_end=1273
-  _MULTITRAJECTORY._serialized_start=1275
-  _MULTITRAJECTORY._serialized_end=1346
-  _DETECTIONTRACKSCHALLENGE._serialized_start=1349
-  _DETECTIONTRACKSCHALLENGE._serialized_end=1601
+  _TRAFFICLIGHTSTATUSTYPE._serialized_start=213
+  _TRAFFICLIGHTSTATUSTYPE._serialized_end=258
+  _TRAFFICLIGHTSTATUSDATA._serialized_start=261
+  _TRAFFICLIGHTSTATUSDATA._serialized_end=391
+  _PLANNERINPUT._serialized_start=394
+  _PLANNERINPUT._serialized_end=631
+  _MULTIPLANNERINPUT._serialized_start=633
+  _MULTIPLANNERINPUT._serialized_end=710
+  _STATESE2._serialized_start=712
+  _STATESE2._serialized_end=761
+  _STATEVECTOR2D._serialized_start=763
+  _STATEVECTOR2D._serialized_end=800
+  _PLANNERINITIALIZATIONLIGHT._serialized_start=802
+  _PLANNERINITIALIZATIONLIGHT._serialized_end=929
+  _MULTIPLANNERINITIALIZATIONLIGHT._serialized_start=931
+  _MULTIPLANNERINITIALIZATIONLIGHT._serialized_end=1045
+  _PLANNERINITIALIZATIONRESPONSE._serialized_start=1047
+  _PLANNERINITIALIZATIONRESPONSE._serialized_end=1110
+  _EGOSTATE._serialized_start=1113
+  _EGOSTATE._serialized_end=1403
+  _TRAJECTORY._serialized_start=1405
+  _TRAJECTORY._serialized_end=1467
+  _MULTITRAJECTORY._serialized_start=1469
+  _MULTITRAJECTORY._serialized_end=1540
+  _DETECTIONTRACKSCHALLENGE._serialized_start=1543
+  _DETECTIONTRACKSCHALLENGE._serialized_end=1795
 # @@protoc_insertion_point(module_scope)

@@ -54,3 +54,19 @@ py_library(
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
     ],
 )
+
+py_library(
+    name = "validation_callback",
+    srcs = ["validation_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+    ],
+)
+
+py_library(
+    name = "completion_callback",
+    srcs = ["completion_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+    ],
+)

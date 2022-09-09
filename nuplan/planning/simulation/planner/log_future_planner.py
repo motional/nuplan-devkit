@@ -45,7 +45,7 @@ class LogFuturePlanner(AbstractPlanner):
         """Inherited, see superclass."""
         return DetectionsTracks  # type: ignore
 
-    def compute_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
         """Inherited, see superclass."""
         iteration = current_input[0].iteration
         current_state = self._scenario.get_ego_state_at_iteration(iteration.index)

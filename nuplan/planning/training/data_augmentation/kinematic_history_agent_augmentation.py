@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -9,6 +9,8 @@ from nuplan.planning.training.data_augmentation.abstract_data_augmentation impor
 from nuplan.planning.training.data_augmentation.data_augmentation_util import (
     ConstrainedNonlinearSmoother,
     GaussianNoise,
+    ParameterToScale,
+    ScalingDirection,
     UniformNoise,
 )
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
@@ -60,41 +62,42 @@ class KinematicHistoryAgentAugmentor(AbstractAugmentor):
             return features, targets
 
         # Augment the history to match the distribution shift in close loop rollout
-        trajectory_length = len(features['agents'].ego[0]) - 1
-        _optimizer = ConstrainedNonlinearSmoother(trajectory_length, self._dt)
+        for batch_idx in range(len(features['agents'].ego)):
+            trajectory_length = len(features['agents'].ego[batch_idx]) - 1
+            _optimizer = ConstrainedNonlinearSmoother(trajectory_length, self._dt)
 
-        features['agents'].ego[0][-1] += self._random_offset_generator.sample()
-        ego_trajectory: npt.NDArray[np.float32] = features['agents'].ego[0]
-        ego_x, ego_y, ego_yaw = ego_trajectory.T
-        ego_velocity = np.linalg.norm(np.diff(ego_trajectory[:, :2], axis=0), axis=1)
+            features['agents'].ego[batch_idx][-1] += self._random_offset_generator.sample()
+            ego_trajectory: npt.NDArray[np.float32] = features['agents'].ego[batch_idx]
+            ego_x, ego_y, ego_yaw = ego_trajectory.T
+            ego_velocity = np.linalg.norm(np.diff(ego_trajectory[:, :2], axis=0), axis=1)
 
-        # Define the 'earliest history state' as a boundary condition, and reference trajectory
-        x_curr = [ego_x[0], ego_y[0], ego_yaw[0], ego_velocity[0]]
-        ref_traj = ego_trajectory
+            # Define the 'earliest history state' as a boundary condition, and reference trajectory
+            x_curr = [ego_x[0], ego_y[0], ego_yaw[0], ego_velocity[0]]
+            ref_traj = ego_trajectory
 
-        # Set reference and solve
-        _optimizer.set_reference_trajectory(x_curr, ref_traj)
+            # Set reference and solve
+            _optimizer.set_reference_trajectory(x_curr, ref_traj)
 
-        try:
-            sol = _optimizer.solve()
-        except RuntimeError:
-            logger.error("Smoothing failed with status %s! Use G.T. instead" % sol.stats()['return_status'])
-            return features, targets
+            try:
+                sol = _optimizer.solve()
+            except RuntimeError:
+                logger.error("Smoothing failed with status %s! Use G.T. instead" % sol.stats()['return_status'])
+                return features, targets
 
-        if not sol.stats()['success']:
-            logger.warning("Smoothing failed with status %s! Use G.T. instead" % sol.stats()['return_status'])
-            return features, targets
+            if not sol.stats()['success']:
+                logger.warning("Smoothing failed with status %s! Use G.T. instead" % sol.stats()['return_status'])
+                return features, targets
 
-        ego_perturb: npt.NDArray[np.float32] = np.vstack(
-            [
-                sol.value(_optimizer.position_x),
-                sol.value(_optimizer.position_y),
-                sol.value(_optimizer.yaw),
-            ]
-        )
-        ego_perturb = ego_perturb.T
+            ego_perturb: npt.NDArray[np.float32] = np.vstack(
+                [
+                    sol.value(_optimizer.position_x),
+                    sol.value(_optimizer.position_y),
+                    sol.value(_optimizer.yaw),
+                ]
+            )
+            ego_perturb = ego_perturb.T
 
-        features["agents"].ego[0] = np.float32(ego_perturb)
+            features["agents"].ego[batch_idx] = np.float32(ego_perturb)
 
         return features, targets
 
@@ -107,3 +110,17 @@ class KinematicHistoryAgentAugmentor(AbstractAugmentor):
     def required_targets(self) -> List[str]:
         """Inherited, see superclass."""
         return []
+
+    @property
+    def augmentation_probability(self) -> ParameterToScale:
+        """Inherited, see superclass."""
+        return ParameterToScale(
+            param=self._augment_prob,
+            param_name=f'{self._augment_prob=}'.partition('=')[0].split('.')[1],
+            scaling_direction=ScalingDirection.MAX,
+        )
+
+    @property
+    def get_schedulable_attributes(self) -> List[ParameterToScale]:
+        """Inherited, see superclass."""
+        return cast(List[ParameterToScale], self._random_offset_generator.get_schedulable_attributes())

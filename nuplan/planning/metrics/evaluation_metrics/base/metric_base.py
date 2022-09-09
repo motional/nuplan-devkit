@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 import numpy as np
+import numpy.typing as npt
 
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
@@ -11,14 +12,16 @@ from nuplan.planning.simulation.history.simulation_history import SimulationHist
 class MetricBase(AbstractMetricBuilder):
     """Base class for evaluation of metrics."""
 
-    def __init__(self, name: str, category: str) -> None:
+    def __init__(self, name: str, category: str, metric_score_unit: Optional[str] = None) -> None:
         """
         Initializer for MetricBase
         :param name: Metric name
         :param category: Metric category.
+        :param metric_score_unit: Metric final score unit.
         """
         self._name = name
         self._category = category
+        self._metric_score_unit = metric_score_unit
 
     @property
     def name(self) -> str:
@@ -35,6 +38,13 @@ class MetricBase(AbstractMetricBuilder):
         :return the metric category.
         """
         return self._category
+
+    @property
+    def metric_score_unit(self) -> Optional[str]:
+        """
+        Returns the metric final score unit.
+        """
+        return self._metric_score_unit
 
     def compute_score(
         self,
@@ -103,13 +113,16 @@ class MetricBase(AbstractMetricBuilder):
         self,
         metric_statistics: List[Statistic],
         scenario: AbstractScenario,
+        metric_score_unit: Optional[str] = None,
         time_series: Optional[TimeSeries] = None,
     ) -> List[MetricStatistics]:
         """
         Construct metric results with statistics, scenario, and time series
         :param metric_statistics: A list of metric statistics
         :param scenario: Scenario running this metric to compute a metric score
+        :param metric_score_unit: Unit for the metric final score.
         :param time_series: Time series object.
+        :return: A list of metric statistics.
         """
         score = self.compute_score(scenario=scenario, metric_statistics=metric_statistics, time_series=time_series)
 
@@ -120,6 +133,74 @@ class MetricBase(AbstractMetricBuilder):
             time_series=time_series,
             metric_category=self.category,
             metric_score=score,
+            metric_score_unit=metric_score_unit,
         )
 
         return [result]
+
+    def _construct_open_loop_metric_results(
+        self,
+        scenario: AbstractScenario,
+        comparison_horizon: List[int],
+        maximum_threshold: float,
+        metric_values: npt.NDArray[np.float64],
+        name: str,
+        unit: str,
+        timestamps_sampled: List[int],
+        metric_score_unit: str,
+        selected_frames: List[int],
+    ) -> List[MetricStatistics]:
+        """
+        Construct metric results with statistics, scenario, and time series for open_loop metrics.
+        :param scenario: Scenario running this metric to compute a metric score.
+        :param comparison_horizon: List of horizon times in future (s) to find displacement errors.
+        :param maximum_threshold: Maximum acceptable error threshold.
+        :param metric_values: Time series object.
+        :param name: name of timeseries.
+        :param unit: metric unit.
+        :param timestamps_sampled:A list of sampled timestamps.
+        :param metric_score_unit: Unit for the metric final score.
+        :param selected_frames: List sampled indices for nuboard Timeseries frames
+        :return: A list of metric statistics.
+        """
+        metric_statistics: List[Statistic] = [
+            Statistic(
+                name=f"{name}_horizon_{horizon}",
+                unit=unit,
+                value=np.mean(metric_values[ind]),
+                type=MetricStatisticsType.MEAN,
+            )
+            for ind, horizon in enumerate(comparison_horizon)
+        ]
+        metric_statistics.extend(
+            [
+                Statistic(
+                    name=f"{self.name}",
+                    unit=MetricStatisticsType.BOOLEAN.unit,
+                    value=np.mean(metric_values) <= maximum_threshold,
+                    type=MetricStatisticsType.BOOLEAN,
+                ),
+                Statistic(
+                    name=f"avg_{name}_over_all_horizons",
+                    unit=unit,
+                    value=np.mean(metric_values),
+                    type=MetricStatisticsType.MEAN,
+                ),
+            ]
+        )
+        metric_values_over_horizons_at_each_time = np.mean(metric_values, axis=0)
+
+        time_series = TimeSeries(
+            unit=f"avg_{name}_over_all_horizons [{unit}]",
+            time_stamps=timestamps_sampled,
+            values=list(metric_values_over_horizons_at_each_time),
+            selected_frames=selected_frames,
+        )
+        results: List[MetricStatistics] = self._construct_metric_results(
+            metric_statistics=metric_statistics,
+            scenario=scenario,
+            metric_score_unit=metric_score_unit,
+            time_series=time_series,
+        )
+
+        return results

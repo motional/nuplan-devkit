@@ -1,6 +1,8 @@
 from typing import Dict, List
 
 import numpy as np
+import numpy.typing as npt
+from scipy.spatial.distance import cdist
 from shapely.geometry.base import CAP_STYLE
 
 from nuplan.common.actor_state.ego_state import EgoState
@@ -41,6 +43,7 @@ class IDMAgentManager:
         iteration: int,
         traffic_light_status: Dict[TrafficLightStatusType, List[str]],
         open_loop_detections: List[TrackedObject],
+        radius: float,
     ) -> None:
         """
         Propagate each active agent forward in time.
@@ -50,12 +53,15 @@ class IDMAgentManager:
         :param iteration: the simulation iteration.
         :param traffic_light_status: {traffic_light_status: lane_connector_ids} A dictionary containing traffic light information.
         :param open_loop_detections: A list of open loop detections the IDM agents should be responsive to.
+        :param radius: [m] The radius around the ego state
         """
         self.agent_occupancy.set("ego", ego_state.car_footprint.geometry)
         track_ids = []
         for track in open_loop_detections:
             track_ids.append(track.track_token)
             self.agent_occupancy.insert(track.track_token, track.box.geometry)
+
+        self._filter_agents_out_of_range(ego_state, radius)
 
         for agent_token, agent in self.agents.items():
             if agent.is_active(iteration) and agent.has_valid_path():
@@ -134,6 +140,25 @@ class IDMAgentManager:
                 ]
             )
         )
+
+    def _filter_agents_out_of_range(self, ego_state: EgoState, radius: float = 100) -> None:
+        """
+        Filter out agents that are out of range.
+        :param ego_state: The ego state used as the center of the given radius
+        :param radius: [m] The radius around the ego state
+        """
+        if len(self.agents) == 0:
+            return
+
+        agents: npt.NDArray[np.int32] = np.array([agent.to_se2().point.array for agent in self.agents.values()])
+        distances = cdist(np.expand_dims(ego_state.center.point.array, axis=0), agents)
+        remove_indices = np.argwhere(distances.flatten() > radius)
+        remove_tokens = np.array(list(self.agents.keys()))[remove_indices.flatten()]
+
+        # Remove agents which are out of scope
+        self.agent_occupancy.remove(remove_tokens)
+        for token in remove_tokens:
+            self.agents.pop(token)
 
     def _get_relevant_stop_lines(
         self, agent: IDMAgent, traffic_light_status: Dict[TrafficLightStatusType, List[str]]

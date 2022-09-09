@@ -1,72 +1,41 @@
 import logging
 from collections import defaultdict
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
 from bokeh.document.document import Document
 from bokeh.layouts import column, gridplot, layout
-from bokeh.models import ColumnDataSource, Div, HoverTool, MultiChoice, Spinner, glyph
-from bokeh.models.callbacks import CustomJS
+from bokeh.models import Button, ColumnDataSource, Div, HoverTool, MultiChoice, Spinner, glyph
 from bokeh.plotting import figure
 
 from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
-from nuplan.planning.nuboard.style import (
-    PLOT_PALETTE,
-    default_div_style,
-    default_multi_choice_style,
-    default_spinner_style,
-    histogram_tab_style,
+from nuplan.planning.nuboard.style import PLOT_PALETTE, histogram_tab_style
+from nuplan.planning.nuboard.tabs.config.histogram_tab_config import (
+    PLANNER_CHECKBOX_GROUP_NAME,
+    HistogramData,
+    HistogramDataType,
+    HistogramEdgeData,
+    HistogramEdgesDataType,
+    HistogramFigureData,
+    HistogramFigureDataType,
+    HistogramStatistics,
+    HistogramTabBinSpinnerConfig,
+    HistogramTabDefaultDivConfig,
+    HistogramTabMetricNameMultiChoiceConfig,
+    HistogramTabModalQueryButtonConfig,
+    HistogramTabPlotConfig,
+    HistogramTabScenarioTypeMultiChoiceConfig,
+)
+from nuplan.planning.nuboard.tabs.js_code.histogram_tab_js_code import (
+    HistogramTabLoadingEndJSCode,
+    HistogramTabLoadingJSCode,
+    HistogramTabUpdateWindowsSizeJSCode,
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class HistogramStatistics:
-    """Histogram statistics data."""
-
-    values: npt.NDArray[np.float64]  # An array of values
-    unit: str  # Unit
-    scenarios: List[str]  # Scenario names
-
-
-@dataclass
-class HistogramData:
-    """Histogram data."""
-
-    experiment_index: int  # Experiment index to represent color
-    planner_name: str  # Planner name
-    statistics: Dict[str, HistogramStatistics]  # Aggregated statistic data
-
-
-@dataclass
-class HistogramFigureData:
-    """Histogram figure data."""
-
-    figure_plot: figure  # Histogram statistic figure
-    frequency_array: Optional[npt.NDArray[np.int64]] = None
-
-
-@dataclass
-class HistogramEdgeData:
-    """Histogram edge data."""
-
-    unit: str  # Unit
-    values: npt.NDArray[np.float64]  # An array of values
-
-
-# Type for histogram aggregated data: {metric name: A list of histogram aggregated data}
-histogram_data_type = Dict[str, List[HistogramData]]
-
-# Type for histogram figure data type: {metric name: {metric statistics name: histogram figure data}}
-histogram_figures_type = Dict[str, Dict[str, HistogramFigureData]]
-
-# Type for histogram edge data type: {metric name: {metric statistic name: histogram figure data}}
-histogram_edges_data_type = Dict[str, Dict[str, Optional[npt.NDArray[np.float64]]]]
 
 
 class HistogramTab(BaseTab):
@@ -88,68 +57,31 @@ class HistogramTab(BaseTab):
 
         # UI.
         # Planner selection
-        self.planner_checkbox_group.name = "histogram_planner_checkbox_group"
+        self.planner_checkbox_group.name = PLANNER_CHECKBOX_GROUP_NAME
+        self.planner_checkbox_group.js_on_change("active", HistogramTabLoadingJSCode.get_js_code())
 
         # Scenario type multi choices
-        self._scenario_type_multi_choice = MultiChoice(
-            css_classes=["scenario-type-multi-choice"],
-            name="histogram_scenario_type_multi_choice",
-            option_limit=default_multi_choice_style['option_limit'],
-        )
+        self._scenario_type_multi_choice = MultiChoice(**HistogramTabScenarioTypeMultiChoiceConfig.get_config())
         self._scenario_type_multi_choice.on_change("value", self._scenario_type_multi_choice_on_change)
-        self._loading_js = CustomJS(
-            args={},
-            code="""
-                    document.getElementById('histogram-loading').style.visibility = 'visible';
-                    document.getElementById('histogram-plot-section').style.visibility = 'hidden';
-                    cb_obj.tags = [window.outerWidth, window.outerHeight];
-                """,
-        )
-        self._scenario_type_multi_choice.js_on_change("value", self._loading_js)
-        self.planner_checkbox_group.js_on_change("active", self._loading_js)
+        self._scenario_type_multi_choice.js_on_change("value", HistogramTabUpdateWindowsSizeJSCode.get_js_code())
 
         # Metric name multi choices
-        self._metric_name_multi_choice = MultiChoice(
-            css_classes=["metric-name-multi-choice"],
-            name="histogram_metric_name_multi_choice",
-            option_limit=default_multi_choice_style['option_limit'],
-        )
+        self._metric_name_multi_choice = MultiChoice(**HistogramTabMetricNameMultiChoiceConfig.get_config())
         self._metric_name_multi_choice.on_change("value", self._metric_name_multi_choice_on_change)
-        self._metric_name_multi_choice.js_on_change("value", self._loading_js)
-        self._end_loading_js = CustomJS(
-            args={},
-            code="""
-            document.getElementById('histogram-loading').style.visibility = 'hidden';
-            document.getElementById('histogram-plot-section').style.visibility = 'visible';
-        """,
-        )
-        self._bin_spinner = Spinner(
-            mode='int',
-            placeholder='Number of bins (default: 20)',
-            low=default_spinner_style['low'],
-            width=default_spinner_style['width'],
-            css_classes=['histogram-bin-spinner'],
-            name="histogram_bin_spinner",
-        )
-        self._bin_spinner.on_change("value", self._histogram_bin_spinner_on_change)
-        self._bin_spinner.js_on_change("value", self._loading_js)
+        self._metric_name_multi_choice.js_on_change("value", HistogramTabUpdateWindowsSizeJSCode.get_js_code())
 
-        self._default_div = Div(
-            text=""" <p> No histogram results, please add more experiments or
-        adjust the search filter.</p>""",
-            css_classes=['histogram-default-div'],
-            margin=default_div_style['margin'],
-        )
+        self._bin_spinner = Spinner(**HistogramTabBinSpinnerConfig.get_config())
+        self._histogram_modal_query_btn = Button(**HistogramTabModalQueryButtonConfig.get_config())
+        self._histogram_modal_query_btn.js_on_click(HistogramTabLoadingJSCode.get_js_code())
+        self._histogram_modal_query_btn.on_click(self._setting_modal_query_button_on_click)
+
+        self._default_div = Div(**HistogramTabDefaultDivConfig.get_config())
         # Histogram plot frame.
-        self._histogram_plots = column(
-            self._default_div,
-            css_classes=["histogram-plots"],
-            name="histogram_plots",
-        )
-        self._histogram_plots.js_on_change("children", self._end_loading_js)
+        self._histogram_plots = column(self._default_div, **HistogramTabPlotConfig.get_config())
+        self._histogram_plots.js_on_change("children", HistogramTabLoadingEndJSCode.get_js_code())
         self._histogram_figures: Optional[column] = None
-        self._aggregated_data: Optional[histogram_data_type] = None
-        self._histogram_edges: Optional[histogram_edges_data_type] = None
+        self._aggregated_data: Optional[HistogramDataType] = None
+        self._histogram_edges: Optional[HistogramEdgesDataType] = None
         self._plot_data: Dict[str, List[glyph]] = defaultdict(list)
         self._init_selection()
 
@@ -172,6 +104,11 @@ class HistogramTab(BaseTab):
     def histogram_plots(self) -> column:
         """Return histogram_plots."""
         return self._histogram_plots
+
+    @property
+    def histogram_modal_query_btn(self) -> Button:
+        """Return histogram modal query button."""
+        return self._histogram_modal_query_btn
 
     def _click_planner_checkbox_group(self, attr: Any) -> None:
         """
@@ -219,23 +156,15 @@ class HistogramTab(BaseTab):
         # Make sure the histogram upgrades at the last
         self._doc.add_next_tick_callback(self._update_histogram_layouts)
 
-    def _histogram_bin_spinner_on_change(self, attr: str, old: int, new: int) -> None:
-        """
-        Helper function to change event in histogram spinner.
-        :param attr: Attribute.
-        :param old: Old value.
-        :param new: New value.
-        """
-        self._bins = new
+    def _setting_modal_query_button_on_click(self) -> None:
+        """Setting modal query button on click helper function."""
+        if self._metric_name_multi_choice.tags:
+            self.window_width = self._metric_name_multi_choice.tags[0]
+            self.window_height = self._metric_name_multi_choice.tags[1]
 
-        # Compute histogram edges
-        self._histogram_edges = self._compute_histogram_edges()
-
-        # Render histograms.
-        self._histogram_figures = self._render_histograms()
-
-        # Make sure the histogram upgrades at the last
-        self._doc.add_next_tick_callback(self._update_histogram_layouts)
+        if self._bin_spinner.value:
+            self._bins = self._bin_spinner.value
+        self._update_histograms()
 
     def _metric_name_multi_choice_on_change(self, attr: str, old: str, new: str) -> None:
         """
@@ -248,7 +177,6 @@ class HistogramTab(BaseTab):
         if self._metric_name_multi_choice.tags:
             self.window_width = self._metric_name_multi_choice.tags[0]
             self.window_height = self._metric_name_multi_choice.tags[1]
-        self._update_histograms()
 
     def _scenario_type_multi_choice_on_change(self, attr: str, old: str, new: str) -> None:
         """
@@ -261,7 +189,6 @@ class HistogramTab(BaseTab):
         if self._scenario_type_multi_choice.tags:
             self.window_width = self._scenario_type_multi_choice.tags[0]
             self.window_height = self.scenario_type_multi_choice.tags[1]
-        self._update_histograms()
 
     def _init_selection(self) -> None:
         """Init histogram and scalar selection options."""
@@ -461,7 +388,7 @@ class HistogramTab(BaseTab):
 
         return HistogramFigureData(figure_plot=statistic_figure)
 
-    def _render_histogram_layout(self, histograms: histogram_figures_type) -> List[column]:
+    def _render_histogram_layout(self, histograms: HistogramFigureDataType) -> List[column]:
         """
         Render histogram layout.
         :param histograms: A dictionary of histogram names and their histograms.
@@ -485,12 +412,12 @@ class HistogramTab(BaseTab):
 
         return layouts
 
-    def _aggregate_statistics(self) -> histogram_data_type:
+    def _aggregate_statistics(self) -> HistogramDataType:
         """
         Aggregate statistics data.
         :return A dictionary of metric names and their aggregated data.
         """
-        data: histogram_data_type = defaultdict(list)
+        data: HistogramDataType = defaultdict(list)
         scenario_types = self._scenario_type_multi_choice.value
         metric_choices = self._metric_name_multi_choice.value
         if not len(scenario_types):
@@ -557,12 +484,12 @@ class HistogramTab(BaseTab):
 
         return data
 
-    def _compute_histogram_edges(self) -> histogram_edges_data_type:
+    def _compute_histogram_edges(self) -> HistogramEdgesDataType:
         """
         Compute histogram edges across different planners in the same metric statistics.
         :return Histogram edge data.
         """
-        histogram_edge_data: histogram_edges_data_type = {}
+        histogram_edge_data: HistogramEdgesDataType = {}
         if self._aggregated_data is None:
             return histogram_edge_data
 
@@ -747,12 +674,12 @@ class HistogramTab(BaseTab):
         else:
             histogram_figure_data.frequency_array += hist
 
-    def _draw_histogram_data(self) -> histogram_figures_type:
+    def _draw_histogram_data(self) -> HistogramFigureDataType:
         """
         Draw histogram data based on aggregated data.
         :return A dictionary of metric names and theirs histograms.
         """
-        histograms: histogram_figures_type = defaultdict()
+        histograms: HistogramFigureDataType = defaultdict()
         if self._aggregated_data is None or self._histogram_edges is None:
             return histograms
 

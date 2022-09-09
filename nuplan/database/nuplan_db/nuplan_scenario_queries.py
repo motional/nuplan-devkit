@@ -651,6 +651,7 @@ def get_scenarios_from_db(
     filter_tokens: Optional[List[str]],
     filter_types: Optional[List[str]],
     filter_map_names: Optional[List[str]],
+    include_invalid_mission_goals: bool = True,
 ) -> Generator[sqlite3.Row, None, None]:
     """
     Get the scenarios present in the db file that match the specified filter criteria.
@@ -660,6 +661,9 @@ def get_scenarios_from_db(
     :param filter_tokens: If provided, the set of allowable tokens to return.
     :param filter_types: If provided, the set of allowable scenario types to return.
     :param map_names: If provided, the set of allowable map names to return.
+    :param include_invalid_mission_goals: If true, then scenarios without a valid mission goal will be included
+        (i.e. get_mission_goal_for_lidarpc_token_from_db(token) returns None)
+        If False, then these scenarios will be filtered.
     :return: A sqlite3.Row object with the following fields:
         * token: The initial lidar_pc token of the scenario.
         * timestamp: The timestamp of the initial lidar_pc of the scenario.
@@ -699,6 +703,17 @@ def get_scenarios_from_db(
     else:
         filter_clause = ""
 
+    if include_invalid_mission_goals:
+        invalid_goals_joins = ""
+    else:
+        invalid_goals_joins = """
+        ---Join on ego_pose to filter scenarios that do not have a valid mission goal
+        INNER JOIN scene AS invalid_goal_scene
+            ON invalid_goal_scene.token = lp.scene_token
+        INNER JOIN ego_pose AS invalid_goal_ego_pose
+            ON invalid_goal_scene.goal_ego_pose_token = invalid_goal_ego_pose.token
+        """
+
     query = f"""
         WITH ordered_scenes AS
         (
@@ -737,6 +752,7 @@ def get_scenarios_from_db(
             ON ld.log_token = l.token
         INNER JOIN valid_scenes AS vs
             ON lp.scene_token = vs.token
+        {invalid_goals_joins}
         {filter_clause}
         GROUP BY    lp.token,
                     lp.timestamp,

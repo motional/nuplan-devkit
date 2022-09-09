@@ -3,7 +3,7 @@ import logging
 import docker.errors
 
 from nuplan.submission.submission_container import SubmissionContainer
-from nuplan.submission.utils import container_name_from_image_name, find_free_port_number
+from nuplan.submission.utils.utils import container_name_from_image_name, find_free_port_number
 from nuplan.submission.validators.base_submission_validator import BaseSubmissionValidator
 
 logger = logging.getLogger(__name__)

@@ -11,6 +11,7 @@ py_library(
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/data_loader:datamodule",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:log_splitter",
         "//nuplan/planning/training/preprocessing:feature_preprocessor",
         "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
@@ -45,5 +46,14 @@ py_test(
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_sequential",
+    ],
+)
+
+py_test(
+    name = "test_distributed_sampler_wrapper",
+    size = "small",
+    srcs = ["test_distributed_sampler_wrapper.py"],
+    deps = [
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
     ],
 )

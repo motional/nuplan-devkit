@@ -10,6 +10,7 @@ defaults:
   # Add ungrouped items
   - default_experiment
   - default_common
+  - default_submission
 
   - simulation_metric:
       - default_metrics
@@ -32,6 +33,10 @@ defaults:
 
   - override hydra/job_logging: none                            # Disable hydra's logging
   - override hydra/hydra_logging: none                          # Disable hydra's logging
+
+aggregated_metric_folder_name: 'aggregator_metric'         # Aggregated metric folder name
+aggregator_save_path: ${output_dir}/${aggregated_metric_folder_name}
+
 
 # Progress Visualization
 enable_simulation_progress_bar: False # Show for every simulation its progress
@@ -60,3 +65,7 @@ exit_on_failure: false
 
 # Maximum number of workers to be used for running simulation callbacks outside the main process
 max_callback_workers: 4
+
+# Disable callback parallelization when using the Sequential worker. By default, when running with the sequential worker,
+# on_simulation_end callbacks are submitted to a parallel worker.
+disable_callback_parallelization: false

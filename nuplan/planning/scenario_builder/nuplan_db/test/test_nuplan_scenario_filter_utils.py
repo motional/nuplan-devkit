@@ -146,6 +146,53 @@ class TestNuPlanScenarioFilterUtils(unittest.TestCase):
         self.assertEqual(final_scenario_dict['unprotected_left_turn'], mock_scenario_dict['unprotected_left_turn'])
         self.assertEqual(sum(len(scenarios) for scenarios in final_scenario_dict.values()), final_num_of_scenarios)
 
+    def test_remove_all_scenarios_int_limit_total_scenarios(self) -> None:
+        """
+        Tests filter_total_num_scenarios with limit_total_scenarios equal to 0. This should raise an assertion error.
+        """
+        mock_scenario_dict = self._get_mock_scenario_dict()
+        limit_total_scenarios = 0
+        randomize = True
+        with self.assertRaises(AssertionError):
+            filter_total_num_scenarios(
+                mock_scenario_dict.copy(), limit_total_scenarios=limit_total_scenarios, randomize=randomize
+            )
+
+    def test_remove_all_scenarios_float_limit_total_scenarios(self) -> None:
+        """
+        Tests filter_total_num_scenarios with limit_total_scenarios equal to 0. This should raise an assertion error.
+        """
+        mock_scenario_dict = self._get_mock_scenario_dict()
+        limit_total_scenarios = 0.0
+        randomize = True
+        with self.assertRaises(AssertionError):
+            filter_total_num_scenarios(
+                mock_scenario_dict.copy(), limit_total_scenarios=limit_total_scenarios, randomize=randomize
+            )
+
+    def test_remove_exactly_all_default_scenarios(self) -> None:
+        """
+        Tests filter_total_num_scenarios with limit_total_scenarios equal to number of known scenarios.
+        """
+        mock_scenario_dict = self._get_mock_scenario_dict()
+        limit_total_scenarios = 200
+        randomize = True
+        final_scenario_dict = filter_total_num_scenarios(
+            mock_scenario_dict.copy(), limit_total_scenarios=limit_total_scenarios, randomize=randomize
+        )
+
+        # Assert that only default scenarios have been removed
+        self.assertTrue(DEFAULT_SCENARIO_NAME not in final_scenario_dict)
+
+        # Assert known scenario types have not been removed
+        self.assertEqual(
+            len(final_scenario_dict['lane_following_with_lead']), len(mock_scenario_dict['lane_following_with_lead'])
+        )
+        self.assertEqual(
+            len(final_scenario_dict['unprotected_left_turn']), len(mock_scenario_dict['unprotected_left_turn'])
+        )
+        self.assertEqual(sum(len(scenarios) for scenarios in final_scenario_dict.values()), limit_total_scenarios)
+
 
 if __name__ == '__main__':
     unittest.main()

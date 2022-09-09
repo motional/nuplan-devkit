@@ -80,7 +80,6 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
 
         mock_meta_data = PlannerInitialization(
             map_api=MockAbstractMap(),
-            expert_goal_state=StateSE2(0, 0, 0),
             route_roadblock_ids=None,
             mission_goal=StateSE2(0, 0, 0),
         )

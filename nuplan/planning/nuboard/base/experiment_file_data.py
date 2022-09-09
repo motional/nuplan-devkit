@@ -13,6 +13,16 @@ from nuplan.planning.nuboard.base.data_class import NuBoardFile, SimulationScena
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class ScenarioTokenInfo:
+    """Scenario info corresponding to a scenario token."""
+
+    scenario_token: str  # Note that scenario token and name are the same thing in nuPlan
+    scenario_name: str
+    scenario_type: str
+    log_name: str
+
+
 @dataclass
 class ExperimentFileData:
     """Data for experiment files."""
@@ -33,6 +43,9 @@ class ExperimentFileData:
     available_scenarios: Dict[str, Dict[str, List[str]]] = field(
         default_factory=dict
     )  # Scenario types -> scenario logs -> scenario names
+    available_scenario_tokens: Dict[str, ScenarioTokenInfo] = field(
+        default_factory=dict
+    )  # Scenario token: [scenario type, scenario log, scenario name]
     file_path_colors: Dict[int, Dict[str, str]] = field(default_factory=dict)  # Color for each experiment file
     color_index: int = 0  # Current color index
 
@@ -40,6 +53,9 @@ class ExperimentFileData:
         """Post initialization."""
         if not self.simulation_files:
             self.simulation_files = defaultdict(set)
+
+        if not self.available_scenario_tokens:
+            self.available_scenario_tokens = defaultdict()
 
         if not self.color_palettes:
             self.color_palettes = Set1[9] + Set2[8] + Set3[12]
@@ -244,18 +260,24 @@ class ExperimentFileData:
                             for file in files:
                                 self.simulation_files[scenario_key].add(file)
 
-                            if scenario_key in self.simulation_files:
-                                self.available_scenarios[scenario_type][log_name].append(scenario_name)
-                                self.simulation_scenario_keys.append(
-                                    SimulationScenarioKey(
-                                        nuboard_file_index=file_path_index,
-                                        log_name=log_name,
-                                        planner_name=planner_name,
-                                        scenario_type=scenario_type,
-                                        scenario_name=scenario_name,
-                                        files=list(self.simulation_files[scenario_key]),
-                                    )
+                            self.available_scenarios[scenario_type][log_name].append(scenario_name)
+                            # We save scenario name because it is the same thing as token in nuPlan
+                            self.available_scenario_tokens[scenario_name] = ScenarioTokenInfo(
+                                scenario_name=scenario_name,
+                                scenario_token=scenario_name,
+                                scenario_type=scenario_type,
+                                log_name=log_name,
+                            )
+                            self.simulation_scenario_keys.append(
+                                SimulationScenarioKey(
+                                    nuboard_file_index=file_path_index,
+                                    log_name=log_name,
+                                    planner_name=planner_name,
+                                    scenario_type=scenario_type,
+                                    scenario_name=scenario_name,
+                                    files=list(self.simulation_files[scenario_key]),
                                 )
+                            )
 
         # Add scenario types
         available_scenario_types = list(set(self.available_scenarios.keys()))

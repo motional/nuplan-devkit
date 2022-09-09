@@ -1,0 +1,12 @@
+drivable_area_compliance_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.drivable_area_compliance.DrivableAreaComplianceStatistics
+  _convert_: 'all'
+  name: 'drivable_area_compliance'
+  category: 'Planning'
+  metric_score_unit: 'bool'
+
+  max_violation_threshold: 0.3 # The violatation tolerance threshold in meters
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    lane_change_metric: ego_lane_change_statistics

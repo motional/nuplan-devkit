@@ -97,13 +97,14 @@ class SimulationsRunner(AbstractRunner):
         for simulation in self.simulations:
             reports.append(
                 RunnerReport(
-                    True,
-                    None,
-                    start_time,
-                    None,
-                    simulation.scenario.scenario_name,
-                    self.planner.name(),
-                    simulation.scenario.log_name,
+                    succeeded=True,
+                    error_message=None,
+                    start_time=start_time,
+                    end_time=None,
+                    planner_report=None,
+                    scenario_name=simulation.scenario.scenario_name,
+                    planner_name=self.planner.name(),
+                    log_name=simulation.scenario.log_name,
                 )
             )
 
@@ -130,7 +131,7 @@ class SimulationsRunner(AbstractRunner):
             for_each(lambda sim: sim.callback.on_planner_start(sim.setup, self.planner), simulations)
 
             # Plan path based on all planner's inputs
-            trajectories = self.planner.compute_trajectory_with_check(planner_inputs)
+            trajectories = self.planner.compute_trajectory(planner_inputs)
             if len(trajectories) != len(planner_inputs):
                 # Raise in case the planner did not return the right number of output trajectories
                 raise RuntimeError(
@@ -158,5 +159,9 @@ class SimulationsRunner(AbstractRunner):
 
         # Execute specific callback
         for_each(lambda sim: sim.callback.on_simulation_end(sim.setup, self.planner, sim.history), self.simulations)
+
+        planner_report = self.planner.generate_planner_report()
+        for report in reports:
+            report.planner_report = planner_report
 
         return reports

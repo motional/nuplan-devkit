@@ -1,36 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
   <div class="tab-content" id="histograms">
-    <div class="search-section">
-        <div class="search-grid-item-text">
-          <b> Scenario Type: </b>
+      <div class="loading loading-lg" id="histogram-loading"></div>
+       <div class="modal-dialog histogram-setting-form" id="histogram-setting-form">
+        <div class="modal-content">
+            <div class="modal-header modal-header-panel">
+                <button type="button" class="close" aria-hidden="true"
+                        onclick="closeModal(event, 'histogram-setting-form')">&times;</button>
+                <h4 class="modal-title h4">Histogram: Settings</h4>
+            </div>
+            <div class="modal-body">
+                <div class="col-md-18">
+                    <div class="panel panel-default">
+                        <div class="panel-body modal-input-group">
+                            <p><strong>Parameters</strong></p>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Bins</span>
+                                {{ embed(roots.histogram_bin_spinner) }}
+                            </div>
+                            <p><strong>Selection</strong>: Please select scenario types and metrics</p>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Scenario Types</span>
+                                 {{ embed(roots.histogram_scenario_type_multi_choice) }}
+                            </div>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Metrics</span>
+                                {{ embed(roots.histogram_metric_name_multi_choice) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10 modal-footer-btn-section">
+                        <button type="button" class="btn btn-default modal-btn"
+                                onclick="closeModal(event, 'histogram-setting-form')">Cancel</button>
+                        &nbsp; {{ embed(roots.histogram_modal_query_btn) }}
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="search-grid-item-widget">
-          {{ embed(roots.histogram_scenario_type_multi_choice) }}
-        </div>
-        <div class="search-grid-item-text">
-          <b> Metric: </b>
-        </div>
-        <div class="search-grid-item-widget">
-         {{ embed(roots.histogram_metric_name_multi_choice) }}
+      </div>
+    <div class="histogram-plot-section" id="histogram-plot-section">
+        <div class="col-lg-12 col-extend-height">
+            <div class="panel panel-primary dropzone panel-extend-height">
+                <div class="panel-heading clearfix">
+                    <div class="btn-group pull-left">
+                        <div class="title pull-left h5">
+                            Histograms &nbsp;
+                        </div>
+                    </div>
+
+                    <div id="navbuttons" class="pull-right">
+                            <div>
+                                <div class="btn-group">
+                                    <span id="bucket-settings" style="cursor: pointer;"
+                                          class="fa fa-cog fa-2x h5" title="Settings"
+                                          onclick="openModal(event, 'histogram-setting-form')"></span>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                <div class="planner-search-row">
+                    {{ embed(roots.histogram_planner_checkbox_group) }}
+                </div>
+                <div class="panel-body panel-body-extend-height">
+                    <div class="table table-hover table-striped histogram-table-row" style="width:100%">
+                        {{ embed(roots.histogram_plots) }}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="loading loading-lg" id="histogram-loading"></div>
-    <table class="histogram-plot-section" id="histogram-plot-section">
-          <tr>
-              <th class="section-table-title"> Histograms </th>
-          </tr>
-          <tr class="planner-search-row">
-              <td>{{ embed(roots.histogram_bin_spinner) }}</td>
-          </tr>
-          <tr class="planner-search-row">
-              <td>{{ embed(roots.histogram_planner_checkbox_group) }}</td>
-          </tr>
-          <tr class="histogram-table-row">
-              <td>
-                  {{ embed(roots.histogram_plots) }}
-              </td>
-          </tr>
-      </table>
   </div>
 </html>

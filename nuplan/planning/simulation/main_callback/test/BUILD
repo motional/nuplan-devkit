@@ -26,3 +26,19 @@ py_test(
         "//nuplan/planning/simulation/main_callback:publisher_callback",
     ],
 )
+
+py_test(
+    name = "test_validation_callback",
+    srcs = ["test_validation_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation/main_callback:validation_callback",
+    ],
+)
+
+py_test(
+    name = "test_completion_callback",
+    srcs = ["test_completion_callback.py"],
+    deps = [
+        "//nuplan/planning/simulation/main_callback:completion_callback",
+    ],
+)

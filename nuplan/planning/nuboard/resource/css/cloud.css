@@ -1,0 +1,169 @@
+.cloud-input-form {
+  display: None;
+  position: fixed;
+  left: 30%;
+  top: 20%;
+  z-index: 3000;
+}
+
+.cloud-tab-section {
+  height: 95vh;
+  width: 100%;
+}
+
+.cloud-tab-section a {
+   color: #00B7FF;
+}
+
+.col-extend-height {
+  height: 100%;
+  width: 100%;
+}
+
+.panel-body-top-input-form {
+  margin-top: 10px;
+  height: 8%;
+}
+
+.panel-extend-height {
+  height: 100%;
+  width: 100%;
+}
+
+.panel-body-extend-height {
+  height: 100%;
+  width: 100%;
+}
+
+.cloud-table-section {
+  margin-top: 5px;
+  height: 90% !important;
+}
+
+.cloud-tab-section .cloud-table-section .bk-root {
+  height: 100%;
+  box-sizing: border-box !important;
+}
+
+.s3-data-table {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+  box-sizing: border-box !important;
+}
+
+.s3-data-table .slick-cell {
+  border-right: 1px solid #ddd;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  white-space: normal;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.s3-data-table .slick-row {
+  border-left: 1px solid #ddd !important;
+  border-bottom: 1px solid #ddd !important;
+  box-sizing: border-box !important;
+}
+
+.s3-data-table .slick-pane-header {
+  height: 30px;
+  border-top: 1px solid #ddd;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.s3-data-table .slick-pane-top {
+  border-top: 3px solid #ddd;
+}
+
+.s3-data-table .slick-header-column {
+  height: 30px !important;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  white-space: normal;
+  font-size: 12px;
+  font-weight: bold;
+  box-sizing: border-box !important;
+}
+
+.s3-tab-modal-query-btn {
+  width: unset !important;
+  height: unset !important;
+  margin: unset !important;
+}
+
+.s3-tab-modal-query-btn .bk-btn-default {
+  background-color: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: white;
+}
+
+.title {
+    padding: 6px 12px;
+}
+
+.modal-input-group .input-group .bk-root .bk {
+  height: unset !important;
+  margin: unset !important;
+}
+
+.cloud-input-form .modal-input-group .input-group .bk-root .bk {
+  width: 100% !important;
+}
+
+.input-group-addon {
+    min-width: 150px;
+}
+
+.bottom-marg-10 {
+    margin-bottom: 10px;
+}
+
+.breadcrumb {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.s3-download-text-input {
+   display: inline-block;
+}
+
+.cloud-download-section .bk-root {
+   display: inline-block;
+}
+.panel-body-top-error-message {
+  height: 8%;
+  color: red;
+}
+
+.s3-download-btn .bk-btn-default {
+  background-color: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: white;
+}
+
+.s3-download-btn .bk-btn[disabled] {
+  opacity: unset !important;
+  pointer-events: unset !important;
+}
+
+.s3-error-text {
+   width: 100% !important;
+}
+
+#navbuttons .btn {
+    padding: 3px 6px;
+}
+
+#cloud-modal-loading {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  visibility: hidden;
+}

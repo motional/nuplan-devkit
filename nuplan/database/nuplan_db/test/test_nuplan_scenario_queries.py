@@ -355,7 +355,11 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         # No filters.
         no_filter_output: List[int] = []
         for row in get_scenarios_from_db(
-            self.db_file_name, filter_tokens=None, filter_types=None, filter_map_names=None
+            self.db_file_name,
+            filter_tokens=None,
+            filter_types=None,
+            filter_map_names=None,
+            include_invalid_mission_goals=False,
         ):
             no_filter_output.append(str_token_to_int(row["token"].hex()))
 
@@ -365,7 +369,11 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         filter_tokens = [int_to_str_token(v) for v in [15, 30]]
         tokens_filter_output: List[int] = []
         for row in get_scenarios_from_db(
-            self.db_file_name, filter_tokens=filter_tokens, filter_types=None, filter_map_names=None
+            self.db_file_name,
+            filter_tokens=filter_tokens,
+            filter_types=None,
+            filter_map_names=None,
+            include_invalid_mission_goals=False,
         ):
             tokens_filter_output.append(row["token"].hex())
 
@@ -375,7 +383,11 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         filter_scenarios = ["first_tag"]
         extracted_rows: List[Tuple[int, str]] = []
         for row in get_scenarios_from_db(
-            self.db_file_name, filter_tokens=None, filter_types=filter_scenarios, filter_map_names=None
+            self.db_file_name,
+            filter_tokens=None,
+            filter_types=filter_scenarios,
+            filter_map_names=None,
+            include_invalid_mission_goals=False,
         ):
             extracted_rows.append((str_token_to_int(row["token"].hex()), row["scenario_type"]))
 
@@ -388,7 +400,11 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         filter_scenarios = ["second_tag"]
         extracted_rows = []
         for row in get_scenarios_from_db(
-            self.db_file_name, filter_tokens=None, filter_types=filter_scenarios, filter_map_names=None
+            self.db_file_name,
+            filter_tokens=None,
+            filter_types=filter_scenarios,
+            filter_map_names=None,
+            include_invalid_mission_goals=False,
         ):
             extracted_rows.append((str_token_to_int(row["token"].hex()), row["scenario_type"]))
 
@@ -403,7 +419,11 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         row_cnt = sum(
             1
             for row in get_scenarios_from_db(
-                self.db_file_name, filter_tokens=None, filter_types=None, filter_map_names=filter_maps
+                self.db_file_name,
+                filter_tokens=None,
+                filter_types=None,
+                filter_map_names=filter_maps,
+                include_invalid_mission_goals=False,
             )
         )
 
@@ -413,7 +433,11 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         row_cnt = sum(
             1
             for row in get_scenarios_from_db(
-                self.db_file_name, filter_tokens=None, filter_types=None, filter_map_names=filter_maps
+                self.db_file_name,
+                filter_tokens=None,
+                filter_types=None,
+                filter_map_names=filter_maps,
+                include_invalid_mission_goals=False,
             )
         )
 
@@ -427,6 +451,7 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
                 filter_tokens=[int_to_str_token(25)],
                 filter_types=["first_tag"],
                 filter_map_names=["map_version"],
+                include_invalid_mission_goals=False,
             )
         )
 

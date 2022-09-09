@@ -4,17 +4,22 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {% block inner_head %}
-    <link rel="stylesheet" type="text/css" href="resource/style.css" />
     <link rel="stylesheet" href="resource/spectre.min.css" />
     <link rel="stylesheet" href="resource/spectre-exp.min.css" />
     <link rel="stylesheet" href="resource/spectre-icons.min.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" />
     <link
       rel="stylesheet"
       href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.9/themes/base/jquery-ui.css"
       type="text/css"
       media="all"
     />
-    <link rel="shortcut icon" href="#" />
+    <link rel="stylesheet" type="text/css" href="resource/style.css" />
+    <link rel="stylesheet" type="text/css" href="resource/css/overview.css" />
+    <link rel="stylesheet" type="text/css" href="resource/css/cloud.css" />
+    <link rel="stylesheet" type="text/css" href="resource/css/scenario.css" />
+    <link rel="stylesheet" type="text/css" href="resource/css/histogram.css" />
     <meta charset="UTF-8" />
     <title>nuBoard</title>
     {% block preamble %}{% endblock %} {% block resources %} {% block
@@ -22,15 +27,18 @@
     script | safe }} {% endblock %} {% block postamble %}{% endblock %} {%
     endblock %}
     <script type="text/javascript" src="resource/scripts/utils.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
   </head>
   {% endblock %} {% block body %}
   <body>
     <div class="full-page">
+      <div class="overlay" id="overlay"></div>
       <header class="navbar bg-secondary px-2">
         <ul class="nav">
           <li class="text-center">
             <img src="resource/motional_logo.png" width="100%" />
-            <b class="navbar-brand navbar-title">nuBoard</b>
+            <strong class="navbar-brand navbar-title motional-purple-text">nuBoard</strong>
           </li>
           <li class="nav-item" style="font-weight: bold;">
             <a href="#" onclick="openTab(event, 'overview')">Overview</a>
@@ -38,16 +46,19 @@
           <li class="nav-item">
             <a href="#" onclick="openTab(event, 'histograms')">Histograms</a>
           </li>
-          <li class="nav-item" style="padding-bottom: 30px; border-bottom: 1px solid rgba(191, 191, 191, 0.6);">
+          <li class="nav-item nav-last-item">
             <a href="#" onclick="openTab(event, 'scenarios')">Scenarios</a>
           </li>
+          <li class="nav-item nav-last-item" style="margin-top: 10px;">
+            <a href="#" onclick="openTab(event, 'cloud')">Cloud</a>
+          </li>
           <div id="file-header" class="file-header">
-            <label class="btn sidebar-file-path-input flex-1">
+            <label class="btn sidebar-file-path-btn flex-1">
               Upload file {{ embed(roots.file_path_input)}}
             </label>
           </div>
-          <div class="nav-item experiment-file-path-item flex-1">
-            <div style="font-size: 12px;">Experiments:</div>
+          <div class="nav-item experiment-file-path-item flex-1 motional-purple-border">
+            <div style="font-size: 13px;">Experiments:</div>
             {{ embed(roots.experiment_file_path_checkbox_group) }}
           </div>
           <cite class="text-center">v0.2</cite>
@@ -57,7 +68,7 @@
       <div id="main">
         <div class="tab-container">
           {% include 'tabs/overview.html' %} {% include 'tabs/histogram.html' %}
-          {% include 'tabs/scenario.html' %} {% for doc in docs %} {{ embed(doc)
+          {% include 'tabs/scenario.html' %} {% include 'tabs/cloud.html' %} {% for doc in docs %} {{ embed(doc)
           if doc.elementid }} {% for root in doc.roots %} {{ embed(root) |
           indent(10) }} {% endfor %} {% endfor %} {{ plot_script | indent(8) }}
         </div>

@@ -16,6 +16,7 @@ RUN curl -fsSL https://bazel.build/bazel-release.pub.gpg | apt-key add - \
     zip \
     nvidia-container-toolkit \
     software-properties-common \
+    awscli \
     && rm -rf /var/lib/apt/lists/*
 
 # Download miniconda and install silently.
@@ -29,15 +30,15 @@ RUN curl -fsSLo Miniconda3-latest-Linux-x86_64.sh https://repo.anaconda.com/mini
 ARG NUPLAN_HOME=/nuplan_devkit
 WORKDIR $NUPLAN_HOME
 
-COPY requirements.txt requirements_torch.txt /nuplan_devkit/
-RUN bash -c "python -m pip install --upgrade pip --pre && \
-    pip install --no-cache-dir -r $NUPLAN_HOME/requirements_torch.txt -f https://download.pytorch.org/whl/torch_stable.html \
-    pip install --no-cache-dir -r $NUPLAN_HOME/requirements.txt -f https://download.pytorch.org/whl/torch_stable.html"
+COPY requirements.txt requirements_torch.txt environment.yml /nuplan_devkit/
+RUN conda env create -f $NUPLAN_HOME/environment.yml
 
 RUN mkdir -p $NUPLAN_HOME/nuplan
 
 COPY setup.py $NUPLAN_HOME
 COPY nuplan $NUPLAN_HOME/nuplan
+
+SHELL ["conda", "run", "-n", "nuplan", "/bin/bash", "-c"]
 
 RUN bash -c "pip install -e ."
 
@@ -45,6 +46,33 @@ ENV NUPLAN_MAPS_ROOT=/data/sets/nuplan/maps \
     NUPLAN_DATA_ROOT=/data/sets/nuplan \
     NUPLAN_EXP_ROOT=/data/exp/nuplan
 
-RUN mkdir -p {$NUPLAN_MAPS_ROOT, $NUPLAN_DATA_ROOT, $NUPLAN_EXP_ROOT}
+RUN bash -c 'mkdir -p {$NUPLAN_MAPS_ROOT,$NUPLAN_DATA_ROOT,$NUPLAN_EXP_ROOT}'
 
-CMD ["/bin/bash"]
+ARG NUPLAN_DATA_ROOT_S3_URL
+ARG NUPLAN_MAPS_ROOT_S3_URL
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+ARG NUPLAN_SERVER_S3_ROOT_URL
+ARG NUPLAN_SERVER_AWS_ACCESS_KEY_ID
+ARG NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY
+ARG S3_TOKEN_DIR
+ARG NUPLAN_DATA_STORE
+
+ENV NUPLAN_DATA_ROOT $NUPLAN_DATA_ROOT
+ENV NUPLAN_MAPS_ROOT $NUPLAN_MAPS_ROOT
+ENV NUPLAN_DB_FILES  /data/sets/nuplan/nuplan-v1.0/mini
+ENV NUPLAN_MAP_VERSION "nuplan-maps-v1.0"
+ENV NUPLAN_DATA_STORE $NUPLAN_DATA_STORE
+ENV NUPLAN_S3_PROFILE "default"
+ENV NUPLAN_DATA_ROOT_S3_URL $NUPLAN_DATA_ROOT_S3_URL
+ENV NUPLAN_MAPS_ROOT_S3_URL $NUPLAN_MAPS_ROOT_S3_URL
+ENV AWS_ACCESS_KEY_ID $AWS_ACCESS_KEY_ID
+ENV AWS_SECRET_ACCESS_KEY $AWS_SECRET_ACCESS_KEY
+ENV NUPLAN_SERVER_AWS_ACCESS_KEY_ID $NUPLAN_SERVER_AWS_ACCESS_KEY_ID
+ENV NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY $NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY
+ENV NUPLAN_SERVER_S3_ROOT_URL $NUPLAN_SERVER_S3_ROOT_URL
+ENV S3_TOKEN_DIR $S3_TOKEN_DIR
+
+RUN bash -c 'mkdir -p $NUPLAN_DB_FILES'
+
+CMD ["/nuplan_devkit/nuplan/entrypoint_simulation.sh"]

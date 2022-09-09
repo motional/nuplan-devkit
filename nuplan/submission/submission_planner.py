@@ -8,7 +8,6 @@ from nuplan.common.maps.map_manager import MapManager
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
-from nuplan.planning.simulation.planner.simple_planner import SimplePlanner
 from nuplan.submission import challenge_pb2_grpc as chpb_grpc
 from nuplan.submission.challenge_servicers import DetectionTracksChallengeServicer
 
@@ -39,7 +38,8 @@ class SubmissionPlanner:
             DetectionTracksChallengeServicer(planner, map_manager), self.server
         )
 
-        port = os.getenv("SUBMISSION_CONTAINER_PORT")
+        port = os.getenv("SUBMISSION_CONTAINER_PORT", 50051)
+        logger.info(f"Submission container starting with port {port}")
         if not port:
             raise RuntimeError("Environment variable not specified: 'SUBMISSION_CONTAINER_PORT'")
         self.server.add_insecure_port(f'[::]:{port}')
@@ -55,11 +55,3 @@ class SubmissionPlanner:
         self.server.wait_for_termination()
 
         logger.info("Server terminated!")
-
-
-if __name__ == '__main__':
-    # Here the competitors can modify which planner is instantiated
-    logging.basicConfig(level=logging.INFO)
-    planner = SimplePlanner(2, 0.5, [0, 0])
-    submission_planner = SubmissionPlanner(planner=planner)
-    submission_planner.serve()

@@ -1,10 +1,34 @@
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from enum import Enum, auto
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 from casadi import DM, Opti, OptiSol, cos, diff, sin, sumsqr, vertcat
 
 Pose = Tuple[float, float, float]  # (x, y, yaw)
+
+
+class ScalingDirection(Enum):
+    """Enum class for scaling directions."""
+
+    MAX = auto()  # Scales augmentor attributes such that absolute value of attribute increases
+    MIN = auto()  # Scales augmentor attributes such that absolute value of attribute decreases
+
+
+@dataclass
+class ParameterToScale:
+    """
+    Parameter to be scaled in scaling direction.
+    :param parameter: Parameter to be scaled.
+    :param param_name: Parameter name used to reference the parameter attribute in the object.
+    :param scaling_direction: Direction to scale parameter. Either 'max' or 'min'.
+        If 'max', then the absolute value of parameter is increased. If min then absolute value of parameter is decreased.
+    """
+
+    param: Union[npt.NDArray[np.float32], float]
+    param_name: str
+    scaling_direction: ScalingDirection
 
 
 class ConstrainedNonlinearSmoother:
@@ -220,6 +244,24 @@ class GaussianNoise:
         """
         return self.rng.normal(self.mean, self.std).astype(np.float32)
 
+    def get_schedulable_attributes(self) -> List[ParameterToScale]:
+        """
+        Gets name of the attributes to be modified by augmentation scheduler callback.
+        :return: Names of attributes to be modified by augmentation scheduler callback.
+        """
+        return [
+            ParameterToScale(
+                self.mean,
+                param_name=f'{self.mean=}'.partition('=')[0].split('.')[1],
+                scaling_direction=ScalingDirection.MAX,
+            ),
+            ParameterToScale(
+                self.std,
+                param_name=f'{self.std=}'.partition('=')[0].split('.')[1],
+                scaling_direction=ScalingDirection.MAX,
+            ),
+        ]
+
 
 class UniformNoise:
     """
@@ -242,3 +284,21 @@ class UniformNoise:
         :return: random multi-variant Gaussian vector sample
         """
         return self.rng.uniform(self.low, self.high).astype(np.float32)
+
+    def get_schedulable_attributes(self) -> List[ParameterToScale]:
+        """
+        Gets attributes to be modified by augmentation scheduler callback.
+        :return: Attributes to be modified by augmentation scheduler callback.
+        """
+        return [
+            ParameterToScale(
+                param=self.low,
+                param_name=f'{self.low=}'.partition('=')[0].split('.')[1],
+                scaling_direction=ScalingDirection.MAX,
+            ),
+            ParameterToScale(
+                param=self.high,
+                param_name=f'{self.high=}'.partition('=')[0].split('.')[1],
+                scaling_direction=ScalingDirection.MAX,
+            ),
+        ]

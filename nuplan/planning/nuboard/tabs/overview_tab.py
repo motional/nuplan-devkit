@@ -1,6 +1,5 @@
 import logging
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import Any, Dict, List
 
 import numpy as np
@@ -9,21 +8,17 @@ from bokeh.models import ColumnDataSource, DataTable, TableColumn
 
 from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
-from nuplan.planning.nuboard.style import default_data_table
+from nuplan.planning.nuboard.tabs.config.overview_tab_config import (
+    OVERVIEW_PLANNER_CHECKBOX_GROUP_NAME,
+    OverviewAggregatorData,
+    OverviewTabDataTableConfig,
+    OverviewTabDefaultDataSourceDictConfig,
+    OverviewTabExperimentTableColumnConfig,
+    OverviewTabPlannerTableColumnConfig,
+    OverviewTabScenarioTypeTableColumnConfig,
+)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class OverviewAggregatorData:
-    """Aggregator metric data in the overview tab."""
-
-    aggregator_file_name: str  # Aggregator output file name
-    aggregator_type: str  # Aggregator type
-    planner_name: str  # Planner name
-    scenario_type: str  # Scenario type
-    num_scenarios: int  # Number of scenarios in the type
-    score: float  # The aggregator scores for the scenario type
 
 
 class OverviewTab(BaseTab):
@@ -39,30 +34,20 @@ class OverviewTab(BaseTab):
 
         self._aggregator_metric_data: Dict[str, List[OverviewAggregatorData]] = {}
 
-        self._default_datasource_dict = dict(
-            experiment=['-'],
-            scenario_type=['-'],
-            planner=['No metric aggregator results, please add more experiments or adjust the search filter'],
-        )
+        self._default_datasource_dict = dict(**OverviewTabDefaultDataSourceDictConfig.get_config())
         self._default_datasource = ColumnDataSource(data=self._default_datasource_dict)
 
         self._default_columns = [
-            TableColumn(field='experiment', title='Experiment', width=150, sortable=False),
-            TableColumn(field='scenario_type', width=200, title='Scenario Type (Number of Scenarios)', sortable=False),
-            TableColumn(field='planner', title='Evaluation Score', sortable=False),
+            TableColumn(**OverviewTabExperimentTableColumnConfig.get_config()),
+            TableColumn(**OverviewTabScenarioTypeTableColumnConfig.get_config()),
+            TableColumn(**OverviewTabPlannerTableColumnConfig.get_config()),
         ]
 
         self.table = DataTable(
-            source=self._default_datasource,
-            columns=self._default_columns,
-            selectable=True,
-            row_height=default_data_table['row_height'],
-            index_position=None,
-            name='overview_table',
-            css_classes=["overview-table"],
+            source=self._default_datasource, columns=self._default_columns, **OverviewTabDataTableConfig.get_config()
         )
 
-        self.planner_checkbox_group.name = "overview_planner_checkbox_group"
+        self.planner_checkbox_group.name = OVERVIEW_PLANNER_CHECKBOX_GROUP_NAME
 
     def file_paths_on_change(
         self, experiment_file_data: ExperimentFileData, experiment_file_active_index: List[int]
@@ -211,10 +196,8 @@ class OverviewTab(BaseTab):
                 for index, planner_name in enumerate(planner_name_columns.keys())
             ]
             columns = [
-                TableColumn(field='experiment', title='Experiment', width=150, sortable=False),
-                TableColumn(
-                    field='scenario_type', width=200, title='Scenario Type (Number of Scenarios)', sortable=False
-                ),
+                TableColumn(**OverviewTabExperimentTableColumnConfig.get_config()),
+                TableColumn(**OverviewTabScenarioTypeTableColumnConfig.get_config()),
             ]
             columns += planner_table_columns
             self.table.columns = columns

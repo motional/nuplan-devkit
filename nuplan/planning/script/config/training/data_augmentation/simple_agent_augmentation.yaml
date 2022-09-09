@@ -1,5 +1,5 @@
 simple_agent_augmentation:
-  _target_: nuplan.planning.training.data_augmentation.simple_agnet_augmentation.SimpleAgentAugmentor
+  _target_: nuplan.planning.training.data_augmentation.simple_agent_augmentation.SimpleAgentAugmentor
   _convert_: 'all'
 
   augment_prob: 0.5  # probability of applying data augmentation for training

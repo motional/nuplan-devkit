@@ -18,9 +18,20 @@ message SimulationIteration {
   int32 index = 2;
 }
 
+message TrafficLightStatusType {
+  string status_name = 1;
+}
+
+message TrafficLightStatusData {
+  TrafficLightStatusType status = 1;
+  int32 lane_connector_id = 2;
+  int64 timestamp = 3;
+}
+
 message PlannerInput {
   SimulationIteration simulation_iteration = 1;
   SimulationHistoryBuffer simulation_history_buffer = 2;
+  repeated TrafficLightStatusData traffic_light_data = 3;  // Note: original message is Optional, here is empty list if None
 }
 
 message MultiPlannerInput {
@@ -39,10 +50,9 @@ message StateVector2D {
 }
 
 message PlannerInitializationLight {
-  StateSE2 expert_goal_state = 1;
-  repeated string route_roadblock_ids = 2;
-  StateSE2 mission_goal = 3;
-  string map_name = 4;
+  repeated string route_roadblock_ids = 1;
+  StateSE2 mission_goal = 2;
+  string map_name = 3;
 }
 
 message MultiPlannerInitializationLight {

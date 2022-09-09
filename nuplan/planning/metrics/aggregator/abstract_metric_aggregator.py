@@ -64,3 +64,15 @@ class AbstractMetricAggregator(metaclass=ABCMeta):
     def read_parquet(self) -> None:
         """Read a parquet file, and update the dataframe."""
         pass
+
+    @property
+    @abstractmethod
+    def parquet_file(self) -> Path:
+        """Getter for the path to the generated parquet file."""
+        pass
+
+    @property
+    @abstractmethod
+    def challenge(self) -> Optional[str]:
+        """Returns the name of the challenge, if applicable."""
+        pass

@@ -32,7 +32,7 @@ class TestMetricAggregatorCallback(TestCase):
         Tests if all the properties are set to the expected values in constructor.
         """
         # Code execution
-        metric_aggregator_callback = MetricAggregatorCallback(self.path, self.metric_aggregators)
+        metric_aggregator_callback = MetricAggregatorCallback(str(self.path), self.metric_aggregators)
 
         # Expectations check
         self.assertEqual(metric_aggregator_callback._metric_save_path, self.path)
@@ -44,11 +44,12 @@ class TestMetricAggregatorCallback(TestCase):
         Tests if the callback is called with the correct parameters.
         """
         # Code execution
-        metric_file_callback = MetricAggregatorCallback(self.path, self.metric_aggregators)
+        metric_file_callback = MetricAggregatorCallback(str(self.path), self.metric_aggregators)
         metric_file_callback.on_run_simulation_end()
 
         # Expectations check
-        logger.info.assert_has_calls([call('No any metric files'), call('Metric aggregator: 00:00:00 [HH:MM:SS]')])
+        logger.warning.assert_has_calls([call('No metric files found for aggregation!')])
+        logger.info.assert_has_calls([call('Metric aggregator: 00:00:00 [HH:MM:SS]')])
 
 
 if __name__ == '__main__':

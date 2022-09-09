@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
+from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
 
 
 class AbstractSplitter(ABC):
@@ -10,7 +11,7 @@ class AbstractSplitter(ABC):
     """
 
     @abstractmethod
-    def get_train_samples(self, scenarios: List[AbstractScenario]) -> List[AbstractScenario]:
+    def get_train_samples(self, scenarios: List[AbstractScenario], worker: WorkerPool) -> List[AbstractScenario]:
         """
         Extracts a list of samples to be used for training.
 
@@ -20,7 +21,7 @@ class AbstractSplitter(ABC):
         pass
 
     @abstractmethod
-    def get_val_samples(self, scenarios: List[AbstractScenario]) -> List[AbstractScenario]:
+    def get_val_samples(self, scenarios: List[AbstractScenario], worker: WorkerPool) -> List[AbstractScenario]:
         """
         Extracts a list of samples to be used for validation.
 
@@ -30,7 +31,7 @@ class AbstractSplitter(ABC):
         pass
 
     @abstractmethod
-    def get_test_samples(self, scenarios: List[AbstractScenario]) -> List[AbstractScenario]:
+    def get_test_samples(self, scenarios: List[AbstractScenario], worker: WorkerPool) -> List[AbstractScenario]:
         """
         Extracts a list of samples to be used for testing.
 

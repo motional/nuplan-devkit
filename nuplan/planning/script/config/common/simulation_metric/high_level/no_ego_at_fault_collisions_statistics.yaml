@@ -1,0 +1,14 @@
+no_ego_at_fault_collisions_statistics:
+  _target_: nuplan.planning.metrics.evaluation_metrics.common.no_ego_at_fault_collisions.EgoAtFaultCollisionStatistics
+  _convert_: 'all'
+  name: 'no_ego_at_fault_collisions'
+  category: 'Dynamics'
+  metric_score_unit: 'float'
+
+  max_violation_threshold_vru: 0
+  max_violation_threshold_vehicle: 0
+  max_violation_threshold_object: 1
+
+  required_metrics:
+    # Parameter: base metric name and other high level metrics used in this metric
+    ego_lane_change_metric: ego_lane_change_statistics

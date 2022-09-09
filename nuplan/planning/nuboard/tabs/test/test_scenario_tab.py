@@ -73,6 +73,55 @@ class TestScenarioTab(SkeletonTestTab):
         # Update object checkbox
         self.scenario_tab._object_checkbox_group.active = [3, 4]
 
+    def test_modal_button_on_click(self) -> None:
+        """Test modal button on click function."""
+        self.scenario_tab._experiment_file_active_index = [0]
+
+        # Update scenario type choices
+        self.scenario_tab._scalar_scenario_type_select.value = self.scenario_tab._scalar_scenario_type_select.options[1]
+
+        # Update scenario log choices
+        self.scenario_tab._scalar_log_name_select.value = self.scenario_tab._scalar_log_name_select.options[1]
+
+        # Update scenario name choices
+        self.scenario_tab._scalar_scenario_name_select.value = self.scenario_tab._scalar_scenario_name_select.options[1]
+
+        # Click the button
+        self.scenario_tab._scenario_modal_query_button_on_click()
+        self.assertEqual(self.scenario_tab.planner_checkbox_group.labels, ['SimplePlanner'])
+        self.assertIn('ego_acceleration_statistics', self.scenario_tab._time_series_data)
+
+    def test_planner_button_on_click(self) -> None:
+        """Test checkbox button in planner."""
+        # Update scenarios
+        self.scenario_tab._experiment_file_active_index = [0]
+
+        # Update scenario type choices
+        self.scenario_tab._scalar_scenario_type_select.value = self.scenario_tab._scalar_scenario_type_select.options[1]
+        # Update scenario log choices
+        self.scenario_tab._scalar_log_name_select.value = self.scenario_tab._scalar_log_name_select.options[1]
+
+        # Update scenario name choices
+        self.scenario_tab._scalar_scenario_name_select.value = self.scenario_tab._scalar_scenario_name_select.options[1]
+
+        # Click the button to update planner checkbox group
+        self.scenario_tab._scenario_modal_query_button_on_click()
+
+        # Disable the planner
+        self.scenario_tab.planner_checkbox_group.active = []
+
+        self.assertEqual(len(self.scenario_tab.simulation_tile_layout.children), 1)
+        self.assertEqual(len(self.scenario_tab.time_series_layout.children), 1)
+
+        # Enable the planner
+        self.scenario_tab.planner_checkbox_group.active = [0]
+        self.assertEqual(len(self.scenario_tab.simulation_tile_layout.children), 1)
+        self.assertEqual(len(self.scenario_tab.time_series_layout.children), 1)
+
+        # Expect to raise index error
+        with self.assertRaises(IndexError):
+            self.scenario_tab.planner_checkbox_group.active = [1]
+
 
 if __name__ == "__main__":
     unittest.main()

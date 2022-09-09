@@ -12,3 +12,12 @@ py_library(
     srcs = ["utils.py"],
     deps = ["//nuplan/planning/nuboard/base:data_class"],
 )
+
+py_library(
+    name = "nuboard_cloud_utils",
+    srcs = ["nuboard_cloud_utils.py"],
+    deps = [
+        "//nuplan/common/utils:s3_utils",
+        "//nuplan/planning/nuboard/base:data_class",
+    ],
+)

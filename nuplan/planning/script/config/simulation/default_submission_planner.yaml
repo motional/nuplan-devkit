@@ -1,0 +1,16 @@
+hydra:
+  run:
+    dir: ${output_dir}
+  output_subdir: ${output_dir}/code/hydra                       # Store hydra's config breakdown here for debugging
+  searchpath:                                                   # Only <exp_dir> in these paths are discoverable
+    - pkg://nuplan.planning.script.config.common
+    - pkg://nuplan.planning.script.experiments                  # Put experiments configs in script/experiments/<exp_dir>
+
+defaults:
+  - model: null
+  - planner: ???
+  - override hydra/job_logging: none                            # Disable hydra's logging
+  - override hydra/hydra_logging: none                          # Disable hydra's logging
+
+output_dir: ???
+seed: 0

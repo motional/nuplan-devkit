@@ -8,8 +8,8 @@ py_library(
 )
 
 py_library(
-    name = "drivable_area_violation",
-    srcs = ["drivable_area_violation.py"],
+    name = "drivable_area_compliance",
+    srcs = ["drivable_area_compliance.py"],
     deps = [
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/metrics:metric_result",
@@ -135,8 +135,8 @@ py_library(
 )
 
 py_library(
-    name = "speed_limit_violation",
-    srcs = ["speed_limit_violation.py"],
+    name = "speed_limit_compliance",
+    srcs = ["speed_limit_compliance.py"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/maps:abstract_map_objects",
@@ -151,8 +151,8 @@ py_library(
 )
 
 py_library(
-    name = "time_to_collision",
-    srcs = ["time_to_collision.py"],
+    name = "time_to_collision_within_bound",
+    srcs = ["time_to_collision_within_bound.py"],
     deps = [
         "//nuplan/common/actor_state:agent",
         "//nuplan/common/actor_state:ego_state",
@@ -160,8 +160,8 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:ego_at_fault_collisions",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
+        "//nuplan/planning/metrics/evaluation_metrics/common:no_ego_at_fault_collisions",
         "//nuplan/planning/metrics/utils:collision_utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -240,8 +240,8 @@ py_library(
 )
 
 py_library(
-    name = "ego_at_fault_collisions",
-    srcs = ["ego_at_fault_collisions.py"],
+    name = "no_ego_at_fault_collisions",
+    srcs = ["no_ego_at_fault_collisions.py"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:oriented_box",
@@ -272,8 +272,8 @@ py_library(
 )
 
 py_library(
-    name = "planner_expert_average_l2_error",
-    srcs = ["planner_expert_average_l2_error.py"],
+    name = "planner_expert_average_l2_error_within_bound",
+    srcs = ["planner_expert_average_l2_error_within_bound.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/metrics:metric_result",
@@ -282,16 +282,17 @@ py_library(
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )
 
 py_library(
-    name = "planner_expert_final_l2_error",
-    srcs = ["planner_expert_final_l2_error.py"],
+    name = "planner_expert_final_l2_error_within_bound",
+    srcs = ["planner_expert_final_l2_error_within_bound.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -299,12 +300,12 @@ py_library(
 )
 
 py_library(
-    name = "planner_miss_rate",
-    srcs = ["planner_miss_rate.py"],
+    name = "planner_miss_rate_within_bound",
+    srcs = ["planner_miss_rate_within_bound.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -312,12 +313,12 @@ py_library(
 )
 
 py_library(
-    name = "planner_expert_average_heading_error",
-    srcs = ["planner_expert_average_heading_error.py"],
+    name = "planner_expert_average_heading_error_within_bound",
+    srcs = ["planner_expert_average_heading_error_within_bound.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -325,12 +326,12 @@ py_library(
 )
 
 py_library(
-    name = "planner_expert_final_heading_error",
-    srcs = ["planner_expert_final_heading_error.py"],
+    name = "planner_expert_final_heading_error_within_bound",
+    srcs = ["planner_expert_final_heading_error_within_bound.py"],
     deps = [
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
-        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error",
+        "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
@@ -338,8 +339,8 @@ py_library(
 )
 
 py_library(
-    name = "driving_direction_violation",
-    srcs = ["driving_direction_violation.py"],
+    name = "driving_direction_compliance",
+    srcs = ["driving_direction_compliance.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map_objects",

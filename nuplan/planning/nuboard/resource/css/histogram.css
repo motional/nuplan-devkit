@@ -1,0 +1,86 @@
+.histogram-setting-form {
+  display: None;
+  position: fixed;
+  left: 30%;
+  top: 20%;
+  z-index: 3000;
+}
+
+.histogram-setting-form .modal-body .input-group .bk-root {
+  width: 100%;
+}
+
+.histogram-bin-spinner {
+  width: 100% !important;
+}
+
+.histogram-tab-modal-query-btn {
+  width: unset !important;
+  height: unset !important;
+  margin: unset !important;
+}
+
+.histogram-tab-modal-query-btn .bk-btn-default {
+  background-color: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: white;
+}
+
+.histogram-plot-section {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #f0f0f0;
+  height: 95%;
+}
+
+.histogram-plot-section .planner-search-row {
+  text-align: right;
+  padding: 5px 24px;
+  height: 30px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.histogram-plot-section .histogram-table-row {
+  margin-top: 10px;
+  height: 95%;
+}
+
+.histogram-plot-section .histogram-table-row .bk-root {
+  height: 100%;
+}
+
+.histogram-default-div {
+  width: 80% !important;
+  font-size: 1.2em !important;
+}
+
+.histogram-plots {
+  width: 100% !important;
+  height: 100% !important;
+  margin: auto !important;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+#histogram-loading {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  visibility: hidden;
+}
+
+.histogram-plots .bk-tooltip {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 100px;
+  max-height: 250px;
+}
+
+.histogram-plots .bk .bk-left {
+  left: 15px !important;
+}
+
+.histogram-plots .bk .bk-right {
+  right: 15px !important;
+}

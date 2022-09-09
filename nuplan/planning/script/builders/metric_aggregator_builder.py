@@ -14,11 +14,11 @@ def build_metrics_aggregators(cfg: DictConfig) -> List[AbstractMetricAggregator]
     """
     Build a list of metric aggregators.
     :param cfg: Config
-    :return A list of metric aggregators.
+    :return A list of metric aggregators, and the path in which they will  save the results
     """
     metric_aggregators = []
     metric_aggregator_configs = cfg.metric_aggregator
-    aggregator_save_path = Path(cfg.output_dir) / 'aggregator_metric'
+    aggregator_save_path = Path(cfg.aggregator_save_path)
     if not aggregator_save_path.exists():
         aggregator_save_path.mkdir(exist_ok=True, parents=True)
     for metric_aggregator_config_name, metric_aggregator_config in metric_aggregator_configs.items():

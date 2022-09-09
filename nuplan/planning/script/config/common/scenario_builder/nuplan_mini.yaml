@@ -9,7 +9,7 @@ db_files: null  # if db file(s) exist locally, the data_root is ignored
 map_version: nuplan-maps-v1.0
 
 max_workers: null
-verbose: true
+verbose: ${verbose}
 
 ground_truth_predictions: null
 

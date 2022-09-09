@@ -6,3 +6,11 @@ py_library(
     name = "evalai_interface",
     srcs = ["evalai_interface.py"],
 )
+
+py_library(
+    name = "leaderboard_writer",
+    srcs = ["leaderboard_writer.py"],
+    deps = [
+        ":evalai_interface",
+    ],
+)

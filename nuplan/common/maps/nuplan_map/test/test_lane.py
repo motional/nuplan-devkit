@@ -166,21 +166,21 @@ def test_lane_is_same_roadblock(scene: Dict[str, Any]) -> None:
 
 
 @nuplan_test(path='json/lanes/lanes_are_adjacent.json')
-def test_lane_is_other_adjacent(scene: Dict[str, Any]) -> None:
+def test_lane_is_adjacent_to(scene: Dict[str, Any]) -> None:
     """
     Test if lanes are adjacent
     """
     nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
 
-    def is_other_adjacent(first_lane: Lane, second_lane: Lane, inverse: bool) -> None:
+    def is_adjacent_to(first_lane: Lane, second_lane: Lane, inverse: bool) -> None:
         if not inverse:
-            assert first_lane.is_other_adjacent(second_lane)
+            assert first_lane.is_adjacent_to(second_lane)
         else:
-            assert not first_lane.is_other_adjacent(second_lane)
+            assert not first_lane.is_adjacent_to(second_lane)
 
     # Index scheme that creates two lists containing every other marker over the specified range i.e. first_list = scene["markers"][i] and second_list = scene["markers"][i + 1]
-    assert_helper(scene["markers"][:4:2], scene["markers"][1:4:2], is_other_adjacent, nuplan_map, False)
-    assert_helper(scene["markers"][4::2], scene["markers"][5::2], is_other_adjacent, nuplan_map, True)
+    assert_helper(scene["markers"][:4:2], scene["markers"][1:4:2], is_adjacent_to, nuplan_map, False)
+    assert_helper(scene["markers"][4::2], scene["markers"][5::2], is_adjacent_to, nuplan_map, True)
 
 
 @nuplan_test(path='json/lanes/lane_is_left_of.json')
@@ -234,10 +234,10 @@ def test_get_lane_adjacent_lanes(scene: Dict[str, Any]) -> None:
         assert left_lane or right_lane
         if left_lane:
             assert left_lane.is_left_of(lane)
-            assert left_lane.is_other_adjacent(lane)
+            assert left_lane.is_adjacent_to(lane)
         if right_lane:
             assert right_lane.is_right_of(lane)
-            assert right_lane.is_other_adjacent(lane)
+            assert right_lane.is_adjacent_to(lane)
 
 
 if __name__ == "__main__":

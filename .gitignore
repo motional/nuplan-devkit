@@ -30,3 +30,5 @@ _ext
 *.swp
 .tox/*
 .pytest_cache/*
+docs/_build/
+docs/generated/

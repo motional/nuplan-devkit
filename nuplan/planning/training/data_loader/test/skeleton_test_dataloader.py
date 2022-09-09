@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 import pytorch_lightning as pl
 import ray
+from omegaconf import DictConfig
 
 from nuplan.planning.scenario_builder.nuplan_db.test.nuplan_scenario_test_utils import get_test_nuplan_scenario_builder
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilter
@@ -93,7 +94,6 @@ class SkeletonTestDataloader(unittest.TestCase):
                 augment_prob=0.5,
             )
         ]
-
         self.scenario_builder = get_test_nuplan_scenario_builder()
 
     def _test_dataloader(self, worker: WorkerPool) -> None:
@@ -106,6 +106,8 @@ class SkeletonTestDataloader(unittest.TestCase):
         # Construct data module
         batch_size = 4
         num_workers = 4
+        scenario_type_sampling_weights = DictConfig({'enable': False, 'scenario_type_weights': {'unknown': 1.0}})
+
         datamodule = DataModule(
             feature_preprocessor=self.feature_preprocessor,
             splitter=self.splitter,
@@ -114,6 +116,8 @@ class SkeletonTestDataloader(unittest.TestCase):
             test_fraction=0.1,
             all_scenarios=scenarios,
             augmentors=self.augmentors,
+            worker=worker,
+            scenario_type_sampling_weights=scenario_type_sampling_weights,
             dataloader_params={"batch_size": batch_size, "num_workers": num_workers, "drop_last": True},
         )
 

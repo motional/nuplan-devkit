@@ -17,6 +17,16 @@ py_test(
     ],
 )
 
+py_test(
+    name = "test_nuboard_cloud_utils",
+    size = "small",
+    srcs = ["test_nuboard_cloud_utils.py"],
+    deps = [
+        "//nuplan/planning/nuboard/base:data_class",
+        "//nuplan/planning/nuboard/utils:nuboard_cloud_utils",
+    ],
+)
+
 py_library(
     name = "utils",
     srcs = ["utils.py"],

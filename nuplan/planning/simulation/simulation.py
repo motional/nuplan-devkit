@@ -108,7 +108,6 @@ class Simulation:
 
         # Return the planner initialization structure for this simulation
         return PlannerInitialization(
-            expert_goal_state=self._scenario.get_expert_goal_state(),
             route_roadblock_ids=self._scenario.get_route_roadblock_ids(),
             mission_goal=self._scenario.get_mission_goal(),
             map_api=self._scenario.map_api,

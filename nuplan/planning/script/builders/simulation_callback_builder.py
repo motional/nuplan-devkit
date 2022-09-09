@@ -25,7 +25,7 @@ def build_callbacks_worker(cfg: DictConfig) -> Optional[WorkerPool]:
     :param cfg: DictConfig. Configuration that is used to run the experiment.
     :return: Workerpool, or None if we'll run without one.
     """
-    if not is_target_type(cfg.worker, Sequential):
+    if not is_target_type(cfg.worker, Sequential) or cfg.disable_callback_parallelization:
         return None
 
     if cfg.number_of_cpus_used_for_one_simulation not in [None, 1]:
@@ -58,7 +58,7 @@ def build_simulation_callbacks(
             tensorboard = torch.utils.tensorboard.SummaryWriter(log_dir=output_dir)
             callback = instantiate(config, writer=tensorboard)
         elif is_target_type(config, SimulationLogCallback) or is_target_type(config, MetricCallback):
-            # TODO PAC-3470: Have a property on each class that says whether or not it is stateful
+            # TODO: Have a property on each class that says whether or not it is stateful
             # SimulationLogCallback and MetricCallback store state (futures) from each runner, so they are initialized
             # in the simulation builder
             continue

@@ -43,7 +43,7 @@ class SingleMachineParallelExecutor(WorkerPool):
             else concurrent.futures.ThreadPoolExecutor(max_workers=number_of_cpus_per_node)
         )
 
-    def _map(self, task: Task, *item_lists: Iterable[List[Any]]) -> List[Any]:
+    def _map(self, task: Task, *item_lists: Iterable[List[Any]], verbose: bool = False) -> List[Any]:
         """Inherited, see superclass."""
         return list(
             tqdm(
@@ -51,6 +51,7 @@ class SingleMachineParallelExecutor(WorkerPool):
                 leave=False,
                 total=get_max_size_of_arguments(*item_lists),
                 desc='SingleMachineParallelExecutor',
+                disable=not verbose,
             )
         )
 

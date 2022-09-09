@@ -44,6 +44,19 @@ py_test(
     size = "small",
     srcs = ["test_utils.py"],
     deps = [
-        "//nuplan/submission:utils",
+        "//nuplan/submission/utils",
+    ],
+)
+
+py_test(
+    name = "test_proto_converters",
+    size = "small",
+    srcs = ["test_proto_converters.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state/test:test_utils",
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+        "//nuplan/submission:proto_converters",
     ],
 )

@@ -1,115 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
   <div class="tab-content" id="scenarios">
-    <div class="scenario-search-section">
-        <div class="scenario-search-grid-item-text">
-          <b> Scenario Type: </b>
+      <div class="loading loading-lg" id="scenario-loading"></div>
+      <div class="modal-dialog scenario-setting-form" id="scenario-setting-form">
+        <div class="modal-content">
+            <div class="modal-header modal-header-panel">
+                <button type="button" class="close" aria-hidden="true"
+                        onclick="closeModal(event, 'scenario-setting-form')">&times;</button>
+                <h4 class="modal-title h4">Scenarios: Settings</h4>
+            </div>
+            <div class="modal-body">
+                <div class="col-md-18">
+                    <div class="panel panel-default">
+                        <div class="panel-body modal-input-group">
+                            <p><strong>Scenario Info</strong>: Please select a scenario based on their info</p>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Scenario Type</span>
+                                 {{ embed(roots.scenario_scalar_scenario_type_select) }}
+                            </div>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Log Name</span>
+                                {{ embed(roots.scenario_scalar_log_name_select) }}
+                            </div>
+                            <div class="input-group bottom-marg-10">
+                                <span class="input-group-addon">Scenario Name</span>
+                                {{ embed(roots.scenario_scalar_name_select) }}
+                            </div>
+                            <p class="input-group-option-title"> Search Scenario Specification: </p>
+                            <div class="input-group bottom-marg-10 option-input-group">
+                                <span class="input-group-addon">Scenario Token</span>
+                                {{ embed(roots.scenario_token_multi_choice) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10 modal-footer-btn-section">
+                        <button type="button" class="btn btn-default modal-btn"
+                                onclick="closeModal(event, 'scenario-setting-form')">Cancel</button>
+                        &nbsp; {{ embed(roots.scenario_modal_query_btn) }}
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="scenario-search-grid-item-widget margin-left-5">
-          {{ embed(roots.scenario_scalar_scenario_type_select) }}
-        </div>
-        <div class="scenario-search-grid-item-text margin-left-5">
-          <b> Log: </b>
-        </div>
-        <div class="scenario-search-grid-item-widget">
-          {{ embed(roots.scenario_scalar_log_name_select) }}
-        </div>
-    </div>
-      <div class="scenario-search-section">
-        <div class="scenario-search-grid-item-text">
-          <b> Scenario Name: </b>
-        </div>
-        <div class="scenario-search-grid-item-widget">
-         {{ embed(roots.scenario_scalar_scenario_name_select) }}
-        </div>
-    </div>
-    <div class="loading loading-lg" id="scenario-loading"></div>
+      </div>
+
     <div class="scenario-plot-section" id="scenario-plot-section">
-          <div class="row">
-              <div class="column section-table-title"> Simulation </div>
-          </div>
-          <div class="planner-search-row">
-              {{ embed(roots.scenario_planner_checkbox_group) }}
-          </div>
-         <div class="scenario-table-simulation-row flex-row">
-             <div class="flex-first-item">
-                 {{ embed(roots.simulation_tile_layout) }}
-             </div>
-             <div class="flex-second-item">
-                 <div class="scenario-legend-checkbox-group">
-                     <div class="item first-item" title="Click to expand/collapse"
-                          onclick="openScenarioBar(event, 'scenario-legend-trajectory', 'scenario-legend-trajectory-arrow')">
-                         Trajectory
-                         <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                            <path id="scenario-legend-trajectory-arrow" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+        <div class="col-lg-12 col-extend-height">
+            <div class="panel panel-primary dropzone panel-extend-height">
+                <div class="panel-heading clearfix">
+                    <div class="btn-group pull-left">
+                        <div class="title pull-left h5 scenario-tab-panel-title">
+                            Scenarios &nbsp;
+                            ({{ embed(roots.scenario_title_div) }})
+                        </div>
+                    </div>
+
+                    <div id="navbuttons" class="pull-right">
+                            <div>
+                                <div class="btn-group">
+                                    <span id="scenario-settings" style="cursor: pointer;"
+                                          class="fa fa-cog fa-2x h5" title="Settings"
+                                          onclick="openModal(event, 'scenario-setting-form')"></span>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+                <div class="planner-search-row">
+                    {{ embed(roots.scenario_planner_checkbox_group) }}
+                </div>
+                <div class="panel-body panel-body-extend-height overflow-auto">
+                    <div class="container-fluid scenario-simulation-row">
+                        <div class="row">
+                           <div class="col-sm-9 scenario-simulation-column">
+                                {{ embed(roots.simulation_tile_layout) }}
+                            </div>
+                            <div class="col-sm-3 scenario-simulation-legend-section">
+                                <div class="scenario-legend-checkbox-group">
+                                    <div class="item first-item" title="Click to expand/collapse"
+                                         onclick="openScenarioBar(event, 'scenario-legend-trajectory', 'scenario-legend-trajectory-arrow')">
+                                            Trajectory
+                                        <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path id="scenario-legend-trajectory-arrow" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <div class="checkbox-group-item" id="scenario-legend-trajectory">
+                                        {{ embed(roots.scenario_traj_checkbox_group) }}
+                                    </div>
+                                </div>
+                                <div class="scenario-legend-checkbox-group">
+                                    <div class="item" title="Click to expand/collapse"
+                                    onclick="openScenarioBar(event, 'scenario-legend-agent', 'scenario-legend-agent-arrow')">
+                                            Agent
+                                        <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path id="scenario-legend-agent-arrow" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <div class="checkbox-group-item" id="scenario-legend-agent">
+                                        {{ embed(roots.scenario_object_checkbox_group) }}
+                                    </div>
+                                </div>
+                                <div class="scenario-legend-checkbox-group">
+                                    <div class="item" title="Click to expand/collapse"
+                                    onclick="openScenarioBar(event, 'scenario-legend-map', 'scenario-legend-map-arrow')">
+                                        Map
+                                        <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path id="scenario-legend-map-arrow" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <div class="checkbox-group-item" id="scenario-legend-map">
+                                        {{ embed(roots.scenario_map_checkbox_group) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
+                        'scenario-table-ego-expert-states-row', 'scenario-table-ego-expert-states-svg-path')">
+                        Ego and Expert States
+                        <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                            <path id="scenario-table-ego-expert-states-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
                             </path>
                         </svg>
-                     </div>
-                     <div class="checkbox-group-item" id="scenario-legend-trajectory">
-                         {{ embed(roots.scenario_traj_checkbox_group) }}
-                     </div>
-                 </div>
-                 <div class="scenario-legend-checkbox-group">
-                     <div class="item" title="Click to expand/collapse"
-                      onclick="openScenarioBar(event, 'scenario-legend-agent', 'scenario-legend-agent-arrow')">
-                         Agent
-                         <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                             <path id="scenario-legend-agent-arrow" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
-                             </path>
-                         </svg>
-                     </div>
-                     <div class="checkbox-group-item" id="scenario-legend-agent">
-                         {{ embed(roots.scenario_object_checkbox_group) }}
-                     </div>
-                 </div>
-                 <div class="scenario-legend-checkbox-group">
-                     <div class="item" title="Click to expand/collapse"
-                          onclick="openScenarioBar(event, 'scenario-legend-map', 'scenario-legend-map-arrow')">
-                         Map
-                         <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                             <path id="scenario-legend-map-arrow" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
-                             </path>
-                         </svg>
-                     </div>
-                     <div class="checkbox-group-item" id="scenario-legend-map">
-                         {{ embed(roots.scenario_map_checkbox_group) }}
-                     </div>
-                 </div>
-             </div>
-         </div>
-          <div class="row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
-             'scenario-table-ego-expert-states-row', 'scenario-table-ego-expert-states-svg-path')">
-              Ego and Expert States
-              <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                  <path id="scenario-table-ego-expert-states-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
-                  </path>
-              </svg>
-          </div>
-          <div class="scenario-table-ego-expert-states-row" id="scenario-table-ego-expert-states-row">
-              {{ embed(roots.ego_expert_states_layout) }}
-          </div>
-          <div class="row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
-             'scenario-table-time-series-row', 'scenario-table-time-series-svg-path')">
-              Time Series Metrics
-              <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                  <path id="scenario-table-time-series-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
-                  </path>
-              </svg>
-          </div>
-          <div class="scenario-table-time-series-row" id="scenario-table-time-series-row">
-              {{ embed(roots.time_series_layout) }}
-          </div>
-          <div class="row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
-             'scenario-table-scenario-score-row', 'scenario-table-scenario-score-svg-path')">
-              Scenario Scores
-              <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                  <path id="scenario-table-scenario-score-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
-                  </path>
-              </svg>
-          </div>
-          <div class="scenario-table-scenario-score-row" id="scenario-table-scenario-score-row">
-              {{ embed(roots.scenario_score_layout) }}
-          </div>
-      </div>
+                    </div>
+                    <div class="scenario-table-ego-expert-states-row" id="scenario-table-ego-expert-states-row">
+                         {{ embed(roots.ego_expert_states_layout) }}
+                    </div>
+                    <div class="panel-row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
+                        'scenario-table-time-series-row', 'scenario-table-time-series-svg-path')">
+                        Time Series Metrics
+                        <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                            <path id="scenario-table-time-series-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div class="scenario-table-time-series-row" id="scenario-table-time-series-row">
+                        {{ embed(roots.time_series_layout) }}
+                    </div>
+                    <div class="panel-row" title="Click to expand/collapse" style="cursor: pointer;" onclick="openScenarioBar(event,
+                    'scenario-table-scenario-score-row', 'scenario-table-scenario-score-svg-path')">
+                        Scenario Scores
+                        <svg class="expandable-arrow-svg" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                            <path id="scenario-table-scenario-score-svg-path" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                            </path>
+                        </svg>
+                    </div>
+                   <div class="scenario-table-scenario-score-row" id="scenario-table-scenario-score-row">
+                    {{ embed(roots.scenario_score_layout) }}
+                   </div>
+                </div>
+            </div>
+        </div>
+    </div>
   </div>
 </html>

@@ -13,6 +13,7 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard/base:experiment_file_data",
+        "//nuplan/planning/nuboard/tabs:cloud_tab",
         "//nuplan/planning/nuboard/tabs:configuration_tab",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
         "//nuplan/planning/nuboard/tabs:overview_tab",

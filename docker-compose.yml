@@ -3,31 +3,47 @@ version: "3.7"
 x-nuplan-volumes: &x-nuplan-volumes
   volumes:
     - "$NUPLAN_DATA_ROOT:/data/sets/nuplan:rw"
+    - "$NUPLAN_EXP_ROOT:/data/exp/nuplan:rw"
+
+
+x-nuplan-maps: &x-nuplan-maps
+  volumes:
+    - "$NUPLAN_MAPS_ROOT:/data/sets/nuplan/maps:rw"
 
 
 services:
   submission:
-    <<: *x-nuplan-volumes
-    container_name: "test-contestant_nuplan-test-submission"
+    <<: *x-nuplan-maps
     image: ${SUBMISSION_IMAGE}
+    build:
+      context: ./
+      dockerfile: Dockerfile.submission
     env_file:
       - .env
-    ports:
-      - ${SUBMISSION_CONTAINER_PORT}:${SUBMISSION_CONTAINER_PORT}
-
+    network_mode: "host"
     tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
+    entrypoint: /nuplan_devkit/nuplan/entrypoint_submission.sh
 
   simulation:
     <<: *x-nuplan-volumes
+    image: ${SIMULATION_IMAGE}
+    build:
+      context: ./
+      dockerfile: Dockerfile
     env_file:
       - .env
     environment:
       'NUPLAN_CHALLENGE': $NUPLAN_CHALLENGE
       'NUPLAN_PLANNER': $NUPLAN_PLANNER
-    image: ${SIMULATION_IMAGE}
-    ports:
-      - ${SIMULATION_CONTAINER_PORT}:${SIMULATION_CONTAINER_PORT}
-    tty: true
+
+    network_mode: "host"
     depends_on:
       - submission
-    entrypoint: /nuplan_devkit/nuplan/entrypoint.sh
+    entrypoint: /nuplan_devkit/nuplan/entrypoint_simulation.sh

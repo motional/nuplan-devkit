@@ -44,7 +44,6 @@ class TestSimulation(unittest.TestCase):
         """Test initialization method."""
         initialization = self.stepper.initialize()
         self.assertEqual(initialization.mission_goal, self.scenario.get_mission_goal())
-        self.assertEqual(initialization.expert_goal_state, self.scenario.get_expert_goal_state())
 
         # Check current ego state
         self.assertEqual(

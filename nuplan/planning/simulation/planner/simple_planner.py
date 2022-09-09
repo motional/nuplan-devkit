@@ -54,7 +54,7 @@ class SimplePlanner(AbstractPlanner):
         """Inherited, see superclass."""
         return DetectionsTracks  # type: ignore
 
-    def compute_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
         """
         Implement a trajectory that goes straight.
         Inherited, see superclass.

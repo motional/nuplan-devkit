@@ -40,3 +40,9 @@ py_library(
     srcs = ["splitter.py"],
     deps = ["//nuplan/planning/scenario_builder:abstract_scenario"],
 )
+
+py_library(
+    name = "distributed_sampler_wrapper",
+    srcs = ["distributed_sampler_wrapper.py"],
+    deps = [],
+)

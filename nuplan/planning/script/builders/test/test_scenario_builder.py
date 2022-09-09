@@ -7,6 +7,7 @@ import mock
 from omegaconf import DictConfig
 
 from nuplan.planning.script.builders.scenario_builder import extract_scenarios_from_cache, get_s3_scenario_cache
+from nuplan.planning.script.builders.scenario_filter_builder import is_valid_token
 from nuplan.planning.training.experiments.cache_metadata_entry import CacheMetadataEntry
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
@@ -195,6 +196,14 @@ class TestScenarioBuilder(unittest.TestCase):
             ]
 
         return mock_read_cache_metadata
+
+    def test_is_valid_token(self) -> None:
+        """
+        Test that scenario token validation works.
+        """
+        self.assertFalse(is_valid_token("a"))
+        self.assertFalse(is_valid_token(3))
+        self.assertTrue(is_valid_token("48681125850853e4"))
 
     def test_extract_and_filter_scenarios_from_cache(self) -> None:
         """

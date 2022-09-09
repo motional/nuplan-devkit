@@ -120,6 +120,7 @@ class TimeSeries:
     unit: str  # unit of the time series
     time_stamps: List[int]  # time stamps of the time series [microseconds]
     values: List[float]  # values of the time series
+    selected_frames: Optional[List[int]] = None  # Selected frames
 
     def __post_init__(self) -> None:
         """Post initialization of TimeSeries."""
@@ -127,7 +128,12 @@ class TimeSeries:
 
     def serialize(self) -> Dict[str, Any]:
         """Serialization of TimeSeries."""
-        return {'unit': self.unit, 'time_stamps': self.time_stamps, 'values': self.values}
+        return {
+            'unit': self.unit,
+            'time_stamps': self.time_stamps,
+            'values': self.values,
+            'selected_frames': self.selected_frames,
+        }
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> Optional[TimeSeries]:
@@ -137,7 +143,12 @@ class TimeSeries:
         :return A TimeSeries dataclass.
         """
         return (
-            TimeSeries(unit=data['unit'], time_stamps=data['time_stamps'], values=data['values'])
+            TimeSeries(
+                unit=data['unit'],
+                time_stamps=data['time_stamps'],
+                values=data['values'],
+                selected_frames=data['selected_frames'],
+            )
             if data is not None
             else None
         )
@@ -150,6 +161,7 @@ class MetricStatistics(MetricResult):
     statistics: List[Statistic]  # Collection of statistics
     time_series: Optional[TimeSeries] = None  # Time series data of the metric
     metric_score: Optional[float] = None  # Final score of a metric in a scenario
+    metric_score_unit: Optional[str] = None  # Final score unit, for example, float or bool
 
     def serialize(self) -> Dict[str, Any]:
         """Serialize the metric result."""
@@ -160,6 +172,7 @@ class MetricStatistics(MetricResult):
             'time_series': self.time_series.serialize() if self.time_series is not None else None,
             'metric_category': self.metric_category,
             'metric_score': self.metric_score,
+            'metric_score_unit': self.metric_score_unit,
         }
 
     @classmethod
@@ -175,6 +188,7 @@ class MetricStatistics(MetricResult):
             time_series=TimeSeries.deserialize(data['time_series']),
             metric_category=data['metric_category'],
             metric_score=data['metric_score'],
+            metric_score_unit=data['metric_score_unit'],
         )
 
     def serialize_dataframe(self) -> Dict[str, Any]:
@@ -182,7 +196,11 @@ class MetricStatistics(MetricResult):
         Serialize a dictionary for dataframe
         :return a dictionary
         """
-        columns: Dict[str, Any] = {'metric_score': self.metric_score, 'metric_category': self.metric_category}
+        columns: Dict[str, Any] = {
+            'metric_score': self.metric_score,
+            'metric_score_unit': self.metric_score_unit,
+            'metric_category': self.metric_category,
+        }
         for statistic in self.statistics:
             statistic_columns = {
                 f'{statistic.name}_stat_type': statistic.type.serialize(),
@@ -198,6 +216,7 @@ class MetricStatistics(MetricResult):
                     MetricStatisticsDataFrame.time_series_unit_column: [None],
                     MetricStatisticsDataFrame.time_series_timestamp_column: [None],
                     MetricStatisticsDataFrame.time_series_values_column: [None],
+                    MetricStatisticsDataFrame.time_series_selected_frames_column: [None],
                 }
             )
         else:
@@ -208,6 +227,7 @@ class MetricStatistics(MetricResult):
                         [int(timestamp) for timestamp in self.time_series.time_stamps]
                     ],
                     MetricStatisticsDataFrame.time_series_values_column: [self.time_series.values],
+                    MetricStatisticsDataFrame.time_series_selected_frames_column: [self.time_series.selected_frames],
                 }
             )
 

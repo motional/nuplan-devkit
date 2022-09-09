@@ -1,6 +1,7 @@
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
 from nuplan.submission import challenge_pb2 as chpb
@@ -96,3 +97,47 @@ def interp_traj_from_proto_traj(trajectory: chpb.Trajectory) -> InterpolatedTraj
     :return: The corresponding InterpolatedTrajectory object
     """
     return InterpolatedTrajectory([ego_state_from_proto_ego_state(state) for state in trajectory.ego_states])
+
+
+def proto_tl_status_type_from_tl_status_type(tl_status_type: TrafficLightStatusType) -> chpb.TrafficLightStatusType:
+    """
+    Serializes TrafficLightStatusType to a TrafficLightStatusType message
+    :param tl_status_type: The TrafficLightStatusType object
+    :return: The corresponding TrafficLightStatusType message
+    """
+    return chpb.TrafficLightStatusType(status_name=tl_status_type.serialize())
+
+
+def tl_status_type_from_proto_tl_status_type(tl_status_type: chpb.TrafficLightStatusType) -> TrafficLightStatusType:
+    """
+    Deserializes TrafficLightStatusType message to a TrafficLightStatusType object
+    :param tl_status_type: The proto TrafficLightStatusType message
+    :return: The corresponding TrafficLightStatusType object
+    """
+    return TrafficLightStatusType.deserialize(tl_status_type.status_name)
+
+
+def proto_tl_status_data_from_tl_status_data(tl_status_data: TrafficLightStatusData) -> chpb.TrafficLightStatusData:
+    """
+    Serializes TrafficLightStatusData to a TrafficLightStatusData message
+    :param tl_status_data: The TrafficLightStatusData object
+    :return: The corresponding TrafficLightStatusData message
+    """
+    return chpb.TrafficLightStatusData(
+        status=proto_tl_status_type_from_tl_status_type(tl_status_data.status),
+        lane_connector_id=tl_status_data.lane_connector_id,
+        timestamp=tl_status_data.timestamp,
+    )
+
+
+def tl_status_data_from_proto_tl_status_data(tl_status_data: chpb.TrafficLightStatusData) -> TrafficLightStatusData:
+    """
+    Deserializes TrafficLightStatusType message to a TrafficLightStatusType object
+    :param tl_status_data: The proto TrafficLightStatusType message
+    :return: The corresponding TrafficLightStatusType object
+    """
+    return TrafficLightStatusData(
+        status=tl_status_type_from_proto_tl_status_type(tl_status_data.status),
+        lane_connector_id=tl_status_data.lane_connector_id,
+        timestamp=tl_status_data.timestamp,
+    )

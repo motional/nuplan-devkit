@@ -211,11 +211,11 @@ class NuPlanScenario(AbstractScenario):
 
     def get_lidar_to_ego_transform(self) -> Transform:
         """Inherited, see superclass."""
-        return get_lidar_transform_matrix_for_lidarpc_token_from_db(self._log_file, self._intial_lidar_token)
+        return get_lidar_transform_matrix_for_lidarpc_token_from_db(self._log_file, self._initial_lidar_token)
 
     def get_mission_goal(self) -> Optional[StateSE2]:
         """Inherited, see superclass."""
-        return get_mission_goal_for_lidarpc_token_from_db(self._log_file, self._lidarpc_tokens[-1])
+        return get_mission_goal_for_lidarpc_token_from_db(self._log_file, self._initial_lidar_token)
 
     def get_route_roadblock_ids(self) -> List[str]:
         """Inherited, see superclass."""

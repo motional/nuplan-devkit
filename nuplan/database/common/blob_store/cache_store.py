@@ -44,7 +44,8 @@ class CacheStore(BlobStore):
             content: BinaryIO = self._local.get(key)
         else:
             content = self._remote.get(key, check_for_compressed)
-            self.save(key, content)
+            key_split = key.split('/')
+            self.save(key_split[-1], content)
             content.seek(0)
 
         return content

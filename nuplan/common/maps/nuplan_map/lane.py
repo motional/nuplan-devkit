@@ -5,8 +5,15 @@ import pandas as pd
 from shapely.geometry import Polygon
 
 import nuplan.common.maps.nuplan_map.lane_connector as lane_connector
-from nuplan.common.maps.abstract_map_objects import Lane, LaneGraphEdgeMapObject, PolylineMapObject
-from nuplan.common.maps.maps_datatypes import VectorLayer
+from nuplan.common.actor_state.state_representation import Point2D
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.abstract_map_objects import (
+    Lane,
+    LaneGraphEdgeMapObject,
+    PolylineMapObject,
+    RoadBlockGraphEdgeMapObject,
+)
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer, VectorLayer
 from nuplan.common.maps.nuplan_map.polyline_map_object import NuPlanPolylineMapObject
 from nuplan.common.maps.nuplan_map.utils import get_all_rows_with_value, get_row_with_value
 
@@ -25,6 +32,7 @@ class NuPlanLane(Lane):
         boundaries_df: VectorLayer,
         stop_lines_df: VectorLayer,
         lane_connector_polygon_df: VectorLayer,
+        map_data: AbstractMap,
     ):
         """
         Constructor of NuPlanLane.
@@ -44,6 +52,7 @@ class NuPlanLane(Lane):
         self._stop_lines_df = stop_lines_df
         self._lane_connector_polygon_df = lane_connector_polygon_df
         self._lane = None
+        self._map_data = map_data
 
     @cached_property
     def incoming_edges(self) -> List[LaneGraphEdgeMapObject]:
@@ -59,6 +68,7 @@ class NuPlanLane(Lane):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
             for lane_connector_id in lane_connectors_ids.tolist()
         ]
@@ -77,6 +87,7 @@ class NuPlanLane(Lane):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
             for lane_connector_id in lane_connectors_ids.to_list()
         ]
@@ -103,6 +114,11 @@ class NuPlanLane(Lane):
         return str(self._get_lane()["lane_group_fid"])
 
     @cached_property
+    def parent(self) -> RoadBlockGraphEdgeMapObject:
+        """Inherited from superclass"""
+        return self._map_data.get_map_object(self.get_roadblock_id(), SemanticMapLayer.ROADBLOCK)
+
+    @cached_property
     def speed_limit_mps(self) -> Optional[float]:
         """Inherited from superclass."""
         speed_limit = self._get_lane()["speed_limit_mps"]
@@ -122,8 +138,8 @@ class NuPlanLane(Lane):
 
         lane_index = self._get_lane()["lane_index"]
         # According to the map attributes, lanes are numbered left to right with smaller indices being on the left and larger indices being on the right
-        left_lane_id = all_lanes[all_lanes["lane_index"] == int(lane_index) - 1]['fid']
-        right_lane_id = all_lanes[all_lanes["lane_index"] == int(lane_index) + 1]['fid']
+        left_lane_id = all_lanes[all_lanes["lane_index"] == int(lane_index) - 1]["fid"]
+        right_lane_id = all_lanes[all_lanes["lane_index"] == int(lane_index) + 1]["fid"]
 
         left_lane = (
             NuPlanLane(
@@ -134,6 +150,7 @@ class NuPlanLane(Lane):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
             if not left_lane_id.empty
             else None
@@ -147,12 +164,23 @@ class NuPlanLane(Lane):
                 self._boundaries_df,
                 self._stop_lines_df,
                 self._lane_connector_polygon_df,
+                self._map_data,
             )
             if not right_lane_id.empty
             else None
         )
 
         return left_lane, right_lane
+
+    def get_width_left_right(
+        self, point: Point2D, include_outside: bool = False
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """Inherited from superclass."""
+        raise NotImplementedError
+
+    def oriented_distance(self, point: Point2D) -> float:
+        """Inherited from superclass"""
+        raise NotImplementedError
 
     def _get_lane(self) -> pd.Series:
         """

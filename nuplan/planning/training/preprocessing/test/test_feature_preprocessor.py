@@ -3,13 +3,8 @@ import pathlib
 import unittest
 from typing import Any
 
-import mock
-
-from nuplan.common.actor_state.tracked_objects import TrackedObjects
 from nuplan.planning.scenario_builder.nuplan_db.test.nuplan_scenario_test_utils import get_test_nuplan_scenario
-from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
-from nuplan.planning.training.preprocessing.feature_builders.agents_feature_builder import AgentsFeatureBuilder
 from nuplan.planning.training.preprocessing.feature_builders.raster_feature_builder import RasterFeatureBuilder
 from nuplan.planning.training.preprocessing.feature_builders.vector_map_feature_builder import VectorMapFeatureBuilder
 from nuplan.planning.training.preprocessing.feature_preprocessor import FeaturePreprocessor
@@ -62,25 +57,6 @@ class TestFeaturePreprocessor(unittest.TestCase):
         scenario = get_test_nuplan_scenario()
 
         self._compute_features_and_check_builders(scenario, feature_preprocessor, 2, 1)
-
-    @mock.patch(
-        'nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario.NuPlanScenario.get_tracked_objects_at_iteration'
-    )
-    def test_invalid_feature(self, mock_tracked_objects_fn: mock.Mock) -> None:
-        """Test that empty features are invalidated."""
-        agents_builder = AgentsFeatureBuilder(TrajectorySampling(4, 1.5))
-        feature_preprocessor = FeaturePreprocessor(
-            cache_path=str(self.cache_path),
-            feature_builders=[agents_builder],
-            target_builders=[],
-            force_feature_computation=False,
-        )
-
-        mock_tracked_objects_fn.return_value = DetectionsTracks(TrackedObjects([]))  # scenario has no agents
-        scenario = get_test_nuplan_scenario()
-        features, _, _ = feature_preprocessor.compute_features(scenario)
-
-        self.assertFalse(features['agents'].is_valid)
 
     def _compute_features_and_check_builders(
         self, sample: Any, feature_preprocessor: FeaturePreprocessor, number_of_features: int, number_of_targets: int

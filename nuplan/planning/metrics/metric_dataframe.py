@@ -19,6 +19,7 @@ class MetricStatisticsDataFrame:
     time_series_unit_column: ClassVar[str] = 'time_series_unit'
     time_series_timestamp_column: ClassVar[str] = 'time_series_timestamps'
     time_series_values_column: ClassVar[str] = 'time_series_values'
+    time_series_selected_frames_column: ClassVar[str] = 'time_series_selected_frames'
 
     def __eq__(self, other: object) -> bool:
         """Compare equality."""
@@ -115,6 +116,11 @@ class MetricStatisticsDataFrame:
             raise IndexError("No available records found!")
 
     @cached_property
+    def metric_score_unit(self) -> str:
+        """Return metric score unit."""
+        return self.metric_statistics_dataframe["metric_score_unit"][0]  # type: ignore
+
+    @cached_property
     def scenario_types(self) -> List[str]:
         """Return a list of scenario types."""
         return list(self.metric_statistics_dataframe["scenario_type"].unique())
@@ -138,6 +144,14 @@ class MetricStatisticsDataFrame:
     def time_series_headers(self) -> List[str]:
         """Return time series headers."""
         return [self.time_series_unit_column, self.time_series_timestamp_column, self.time_series_values_column]
+
+    @cached_property
+    def get_time_series_selected_frames(self) -> Optional[List[int]]:
+        """Return selected frames in time series."""
+        try:
+            return self.metric_statistics_dataframe[self.time_series_selected_frames_column].iloc[0]  # type: ignore
+        except KeyError:
+            return None
 
     @cached_property
     def time_series_dataframe(self) -> pandas.DataFrame:
