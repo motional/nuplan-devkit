@@ -28,8 +28,8 @@ ______________________________________________________________________
 </div>
 
 ______________________________________________________________________
-## Planning challenges
-####The nuPlan Planning Challenge is now live! The warm-up stage has begun. Please check our competition landing [page](https://nuplan-devkit.readthedocs.io/en/latest/).
+## nuPlan Planning Challenge is live!
+The nuPlan Planning Challenge is now live! The warm-up stage has begun. Please check our competition landing [page](https://nuplan-devkit.readthedocs.io/en/latest/).
 ______________________________________________________________________
 
 ## Changelog
