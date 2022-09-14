@@ -1,6 +1,6 @@
 # Advanced Installation
 We provide step-by-step instructions to install the nuPlan devkit. 
-For a high-level overview, please read the [general readme](https://github.com/motional/nuplan-devkit/blob/master/README.md) first.
+For a high-level overview, please read the [general readme](https://github.com/motional/nuplan-devkit#readme) first.
 
 - [Download](#download-the-devkit)
 - [Install Python](#install-python)
