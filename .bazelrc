@@ -10,23 +10,23 @@ build --sandbox_tmpfs_path=/dev/shm
 build --incompatible_strict_action_env
 
 build --action_env=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-build --ection_env=CC=gcc # force Cython to use gcc
-build --ection_env=CACHE=/tmp/pyxbld
+build --action_env=CC=gcc # force Cython to use gcc
+build --action_env=CACHE=/tmp/pyxbld
 
 # make sure you have defined all environment veriables listed below
-build --ection_env=AWS_ACCESS_KEY_ID
-build --ection_env=AWS_SECRET_ACCESS_KEY
-build --ection_env=NUPLAN_DATA_ROOT
-build --ection_env=NUPLAN_MAPS_ROOT
-build --ection_env=NUPLAN_EXP_ROOT
-build --ection_env=NUPLAN_DATA_STORE
-build --ection_env=NUPLAN_S3_PROFILE
-build --ection_env=NUPLAN_CACHE_FROM_S3
-build --ection_env=NUPLAN_DATA_ROOT_S3_URL
-build --ection_env=NUPLAN_MAPS_ROOT_S3_URL
-build --ection_env=NUPLAN_DB_FILES
-build --ection_env=NUPLAN_MAP_VERSION
-build --ection_env=NUPLAN_HYDRA_CONFIG_PATH
+build --action_env=AWS_ACCESS_KEY_ID
+build --action_env=AWS_SECRET_ACCESS_KEY
+build --action_env=NUPLAN_DATA_ROOT
+build --action_env=NUPLAN_MAPS_ROOT
+build --action_env=NUPLAN_EXP_ROOT
+build --action_env=NUPLAN_DATA_STORE
+build --action_env=NUPLAN_S3_PROFILE
+build --action_env=NUPLAN_CACHE_FROM_S3
+build --action_env=NUPLAN_DATA_ROOT_S3_URL
+build --action_env=NUPLAN_MAPS_ROOT_S3_URL
+build --action_env=NUPLAN_DB_FILES
+build --action_env=NUPLAN_MAP_VERSION
+build --action_env=NUPLAN_HYDRA_CONFIG_PATH
 
 test --test_output=errors
 test --test_timeout=2400
