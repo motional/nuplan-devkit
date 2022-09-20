@@ -4,6 +4,13 @@
 #
 #    bazel run //:pip_deps.update
 #
+--find-links https://download.pytorch.org/whl/torch_stable.html
+--find-links https://data.pyg.org/whl/torch-1.9.0+cu111.html
+
+absl-py==1.2.0 \
+    --hash=sha256:5d15f85b8cc859c6245bc9886ba664460ed96a6fee895416caa37d669ee74a9a \
+    --hash=sha256:f568809938c49abbda89826223c992b630afd23c638160ad7840cfe347710d97
+    # via tensorboard
 affine==2.3.1 \
     --hash=sha256:d676de66157ad6af99ffd94e0f54e89dfc35b0fb7252ead2ed0ad2dca431bdd0 \
     --hash=sha256:de17839ff05e965580870c3b15e14cefd7992fa05dba9202a0879bbed0c171e4
@@ -18,6 +25,7 @@ aiohttp-cors==0.7.0 \
     # via
     #   -r requirements.txt
     #   aiohttp-cors
+    #   fsspec
     #   ray
 aiosignal==1.2.0 \
     --hash=sha256:26e62109036cd181df6e6ad646f91f0dcfd05fe16d0cb924138ff2ab75d64e3a \
@@ -248,6 +256,15 @@ frozenlist==1.3.0 \
     # via
     #   aiosignal
     #   ray
+fsspec[http]==2022.8.2 \
+    --hash=sha256:6374804a2c0d24f225a67d009ee1eabb4046ad00c793c3f6df97e426c890a1d9 \
+    --hash=sha256:7f12b90964a98a7e921d27fb36be536ea036b73bf3b724ac0b0bd7b8e39c7c18
+    # via pytorch-lightning
+future==0.18.1 \
+    --hash=sha256:858e38522e8fd0d3ce8f0c1feaf0603358e366d5403209674c7b617fa0c24093
+    # via
+    #   -r requirements.txt
+    #   pytorch-lightning
 geopandas==0.11.0 \
     --hash=sha256:0991f279d4f9e3a04e3666f32b1ac64d6ba439933da3d9654a26031e0ccea5dc \
     --hash=sha256:562fe7dc19a6e0f61532d654c4752f7bf46e0714990c5844fe3de3f9c99cb873
@@ -255,11 +272,18 @@ geopandas==0.11.0 \
 google-api-core==2.8.2 \
     --hash=sha256:06f7244c640322b508b125903bb5701bebabce8832f85aba9335ec00b3d02edc \
     --hash=sha256:93c6a91ccac79079ac6bbf8b74ee75db970cc899278b97d53bc012f35908cf50
-    # via opencensus
+    # via tensorboard
 google-auth==2.9.1 \
     --hash=sha256:14292fa3429f2bb1e99862554cde1ee730d6840ebae067814d3d15d8549c0888 \
     --hash=sha256:5a7eed0cb0e3a83989fad0b59fe1329dfc8c479543039cd6fd1e01e9adf39475
-    # via google-api-core
+    # via opencensus
+google-auth-oauthlib==0.4.6 \
+    --hash=sha256:3f2a6e802eebbb6fb736a370fbf3b055edcb6b52878bf2f26330b5e041316c73 \
+    --hash=sha256:a90a072f6993f2c327067bf65270046384cda5a8ecb20b94ea9a687f1f233a7a
+    # via
+    #   google-api-core
+    #   google-auth-oauthlib
+    #   tensorboard
 googleapis-common-protos==1.56.4 \
     --hash=sha256:8eb2cbc91b69feaf23e32452a7ae60e791e09967d81d4fcc7fc388182d1bd394 \
     --hash=sha256:c25873c47279387cfdcbdafa36149887901d36202cb645a0e4f29686bf6e4417
@@ -281,6 +305,7 @@ grpcio==1.43.0 \
     # via
     #   -r requirements.txt
     #   ray
+    #   tensorboard
 guppy3==3.1.2 \
     --hash=sha256:04507ad33d29a29d3cb61cdc1cc7f2949a08bbe854b6219092d499ae58cb52c8 \
     --hash=sha256:08dcd39b03bcfd421d4b47a7c990a05d4c74b295b1913dbb9fd372b5413b5f54 \
@@ -338,7 +363,9 @@ idna==3.3 \
 importlib-metadata==4.12.0 \
     --hash=sha256:637245b8bab2b6502fcbc752cc4b7a6f6243bb02b31c5c26156ad103d3d45670 \
     --hash=sha256:7401a975809ea1fdc658c3aa4f78cc2195a0e019c5cbc4c06122884e9ae80c23
-    # via jupyterlab-server
+    # via
+    #   jupyterlab-server
+    #   markdown
 iniconfig==1.1.1 \
     --hash=sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3 \
     --hash=sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32
@@ -468,6 +495,10 @@ kiwisolver==1.4.3 \
     --hash=sha256:547111ef7cf13d73546c2de97ce434935626c897bdec96a578ca100b5fcd694b \
     --hash=sha256:ab8a15c2750ae8d53e31f77a94f846d0a00772240f1c12817411fa2344351f86
     # via matplotlib
+markdown==3.4.1 \
+    --hash=sha256:08fb8465cffd03d10b9dd34a5c3fea908e20391a2a90b88d66362cb05beed186 \
+    --hash=sha256:3b809086bb6efad416156e00a0da66fe47618a5d6918dd688f53f40c8e4cfeff
+    # via tensorboard
 markupsafe==2.1.1 \
     --hash=sha256:56442863ed2b06d19c37f94d999035e15ee982988920e12a5b4ba29b62ad1f77 \
     --hash=sha256:7f91197cc9e48f989d12e4e6fbc46495c446636dfc81b9ccf50bb0ec74b91d4b
@@ -480,6 +511,7 @@ matplotlib==3.5.2 \
     # via
     #   jinja2
     #   nbconvert
+    #   werkzeug
 matplotlib-inline==0.1.3 \
     --hash=sha256:a04bfba22e0d1395479f866853ec1ee28eea1485c1d69a6faf00dc3e24ff34ee \
     --hash=sha256:aed605ba3b72462d64d475a21a9296f400a19c4f74a31b59103d2a99ffd5aa5c
@@ -579,14 +611,22 @@ numpy==1.23.1 \
     #   pygeos
     #   pyogrio
     #   pyquaternion
+    #   pytorch-lightning
     #   rasterio
     #   ray
     #   scipy
     #   snuggs
+    #   tensorboard
+    #   torchmetrics
+    #   torchvision
 nvidia-ml-py==11.495.46 \
     --hash=sha256:8a18e5c77716ffebd8eff3b2bdc6324c9825b51630280655d5478ff463f17827 \
     --hash=sha256:8f68e1af274756067632c7e1b79fb1a93a8dddf1e04851fccaeb34adfa599625
     # via gpustat
+oauthlib==3.2.1 \
+    --hash=sha256:1565237372795bf6ee3e5aba5e2a85bd5a65d0e2aa5c628b9a97b7d7a0da3721 \
+    --hash=sha256:88e912ca1ad915e1dcc1c06fc9259d19de8deacd6fd17cc2df266decc2e49066
+    # via requests-oauthlib
 omegaconf==2.1.0.rc1 \
     --hash=sha256:0fa2b020a2bd830f78210dd4bc1a719e4e64030705cf172770da3deafa565d49 \
     --hash=sha256:54dd856dc75c0bba2d4154651491f7f1d527892c321dd1c7c7205fd3fcd0508f
@@ -620,7 +660,9 @@ packaging==21.3 \
     #   matplotlib
     #   nbconvert
     #   pytest
+    #   pytorch-lightning
     #   qtpy
+    #   torchmetrics
 pandas==1.4.3 \
     --hash=sha256:1d9382f72a4f0e93909feece6fef5500e838ce1c355a581b3d8f259839f2ea76 \
     --hash=sha256:2ff7788468e75917574f080cd4681b27e1a7bf36461fe968b49a87b5a54d007c
@@ -651,6 +693,8 @@ pillow==9.2.0 \
     #   -r requirements.txt
     #   bokeh
     #   matplotlib
+    #   pytorch-lightning
+    #   torchvision
 platformdirs==2.5.2 \
     --hash=sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788 \
     --hash=sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19
@@ -677,14 +721,38 @@ prompt-toolkit==3.0.30 \
     # via
     #   ipython
     #   jupyter-console
-protobuf==3.20.1 \
-    --hash=sha256:7403941f6d0992d40161aa8bb23e12575637008a5a02283a930addc0508982f9 \
-    --hash=sha256:adc31566d027f45efe3f44eeb5b1f329da43891634d61c75a5944e9be6dd42c9 \
-    --hash=sha256:adfc6cf69c7f8c50fd24c793964eef18f0ac321315439d94945820612849c388
+protobuf==3.19.5 \
+    --hash=sha256:1867f93b06a183f87696871bb8d1e99ee71dbb69d468ce1f0cc8bf3d30f982f3 \
+    --hash=sha256:3c4160b601220627f7e91154e572baf5e161a9c3f445a8242d536ee3d0b7b17c \
+    --hash=sha256:4ee2af7051d3b10c8a4fe6fd1a2c69f201fea36aeee7086cf202a692e1b99ee1 \
+    --hash=sha256:5266c36cc0af3bb3dbf44f199d225b33da66a9a5c3bdc2b14865ad10eddf0e37 \
+    --hash=sha256:5470f892961af464ae6eaf0f3099e2c1190ae8c7f36f174b89491281341f79ca \
+    --hash=sha256:66d14b5b90090353efe75c9fb1bf65ef7267383034688d255b500822e37d5c2f \
+    --hash=sha256:67efb5d20618020aa9596e17bfc37ca068c28ec0c1507d9507f73c93d46c9855 \
+    --hash=sha256:696e6cfab94cc15a14946f2bf72719dced087d437adbd994fff34f38986628bc \
+    --hash=sha256:6a02172b9650f819d01fb8e224fc69b0706458fc1ab4f1c669281243c71c1a5e \
+    --hash=sha256:6eca9ae238ba615d702387a2ddea635d535d769994a9968c09a4ca920c487ab9 \
+    --hash=sha256:950abd6c00e7b51f87ae8b18a0ce4d69fea217f62f171426e77de5061f6d9850 \
+    --hash=sha256:9e1d74032f56ff25f417cfe84c8147047732e5059137ca42efad20cbbd25f5e0 \
+    --hash=sha256:9e42b1cf2ecd8a1bd161239e693f22035ba99905ae6d7efeac8a0546c7ec1a27 \
+    --hash=sha256:9f957ef53e872d58a0afd3bf6d80d48535d28c99b40e75e6634cbc33ea42fd54 \
+    --hash=sha256:a89aa0c042e61e11ade320b802d6db4ee5391d8d973e46d3a48172c1597789f8 \
+    --hash=sha256:c0f80876a8ff0ae7064084ed094eb86497bd5a3812e6fc96a05318b92301674e \
+    --hash=sha256:c44e3282cff74ad18c7e8a0375f407f69ee50c2116364b44492a196293e08b21 \
+    --hash=sha256:d249519ba5ecf5dd6b18150c9b6bcde510b273714b696f3923ff8308fc11ae49 \
+    --hash=sha256:d3973a2d58aefc7d1230725c2447ce7f86a71cbc094b86a77c6ee1505ac7cdb1 \
+    --hash=sha256:dca2284378a5f2a86ffed35c6ac147d14c48b525eefcd1083e5a9ce28dfa8657 \
+    --hash=sha256:e63b0b3c42e51c94add62b010366cd4979cb6d5f06158bcae8faac4c294f91e1 \
+    --hash=sha256:f2b599a21c9a32e171ec29a2ac54e03297736c578698e11b099d031f79da114b \
+    --hash=sha256:f2bde37667b18c2b5280df83bc799204394a5d2d774e4deaf9de0eb741df6833 \
+    --hash=sha256:f4f909f4dde413dec435a44b0894956d55bb928ded7d6e3c726556ca4c796e84 \
+    --hash=sha256:f976234e20ab2785f54224bcdafa027674e23663b132fa3ca0caa291a6cfbde7 \
+    --hash=sha256:f9cebda093c2f6bfed88f1c17cdade09d4d96096421b344026feee236532d4de
     # via
     #   google-api-core
     #   googleapis-common-protos
     #   ray
+    #   tensorboard
 psutil==5.9.1 \
     --hash=sha256:57f1819b5d9e95cdfb0c881a8a5b7d542ed0b7c522d575706a80bedc848c8954 \
     --hash=sha256:645bd4f7bb5b8633803e0b6746ff1628724668681a434482546887d22c7a9537
@@ -729,6 +797,12 @@ pycparser==2.21 \
     --hash=sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9 \
     --hash=sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206
     # via cffi
+pydeprecate==0.3.0 \
+    --hash=sha256:2497dd3a293eb62304ea28cacf5e4e58af8a773b4cefec8dc11a3121d06b8354 \
+    --hash=sha256:335742ec53b9d22a0a9ff4f3470300c94935f6e169c74b08aee14d871ca40e00
+    # via
+    #   pytorch-lightning
+    #   torchmetrics
 pygeos==0.12.0 \
     --hash=sha256:1f045632a940905c2f380544450bbcd48556b529bdfb9320aac777d90990fc25 \
     --hash=sha256:3c41542ef67c66015f443ae3e6e683503a8a221f9c24fb2380f6ae42aed1600a
@@ -788,19 +862,51 @@ python-dateutil==2.8.2 \
     #   jupyter-client
     #   matplotlib
     #   pandas
+pytorch-lightning==1.3.8 \
+    --hash=sha256:60b0a3e464d394864dae4c8d251afa7aa453644a19bb7672f5ee400343cdf7b0 \
+    --hash=sha256:f3ccd987d6df628e0339925239dcf20a787e2ce01310f3cab49a58218fe0357b
+    # via -r requirements.txt
 pytz==2022.1 \
     --hash=sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7 \
     --hash=sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c
     # via
     #   babel
     #   pandas
-pyyaml==6.0 \
-    --hash=sha256:40527857252b61eacd1d9af500c3337ba8deb8fc298940291486c465c8b46ec0 \
-    --hash=sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2
+pyyaml==5.4.1 \
+    --hash=sha256:08682f6b72c722394747bddaf0aa62277e02557c0fd1c42cb853016a38f8dedf \
+    --hash=sha256:0f5f5786c0e09baddcd8b4b45f20a7b5d61a7e7e99846e3c799b05c7c53fa696 \
+    --hash=sha256:129def1b7c1bf22faffd67b8f3724645203b79d8f4cc81f674654d9902cb4393 \
+    --hash=sha256:294db365efa064d00b8d1ef65d8ea2c3426ac366c0c4368d930bf1c5fb497f77 \
+    --hash=sha256:3b2b1824fe7112845700f815ff6a489360226a5609b96ec2190a45e62a9fc922 \
+    --hash=sha256:3bd0e463264cf257d1ffd2e40223b197271046d09dadf73a0fe82b9c1fc385a5 \
+    --hash=sha256:4465124ef1b18d9ace298060f4eccc64b0850899ac4ac53294547536533800c8 \
+    --hash=sha256:49d4cdd9065b9b6e206d0595fee27a96b5dd22618e7520c33204a4a3239d5b10 \
+    --hash=sha256:4e0583d24c881e14342eaf4ec5fbc97f934b999a6828693a99157fde912540cc \
+    --hash=sha256:5accb17103e43963b80e6f837831f38d314a0495500067cb25afab2e8d7a4018 \
+    --hash=sha256:607774cbba28732bfa802b54baa7484215f530991055bb562efbed5b2f20a45e \
+    --hash=sha256:6c78645d400265a062508ae399b60b8c167bf003db364ecb26dcab2bda048253 \
+    --hash=sha256:72a01f726a9c7851ca9bfad6fd09ca4e090a023c00945ea05ba1638c09dc3347 \
+    --hash=sha256:74c1485f7707cf707a7aef42ef6322b8f97921bd89be2ab6317fd782c2d53183 \
+    --hash=sha256:895f61ef02e8fed38159bb70f7e100e00f471eae2bc838cd0f4ebb21e28f8541 \
+    --hash=sha256:8c1be557ee92a20f184922c7b6424e8ab6691788e6d86137c5d93c1a6ec1b8fb \
+    --hash=sha256:bb4191dfc9306777bc594117aee052446b3fa88737cd13b7188d0e7aa8162185 \
+    --hash=sha256:bfb51918d4ff3d77c1c856a9699f8492c612cde32fd3bcd344af9be34999bfdc \
+    --hash=sha256:c20cfa2d49991c8b4147af39859b167664f2ad4561704ee74c1de03318e898db \
+    --hash=sha256:cb333c16912324fd5f769fff6bc5de372e9e7a202247b48870bc251ed40239aa \
+    --hash=sha256:d2d9808ea7b4af864f35ea216be506ecec180628aced0704e34aca0b040ffe46 \
+    --hash=sha256:d483ad4e639292c90170eb6f7783ad19490e7a8defb3e46f97dfe4bacae89122 \
+    --hash=sha256:dd5de0646207f053eb0d6c74ae45ba98c3395a571a2891858e87df7c9b9bd51b \
+    --hash=sha256:e1d4970ea66be07ae37a3c2e48b5ec63f7ba6804bdddfdbd3cfd954d25a82e63 \
+    --hash=sha256:e4fac90784481d221a8e4b1162afa7c47ed953be40d31ab4629ae917510051df \
+    --hash=sha256:fa5ae20527d8e831e8230cbffd9f8fe952815b2b7dae6ffec25318803a7528fc \
+    --hash=sha256:fd7f6999a8070df521b6384004ef42833b9bd62cfee11a09bda1079b4b704247 \
+    --hash=sha256:fdc842473cd33f45ff6bce46aea678a54e3d21f1b61a7750ce3c498eedfe25d6 \
+    --hash=sha256:fe69978f3f768926cfa37b867e3843918e012cf83f680806599ddce33c2c68b0
     # via
     #   bokeh
     #   omegaconf
     #   pre-commit
+    #   pytorch-lightning
     #   ray
 pyzmq==23.2.0 \
     --hash=sha256:a51f12a8719aad9dcfb55d456022f16b90abc8dde7d3ca93ce3120b40e3fa169 \
@@ -826,16 +932,23 @@ rasterio==1.3.0 \
     # via -r requirements.txt
 ray[default]==1.13.0 \
     --hash=sha256:ba0829d495dec0bc90a72169f93e4cb004962a37df4d9b0df23004ebefb6d221
-    # via -r requirements.txt
+    # via google-auth-oauthlib
 requests==2.28.1 \
     --hash=sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983 \
     --hash=sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349
+    # via -r requirements.txt
+requests-oauthlib==1.3.1 \
+    --hash=sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5 \
+    --hash=sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a
     # via
     #   -r requirements.txt
     #   docker
+    #   fsspec
     #   google-api-core
     #   jupyterlab-server
     #   ray
+    #   requests-oauthlib
+    #   tensorboard
 rsa==4.8 \
     --hash=sha256:5c6bd9dc7a543b7fe4304a631f8a8a3b674e2bbfc49c2ae96200cdbe55df6b17 \
     --hash=sha256:95c5d300c4e879ee69708c428ba566c59478fd653cc3a22243eeb8ed846950bb
@@ -924,7 +1037,18 @@ stack-data==0.3.0 \
 sympy==1.10.1 \
     --hash=sha256:5939eeffdf9e152172601463626c022a2c27e75cf6278de8d401d50c9d58787b \
     --hash=sha256:df75d738930f6fe9ebe7034e59d56698f29e85f443f743e51e47df0caccc2130
+    # via tensorboard
+tensorboard==2.10.0 \
+    --hash=sha256:76c91a5e8959cd2208cc32cb17a0cb002badabb66a06ac2af02a7810f49a59e3
     # via -r requirements.txt
+tensorboard-data-server==0.6.1 \
+    --hash=sha256:809fe9887682d35c1f7d1f54f0f40f98bb1f771b14265b453ca051e2ce58fca7 \
+    --hash=sha256:d8237580755e58eff68d1f3abefb5b1e39ae5c8b127cc40920f9c4fb33f4b98a \
+    --hash=sha256:fa8cef9be4fcae2f2363c88176638baf2da19c5ec90addb49b1cde05c95c88ee
+    # via tensorboard
+tensorboard-plugin-wit==1.8.1 \
+    --hash=sha256:ff26bdd583d155aa951ee3b152b3d0cffae8005dc697f72b44a8e8c2a77a8cbe
+    # via pytorch-lightning
 terminado==0.15.0 \
     --hash=sha256:0d5f126fbfdb5887b25ae7d9d07b0d716b1cc0ccaacc71c1f3c14d228e065197 \
     --hash=sha256:ab4eeedccfcc1e6134bfee86106af90852c69d602884ea3a1e8ca6d4486e9bfe
@@ -934,6 +1058,10 @@ terminado==0.15.0 \
     #   notebook
 testbook==0.4.2 \
     --hash=sha256:21e03818017d1315607e117c101cf4b5f5b6dcd5ead77eab65ac9508a281f644
+    # via -r requirements.txt
+timm==0.6.7 \
+    --hash=sha256:340f907906695092cf53fe01a476aa14ad15763545b654bc122ea0daef23071f \
+    --hash=sha256:4bbd7a5c9ae462ec7fec3d99ffc62ac2012010d755248e3de778d50bce5f6186
     # via -r requirements.txt
 tinycss2==1.1.1 \
     --hash=sha256:b2e44dd8883c360c35dd0d1b5aad0b610e5156c2cb3b33434634e539ead9d8bf \
@@ -947,6 +1075,28 @@ tomli==2.0.1 \
     --hash=sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc \
     --hash=sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
     # via pytest
+torch==1.9.0+cu111 ; platform_system == "Linux" \
+    --hash=sha256:5422d19042e217c2aa94030b16b3fe4da5be9ba8eea46e7e59d40a110955962d
+    # via
+    #   -r requirements.txt
+    #   pytorch-lightning
+    #   timm
+    #   torchmetrics
+    #   torchvision
+torch_scatter==2.0.9 ; platform_system == "Linux" \
+    --hash=sha256:08f5511d64473badf0a71d156b36dc2b09b9c2f00a7cd373b935b490c477a7f1
+    # via -r requirements.txt
+torchmetrics==0.7.2 \
+    --hash=sha256:af03334c4a33fc32a9a40b037b1ce3ff6273ea9a0050c11ddde29bf1335da95e \
+    --hash=sha256:d0fbf8440912ef93f22e21bae43fda8fa26a651313acc3ea93beafe3c86dd474
+    # via
+    #   -r requirements.txt
+    #   pytorch-lightning
+torchvision==0.10.0+cu111 \
+    --hash=sha256:00e7e19c74e155d271e6ac63d8b4e3f93f5d3cc171428c4fdddbb1226d72eca1
+    # via
+    #   -r requirements.txt
+    #   timm
 tornado==6.2 \
     --hash=sha256:9b630419bde84ec666bfd7ea0a4cb2a8a651c2d5cccdbdd1972a0c859dfc3c13 \
     --hash=sha256:d3a2f5999215a3a06a4fc218026cd84c61b8b2b40ac5296a6db1f1451ef04c1e
@@ -963,7 +1113,9 @@ tornado==6.2 \
 tqdm==4.64.0 \
     --hash=sha256:40be55d30e200777a307a7585aee69e4eabb46b4ec6a4b4a5f2d9f11e7d5408d \
     --hash=sha256:74a2cdefe14d11442cedf3ba4e21a3b84ff9a2dbdc6cfae2c34addb2a14a5ea6
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   pytorch-lightning
 traitlets==5.3.0 \
     --hash=sha256:0bb9f1f9f017aa8ec187d8b1b2a7a6626a2a1d877116baba52a129bfa124f8e2 \
     --hash=sha256:65fa18961659635933100db8ca120ef6220555286949774b9cfc106f941d1c7a
@@ -1001,6 +1153,7 @@ typing-extensions==4.3.0 \
     # via
     #   aiohttp
     #   bokeh
+    #   torch
 ujson==5.4.0 \
     --hash=sha256:6b953e09441e307504130755e5bd6b15850178d591f66292bba4608c4f7f9b00 \
     --hash=sha256:e844be0831042aa91e847e5ab03bddd1089ab1a8dd0a1bf90411abf864f058b2
@@ -1037,6 +1190,14 @@ websocket-client==1.3.3 \
     # via
     #   docker
     #   jupyter-server
+werkzeug==2.2.2 \
+    --hash=sha256:7ea2d48322cc7c0f8b3a215ed73eabd7b5d75d0b50e31ab006286ccff9e00b8f \
+    --hash=sha256:f979ab81f58d7318e064e99c4506445d60135ac5cd2e177a2de0089bfd4c9bd5
+    # via tensorboard
+wheel==0.37.1 \
+    --hash=sha256:4bdcd7d840138086126cd09254dc6195fb4fc6f01c050a1d7236f2630db1d22a \
+    --hash=sha256:e9a504e793efbca1b8e0e9cb979a249cf4a0a7b5b8c9e8b65a5e39d49529c1c4
+    # via tensorboard
 widgetsnbextension==3.6.1 \
     --hash=sha256:954e0faefdd414e4e013f17dbc7fd86f24cf1d243a3ac85d5f0fc2c2d2b50c66 \
     --hash=sha256:9c84ae64c2893c7cbe2eaafc7505221a795c27d68938454034ac487319a75b10
@@ -1058,3 +1219,4 @@ zipp==3.8.1 \
     #   ipython
     #   nodeenv
     #   rasterio
+    #   tensorboard

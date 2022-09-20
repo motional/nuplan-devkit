@@ -1,3 +1,6 @@
+--find-links https://download.pytorch.org/whl/torch_stable.html
+--find-links https://data.pyg.org/whl/torch-1.9.0+cu111.html
+
 aiohttp==3.7.4.post0 # Never version is missing ray dashboard dependencies
 bokeh>=2.4.2  # Used in the nuBoard dashboard
 boto3==1.19.8  # Used in s3_store.py to download data from S3.
@@ -8,6 +11,7 @@ coverage  # Used in computing code coverage
 descartes  # Used in map_explorer.py
 docker  # To run remote submissions
 Fiona  # Used in GpkgMapsDB.py
+future==0.18.1
 geopandas  # Used to read maps
 grpcio==1.43.0  # Used for communication with submission container
 guppy3==3.1.2
@@ -30,6 +34,7 @@ pyinstrument    # Used widely as profiler
 pyogrio # A performant backend for geopandas
 pyquaternion>=0.9.5  # Used widely, avoid known bug with quaternion slerp
 pytest    # Used widely
+pytorch-lightning==1.3.8    # Used widely
 rasterio  # Used in GpkgMapsDB.py
 ray[default]  # Used widely
 requests  # Used in BlobStore classes
@@ -41,6 +46,13 @@ Shapely  # Used widely
 SQLAlchemy>=1.4.27  # older versions don't work with some table definitions
 sympy  # Use for symbolic algebra
 testbook  # Used in testing jupyter notebooks
+timm  # Used in model_raster
+
+torch==1.9.0+cu111;      platform_system == "Linux"
+torch==1.9.0;            platform_system == "Darwin"
+torch_scatter==2.0.9; platform_system == "Linux"
+torchmetrics==0.7.2
+torchvision==0.10.0+cu111
 tornado  # Used in nuboard.py
 tqdm  # Used widely
 typer # Used for cli
