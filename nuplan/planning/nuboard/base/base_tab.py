@@ -92,14 +92,20 @@ class BaseTab:
         ]
         return enable_planner_names
 
-    def get_plot_cols(self, plot_width: int, default_col_width: int = 1024, offset_width: int = 0) -> int:
+    def get_plot_cols(
+        self, plot_width: int, default_col_width: int = 1024, offset_width: int = 0, default_ncols: int = 0
+    ) -> int:
         """
         Return number of columns for a grid plot.
         :param plot_width: Plot width.
         :param default_col_width: The number of columns would be 1 if window width is lower than this value.
         :param offset_width: Additional offset width.
+        :param default_ncols: Default number of columns.
         :return: Get a number of columns for a grid plot.
         """
+        if default_ncols and not self.window_width:
+            return default_ncols
+
         window_width = self.window_width - offset_width
         if window_width <= default_col_width:
             return 1
@@ -202,7 +208,7 @@ class BaseTab:
         :param metric_name_multi_choice: Metric type multi choice.
         """
         # Scenario types.
-        scenario_type_multi_choice.options = sorted(self.experiment_file_data.available_scenario_types)
+        scenario_type_multi_choice.options = ['all'] + sorted(self.experiment_file_data.available_scenario_types)
 
         # Metrics results
         metric_name_multi_choice.options = sorted(self.experiment_file_data.available_metric_statistics_names)

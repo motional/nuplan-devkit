@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -30,5 +31,7 @@ py_library(
         "//nuplan/planning/simulation/simulation_time_controller:abstract_simulation_time_controller",
         "//nuplan/planning/simulation/simulation_time_controller:step_simulation_time_controller",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+        requirement("bokeh"),
+        requirement("ipywidgets"),
     ],
 )

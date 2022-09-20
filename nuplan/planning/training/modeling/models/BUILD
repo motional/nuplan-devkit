@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -37,6 +38,7 @@ py_library(
         "//nuplan/planning/training/preprocessing/features:trajectory",
         "//nuplan/planning/training/preprocessing/target_builders:abstract_target_builder",
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
+        requirement_torch("timm"),
     ],
 )
 

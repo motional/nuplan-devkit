@@ -176,7 +176,7 @@ class S3Store(BlobStore):
             logger.debug(e)
             return False
 
-    def put(self, key: str, value: BinaryIO, ignore_if_client_error: bool = False) -> None:
+    def put(self, key: str, value: BinaryIO, ignore_if_client_error: bool = False) -> bool:
         """
         Writes content to the blobstore.
         :param key: Blob path or token.
@@ -184,9 +184,15 @@ class S3Store(BlobStore):
         :param ignore_if_client_error: Set to true if we want to ignore botocore client error
         """
         _, bucket, key = self._get_s3_location(key)
+        successfully_stored_object = False
         try:
-            self._client.put_object(Body=value, Bucket=bucket, Key=key)
+            response = self._client.put_object(Body=value, Bucket=bucket, Key=key)
+            successfully_stored_object = response is not None
+            if not successfully_stored_object:
+                raise RuntimeError(f"Failed to store object to blobstore. Key : {key}")
         except botocore.exceptions.ClientError as error:  # TODO: Look into what is causing this error
             logger.info(f'{error}')
             if not ignore_if_client_error:
                 raise RuntimeError(f"{error} Key: {key}")
+
+        return successfully_stored_object

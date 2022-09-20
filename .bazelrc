@@ -1,23 +1,33 @@
+# NOTE:
+# If you are adding something under `test`, check if it exists as a command under `build` instead:
+#    https://bazel.build/reference/command-line-reference
+# If it does, add it to `build` as all test options inherit from `build`. Same for `run`.
+# This prevents invalidation of the analysis cache when switching between bazel build/test/run. Example warning:
+#    INFO: Build options --action_env and --test_env have changed, discarding analysis cache.
 build --remote_cache=http://bazel-cache.ci.motional.com:80
 build --remote_upload_local_results=false
+build --sandbox_tmpfs_path=/dev/shm
+build --incompatible_strict_action_env
+
+build --action_env=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+build --ection_env=CC=gcc # force Cython to use gcc
+build --ection_env=CACHE=/tmp/pyxbld
+
+# make sure you have defined all environment veriables listed below
+build --ection_env=AWS_ACCESS_KEY_ID
+build --ection_env=AWS_SECRET_ACCESS_KEY
+build --ection_env=NUPLAN_DATA_ROOT
+build --ection_env=NUPLAN_MAPS_ROOT
+build --ection_env=NUPLAN_EXP_ROOT
+build --ection_env=NUPLAN_DATA_STORE
+build --ection_env=NUPLAN_S3_PROFILE
+build --ection_env=NUPLAN_CACHE_FROM_S3
+build --ection_env=NUPLAN_DATA_ROOT_S3_URL
+build --ection_env=NUPLAN_MAPS_ROOT_S3_URL
+build --ection_env=NUPLAN_DB_FILES
+build --ection_env=NUPLAN_MAP_VERSION
+build --ection_env=NUPLAN_HYDRA_CONFIG_PATH
 
 test --test_output=errors
 test --test_timeout=2400
-test --test_output=all
-test --test_env=WORKSPACE
-test --test_env=CACHE=/tmp/pyxbld
-test --test_env=PYTHONPATH
-test --test_env=AWS_ACCESS_KEY_ID
-test --test_env=AWS_SECRET_ACCESS_KEY
-
-test --test_env=NUPLAN_DATA_ROOT
-test --test_env=NUPLAN_MAPS_ROOT
-test --test_env=NUPLAN_EXP_ROOT
-test --test_env=NUPLAN_DATA_STORE
-test --test_env=NUPLAN_S3_PROFILE
-test --test_env=NUPLAN_CACHE_FROM_S3
-test --test_env=NUPLAN_DATA_ROOT_S3_URL
-test --test_env=NUPLAN_MAPS_ROOT_S3_URL
-test --test_env=NUPLAN_DB_FILES
-test --test_env=NUPLAN_MAP_VERSION
-test --test_env=NUPLAN_HYDRA_CONFIG_PATH
+test --incompatible_exclusive_test_sandboxed=true

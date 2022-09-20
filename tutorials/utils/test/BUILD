@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -10,5 +11,6 @@ py_test(
     deps = [
         "//nuplan/database/tests:nuplan_db_test_utils",
         "//tutorials/utils:tutorial_utils",
+        requirement("IPython"),
     ],
 )

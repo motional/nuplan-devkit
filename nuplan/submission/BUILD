@@ -1,10 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "challenge_pb2",
     srcs = ["challenge_pb2.py"],
+    deps = [
+        requirement("google-api-core"),
+    ],
 )
 
 py_library(
@@ -12,6 +16,7 @@ py_library(
     srcs = ["challenge_pb2_grpc.py"],
     deps = [
         ":challenge_pb2",
+        requirement("grpcio"),
     ],
 )
 
@@ -47,6 +52,7 @@ py_library(
     srcs = ["submission_container.py"],
     deps = [
         "//nuplan/common/utils:helpers",
+        requirement("docker"),
     ],
 )
 
@@ -77,5 +83,6 @@ py_library(
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        requirement("grpcio"),
     ],
 )

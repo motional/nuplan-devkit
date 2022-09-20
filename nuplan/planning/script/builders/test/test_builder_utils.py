@@ -41,8 +41,13 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         lightning = Mock()
         lightning.distributed_training.equal_variance_scaling_strategy = True
 
+        # Mock warm up scheduler config
+        warm_up_lr_scheduler = Mock()
+        warm_up_lr_scheduler.lr_lambda.warm_up_steps = 0.0
+
         cfg_mock.optimizer = optimizer
         cfg_mock.lightning = lightning
+        cfg_mock.warm_up_lr_scheduler = warm_up_lr_scheduler
 
         # test method of scaling lr to maintain equal_variance
         cfg_mock = update_distributed_optimizer_config(cfg_mock)
@@ -79,8 +84,13 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         lightning = Mock()
         lightning.distributed_training.equal_variance_scaling_strategy = False
 
+        # Mock warm up scheduler config
+        warm_up_lr_scheduler = Mock()
+        warm_up_lr_scheduler.lr_lambda.warm_up_steps = 0.0
+
         cfg_mock.optimizer = optimizer
         cfg_mock.lightning = lightning
+        cfg_mock.warm_up_lr_scheduler = warm_up_lr_scheduler
 
         # test method of scaling lr linearly
         cfg_mock = update_distributed_optimizer_config(cfg_mock)
@@ -88,7 +98,7 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         msg = f'Expected {self.world_size*self.lr} but got {cfg_mock.optimizer.lr}'
         msg_beta_1 = f'Expected {self.betas[0]**self.world_size} but got {cfg_mock.optimizer.betas[0]}'
         msg_beta_2 = f'Expected {self.betas[1]**self.world_size} but got {cfg_mock.optimizer.betas[1]}'
-        print((self.betas[0] ** (self.world_size)), self.betas[0], self.world_size)
+
         self.assertTrue(float(cfg_mock.optimizer.lr) == self.world_size * self.lr, msg=msg)
         self.assertTrue(
             float(cfg_mock.optimizer.betas[0]) == (self.betas[0] ** (self.world_size)),
@@ -123,9 +133,14 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         data_loader = Mock()
         data_loader.params.batch_size = self.batch_size
 
+        # Mock warm up scheduler config
+        warm_up_lr_scheduler = Mock()
+        warm_up_lr_scheduler.lr_lambda.warm_up_steps = 0.0
+
         cfg_mock.lr_scheduler = lr_scheduler
         cfg_mock.lightning = lightning
         cfg_mock.data_loader = data_loader
+        cfg_mock.warm_up_lr_scheduler = warm_up_lr_scheduler
 
         # test that the steps_per_epoch attribute of the cfg was not edited
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
@@ -155,9 +170,14 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         data_loader = Mock()
         data_loader.params.batch_size = self.batch_size
 
+        # Mock warm up scheduler config
+        warm_up_lr_scheduler = Mock()
+        warm_up_lr_scheduler.lr_lambda.warm_up_steps = 0.0
+
         cfg_mock.lr_scheduler = lr_scheduler
         cfg_mock.lightning = lightning
         cfg_mock.data_loader = data_loader
+        cfg_mock.warm_up_lr_scheduler = warm_up_lr_scheduler
 
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
 
@@ -190,9 +210,14 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         data_loader = Mock()
         data_loader.params.batch_size = self.batch_size
 
+        # Mock warm up scheduler config
+        warm_up_lr_scheduler = Mock()
+        warm_up_lr_scheduler.lr_lambda.warm_up_steps = 0.0
+
         cfg_mock.lr_scheduler = lr_scheduler
         cfg_mock.lightning = lightning
         cfg_mock.data_loader = data_loader
+        cfg_mock.warm_up_lr_scheduler = warm_up_lr_scheduler
 
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
 
@@ -228,9 +253,14 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         data_loader = Mock()
         data_loader.params.batch_size = self.batch_size
 
+        # Mock warm up scheduler config
+        warm_up_lr_scheduler = Mock()
+        warm_up_lr_scheduler.lr_lambda.warm_up_steps = 0.0
+
         cfg_mock.lr_scheduler = lr_scheduler
         cfg_mock.lightning = lightning
         cfg_mock.data_loader = data_loader
+        cfg_mock.warm_up_lr_scheduler = warm_up_lr_scheduler
 
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
 

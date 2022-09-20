@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,6 +14,7 @@ py_library(
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
         "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
         "//nuplan/planning/training/preprocessing/features:trajectory_utils",
         "//nuplan/planning/training/preprocessing/utils:torch_geometry",
         "//nuplan/planning/training/preprocessing/utils:torch_math",
@@ -26,6 +28,7 @@ py_library(
         "//nuplan/common/utils:s3_utils",
         "//nuplan/database/common/blob_store:s3_store",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        requirement("joblib"),
     ],
 )
 

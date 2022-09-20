@@ -20,4 +20,4 @@ future_trajectory_sampling:
   _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
   _convert_: 'all'
   num_poses: 12      # target future poses
-  time_horizon: 8.0  # [s] time horizon of future poses
+  time_horizon: 6.0  # [s] time horizon of future poses

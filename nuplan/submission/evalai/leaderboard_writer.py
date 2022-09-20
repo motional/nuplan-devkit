@@ -25,33 +25,31 @@ def read_metrics_from_results(results: Dict[str, pd.DataFrame]) -> Dict[str, str
     ch1, ch2, ch3 = [df.loc[df['scenario'] == 'final_score'] for df in [ch1_df, ch2_df, ch3_df]]
 
     metrics = {
-        "ch1_overall_score": str(ch1['score'].values[0]),
-        "ch1_avg_displacement_error_within_bound": str(ch1['planner_expert_average_l2_error_within_bound'].values[0]),
-        "ch1_final_displacement_error_within_bound": str(ch1['planner_expert_final_l2_error_within_bound'].values[0]),
-        "ch1_miss_rate_within_bound": str(ch1['planner_miss_rate_within_bound'].values[0]),
-        "ch1_avg_heading_error_within_bound": str(ch1['planner_expert_average_heading_error_within_bound'].values[0]),
-        "ch1_final_heading_error_within_bound": str(ch1['planner_expert_final_heading_error_within_bound'].values[0]),
-        "ch2_overall_score": str(ch2['score'].values[0]),
-        "ch2_ego_is_making_progress": str(ch2['ego_is_making_progress'].values[0]),
-        "ch2_no_ego_at_fault_collisions": str(ch2['no_ego_at_fault_collisions'].values[0]),
-        "ch2_drivable_area_compliance": str(ch2['drivable_area_compliance'].values[0]),
-        "ch2_driving_direction_compliance": str(ch2['driving_direction_compliance'].values[0]),
-        "ch2_ego_is_comfortable": str(ch2['ego_is_comfortable'].values[0]),
-        "ch2_ego_progress_along_expert_route": str(ch2['ego_progress_along_expert_route'].values[0]),
-        "ch2_time_to_collision_within_bound": str(ch2['time_to_collision_within_bound'].values[0]),
-        "ch2_speed_limit_compliance": str(ch2['speed_limit_compliance'].values[0]),
-        "ch3_overall_score": str(ch3['score'].values[0]),
-        "ch3_ego_is_making_progress": str(ch3['ego_is_making_progress'].values[0]),
-        "ch3_no_ego_at_fault_collisions": str(ch3['no_ego_at_fault_collisions'].values[0]),
-        "ch3_drivable_area_compliance": str(ch3['drivable_area_compliance'].values[0]),
-        "ch3_driving_direction_compliance": str(ch3['driving_direction_compliance'].values[0]),
-        "ch3_ego_is_comfortable": str(ch3['ego_is_comfortable'].values[0]),
-        "ch3_ego_progress_along_expert_route": str(ch3['ego_progress_along_expert_route'].values[0]),
-        "ch3_time_to_collision_within_bound": str(ch3['time_to_collision_within_bound'].values[0]),
-        "ch3_speed_limit_compliance": str(ch3['speed_limit_compliance'].values[0]),
-        "combined_overall_score": str(
-            np.mean([ch1['score'].values[0], ch1['score'].values[0], ch1['score'].values[0]])
-        ),
+        "ch1_overall_score": ch1['score'].values[0],
+        "ch1_avg_displacement_error_within_bound": ch1['planner_expert_average_l2_error_within_bound'].values[0],
+        "ch1_final_displacement_error_within_bound": ch1['planner_expert_final_l2_error_within_bound'].values[0],
+        "ch1_miss_rate_within_bound": ch1['planner_miss_rate_within_bound'].values[0],
+        "ch1_avg_heading_error_within_bound": ch1['planner_expert_average_heading_error_within_bound'].values[0],
+        "ch1_final_heading_error_within_bound": ch1['planner_expert_final_heading_error_within_bound'].values[0],
+        "ch2_overall_score": ch2['score'].values[0],
+        "ch2_ego_is_making_progress": ch2['ego_is_making_progress'].values[0],
+        "ch2_no_ego_at_fault_collisions": ch2['no_ego_at_fault_collisions'].values[0],
+        "ch2_drivable_area_compliance": ch2['drivable_area_compliance'].values[0],
+        "ch2_driving_direction_compliance": ch2['driving_direction_compliance'].values[0],
+        "ch2_ego_is_comfortable": ch2['ego_is_comfortable'].values[0],
+        "ch2_ego_progress_along_expert_route": ch2['ego_progress_along_expert_route'].values[0],
+        "ch2_time_to_collision_within_bound": ch2['time_to_collision_within_bound'].values[0],
+        "ch2_speed_limit_compliance": ch2['speed_limit_compliance'].values[0],
+        "ch3_overall_score": ch3['score'].values[0],
+        "ch3_ego_is_making_progress": ch3['ego_is_making_progress'].values[0],
+        "ch3_no_ego_at_fault_collisions": ch3['no_ego_at_fault_collisions'].values[0],
+        "ch3_drivable_area_compliance": ch3['drivable_area_compliance'].values[0],
+        "ch3_driving_direction_compliance": ch3['driving_direction_compliance'].values[0],
+        "ch3_ego_is_comfortable": ch3['ego_is_comfortable'].values[0],
+        "ch3_ego_progress_along_expert_route": ch3['ego_progress_along_expert_route'].values[0],
+        "ch3_time_to_collision_within_bound": ch3['time_to_collision_within_bound'].values[0],
+        "ch3_speed_limit_compliance": ch3['speed_limit_compliance'].values[0],
+        "combined_overall_score": np.mean([ch1['score'].values[0], ch2['score'].values[0], ch3['score'].values[0]]),
     }
 
     return metrics
@@ -133,7 +131,7 @@ class LeaderBoardWriter:
 
         # Construct json to update leaderboard
         result = json.dumps(
-            [{"split": 'data-split', "show_to_participant": True, "accuracies": read_metrics_from_results(results)}]
+            [{"split": 'data_split', "show_to_participant": True, "accuracies": read_metrics_from_results(results)}]
         )
 
         submission_data = {
@@ -143,6 +141,6 @@ class LeaderBoardWriter:
             "stderr": self.stderr,
             "result": result,
             "submission_status": "FINISHED",
-            "metadata": "",
+            "metadata": {"status": "finished"},
         }
         return submission_data

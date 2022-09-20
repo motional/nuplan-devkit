@@ -37,7 +37,7 @@ class FeatureCache(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> None:
+    def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> bool:
         """
         Store computed features into folder
         As of now, feature types we support are only np.ndarray and dict
@@ -72,13 +72,14 @@ class FeatureCachePickle(FeatureCache):
         """Inherited, see superclass."""
         return str(feature_file.with_suffix(".gz"))
 
-    def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> None:
+    def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> bool:
         """Inherited, see superclass."""
         serializable_dict = feature.serialize()
-        # TODO: Add profiling results for gzip compressor.
+        # TODO (METENG-3992): Add profiling results for gzip compressor.
         # Use compresslevel = 1 to compress the size but also has fast write and read.
         with gzip.open(self.with_extension(feature_file), 'wb', compresslevel=1) as f:
             pickle.dump(serializable_dict, f)
+        return True
 
     def load_computed_feature_from_folder(
         self, feature_file: pathlib.Path, feature_type: Type[AbstractModelFeature]
@@ -110,7 +111,7 @@ class FeatureCacheS3(FeatureCache):
         fixed_s3_filename = f's3://{str(feature_file).lstrip("s3:/")}'
         return f'{fixed_s3_filename}.bin'
 
-    def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> None:
+    def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> bool:
         """Inherited, see superclass."""
         # Serialize feature object to bytes
         serialized_feature = BytesIO()
@@ -122,7 +123,9 @@ class FeatureCacheS3(FeatureCache):
         # Put serialized feature in the remote feature store
         storage_key = self.with_extension(feature_file)
 
-        self._store.put(storage_key, serialized_feature, ignore_if_client_error=True)
+        successfully_stored_feature = self._store.put(storage_key, serialized_feature, ignore_if_client_error=True)
+
+        return cast(bool, successfully_stored_feature)
 
     def load_computed_feature_from_folder(
         self, feature_file: pathlib.Path, feature_type: Type[AbstractModelFeature]

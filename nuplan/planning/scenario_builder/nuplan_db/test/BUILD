@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,6 +34,9 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_utils",
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
+        requirement("guppy3"),
+        "//nuplan/planning/utils/multithreading:worker_sequential",
+        requirement("mock"),
     ],
 )
 
@@ -47,6 +51,7 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_filter_utils",
         "//nuplan/planning/utils/multithreading:worker_sequential",
+        requirement("mock"),
     ],
 )
 

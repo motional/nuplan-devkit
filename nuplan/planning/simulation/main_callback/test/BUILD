@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -32,6 +33,7 @@ py_test(
     srcs = ["test_validation_callback.py"],
     deps = [
         "//nuplan/planning/simulation/main_callback:validation_callback",
+        requirement("pandas"),
     ],
 )
 

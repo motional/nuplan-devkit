@@ -5,9 +5,10 @@ import pytorch_lightning as pl
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
 
-from nuplan.planning.script.builders.utils.utils_type import is_target_type
+from nuplan.planning.script.builders.lr_scheduler_builder import build_lr_scheduler
 from nuplan.planning.training.modeling.metrics.planning_metrics import AbstractTrainingMetric
 from nuplan.planning.training.modeling.objectives.abstract_objective import aggregate_objectives
 from nuplan.planning.training.modeling.objectives.imitation_objective import AbstractObjective
@@ -30,6 +31,7 @@ class LightningModuleWrapper(pl.LightningModule):
         batch_size: int,
         optimizer: Optional[DictConfig] = None,
         lr_scheduler: Optional[DictConfig] = None,
+        warm_up_lr_scheduler: Optional[DictConfig] = None,
         objective_aggregate_mode: str = 'mean',
     ) -> None:
         """
@@ -41,6 +43,7 @@ class LightningModuleWrapper(pl.LightningModule):
         :param batch_size: batch_size taken from dataloader config
         :param optimizer: config for instantiating optimizer. Can be 'None' for older models.
         :param lr_scheduler: config for instantiating lr_scheduler. Can be 'None' for older models and when an lr_scheduler is not being used.
+        :param warm_up_lr_scheduler: config for instantiating warm up lr scheduler. Can be 'None' for older models and when a warm up lr_scheduler is not being used.
         :param objective_aggregate_mode: how should different objectives be combined, can be 'sum', 'mean', and 'max'.
         """
         super().__init__()
@@ -51,6 +54,7 @@ class LightningModuleWrapper(pl.LightningModule):
         self.metrics = metrics
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.warm_up_lr_scheduler = warm_up_lr_scheduler
         self.objective_aggregate_mode = objective_aggregate_mode
 
         # Validate metrics objectives and model
@@ -169,16 +173,7 @@ class LightningModuleWrapper(pl.LightningModule):
 
     def configure_optimizers(
         self,
-    ) -> Union[
-        torch.optim.Optimizer,
-        Dict[
-            str,
-            Union[
-                torch.optim.Optimizer,
-                torch.optim.lr_scheduler._LRScheduler,
-            ],
-        ],
-    ]:
+    ) -> Union[Optimizer, Dict[str, Union[Optimizer, _LRScheduler]]]:
         """
         Configures the optimizers and learning schedules for the training.
 
@@ -187,51 +182,27 @@ class LightningModuleWrapper(pl.LightningModule):
         if self.optimizer is None:
             raise RuntimeError("To train, optimizer must not be None.")
 
-        optimizer_dict: Dict[str, Any] = {}
-
-        optimizer: torch.optim.Optimizer = instantiate(
+        # Get optimizer
+        optimizer: Optimizer = instantiate(
             config=self.optimizer,
             params=self.parameters(),
             lr=self.optimizer.lr,  # Use lr found from lr finder; otherwise use optimizer config
         )
-
-        optimizer_dict['optimizer'] = optimizer
         # Log the optimizer used
         logger.info(f'Using optimizer: {self.optimizer._target_}')
 
-        # Instatiate a learning rate scheduler if it is provided
-        if self.lr_scheduler:  # instantiate lr_scheduler according to cfg provided
-            lr_scheduler_params: Dict[str, Any] = {}
-            if is_target_type(self.lr_scheduler, OneCycleLR):
-                # Ensure the initial learning rate used by the LR scheduler is correct by adjusting max_lr
-                # This only has to be done for OneCycleLR which overrides the lr in the optimizer provided with max_lr/div_factor
+        # Get lr_scheduler
+        lr_scheduler_params: Dict[str, Union[_LRScheduler, str, int]] = build_lr_scheduler(
+            optimizer=optimizer,
+            lr=self.optimizer.lr,
+            warm_up_lr_scheduler_cfg=self.warm_up_lr_scheduler,
+            lr_scheduler_cfg=self.lr_scheduler,
+        )
 
-                # Use lr found from lr_find(), otherwise use original optimizer config lr
-                self.lr_scheduler.max_lr = self.optimizer.lr
-
-                # ensure lr_scheduler.step() is considered every step, ie every batch (default is every epoch)
-                lr_scheduler_params['interval'] = 'step'
-
-                # to ensure that over the course of the training, the learning rate follows 1 cycle, we must call
-                # lr_scheduler.step() at a frequency of number of batches per epoch / number of lr_scheduler steps per epoch
-                frequency_of_lr_scheduler_step = self.lr_scheduler.epochs
-
-                lr_scheduler_params[
-                    'frequency'
-                ] = frequency_of_lr_scheduler_step  # number of batches to wait before calling lr_scheduler.step()
-
-                logger.info(f'lr_scheduler.step() will be called every {frequency_of_lr_scheduler_step} batches')
-
-            lr_scheduler: torch.optim.lr_scheduler._LRScheduler = instantiate(
-                config=self.lr_scheduler,
-                optimizer=optimizer,
-            )
-            lr_scheduler_params['scheduler'] = lr_scheduler
+        optimizer_dict: Dict[str, Any] = {}
+        optimizer_dict['optimizer'] = optimizer
+        if lr_scheduler_params:
+            logger.info(f'Using lr_schedulers {lr_scheduler_params}')
             optimizer_dict['lr_scheduler'] = lr_scheduler_params
-
-            # Log the learning rate scheduler used
-            logger.info(f'Using lr_scheduler provided: {self.lr_scheduler._target_}')
-        else:  # no lr_scheduler provided
-            logger.info('Not using any lr_schedulers')
 
         return optimizer_dict if 'lr_scheduler' in optimizer_dict else optimizer_dict['optimizer']

@@ -186,12 +186,13 @@ def update_distributed_lr_scheduler_config(cfg: DictConfig, num_train_batches: i
             else:  # if fraction is given as input to overfit_batches
                 num_train_batches = math.ceil(num_train_batches * overfit_batches)
 
-        # compute the steps_per_epoch
         cfg.lr_scheduler.steps_per_epoch = scale_oclr_steps_per_epoch(
             num_train_batches=num_train_batches,
             world_size=number_gpus,
             epochs=cfg.lightning.trainer.params.max_epochs,
+            warm_up_steps=cfg.warm_up_lr_scheduler.lr_lambda.warm_up_steps if cfg.warm_up_lr_scheduler else 0,
         )
+
         logger.info(f'Updating learning rate scheduler config Completed. Using {cfg.lr_scheduler._target_}.')
 
     else:  # Only updating of OneCycleLR is supported as of right now
@@ -202,18 +203,21 @@ def update_distributed_lr_scheduler_config(cfg: DictConfig, num_train_batches: i
     return cfg
 
 
-def scale_oclr_steps_per_epoch(num_train_batches: int, world_size: int, epochs: int) -> int:
+def scale_oclr_steps_per_epoch(num_train_batches: int, world_size: int, epochs: int, warm_up_steps: int) -> int:
     """
     Scales OneCycleLR steps per epoch using method provided in the context of PytorchLightning's ddp.
     :param num_train_batches: Number of batches in train_dataloader.
     :param world_size: Number gpus used.
     :param epochs: Number of epochs we are training for.
-    :return steps_per_epoch_per_gpu: Step per epoch after scaling.
+    :param warm_up_steps: Number of warm up steps in the warm up scheduler used before OneCycleLR si used.
+    :return steps_per_epoch_per_gpu_after_warm_up: Step per epoch after scaling and taking into account warm up steps.
     """
     num_batches_per_gpu = math.ceil(num_train_batches / world_size)
     steps_per_epoch_per_gpu = math.ceil(num_batches_per_gpu / epochs)
+    total_steps_per_gpu = steps_per_epoch_per_gpu * epochs - warm_up_steps  # take into account warm_up_steps
+    steps_per_epoch_per_gpu_after_warm_up = math.ceil(total_steps_per_gpu / epochs)
 
-    return steps_per_epoch_per_gpu
+    return steps_per_epoch_per_gpu_after_warm_up
 
 
 def scale_cfg_for_distributed_training(

@@ -69,7 +69,7 @@ def convert_feature_layer_to_fixed_size(
     for element_idx in range(min(len(feature_coords), max_elements)):
         element_coords = feature_coords[element_idx]
 
-        # TODO: Investigate best method for interpolation/filtering
+        # TODO [PAC-2922 - christopher.eriksen]: Investigate best method for interpolation/filtering
         # interpolate to maintain fixed size according to specified interpolation method if specified
         if interpolation is not None:
             num_points = max_points

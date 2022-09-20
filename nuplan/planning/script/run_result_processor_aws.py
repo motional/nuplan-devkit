@@ -22,7 +22,7 @@ submission_logger = get_submission_logger(__name__)
 set_default_path()
 
 CONFIG_NAME = 'default_run_metric_aggregator'
-NUM_INSTANCES_PER_CHALLENGE = 1
+NUM_INSTANCES_PER_CHALLENGE = 8
 
 
 def _is_submission_successful(challenges: List[str], simulation_results_dir: Path) -> bool:
@@ -34,7 +34,10 @@ def _is_submission_successful(challenges: List[str], simulation_results_dir: Pat
     :return: True if the submission was evaluated successfully, False otherwise.
     """
     completed = list(simulation_results_dir.rglob('*completed.txt'))
-    return True if len(completed) == len(challenges) * NUM_INSTANCES_PER_CHALLENGE else False
+    successful = True if len(completed) == len(challenges) * NUM_INSTANCES_PER_CHALLENGE else False
+    logger.info("Found %s completed simulations" % len(completed))
+    logger.info("Simulation was successful:  %s" % successful)
+    return successful
 
 
 def _list_subdirs_filtered(root_dir: Path, regex_pattern: re.Pattern[str]) -> List[str]:

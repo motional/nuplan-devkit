@@ -1,4 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,6 +19,7 @@ py_library(
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/script:run_simulation",
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",
         "//nuplan/planning/simulation/controller:log_playback",
@@ -39,6 +42,7 @@ py_test(
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script/builders:data_augmentation_builder",
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:scenario_building_builder",
         "//nuplan/planning/script/builders:training_builder",
@@ -52,6 +56,7 @@ py_test(
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:raster_model",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement_torch("pytorch-lightning"),
     ],
 )
 
@@ -72,6 +77,7 @@ py_test(
         "//nuplan/planning/training/modeling/models:simple_vector_map_model",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
         "//nuplan/planning/training/preprocessing/target_builders:abstract_target_builder",
+        requirement("pyquaternion"),
     ],
 )
 
@@ -176,6 +182,7 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script:run_nuboard",
         "//nuplan/planning/script:run_simulation",
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",
         "//nuplan/planning/simulation/controller:log_playback",
@@ -255,6 +262,7 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
         "//nuplan/planning/script/builders:training_metrics_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",
@@ -303,6 +311,7 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
         "//nuplan/planning/script/builders:training_metrics_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",

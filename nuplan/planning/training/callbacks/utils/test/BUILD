@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,6 +10,7 @@ py_test(
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/training/callbacks:scenario_scoring_callback",
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
@@ -19,6 +21,7 @@ py_test(
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/test:dummy_vectormap_builder",
         "//nuplan/planning/utils/multithreading:worker_utils",
+        requirement_torch("torch"),
     ],
 )
 
@@ -43,5 +46,6 @@ py_test(
         "//nuplan/planning/training/callbacks:stepwise_augmentation_scheduler",
         "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",
         "//nuplan/planning/training/data_augmentation:data_augmentation_util",
+        requirement_torch("pytorch-lightning"),
     ],
 )

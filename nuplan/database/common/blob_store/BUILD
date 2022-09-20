@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -30,6 +31,7 @@ py_library(
         "//nuplan/database/common/blob_store:http_store",
         "//nuplan/database/common/blob_store:local_store",
         "//nuplan/database/common/blob_store:s3_store",
+        requirement("requests"),
     ],
 )
 
@@ -53,5 +55,7 @@ py_library(
     deps = [
         "//nuplan/common/utils:s3_utils",
         "//nuplan/database/common/blob_store",
+        requirement("botocore"),
+        requirement("tqdm"),
     ],
 )

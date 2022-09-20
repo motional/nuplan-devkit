@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -32,6 +33,7 @@ py_test(
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:configuration_tab",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
+        requirement("bokeh"),
     ],
 )
 
@@ -43,6 +45,9 @@ py_test(
         ":skeleton_test_tab",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/simulation:simulation_log",
+        requirement("bokeh"),
     ],
 )
 
@@ -54,6 +59,9 @@ py_test(
         ":skeleton_test_tab",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:overview_tab",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/simulation:simulation_log",
+        requirement("bokeh"),
     ],
 )
 
@@ -67,6 +75,7 @@ py_test(
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs:scenario_tab",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        requirement("bokeh"),
     ],
 )
 
@@ -80,5 +89,6 @@ py_test(
         "//nuplan/planning/nuboard/tabs:cloud_tab",
         "//nuplan/planning/nuboard/tabs:configuration_tab",
         "//nuplan/planning/nuboard/tabs:histogram_tab",
+        requirement("bokeh"),
     ],
 )

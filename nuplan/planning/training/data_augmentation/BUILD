@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,6 +16,7 @@ py_library(
     name = "data_augmentation_util",
     srcs = ["data_augmentation_util.py"],
     deps = [
+        requirement("casadi"),
     ],
 )
 

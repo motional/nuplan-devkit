@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,6 +14,8 @@ py_library(
     deps = [
         "//nuplan/common/utils:helpers",
         "//nuplan/planning/simulation/occupancy_map:abstract_occupancy_map",
+        requirement("geopandas"),
+        requirement("rtree"),
     ],
 )
 

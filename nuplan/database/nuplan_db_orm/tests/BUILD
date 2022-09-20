@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -144,6 +145,7 @@ py_test(
         "//nuplan/database/common:db",
         "//nuplan/database/nuplan_db_orm:nuplandb",
         "//nuplan/database/tests:nuplan_db_test_utils",
+        requirement("guppy3"),
     ],
 )
 
@@ -154,6 +156,7 @@ py_test(
     deps = [
         "//nuplan/database/nuplan_db_orm:nuplandb_wrapper",
         "//nuplan/database/tests:nuplan_db_test_utils",
+        requirement("guppy3"),
     ],
 )
 
@@ -183,5 +186,6 @@ py_test(
     srcs = ["test_vector_map_np.py"],
     deps = [
         "//nuplan/database/nuplan_db_orm:vector_map_np",
+        requirement("numpy"),
     ],
 )

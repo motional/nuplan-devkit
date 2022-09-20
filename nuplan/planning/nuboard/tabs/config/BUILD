@@ -25,4 +25,7 @@ py_library(
 py_library(
     name = "histogram_tab_config",
     srcs = ["histogram_tab_config.py"],
+    deps = [
+        "//nuplan/planning/nuboard:style",
+    ],
 )

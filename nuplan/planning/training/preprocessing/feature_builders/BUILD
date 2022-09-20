@@ -36,6 +36,26 @@ py_library(
 )
 
 py_library(
+    name = "generic_agents_feature_builder",
+    srcs = ["generic_agents_feature_builder.py"],
+    deps = [
+        "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/scenario_builder:scenario_utils",
+        "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
+        "//nuplan/planning/training/preprocessing/feature_builders:scriptable_feature_builder",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
+        "//nuplan/planning/training/preprocessing/features:trajectory_utils",
+        "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
+    ],
+)
+
+py_library(
     name = "raster_feature_builder",
     srcs = ["raster_feature_builder.py"],
     deps = [

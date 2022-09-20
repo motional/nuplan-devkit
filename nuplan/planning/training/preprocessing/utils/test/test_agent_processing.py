@@ -19,8 +19,10 @@ from nuplan.planning.training.preprocessing.utils.agents_preprocessing import (
     AgentInternalIndex,
     EgoFeatureIndex,
     EgoInternalIndex,
+    GenericEgoFeatureIndex,
     build_ego_features,
     build_ego_features_from_tensor,
+    build_generic_ego_features_from_tensor,
     compute_yaw_rate_from_state_tensors,
     compute_yaw_rate_from_states,
     convert_absolute_quantities_to_relative,
@@ -139,6 +141,44 @@ def _create_dummy_tracked_objects_tensor(num_frames: int) -> List[TrackedObjects
             objects_in_frame.append(
                 Agent(
                     tracked_object_type=TrackedObjectType.VEHICLE,
+                    oriented_box=OrientedBox(
+                        center=StateSE2(x=j + 6, y=j + 7, heading=j + 3),
+                        length=j + 5,
+                        width=j + 4,
+                        height=-1,
+                    ),
+                    velocity=StateVector2D(x=j + 1, y=j + 2),
+                    metadata=SceneObjectMetadata(
+                        timestamp_us=1, token=f"agent_{j}", track_id=f"agent_{j}", track_token=f"agent_{j}"
+                    ),
+                    angular_velocity=-1,
+                    predictions=None,
+                    past_trajectory=None,
+                )
+            )
+
+            objects_in_frame.append(
+                Agent(
+                    tracked_object_type=TrackedObjectType.BICYCLE,
+                    oriented_box=OrientedBox(
+                        center=StateSE2(x=j + 6, y=j + 7, heading=j + 3),
+                        length=j + 5,
+                        width=j + 4,
+                        height=-1,
+                    ),
+                    velocity=StateVector2D(x=j + 1, y=j + 2),
+                    metadata=SceneObjectMetadata(
+                        timestamp_us=1, token=f"agent_{j}", track_id=f"agent_{j}", track_token=f"agent_{j}"
+                    ),
+                    angular_velocity=-1,
+                    predictions=None,
+                    past_trajectory=None,
+                )
+            )
+
+            objects_in_frame.append(
+                Agent(
+                    tracked_object_type=TrackedObjectType.PEDESTRIAN,
                     oriented_box=OrientedBox(
                         center=StateSE2(x=j + 6, y=j + 7, heading=j + 3),
                         length=j + 5,
@@ -314,16 +354,29 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
             ),
         ]
         filtered_agents = filter_agents(tracked_objects_history)
-
         self.assertEqual(len(filtered_agents), num_frames)
         self.assertEqual(len(filtered_agents[0].tracked_objects), len(tracked_objects_history[0].tracked_objects))
         self.assertEqual(len(filtered_agents[5].tracked_objects), 0)
         self.assertEqual(len(filtered_agents[7].tracked_objects), num_agents - missing_agents)
 
         filtered_agents = filter_agents(tracked_objects_history, reverse=True)
-
         self.assertEqual(len(filtered_agents), num_frames)
         self.assertEqual(len(filtered_agents[0].tracked_objects), len(tracked_objects_history[-1].tracked_objects))
+        self.assertEqual(len(filtered_agents[5].tracked_objects), 0)
+        self.assertEqual(len(filtered_agents[7].tracked_objects), num_agents - missing_agents)
+
+        tracked_objects_history = [
+            *_create_tracked_objects(num_frames=5, num_agents=num_agents, object_type=TrackedObjectType.BICYCLE),
+            *_create_tracked_objects(
+                num_frames=2, num_agents=num_agents - missing_agents, object_type=TrackedObjectType.VEHICLE
+            ),
+            *_create_tracked_objects(
+                num_frames=1, num_agents=num_agents - missing_agents, object_type=TrackedObjectType.BICYCLE
+            ),
+        ]
+        filtered_agents = filter_agents(tracked_objects_history, allowable_types=[TrackedObjectType.BICYCLE])
+        self.assertEqual(len(filtered_agents), num_frames)
+        self.assertEqual(len(filtered_agents[0].tracked_objects), len(tracked_objects_history[0].tracked_objects))
         self.assertEqual(len(filtered_agents[5].tracked_objects), 0)
         self.assertEqual(len(filtered_agents[7].tracked_objects), num_agents - missing_agents)
 
@@ -342,6 +395,23 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
         ego_features_reversed = build_ego_features_from_tensor(ego_trajectory, reverse=True)
 
         self.assertEqual((num_frames, EgoFeatureIndex.dim()), ego_features_reversed.shape)
+        self.assertTrue(torch.allclose(ego_features_reversed[-1], zeros, atol=1e-7))
+
+    def test_build_generic_ego_features_from_tensor(self) -> None:
+        """
+        Test the ego feature building
+        """
+        num_frames = 5
+        zeros = torch.tensor([0, 0, 0, 0, 0, 0, 0], dtype=torch.float32)
+        ego_trajectory = _create_ego_trajectory_tensor(num_frames)
+        ego_features = build_generic_ego_features_from_tensor(ego_trajectory)
+
+        self.assertEqual((num_frames, GenericEgoFeatureIndex.dim()), ego_features.shape)
+        self.assertTrue(torch.allclose(ego_features[0], zeros, atol=1e-7))
+
+        ego_features_reversed = build_generic_ego_features_from_tensor(ego_trajectory, reverse=True)
+
+        self.assertEqual((num_frames, GenericEgoFeatureIndex.dim()), ego_features_reversed.shape)
         self.assertTrue(torch.allclose(ego_features_reversed[-1], zeros, atol=1e-7))
 
     def test_convert_absolute_quantities_to_relative(self) -> None:
@@ -370,7 +440,7 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
         # Check that that row gets transformed to [0, 0, 0]
         # Fill other values (e.g. velocity) with junk data so it becomes obvious if the wrong field is used.
         dummy_states = get_dummy_states()
-        ego_pose = torch.tensor([4, 4, 4, 2, 2], dtype=torch.float32)
+        ego_pose = torch.tensor([4, 4, 4, 2, 2, 2, 2], dtype=torch.float32)
         transformed = convert_absolute_quantities_to_relative(dummy_states, ego_pose)
 
         for i in range(0, len(transformed), 1):
@@ -391,7 +461,7 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
         # Check that that row gets transformed to [0, 0, 0]
         # Fill other values (e.g. velocity) with junk data so it becomes obvious if the wrong field is used.
         dummy_states = get_dummy_states()
-        ego_pose = torch.tensor([2, 2, 4, 4, 4], dtype=torch.float32)
+        ego_pose = torch.tensor([2, 2, 4, 4, 4, 4, 4], dtype=torch.float32)
         transformed = convert_absolute_quantities_to_relative(dummy_states, ego_pose)
 
         for i in range(0, len(transformed), 1):
@@ -531,6 +601,8 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
             self.assertEqual(ego.rear_axle.heading, tensor[i, EgoInternalIndex.heading()].item())
             self.assertEqual(ego.dynamic_car_state.rear_axle_velocity_2d.x, tensor[i, EgoInternalIndex.vx()].item())
             self.assertEqual(ego.dynamic_car_state.rear_axle_velocity_2d.y, tensor[i, EgoInternalIndex.vy()].item())
+            self.assertEqual(ego.dynamic_car_state.rear_axle_acceleration_2d.x, tensor[i, EgoInternalIndex.ax()].item())
+            self.assertEqual(ego.dynamic_car_state.rear_axle_acceleration_2d.y, tensor[i, EgoInternalIndex.ay()].item())
 
     def test_sampled_past_timestamps_to_tensor(self) -> None:
         """
@@ -551,9 +623,27 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
         test_tracked_objects = _create_dummy_tracked_objects_tensor(num_frames)
 
         tensors = sampled_tracked_objects_to_tensor_list(test_tracked_objects)
-
         self.assertEqual(num_frames, len(tensors))
+        for idx, generated_tensor in enumerate(tensors):
+            expected_num_agents = idx + 1
+            self.assertEqual((expected_num_agents, AgentInternalIndex.dim()), generated_tensor.shape)
 
+            for row in range(generated_tensor.shape[0]):
+                for col in range(generated_tensor.shape[1]):
+                    self.assertEqual(row + col, int(generated_tensor[row, col].item()))
+
+        tensors = sampled_tracked_objects_to_tensor_list(test_tracked_objects, object_type=TrackedObjectType.BICYCLE)
+        self.assertEqual(num_frames, len(tensors))
+        for idx, generated_tensor in enumerate(tensors):
+            expected_num_agents = idx + 1
+            self.assertEqual((expected_num_agents, AgentInternalIndex.dim()), generated_tensor.shape)
+
+            for row in range(generated_tensor.shape[0]):
+                for col in range(generated_tensor.shape[1]):
+                    self.assertEqual(row + col, int(generated_tensor[row, col].item()))
+
+        tensors = sampled_tracked_objects_to_tensor_list(test_tracked_objects, object_type=TrackedObjectType.PEDESTRIAN)
+        self.assertEqual(num_frames, len(tensors))
         for idx, generated_tensor in enumerate(tensors):
             expected_num_agents = idx + 1
             self.assertEqual((expected_num_agents, AgentInternalIndex.dim()), generated_tensor.shape)

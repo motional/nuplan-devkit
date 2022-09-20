@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +11,10 @@ from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.planning.metrics.utils.state_extractors import approximate_derivatives
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import FeatureDataType
 from nuplan.planning.training.preprocessing.features.agents import AgentFeatureIndex, EgoFeatureIndex
+from nuplan.planning.training.preprocessing.features.generic_agents import (
+    GenericAgentFeatureIndex,
+    GenericEgoFeatureIndex,
+)
 from nuplan.planning.training.preprocessing.features.trajectory_utils import convert_absolute_to_relative_poses
 from nuplan.planning.training.preprocessing.utils.torch_geometry import global_state_se2_tensor_to_local
 from nuplan.planning.training.preprocessing.utils.torch_math import approximate_derivatives_tensor
@@ -71,12 +75,28 @@ class EgoInternalIndex:
         return 4
 
     @staticmethod
+    def ax() -> int:
+        """
+        The dimension corresponding to the ego x acceleration.
+        :return: index
+        """
+        return 5
+
+    @staticmethod
+    def ay() -> int:
+        """
+        The dimension corresponding to the ego y acceleration.
+        :return: index
+        """
+        return 6
+
+    @staticmethod
     def dim() -> int:
         """
         The number of features present in the EgoInternal buffer.
         :return: number of features.
         """
-        return 5
+        return 7
 
 
 class AgentInternalIndex:
@@ -187,6 +207,29 @@ def _validate_agent_feature_shape(feature: torch.Tensor) -> None:
     :param feature: The tensor to validate.
     """
     if len(feature.shape) != 3 or feature.shape[2] != AgentFeatureIndex.dim():
+        raise ValueError(f"Improper agent feature shape: {feature.shape}.")
+
+
+def _validate_generic_ego_feature_shape(feature: torch.Tensor) -> None:
+    """
+    Validates the shape of the provided tensor if it's expected to be a GenericEgoFeature.
+    :param feature: The tensor to validate.
+    """
+    # Accept features of the shape [any, GenericEgoFeatureIndex.dim()] or [GenericEgoFeatureIndex.dim()]
+    if len(feature.shape) == 2 and feature.shape[1] == GenericEgoFeatureIndex.dim():
+        return
+    if len(feature.shape) == 1 and feature.shape[0] == GenericEgoFeatureIndex.dim():
+        return
+
+    raise ValueError(f"Improper ego feature shape: {feature.shape}.")
+
+
+def _validate_generic_agent_feature_shape(feature: torch.Tensor) -> None:
+    """
+    Validates the shape of the provided tensor if it's expected to be a GenericAgentFeature.
+    :param feature: The tensor to validate.
+    """
+    if len(feature.shape) != 3 or feature.shape[2] != GenericAgentFeatureIndex.dim():
         raise ValueError(f"Improper agent feature shape: {feature.shape}.")
 
 
@@ -380,28 +423,40 @@ def build_ego_center_features(ego_trajectory: List[EgoState], reverse: bool = Fa
     return ego_relative_poses
 
 
-def filter_agents(tracked_objects_history: List[TrackedObjects], reverse: bool = False) -> List[TrackedObjects]:
+def filter_agents(
+    tracked_objects_history: List[TrackedObjects],
+    reverse: bool = False,
+    allowable_types: Optional[Set[TrackedObjectType]] = None,
+) -> List[TrackedObjects]:
     """
-    Filter detections to keep only Vehicles which appear in the first frame (or last frame if reverse=True)
+    Filter detections to keep only agents of specified types which appear in the first frame (or last frame if reverse=True)
     :param tracked_objects_history: agent trajectories [num_frames, num_agents]
     :param reverse: if True, the last element in the list will be used as the filter
+    :param allowable_types: TrackedObjectTypes to filter for (optional: defaults to VEHICLE)
     :return: filtered agents in the same format [num_frames, num_agents]
     """
+    if allowable_types is None:
+        allowable_types = {TrackedObjectType.VEHICLE}
+
     if reverse:
         agent_tokens = [
             box.track_token
-            for box in tracked_objects_history[-1].get_tracked_objects_of_type(TrackedObjectType.VEHICLE)
+            for object_type in allowable_types
+            for box in tracked_objects_history[-1].get_tracked_objects_of_type(object_type)
         ]
     else:
         agent_tokens = [
-            box.track_token for box in tracked_objects_history[0].get_tracked_objects_of_type(TrackedObjectType.VEHICLE)
+            box.track_token
+            for object_type in allowable_types
+            for box in tracked_objects_history[0].get_tracked_objects_of_type(object_type)
         ]
 
     filtered_agents = [
         TrackedObjects(
             [
                 agent
-                for agent in tracked_objects.get_tracked_objects_of_type(TrackedObjectType.VEHICLE)
+                for object_type in allowable_types
+                for agent in tracked_objects.get_tracked_objects_of_type(object_type)
                 if agent.track_token in agent_tokens
             ]
         )
@@ -574,9 +629,90 @@ def build_ego_features_from_tensor(ego_trajectory: torch.Tensor, reverse: bool =
     return local_ego_trajectory.float()
 
 
+def build_generic_ego_features_from_tensor(ego_trajectory: torch.Tensor, reverse: bool = False) -> torch.Tensor:
+    """
+    Build generic agent features from the ego states
+    :param ego_trajectory: ego states at past times. Tensors complying with the EgoInternalIndex schema.
+    :param reverse: if True, the last element in the list will be considered as the present ego state
+    :return: Tensor complying with the GenericEgoFeatureIndex schema.
+    """
+    _validate_ego_internal_shape(ego_trajectory, expected_first_dim=2)
+
+    if reverse:
+        anchor_ego_pose = (
+            ego_trajectory[
+                ego_trajectory.shape[0] - 1, [EgoInternalIndex.x(), EgoInternalIndex.y(), EgoInternalIndex.heading()]
+            ]
+            .squeeze()
+            .double()
+        )
+        anchor_ego_velocity = (
+            ego_trajectory[
+                ego_trajectory.shape[0] - 1, [EgoInternalIndex.vx(), EgoInternalIndex.vy(), EgoInternalIndex.heading()]
+            ]
+            .squeeze()
+            .double()
+        )
+        anchor_ego_acceleration = (
+            ego_trajectory[
+                ego_trajectory.shape[0] - 1, [EgoInternalIndex.ax(), EgoInternalIndex.ay(), EgoInternalIndex.heading()]
+            ]
+            .squeeze()
+            .double()
+        )
+    else:
+        anchor_ego_pose = (
+            ego_trajectory[0, [EgoInternalIndex.x(), EgoInternalIndex.y(), EgoInternalIndex.heading()]]
+            .squeeze()
+            .double()
+        )
+        anchor_ego_velocity = (
+            ego_trajectory[0, [EgoInternalIndex.vx(), EgoInternalIndex.vy(), EgoInternalIndex.heading()]]
+            .squeeze()
+            .double()
+        )
+        anchor_ego_acceleration = (
+            ego_trajectory[0, [EgoInternalIndex.ax(), EgoInternalIndex.ay(), EgoInternalIndex.heading()]]
+            .squeeze()
+            .double()
+        )
+
+    global_ego_poses = ego_trajectory[
+        :, [EgoInternalIndex.x(), EgoInternalIndex.y(), EgoInternalIndex.heading()]
+    ].double()
+    global_ego_velocities = ego_trajectory[
+        :, [EgoInternalIndex.vx(), EgoInternalIndex.vy(), EgoInternalIndex.heading()]
+    ].double()
+    global_ego_accelerations = ego_trajectory[
+        :, [EgoInternalIndex.ax(), EgoInternalIndex.ay(), EgoInternalIndex.heading()]
+    ].double()
+
+    local_ego_poses = global_state_se2_tensor_to_local(global_ego_poses, anchor_ego_pose, precision=torch.float64)
+    local_ego_velocities = global_state_se2_tensor_to_local(
+        global_ego_velocities, anchor_ego_velocity, precision=torch.float64
+    )
+    local_ego_accelerations = global_state_se2_tensor_to_local(
+        global_ego_accelerations, anchor_ego_acceleration, precision=torch.float64
+    )
+
+    # Minor optimization. The indices in GenericEgoFeatureIndex and EgoInternalIndex are the same.
+    local_ego_trajectory: torch.Tensor = torch.empty(
+        ego_trajectory.size(), dtype=torch.float32, device=ego_trajectory.device
+    )
+    local_ego_trajectory[:, EgoInternalIndex.x()] = local_ego_poses[:, 0].float()
+    local_ego_trajectory[:, EgoInternalIndex.y()] = local_ego_poses[:, 1].float()
+    local_ego_trajectory[:, EgoInternalIndex.heading()] = local_ego_poses[:, 2].float()
+    local_ego_trajectory[:, EgoInternalIndex.vx()] = local_ego_velocities[:, 0].float()
+    local_ego_trajectory[:, EgoInternalIndex.vy()] = local_ego_velocities[:, 1].float()
+    local_ego_trajectory[:, EgoInternalIndex.ax()] = local_ego_accelerations[:, 0].float()
+    local_ego_trajectory[:, EgoInternalIndex.ay()] = local_ego_accelerations[:, 1].float()
+
+    return local_ego_trajectory
+
+
 def filter_agents_tensor(agents: List[torch.Tensor], reverse: bool = False) -> List[torch.Tensor]:
     """
-    Filter detections to keep only Vehicles which appear in the first frame (or last frame if reverse=True)
+    Filter detections to keep only agents which appear in the first frame (or last frame if reverse=True)
     :param agents: The past agents in the scene. A list of [num_frames] tensors, each complying with the AgentInternalIndex schema
     :param reverse: if True, the last element in the list will be used as the filter
     :return: filtered agents in the same format as the input `agents` parameter
@@ -637,7 +773,7 @@ def compute_yaw_rate_from_state_tensors(
 
 def sampled_past_ego_states_to_tensor(past_ego_states: List[EgoState]) -> torch.Tensor:
     """
-    Converts a list of N ego states into a N x 5 tensor. The 5 fields are as defined in `EgoInternalIndex`
+    Converts a list of N ego states into a N x 7 tensor. The 7 fields are as defined in `EgoInternalIndex`
     :param past_ego_states: The ego states to convert.
     :return: The converted tensor.
     """
@@ -648,6 +784,8 @@ def sampled_past_ego_states_to_tensor(past_ego_states: List[EgoState]) -> torch.
         output[i, EgoInternalIndex.heading()] = past_ego_states[i].rear_axle.heading
         output[i, EgoInternalIndex.vx()] = past_ego_states[i].dynamic_car_state.rear_axle_velocity_2d.x
         output[i, EgoInternalIndex.vy()] = past_ego_states[i].dynamic_car_state.rear_axle_velocity_2d.y
+        output[i, EgoInternalIndex.ax()] = past_ego_states[i].dynamic_car_state.rear_axle_acceleration_2d.x
+        output[i, EgoInternalIndex.ay()] = past_ego_states[i].dynamic_car_state.rear_axle_acceleration_2d.y
 
     return output
 
@@ -663,17 +801,18 @@ def sampled_past_timestamps_to_tensor(past_time_stamps: List[TimePoint]) -> torc
 
 
 def _extract_agent_tensor(
-    tracked_objects: TrackedObjects, track_token_ids: Dict[str, int]
+    tracked_objects: TrackedObjects, track_token_ids: Dict[str, int], object_type: TrackedObjectType
 ) -> Tuple[torch.Tensor, Dict[str, int]]:
     """
     Extracts the relevant data from the agents present in a past detection into a tensor.
-    Only objects of type VEHICLE will be transformed. Others will be ignored.
+    Only objects of specified type will be transformed. Others will be ignored.
     The output is a tensor as described in AgentInternalIndex
     :param tracked_objects: The tracked objects to turn into a tensor.
     :track_token_ids: A dictionary used to assign track tokens to integer IDs.
+    :object_type: TrackedObjectType to filter agents by.
     :return: The generated tensor and the updated track_token_ids dict.
     """
-    agents = tracked_objects.get_tracked_objects_of_type(TrackedObjectType.VEHICLE)
+    agents = tracked_objects.get_tracked_objects_of_type(object_type)
     output = torch.zeros((len(agents), AgentInternalIndex.dim()), dtype=torch.float32)
     max_agent_id = len(track_token_ids)
 
@@ -695,17 +834,20 @@ def _extract_agent_tensor(
     return output, track_token_ids
 
 
-def sampled_tracked_objects_to_tensor_list(past_tracked_objects: List[TrackedObjects]) -> List[torch.Tensor]:
+def sampled_tracked_objects_to_tensor_list(
+    past_tracked_objects: List[TrackedObjects], object_type: TrackedObjectType = TrackedObjectType.VEHICLE
+) -> List[torch.Tensor]:
     """
     Tensorizes the agents features from the provided past detections.
     For N past detections, output is a list of length N, with each tensor as described in `_extract_agent_tensor()`.
     :param past_tracked_objects: The tracked objects to tensorize.
+    :param object_type: TrackedObjectType to filter agents by.
     :return: The tensorized objects.
     """
     output: List[torch.Tensor] = []
     track_token_ids: Dict[str, int] = {}
     for i in range(len(past_tracked_objects)):
-        tensorized, track_token_ids = _extract_agent_tensor(past_tracked_objects[i], track_token_ids)
+        tensorized, track_token_ids = _extract_agent_tensor(past_tracked_objects[i], track_token_ids, object_type)
         output.append(tensorized)
     return output
 

@@ -47,7 +47,7 @@ class TestConfigurationTab(unittest.TestCase):
         self.configuration_tab._file_paths = []
         self.configuration_tab._file_paths_on_change()
         self.assertEqual(self.histogram_tab._scenario_type_multi_choice.value, [])
-        self.assertEqual(self.histogram_tab._scenario_type_multi_choice.options, [])
+        self.assertEqual(self.histogram_tab._scenario_type_multi_choice.options, ['all'])
         self.assertEqual(self.histogram_tab._metric_name_multi_choice.value, [])
         self.assertEqual(self.histogram_tab._metric_name_multi_choice.options, [])
 

@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -18,6 +19,7 @@ py_library(
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
+        requirement("sympy"),
     ],
 )
 

@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,6 +27,7 @@ py_library(
     deps = [
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+        requirement("pyarrow"),
     ],
 )
 
@@ -52,6 +54,7 @@ py_library(
     srcs = ["publisher_callback.py"],
     deps = [
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+        requirement("boto3"),
     ],
 )
 

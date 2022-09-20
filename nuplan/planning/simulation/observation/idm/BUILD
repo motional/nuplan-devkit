@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -69,6 +70,8 @@ py_library(
     srcs = ["idm_policy.py"],
     deps = [
         "//nuplan/planning/simulation/observation/idm:idm_states",
+        requirement("numpy"),
+        requirement("scipy"),
     ],
 )
 

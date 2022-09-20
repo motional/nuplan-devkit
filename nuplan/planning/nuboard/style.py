@@ -80,27 +80,6 @@ configuration_tab_style: Dict[str, Any] = {
     "main_board_layout_height": 600,
 }
 
-histogram_tab_style: Dict[str, Any] = {
-    "statistic_figure_margin": [10, 20, 20, 30],
-    "statistic_figure_title_text_font_size": "8pt",
-    "statistic_figure_xaxis_axis_label_text_font_size": "8pt",
-    "statistic_figure_xaxis_major_label_text_font_size": "8pt",
-    "statistic_figure_yaxis_axis_label_text_font_size": "8pt",
-    "statistic_figure_yaxis_major_label_text_font_size": "8pt",
-    "histogram_title_div_margin": [30, 0, 10, 30],
-    "quad_line_color": "white",
-    "quad_alpha": 0.5,
-    "quad_line_width": 3,
-    "pdf_alpha": 0.7,
-    "pdf_line_width": 4,
-    "cdf_alpha": 0.7,
-    "cdf_line_width": 2,
-    "plot_legend_background_fill_alpha": 0.3,
-    "plot_legend_label_text_font_size": "8pt",
-    "plot_yaxis_axis_label": "Frequency",
-    "plot_grid_line_color": "white",
-}
-
 overview_tab_style: Dict[str, Any] = {
     "table_margins": [20, 0, 0, 50],
     "table_width": 800,

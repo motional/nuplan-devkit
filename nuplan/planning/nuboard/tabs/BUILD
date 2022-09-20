@@ -23,7 +23,6 @@ py_library(
     srcs = ["histogram_tab.py"],
     deps = [
         "//nuplan/planning/metrics:metric_file",
-        "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",

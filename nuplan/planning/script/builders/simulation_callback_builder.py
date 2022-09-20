@@ -58,7 +58,7 @@ def build_simulation_callbacks(
             tensorboard = torch.utils.tensorboard.SummaryWriter(log_dir=output_dir)
             callback = instantiate(config, writer=tensorboard)
         elif is_target_type(config, SimulationLogCallback) or is_target_type(config, MetricCallback):
-            # TODO: Have a property on each class that says whether or not it is stateful
+            # TODO PAC-3470: Have a property on each class that says whether or not it is stateful
             # SimulationLogCallback and MetricCallback store state (futures) from each runner, so they are initialized
             # in the simulation builder
             continue

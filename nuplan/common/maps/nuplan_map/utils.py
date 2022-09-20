@@ -26,7 +26,7 @@ def raster_layer_from_map_layer(map_layer: MapLayer) -> RasterLayer:
     return RasterLayer(map_layer.data, map_layer.precision, map_layer.transform_matrix)
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def split_blp_lane_segments(nodes: List[StateSE2], lane_seg_num: int) -> List[List[List[float]]]:
     """
     Split baseline path points into series of lane segment coordinate vectors.
@@ -45,7 +45,7 @@ def split_blp_lane_segments(nodes: List[StateSE2], lane_seg_num: int) -> List[Li
     return obj_coords
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[Tuple[int, int]]:
     """
     Add connection info for neighboring segments in baseline path.
@@ -61,7 +61,7 @@ def connect_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> Lis
     return obj_conns
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def group_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[List[int]]:
     """
     Collect lane segment indices across lane/lane connector baseline path.
@@ -156,7 +156,7 @@ def build_lane_segments_from_blps_with_trim(
     return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def build_lane_segments_from_blps(
     map_obj: MapObject, start_lane_seg_idx: int
 ) -> Tuple[List[List[List[float]]], List[Tuple[int, int]], List[List[int]], List[str], List[str], Tuple[int, int]]:
@@ -193,7 +193,7 @@ def build_lane_segments_from_blps(
     return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_trimmed_lane_conn_predecessor(
     lane_coords: Tuple[List[List[List[float]]]],
     lane_conn: LaneConnector,
@@ -235,7 +235,7 @@ def connect_trimmed_lane_conn_predecessor(
     return lane_seg_pred_conns
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_trimmed_lane_conn_successor(
     lane_coords: Tuple[List[List[List[float]]]],
     lane_conn: LaneConnector,
@@ -277,7 +277,7 @@ def connect_trimmed_lane_conn_successor(
     return lane_seg_suc_conns
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_lane_conn_predecessor(
     lane_conn: LaneConnector, cross_blp_conns: Dict[str, Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -304,7 +304,7 @@ def connect_lane_conn_predecessor(
     return lane_seg_pred_conns
 
 
-# TODO: Move to vector_utils
+# TODO: Move to vector_utils (@christopher.eriksen: PAC-2678)
 def connect_lane_conn_successor(
     lane_conn: LaneConnector, cross_blp_conns: Dict[str, Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -358,7 +358,7 @@ def extract_roadblock_objects(map_api: AbstractMap, point: Point2D) -> List[Road
         return cast(List[RoadBlockGraphEdgeMapObject], roadblock_conns)
 
 
-# TODO: Update nuplan scenario to use route roadblock ids from db once available
+# TODO: Update nuplan scenario to use route roadblock ids from db once available (@christopher.eriksen: PAC-2679)
 def get_roadblock_ids_from_trajectory(map_api: AbstractMap, ego_states: List[EgoState]) -> List[str]:
     """
     Extract ids of roadblocks and roadblock connectors containing points in specified trajectory.

@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -61,6 +62,7 @@ py_library(
         "//nuplan/submission:proto_converters",
         "//nuplan/submission:submission_container_manager",
         "//nuplan/submission/utils",
+        requirement("grpcio"),
     ],
 )
 
