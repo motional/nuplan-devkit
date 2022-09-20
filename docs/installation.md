@@ -91,7 +91,7 @@ pip install -r requirements.txt
 
 -----
 ## Change default directories
-As described in the [general readme](https://github.com/motional/nuplan-devkit/blob/master/README.md), the default nuPlan directories are:
+As described in the [general readme](https://github.com/motional/nuplan-devkit/blob/master/docs/README.md), the default nuPlan directories are:
 ```
 ~/nuplan/dataset    -   The dataset folder. Can be read-only.
 ~/nuplan/exp        -   The experiment and cache folder. Must have read and write access.
