@@ -110,6 +110,7 @@ PIP_INSTALL_TIMEOUT_SECONDS = 3600  # 60 minutes
 
 PIP_EXTRA_ARGS = [
     "--require-hashes",
+    "--index-url=https://pypi.org/simple",
 ]
 
 # Base Python pip dependencies

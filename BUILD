@@ -43,6 +43,7 @@ compile_pip_requirements(
     timeout = "moderate",  # Increase timeout for underlying py_tests
     extra_args = [
         "--allow-unsafe",
+        "--index-url=https://pypi.org/simple",
     ],
     requirements_in = "requirements.txt",
     requirements_txt = "requirements_lock.txt",
@@ -56,6 +57,7 @@ compile_pip_requirements(
     timeout = "moderate",  # Increase timeout for underlying py_tests
     extra_args = [
         "--allow-unsafe",
+        "--index-url=https://pypi.org/simple",
     ],
     requirements_in = "requirements_torch.txt",
     requirements_txt = "requirements_torch_lock.txt",
