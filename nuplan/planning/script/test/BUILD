@@ -1,5 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
@@ -56,7 +56,7 @@ py_test(
         "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling/models:raster_model",
         "//nuplan/planning/utils/multithreading:worker_pool",
-        requirement_torch("pytorch-lightning"),
+        requirement("pytorch-lightning"),
     ],
 )
 

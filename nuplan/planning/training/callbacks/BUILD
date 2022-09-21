@@ -1,5 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
@@ -14,7 +14,7 @@ py_library(
     srcs = ["profile_callback.py"],
     deps = [
         requirement("pyinstrument"),
-        requirement_torch("pytorch-lightning"),
+        requirement("pytorch-lightning"),
     ],
 )
 
@@ -40,7 +40,7 @@ py_library(
         "//nuplan/planning/training/data_loader:scenario_dataset",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing:feature_collate",
-        requirement_torch("pytorch-lightning"),
+        requirement("pytorch-lightning"),
     ],
 )
 

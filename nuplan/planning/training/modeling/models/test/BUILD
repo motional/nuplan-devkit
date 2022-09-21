@@ -1,5 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -16,7 +16,7 @@ py_test(
         "//nuplan/planning/training/preprocessing/features:agents",
         "//nuplan/planning/training/preprocessing/features:trajectory",
         "//nuplan/planning/training/preprocessing/features:vector_map",
-        requirement_torch("torch"),
+        requirement("torch"),
     ],
 )
 

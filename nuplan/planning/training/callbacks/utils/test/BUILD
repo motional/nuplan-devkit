@@ -1,5 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,7 +21,7 @@ py_test(
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/test:dummy_vectormap_builder",
         "//nuplan/planning/utils/multithreading:worker_utils",
-        requirement_torch("torch"),
+        requirement("torch"),
     ],
 )
 
@@ -46,6 +46,6 @@ py_test(
         "//nuplan/planning/training/callbacks:stepwise_augmentation_scheduler",
         "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",
         "//nuplan/planning/training/data_augmentation:data_augmentation_util",
-        requirement_torch("pytorch-lightning"),
+        requirement("pytorch-lightning"),
     ],
 )

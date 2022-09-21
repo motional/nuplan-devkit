@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -45,7 +45,7 @@ py_library(
         "//nuplan/planning/utils/multithreading:ray_execution",
         "//nuplan/planning/utils/multithreading:worker_pool",
         requirement("ray"),
-        requirement_torch("torch"),
+        requirement("torch"),
     ],
 )
 

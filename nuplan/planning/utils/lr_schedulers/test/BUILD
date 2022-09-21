@@ -1,5 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,6 +9,6 @@ py_test(
     srcs = ["test_sequential_lr_scheduler.py"],
     deps = [
         "//nuplan/planning/utils/lr_schedulers:sequential_lr_scheduler",
-        requirement_torch("torch"),
+        requirement("torch"),
     ],
 )

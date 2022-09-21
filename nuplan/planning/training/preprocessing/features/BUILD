@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,7 +9,7 @@ py_library(
     srcs = ["abstract_model_feature.py"],
     deps = [
         requirement("numpy"),
-        requirement_torch("torch"),
+        requirement("torch"),
     ],
 )
 
@@ -45,7 +45,7 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/planning/script/builders/utils:utils_type",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
-        requirement_torch("torchvision"),
+        requirement("torchvision"),
     ],
 )
 

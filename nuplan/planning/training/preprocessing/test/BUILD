@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -50,7 +50,7 @@ py_test(
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
         "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_sequential",
-        requirement_torch("torch"),
+        requirement("torch"),
     ],
 )
 

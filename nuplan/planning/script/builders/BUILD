@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
-load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -193,7 +193,7 @@ py_library(
         "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/training/preprocessing:feature_preprocessor",
         "//nuplan/planning/utils/multithreading:worker_pool",
-        requirement_torch("pytorch-lightning"),
+        requirement("pytorch-lightning"),
     ],
 )
 
