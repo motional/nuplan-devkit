@@ -3,7 +3,7 @@
 
 aiohttp==3.7.4.post0 # Never version is missing ray dashboard dependencies
 bokeh>=2.4.2  # Used in the nuBoard dashboard
-boto3==1.19.8  # Used in s3_store.py to download data from S3.
+boto3==1.24.59  # Used in s3_store.py to download data from S3.
 cachetools  # Used widely
 casadi  # Used for optimization solving
 control==0.9.1  # Used for LQR controller synthesis
@@ -15,7 +15,7 @@ future==0.18.1
 geopandas  # Used to read maps
 grpcio==1.43.0  # Used for communication with submission container
 guppy3==3.1.2
-#grpcio-tools  # Used for communication with submission container
+grpcio-tools==1.43.0  # Used for communication with submission container
 hydra-core==1.1.0rc1  # Used for configs
 joblib
 jupyter  # Used to show the notebook
@@ -39,6 +39,7 @@ rasterio  # Used in GpkgMapsDB.py
 ray  # Used widely
 requests  # Used in BlobStore classes
 rtree # Used in occupancy maps
+s3fs
 scipy  # Used widely
 selenium # Used in bokeh export png
 setuptools==59.5.0  # Used in setup.py, pinned to not break pytorch

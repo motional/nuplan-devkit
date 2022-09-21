@@ -6,6 +6,10 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "challenge_pb2",
     srcs = ["challenge_pb2.py"],
+    deps = [
+        requirement("protobuf"),
+    ],
+
 )
 
 py_library(
