@@ -4,6 +4,12 @@ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 package(default_visibility = ["//visibility:public"])
 
+buildifier(
+    name = "buildifier_nuplan",
+    lint_mode = "fix",
+    lint_warnings = ["+native-py"],
+)
+
 string_flag(
     name = "ubuntu_distro",
     build_setting_default = "focal",

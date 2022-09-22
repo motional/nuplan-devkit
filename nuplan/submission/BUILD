@@ -9,7 +9,6 @@ py_library(
     deps = [
         requirement("protobuf"),
     ],
-
 )
 
 py_library(
