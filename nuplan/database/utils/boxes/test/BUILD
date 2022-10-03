@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,5 +15,7 @@ py_test(
     deps = [
         "//nuplan/database/utils:geometry",
         "//nuplan/database/utils/boxes:box3d",
+        requirement("numpy"),
+        requirement("pyquaternion"),
     ],
 )

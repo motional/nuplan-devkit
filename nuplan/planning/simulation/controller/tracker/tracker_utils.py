@@ -90,7 +90,6 @@ def _fit_initial_velocity_and_acceleration_profile(
 ) -> Tuple[float, DoubleMatrix]:
     """
     Estimates initial velocity (v_0) and acceleration ({a_0, ...}) using least squares with jerk penalty regularization.
-    Derivation with details on A, y here: https://confluence.ci.motional.com/confluence/x/huCdCg
     :param xy_displacements: [m] Deviations in x and y occurring between M+1 poses, a M by 2 matrix.
     :param heading_profile: [rad] Headings associated to the starting timestamp for xy_displacements, a M-length vector.
     :param discretization_time: [s] Time discretization used for integration.
@@ -164,7 +163,6 @@ def _fit_initial_curvature_and_curvature_rate_profile(
     """
     Estimates initial curvature (curvature_0) and curvature rate ({curvature_rate_0, ...})
     using least squares with curvature rate regularization.
-    Derivation here: https://confluence.ci.motional.com/confluence/x/huCdCg
     :param heading_displacements: [rad] Angular deviations in heading occuring between timesteps.
     :param velocity_profile: [m/s] Estimated or actual velocities at the timesteps matching displacements.
     :param discretization_time: [s] Time discretization used for integration.

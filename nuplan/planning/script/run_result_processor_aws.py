@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import shutil
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import List
 import hydra
 from omegaconf import DictConfig
 
+from nuplan.common.utils.s3_utils import get_s3_client
 from nuplan.planning.script.run_metric_aggregator import main as aggregator_main
 from nuplan.planning.script.run_simulation import CONFIG_PATH
 from nuplan.planning.script.utils import set_default_path
@@ -22,7 +24,8 @@ submission_logger = get_submission_logger(__name__)
 set_default_path()
 
 CONFIG_NAME = 'default_run_metric_aggregator'
-NUM_INSTANCES_PER_CHALLENGE = 1
+NUM_INSTANCES_PER_CHALLENGE = 8
+CHALLENGES = ['open_loop_boxes', 'closed_loop_nonreactive_agents', 'closed_loop_reactive_agents']
 
 
 def _is_submission_successful(challenges: List[str], simulation_results_dir: Path) -> bool:
@@ -34,7 +37,10 @@ def _is_submission_successful(challenges: List[str], simulation_results_dir: Pat
     :return: True if the submission was evaluated successfully, False otherwise.
     """
     completed = list(simulation_results_dir.rglob('*completed.txt'))
-    return True if len(completed) == len(challenges) * NUM_INSTANCES_PER_CHALLENGE else False
+    successful = True if len(completed) == len(challenges) * NUM_INSTANCES_PER_CHALLENGE else False
+    logger.info("Found %s completed simulations" % len(completed))
+    logger.info("Simulation was successful:  %s" % successful)
+    return successful
 
 
 def _list_subdirs_filtered(root_dir: Path, regex_pattern: re.Pattern[str]) -> List[str]:
@@ -62,6 +68,7 @@ def main(cfg: DictConfig) -> None:
     """
     # copy over the metric results from S3
     local_output_dir = Path(cfg.output_dir, cfg.contestant_id, cfg.submission_id)
+    cfg.challenges = CHALLENGES
 
     Path(cfg.output_dir).mkdir(exist_ok=True, parents=True)
     s3_download(
@@ -73,14 +80,15 @@ def main(cfg: DictConfig) -> None:
     # Check if simulation was successful
     simulation_successful = _is_submission_successful(cfg.challenges, local_output_dir)
 
+    # Set up configuration
+    cfg.output_dir = str(local_output_dir)
     cfg.scenario_metric_paths = _list_subdirs_filtered(local_output_dir, re.compile(f'/{cfg.metric_folder_name}$'))
-    cfg.metric_folder_name = cfg.aggregated_metric_folder_name
 
     aggregated_metric_save_path = local_output_dir / cfg.aggregated_metric_folder_name
-    cfg.aggregator_save_path = str(aggregated_metric_save_path)
 
     leaderboard_writer = LeaderBoardWriter(cfg, str(local_output_dir))
-    upload_targets = {}
+    simulation_results = {}
+    summary_results = {}
     try:
         if simulation_successful:
             shutil.rmtree(str(aggregated_metric_save_path), ignore_errors=True)
@@ -89,10 +97,21 @@ def main(cfg: DictConfig) -> None:
             aggregator_main(cfg)
 
             # Upload results
-            upload_targets["aggregated-metrics"] = {
+            simulation_results["aggregated-metrics"] = {
                 "upload": True,
                 "save_path": str(aggregated_metric_save_path),
                 "remote_path": 'aggregated_metrics',
+            }
+            simulation_results["metrics"] = {
+                "upload": True,
+                "save_path": str(local_output_dir / cfg.metric_folder_name),
+                "remote_path": 'metrics',
+            }
+
+            summary_results["summary"] = {
+                "upload": True,
+                "save_path": str(local_output_dir / 'summary'),
+                "remote_path": "summary",
             }
 
     except Exception as e:
@@ -101,13 +120,37 @@ def main(cfg: DictConfig) -> None:
         simulation_successful = False
 
     finally:
-        upload_targets["submission_logs"] = {
+        simulation_results["submission_logs"] = {
             "upload": True,
             "save_path": "/tmp/submission.log",
             "remote_path": 'aggregated_metrics',
         }
-        publisher_callback = PublisherCallback(cfg.contestant_id, cfg.submission_id, upload_targets)
-        publisher_callback.on_run_simulation_end()
+        result_remote_prefix = [str(cfg.contestant_id), str(cfg.submission_id)]
+        result_s3_client = get_s3_client(
+            'nuplan',
+            aws_access_key_id=os.getenv("NUPLAN_SERVER_AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY"),
+        )
+        result_publisher_callback = PublisherCallback(
+            simulation_results,
+            remote_prefix=result_remote_prefix,
+            s3_client=result_s3_client,
+            s3_bucket=os.getenv("NUPLAN_SERVER_S3_ROOT_URL"),
+        )
+        result_publisher_callback.on_run_simulation_end()
+
+        summary_s3_client = get_s3_client(
+            'nuscenes',
+            aws_access_key_id=os.getenv("NUSCENES_SERVER_AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("NUSCENES_SERVER_AWS_SECRET_ACCESS_KEY"),
+        )
+        summary_publisher_callback = PublisherCallback(
+            summary_results,
+            remote_prefix=["public/leaderboard/planning/2022", cfg.submission_id],
+            s3_client=summary_s3_client,
+            s3_bucket=os.getenv("NUSCENES_SERVER_S3_ROOT_URL"),
+        )
+        summary_publisher_callback.on_run_simulation_end()
 
     leaderboard_writer.write_to_leaderboard(simulation_successful=simulation_successful)
 

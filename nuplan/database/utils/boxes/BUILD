@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,5 +21,8 @@ py_library(
         "//nuplan/database/utils:plot",
         "//nuplan/database/utils/boxes:box",
         "//nuplan/database/utils/label",
+        requirement("opencv-python"),
+        requirement("matplotlib"),
+        requirement("pyquaternion"),
     ],
 )

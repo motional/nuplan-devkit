@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -19,5 +20,10 @@ py_library(
         "//nuplan/database/utils:geometry",
         "//nuplan/database/utils:plot",
         "//nuplan/database/utils/pointclouds:pointcloud",
+        requirement("pytest"),
+        requirement("py"),
+        requirement("pluggy"),
+        requirement("iniconfig"),
+        requirement("matplotlib"),
     ],
 )

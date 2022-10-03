@@ -2,8 +2,9 @@ publisher_callback:
   _target_: nuplan.planning.simulation.main_callback.publisher_callback.PublisherCallback
   _convert_: 'all'
 
-  contestant_id: ${contestant_id}                 # Unique ID of the submitter
-  submission_id: ${submission_id}                 # Name of the image the simulation comes from
+  s3_client: null
+  s3_bucket: null
+  remote_prefix: null
 
   # Path to the directories
   uploads:

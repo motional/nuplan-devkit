@@ -1,0 +1,9 @@
+_target_: torch.optim.lr_scheduler.LambdaLR
+_convert_: 'all'
+optimizer: null  # Loaded in instantiation
+lr_lambda:
+  _target_: nuplan.planning.script.builders.lr_scheduler_builder.get_warm_up_lr_scheduler_func
+  warm_up_steps: 5 # Number of times that the warm up lr scheduler will be called. By default this is the number of training epochs before main scheduler is used
+                    # but if OneCycleLR is used, note that .step() will be called every few training steps instead of training epochs, so when the number of
+                    # calls of .step() reaches the number of warm_up_steps, trainin switches over to the main learning rate scheduler
+  warm_up_strategy: linear  # warm up with a linearly increasing learning rate

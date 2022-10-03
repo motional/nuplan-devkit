@@ -180,6 +180,8 @@ class ExperimentFileData:
 
             # Loop through metric parquet files
             for file in metric_path.iterdir():
+                if file.is_dir():
+                    continue
                 try:
                     data_frame = MetricStatisticsDataFrame.load_parquet(file)
                     self.metric_statistics_dataframes[file_path_index].append(data_frame)
@@ -211,6 +213,8 @@ class ExperimentFileData:
                 continue
             # Loop through metric parquet files
             for file in metric_aggregator_path.iterdir():
+                if file.is_dir():
+                    continue
                 try:
                     data_frame = pd.read_parquet(file)
                     self.metric_aggregator_dataframes[file_path_index][file.stem] = data_frame

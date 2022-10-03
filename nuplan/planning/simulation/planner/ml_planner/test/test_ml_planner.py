@@ -9,6 +9,12 @@ from nuplan.planning.simulation.simulation_time_controller.simulation_iteration 
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.training.modeling.models.raster_model import RasterModel
 from nuplan.planning.training.modeling.models.simple_vector_map_model import VectorMapSimpleMLP
+from nuplan.planning.training.modeling.models.urban_driver_open_loop_model import (
+    UrbanDriverOpenLoopModel,
+    UrbanDriverOpenLoopModelFeatureParams,
+    UrbanDriverOpenLoopModelParams,
+    UrbanDriverOpenLoopModelTargetParams,
+)
 from nuplan.planning.training.preprocessing.feature_builders.raster_feature_builder import RasterFeatureBuilder
 from nuplan.planning.training.preprocessing.target_builders.ego_trajectory_target_builder import (
     EgoTrajectoryTargetBuilder,
@@ -69,6 +75,69 @@ def construct_raster_ml_planner() -> MLPlanner:
     return MLPlanner(model=model)
 
 
+def construct_urban_driver_open_loop_ml_planner() -> MLPlanner:
+    """
+    Construct UrbanDriverOpenLoop ML Planner
+    :return: MLPlanner with urban_driver_open_loop model
+    """
+    model_params = UrbanDriverOpenLoopModelParams(
+        local_embedding_size=256,
+        global_embedding_size=256,
+        num_subgraph_layers=3,
+        global_head_dropout=0.0,
+    )
+
+    feature_params = UrbanDriverOpenLoopModelFeatureParams(
+        feature_types={
+            'NONE': -1,
+            'EGO': 0,
+            'VEHICLE': 1,
+            'LANE': 2,
+            'STOP_LINE': 3,
+            'CROSSWALK': 4,
+            'LEFT_BOUNDARY': 5,
+            'RIGHT_BOUNDARY': 6,
+            'ROUTE_LANES': 7,
+        },
+        total_max_points=20,
+        feature_dimension=8,
+        agent_features=['EGO', 'VEHICLE'],
+        max_agents=30,
+        past_trajectory_sampling=TrajectorySampling(time_horizon=2.0, num_poses=4),
+        map_features=['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES'],
+        max_elements={
+            'LANE': 30,
+            'LEFT_BOUNDARY': 30,
+            'RIGHT_BOUNDARY': 30,
+            'STOP_LINE': 20,
+            'CROSSWALK': 20,
+            'ROUTE_LANES': 30,
+        },
+        max_points={
+            'LANE': 20,
+            'LEFT_BOUNDARY': 20,
+            'RIGHT_BOUNDARY': 20,
+            'STOP_LINE': 20,
+            'CROSSWALK': 20,
+            'ROUTE_LANES': 20,
+        },
+        vector_set_map_feature_radius=35,
+        interpolation_method='linear',
+        disable_map=False,
+        disable_agents=False,
+    )
+
+    target_params = UrbanDriverOpenLoopModelTargetParams(
+        num_output_features=36,
+        future_trajectory_sampling=TrajectorySampling(time_horizon=6.0, num_poses=12),
+    )
+
+    model = UrbanDriverOpenLoopModel(model_params, feature_params, target_params)
+
+    # Create planner
+    return MLPlanner(model=model)
+
+
 class TestMlPlanner(unittest.TestCase):
     """
     Test MLPlanner with two models.
@@ -88,6 +157,11 @@ class TestMlPlanner(unittest.TestCase):
         """Test Raster Net model"""
         # Create planner
         self.run_test_ml_planner(construct_raster_ml_planner())
+
+    def test_urban_driver_open_loop_model(self) -> None:
+        """Test UrbanDriverOpenLoop model"""
+        # Create planner
+        self.run_test_ml_planner(construct_urban_driver_open_loop_ml_planner())
 
     def run_test_ml_planner(self, planner: MLPlanner) -> None:
         """Tests if progress is calculated correctly"""

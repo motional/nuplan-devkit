@@ -1,3 +1,4 @@
+import math
 import os
 import unittest
 from pathlib import Path
@@ -18,12 +19,14 @@ from nuplan.database.nuplan_db.nuplan_scenario_queries import (
     get_lidarpc_token_timestamp_from_db,
     get_lidarpc_tokens_with_scenario_tag_from_db,
     get_mission_goal_for_lidarpc_token_from_db,
+    get_roadblock_ids_for_lidarpc_token_from_db,
     get_sampled_ego_states_from_db,
     get_sampled_lidarpc_tokens_in_time_window_from_db,
     get_sampled_lidarpcs_from_db,
     get_scenarios_from_db,
     get_statese2_for_lidarpc_token_from_db,
     get_tracked_objects_for_lidarpc_token_from_db,
+    get_tracked_objects_within_time_interval_from_db,
     get_traffic_light_status_for_lidarpc_token_from_db,
 )
 from nuplan.database.nuplan_db.test.minimal_db_test_utils import (
@@ -194,6 +197,14 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
         self.assertEqual(expected_ego_pose_x, result.x)
         self.assertEqual(expected_ego_pose_y, result.y)
 
+    def test_get_roadblock_ids_for_lidarpc_token_from_db(self) -> None:
+        """
+        Test the get_roadblock_ids_for_lidarpc_token_from_db query.
+        """
+        # roadblock ids are in the scene table as a space-separated list of route roadblock IDS, e.g. "123 234 345"
+        result = get_roadblock_ids_for_lidarpc_token_from_db(self.db_file_name, int_to_str_token(0))
+        self.assertEqual(result, ['0', '1', '2'])
+
     def test_get_statese2_for_lidarpc_token_from_db(self) -> None:
         """
         Test the get_statese2_for_lidarpc_token_from_db query.
@@ -320,6 +331,65 @@ class TestNuPlanScenarioQueries(unittest.TestCase):
 
             self.assertEqual(3, agent_count)
             self.assertEqual(2, static_object_count)
+
+    def test_get_tracked_objects_within_time_interval_from_db(self) -> None:
+        """
+        Test the get_tracked_objects_within_time_interval_from_db query.
+        """
+        # For this test, each "window" has 5 agents. 3 of which are agents, 2 generic objects.
+        # This dict tests the edge conditions - e.g. for the first token, there aren't any past windows to sample.
+        expected_num_windows = {0: 3, 30: 5, 48: 4}
+
+        # An index used for helping with the math to check for the number of previous windows.
+        expected_backward_offset = {0: 0, 30: -2, 48: -2}
+
+        for sample_token in expected_num_windows.keys():
+            start_timestamp = 1e6 * (sample_token - 2)
+            end_timestamp = 1e6 * (sample_token + 2)
+
+            tracked_objects = list(
+                get_tracked_objects_within_time_interval_from_db(
+                    self.db_file_name, start_timestamp, end_timestamp, filter_track_tokens=None
+                )
+            )
+
+            expected_num_tokens = expected_num_windows[sample_token] * 5
+            self.assertEqual(expected_num_tokens, len(tracked_objects))
+
+            agent_count = 0
+            static_object_count = 0
+
+            # Some DB constants
+            track_token_base_id = 600000  # The starting point for the track tokens
+            token_base_id = 500000  # The starting point for the tokens
+            token_sample_step = 10000  # The amount the tokens increment from the base for each lidar_pc iteration
+
+            for idx, tracked_object in enumerate(tracked_objects):
+                expected_track_token = track_token_base_id + (idx % 5)
+                expected_token = (
+                    token_base_id
+                    + (
+                        token_sample_step
+                        * ((sample_token + expected_backward_offset[sample_token]) + math.floor(idx / 5))
+                    )
+                    + (idx % 5)
+                )
+
+                self.assertEqual(int_to_str_token(expected_track_token), tracked_object.track_token)
+                self.assertEqual(int_to_str_token(expected_token), tracked_object.token)
+
+                if isinstance(tracked_object, Agent):
+                    agent_count += 1
+                    self.assertEqual(TrackedObjectType.VEHICLE, tracked_object.tracked_object_type)
+                    self.assertEqual(0, len(tracked_object.predictions))
+                elif isinstance(tracked_object, StaticObject):
+                    static_object_count += 1
+                    self.assertEqual(TrackedObjectType.CZONE_SIGN, tracked_object.tracked_object_type)
+                else:
+                    raise ValueError(f"Unexpected type: {type(tracked_object)}")
+
+            self.assertEqual(3 * expected_num_windows[sample_token], agent_count)
+            self.assertEqual(2 * expected_num_windows[sample_token], static_object_count)
 
     def test_get_future_waypoints_for_agents_from_db(self) -> None:
         """

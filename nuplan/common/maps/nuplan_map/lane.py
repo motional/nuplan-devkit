@@ -130,6 +130,24 @@ class NuPlanLane(Lane):
         """Inherited from superclass."""
         return self._get_lane().geometry
 
+    def is_left_of(self, other: Lane) -> bool:
+        """Inherited from superclass."""
+        assert self.is_same_roadblock(other), "Lanes must be in the same roadblock"
+
+        other_lane = get_row_with_value(self._lanes_df, "fid", other.id)
+        other_index = int(other_lane["lane_index"])
+        self_index = int(self._get_lane()["lane_index"])
+        return self_index < other_index
+
+    def is_right_of(self, other: Lane) -> bool:
+        """Inherited from superclass."""
+        assert self.is_same_roadblock(other), "Lanes must be in the same roadblock"
+
+        other_lane = get_row_with_value(self._lanes_df, "fid", other.id)
+        other_index = int(other_lane["lane_index"])
+        self_index = int(self._get_lane()["lane_index"])
+        return self_index > other_index
+
     @cached_property
     def adjacent_edges(self) -> Tuple[Optional[LaneGraphEdgeMapObject], Optional[LaneGraphEdgeMapObject]]:
         """Inherited from superclass."""

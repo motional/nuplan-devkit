@@ -59,8 +59,8 @@ class TestRemotePlanner(TestCase):
         mock_map_api = Mock(map_name="test")
 
         mock_initializations = [
-            Mock(mission_goal=mock_state_2, map_api=mock_map_api),
-            Mock(mission_goal=mock_state_1, map_api=mock_map_api),
+            Mock(mission_goal=mock_state_2, map_api=mock_map_api, route_roadblock_ids=['a', 'b', 'c']),
+            Mock(mission_goal=mock_state_1, map_api=mock_map_api, route_roadblock_ids=['d']),
         ]
 
         # Check raises on missing mission goal
@@ -76,6 +76,8 @@ class TestRemotePlanner(TestCase):
         self.assertAlmostEqual(mock_state_1.y, second_initialization_msg.mission_goal.y)
         self.assertAlmostEqual(mock_state_1.heading, second_initialization_msg.mission_goal.heading)
         self.assertEqual(mock_map_api.map_name, first_initialization_msg.map_name)
+        self.assertEqual(first_initialization_msg.route_roadblock_ids, ['a', 'b', 'c'])
+        self.assertEqual(second_initialization_msg.route_roadblock_ids, ['d'])
 
     @patch.object(RemotePlanner, "_planner_initializations_to_message", return_value="message", autospec=True)
     @patch("grpc.insecure_channel")

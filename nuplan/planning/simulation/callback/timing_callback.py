@@ -38,6 +38,14 @@ class TimingCallback(AbstractCallback):
         # Current step
         self._tensorboard_global_step = 0
 
+    def on_initialization_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_initialization_end(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
     def on_planner_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
         """Inherited, see superclass."""
         self._planner_start = self._get_time()

@@ -1,0 +1,67 @@
+_target_: nuplan.planning.training.modeling.models.urban_driver_open_loop_model.UrbanDriverOpenLoopModel
+_convert_: 'all'
+
+# Model setup
+# Internal model parameters
+model_params:
+  _target_: nuplan.planning.training.modeling.models.urban_driver_open_loop_model.UrbanDriverOpenLoopModelParams
+  _convert_: 'all'
+  local_embedding_size: 256
+  global_embedding_size: 256
+  num_subgraph_layers: 3
+  global_head_dropout: 0.0
+# Params for features
+feature_params:
+  _target_: nuplan.planning.training.modeling.models.urban_driver_open_loop_model.UrbanDriverOpenLoopModelFeatureParams
+  _convert_: 'all'
+  feature_types:
+    NONE: -1
+    EGO: 0
+    VEHICLE: 1
+    LANE: 2
+    STOP_LINE: 3
+    CROSSWALK: 4
+    LEFT_BOUNDARY: 5
+    RIGHT_BOUNDARY: 6
+    ROUTE_LANES: 7
+  total_max_points: 20
+  feature_dimension: 8
+  # Agent features
+  agent_features: [EGO, VEHICLE]
+  max_agents: 30
+  past_trajectory_sampling:
+    _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+    _convert_: 'all'
+    num_poses: 4      # target future poses
+    time_horizon: 1.5  # [s] time horizon of future poses
+  # Map features
+  map_features: [LANE, LEFT_BOUNDARY, RIGHT_BOUNDARY, STOP_LINE, CROSSWALK, ROUTE_LANES]
+  max_elements:
+    LANE: 30
+    LEFT_BOUNDARY: 30
+    RIGHT_BOUNDARY: 30
+    STOP_LINE: 20
+    CROSSWALK: 20
+    ROUTE_LANES: 30
+  max_points:
+    LANE: 20
+    LEFT_BOUNDARY: 20
+    RIGHT_BOUNDARY: 20
+    STOP_LINE: 20
+    CROSSWALK: 20
+    ROUTE_LANES: 20
+  vector_set_map_feature_radius: 35    # [m] The query radius scope relative to the current ego-pose.
+  interpolation_method: linear
+  disable_map: False
+  disable_agents: False
+# Params for targets
+target_params:
+  _target_: nuplan.planning.training.modeling.models.urban_driver_open_loop_model.UrbanDriverOpenLoopModelTargetParams
+  _convert_: 'all'
+  num_output_features: 48
+  # Parameters for predicted trajectory
+  future_trajectory_sampling:
+    _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+    _convert_: 'all'
+    num_poses: 16      # target future poses
+    time_horizon: 8.0  # [s] time horizon of future poses

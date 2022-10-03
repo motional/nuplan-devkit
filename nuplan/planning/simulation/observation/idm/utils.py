@@ -188,7 +188,7 @@ def ego_path_to_linestring(path: List[EgoState]) -> LineString:
     return path_to_linestring(ego_path_to_se2(path))
 
 
-def is_track_stopped(tracked_object: TrackedObject, stopped_speed_threshhold: float = 5e-03) -> bool:
+def is_track_stopped(tracked_object: TrackedObject, stopped_speed_threshhold: float = 5e-02) -> bool:
     """
     Evaluates if a tracked object is stopped
     :param tracked_object: tracked_object representation

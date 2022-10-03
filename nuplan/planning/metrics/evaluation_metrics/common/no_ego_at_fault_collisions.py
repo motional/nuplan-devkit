@@ -2,6 +2,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
+from shapely.geometry import LineString
+
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.oriented_box import in_collision
 from nuplan.common.actor_state.tracked_objects import TrackedObject
@@ -16,7 +18,7 @@ from nuplan.planning.metrics.utils.collision_utils import (
 )
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
-from nuplan.planning.simulation.observation.idm.utils import is_agent_ahead, is_agent_behind, is_track_stopped
+from nuplan.planning.simulation.observation.idm.utils import is_agent_behind, is_track_stopped
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 
 
@@ -43,18 +45,18 @@ class Collisions:
 
 
 def _get_collision_type(
-    ego_state: EgoState, tracked_object: TrackedObject, stopped_speed_threshhold: float = 5e-03
+    ego_state: EgoState, tracked_object: TrackedObject, stopped_speed_threshold: float = 5e-02
 ) -> CollisionType:
     """
     Classify collision between ego and the track.
     :param ego_state: Ego's state at the current timestamp.
     :param tracked_object: Tracked object.
-    :param stopped_speed_threshhold: Threshhold for 0 speed due to noise.
+    :param stopped_speed_threshold: Threshold for 0 speed due to noise.
     :return Collision type.
     """
-    is_ego_stopped = True if ego_state.dynamic_car_state.speed <= stopped_speed_threshhold else False
+    is_ego_stopped = ego_state.dynamic_car_state.speed <= stopped_speed_threshold
 
-    # Collisions at zero ego speed
+    # Collisions at (close-to) zero ego speed
     if is_ego_stopped:
         collision_type = CollisionType.STOPPED_EGO_COLLISION
 
@@ -66,8 +68,13 @@ def _get_collision_type(
     elif is_agent_behind(ego_state.rear_axle, tracked_object.box.center):
         collision_type = CollisionType.ACTIVE_REAR_COLLISION
 
-    # Front collision when both ego and track are not stopped
-    elif is_agent_ahead(ego_state.rear_axle, tracked_object.box.center, 25):
+    # Front bumper collision when both ego and track are not stopped
+    elif LineString(
+        [
+            ego_state.car_footprint.oriented_box.geometry.exterior.coords[0],
+            ego_state.car_footprint.oriented_box.geometry.exterior.coords[3],
+        ]
+    ).intersects(tracked_object.box.geometry):
         collision_type = CollisionType.ACTIVE_FRONT_COLLISION
 
     # Lateral collision when both ego and track are not stopped

@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,14 +21,14 @@ py_test(
     srcs = ["test_splitter.py"],
     deps = [
         "//nuplan/planning/utils/multithreading:worker_utils",
+        requirement("numpy"),
     ],
 )
 
 py_test(
     name = "test_worker_pool",
-    size = "medium",
+    size = "small",
     srcs = ["test_worker_pool.py"],
-    flaky = True,
     tags = ["exclusive"],
     deps = [
         "//nuplan/planning/utils/multithreading:worker_parallel",

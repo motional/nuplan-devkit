@@ -64,6 +64,12 @@ class SkeletonTestTab(unittest.TestCase):
                 name="ego_p90_acceleration", unit="meters_per_second_squared", value=1.0, type=MetricStatisticsType.P90
             ),
             Statistic(
+                name="ego_count_acceleration",
+                unit=MetricStatisticsType.COUNT.unit,
+                value=2,
+                type=MetricStatisticsType.COUNT,
+            ),
+            Statistic(
                 name="ego_boolean_acceleration",
                 unit=MetricStatisticsType.BOOLEAN.unit,
                 value=True,

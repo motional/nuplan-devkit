@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -39,6 +40,7 @@ py_library(
         "//nuplan/database/common:sql_types",
         "//nuplan/database/common:utils",
         "//nuplan/database/nuplan_db_orm:models",
+        requirement("SQLAlchemy"),
     ],
 )
 
@@ -82,6 +84,7 @@ py_library(
         "//nuplan/database/nuplan_db_orm:lidar_pc",
         "//nuplan/database/nuplan_db_orm:models",
         "//nuplan/database/nuplan_db_orm:scene",
+        requirement("SQLAlchemy"),
     ],
 )
 
@@ -89,6 +92,7 @@ py_library(
     name = "vector_map_np",
     srcs = ["vector_map_np.py"],
     deps = [
+        requirement("pyquaternion"),
     ],
 )
 
@@ -128,6 +132,7 @@ py_library(
         "//nuplan/database/utils/label:utils",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
         "//nuplan/planning/simulation/trajectory:predicted_trajectory",
+        requirement("cachetools"),
     ],
 )
 
@@ -147,6 +152,7 @@ py_library(
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/database/utils/label:utils",
         "//nuplan/database/utils/pointclouds:lidar",
+        requirement("SQLAlchemy"),
     ],
 )
 
@@ -206,6 +212,7 @@ py_library(
         "//nuplan/database/common:utils",
         "//nuplan/database/nuplan_db_orm:ego_pose",
         "//nuplan/database/nuplan_db_orm:models",
+        requirement("SQLAlchemy"),
     ],
 )
 
@@ -217,6 +224,7 @@ py_library(
         "//nuplan/database/common:utils",
         "//nuplan/database/nuplan_db_orm:lidar_pc",
         "//nuplan/database/nuplan_db_orm:models",
+        requirement("SQLAlchemy"),
     ],
 )
 
@@ -269,6 +277,7 @@ py_library(
         "//nuplan/database/common:utils",
         "//nuplan/database/nuplan_db_orm:lidar_pc",
         "//nuplan/database/nuplan_db_orm:models",
+        requirement("SQLAlchemy"),
     ],
 )
 

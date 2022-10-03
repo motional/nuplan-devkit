@@ -39,7 +39,7 @@ class SkeletonTestDataloader(unittest.TestCase):
         self.splitter = LogSplitter(
             log_splits={
                 'train': ["2021.07.16.20.45.29_veh-35_01095_01486"],
-                'val': ["2021.08.31.14.40.58_veh-40_00285_00668"],
+                'val': ["2021.06.07.18.53.26_veh-26_00005_00427"],
                 'test': ["2021.10.06.07.26.10_veh-52_00006_00398"],
             }
         )
@@ -81,6 +81,7 @@ class SkeletonTestDataloader(unittest.TestCase):
             expand_scenarios=True,
             remove_invalid_goals=False,
             shuffle=True,
+            timestamp_threshold_s=None,
         )
 
         self.augmentors = [
@@ -127,7 +128,7 @@ class SkeletonTestDataloader(unittest.TestCase):
         self.assertGreater(len(datamodule.train_dataloader()), 0)
 
         # Run
-        for features, targets in datamodule.train_dataloader():
+        for features, targets, scenarios in datamodule.train_dataloader():
             # Validate that all features and targets are preset
             self.assertTrue("raster" in features.keys())
             self.assertTrue("vector_map" in features.keys())

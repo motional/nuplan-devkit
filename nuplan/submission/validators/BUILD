@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,6 +21,7 @@ py_library(
     srcs = ["image_exists_validator.py"],
     deps = [
         ":base_submission_validator",
+        requirement("docker"),
     ],
 )
 
@@ -30,6 +32,7 @@ py_library(
         ":base_submission_validator",
         "//nuplan/submission:submission_container",
         "//nuplan/submission/utils",
+        requirement("docker"),
     ],
 )
 

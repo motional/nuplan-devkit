@@ -24,6 +24,7 @@ scenario_metric_paths:
   - ${output_dir}/${metric_folder_name}                               # A list of existing scenario metric paths, e.g., scenario_metric_paths="[simulation_path_1/metrics, simulation_path_2/metrics]"
 date_format: '%Y.%m.%d.%H.%M.%S'                           # Date format
 aggregated_metric_folder_name: 'aggregator_metric'         # Aggregated metric folder name
+enable_metric_summary: true
 
 aggregator_save_path: ${output_dir}/${aggregated_metric_folder_name}
 
@@ -32,6 +33,4 @@ contestant_id: null
 submission_id: null
 
 challenges:
-  - 'open_loop_boxes'
-  - 'closed_loop_nonreactive_agents'
-  - 'closed_loop_reactive_agents'
+  - ''

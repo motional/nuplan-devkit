@@ -1,6 +1,10 @@
 from typing import List, Tuple
 
-from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
+from nuplan.planning.training.modeling.types import FeaturesType, ScenarioListType, TargetsType
+
+
+def _batch_scenarios(to_be_batched_scenarios: List[ScenarioListType]) -> ScenarioListType:
+    return sum(to_be_batched_scenarios, [])
 
 
 def _batch_abstract_features(
@@ -23,7 +27,9 @@ def _batch_abstract_features(
 class FeatureCollate:
     """Wrapper class that collates together multiple samples into a batch."""
 
-    def __call__(self, batch: List[Tuple[FeaturesType, TargetsType]]) -> Tuple[FeaturesType, TargetsType]:
+    def __call__(
+        self, batch: List[Tuple[FeaturesType, TargetsType, ScenarioListType]]
+    ) -> Tuple[FeaturesType, TargetsType, ScenarioListType]:
         """
         Collate list of [Features,Targets] into batch
         :param batch: list of tuples to be batched
@@ -33,10 +39,12 @@ class FeatureCollate:
 
         to_be_batched_features = [batch_i[0] for batch_i in batch]
         to_be_batched_targets = [batch_i[1] for batch_i in batch]
+        to_be_batched_scenarios = [batch_i[2] for batch_i in batch]
 
-        initial_features, initial_targets = batch[0]
+        initial_features, initial_targets, _ = batch[0]
 
         out_features = _batch_abstract_features(initial_features, to_be_batched_features)
         out_targets = _batch_abstract_features(initial_targets, to_be_batched_targets)
+        out_scenarios = _batch_scenarios(to_be_batched_scenarios)
 
-        return out_features, out_targets
+        return out_features, out_targets, out_scenarios

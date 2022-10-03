@@ -7,6 +7,8 @@ from nuplan.common.actor_state.agent import Agent
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.oriented_box import OrientedBox, in_collision
 from nuplan.common.actor_state.state_representation import StateSE2
+from nuplan.common.maps.abstract_map import AbstractMap
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer
 from nuplan.planning.metrics.evaluation_metrics.base.metric_base import MetricBase
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
 from nuplan.planning.metrics.evaluation_metrics.common.no_ego_at_fault_collisions import (
@@ -32,10 +34,11 @@ def extract_tracks_info_excluding_collided_tracks(
     observations: List[Observation],
     all_collisions: List[Collisions],
     timestamps_in_common_or_connected_route_objs: List[int],
+    map_api: AbstractMap,
 ) -> TRACKS_POSE_SPEED_BOX:
     """
-    Extracts arrays of tracks pose, speed and oriented box for TTC: all lead tracks, plus lateral tracks if ego is in
-    between lanes or in nondrivable area.
+    Extracts arrays of tracks pose, speed and oriented box for TTC: all lead and cross tracks, plus lateral tracks if ego is in
+    between lanes or in nondrivable area or in intersection.
 
     :param ego_states: A list of ego states
     :param ego_timestamps: Array of times in time_us
@@ -43,6 +46,7 @@ def extract_tracks_info_excluding_collided_tracks(
     :param all_collisions: List of all collisions in the history
     :param timestamps_in_common_or_connected_route_objs: List of timestamps where ego is in same or connected
         lanes/lane connectors
+    :param map_api: map api.
     :return: A tuple of lists of arrays of tracks pose, speed and represented box at each timestep.
     """
     collided_track_ids: Set[str] = set()
@@ -61,7 +65,7 @@ def extract_tracks_info_excluding_collided_tracks(
         collided_track_ids = collided_track_ids.union(set(collision_time_dict.get(timestamp, [])))
 
         # Check if ego is in between lanes or between/in nondrivable area, in this case we consider
-        # lead and lateral tracks for TTC
+        # lead/cross and lateral tracks for TTC, otherwise only lead/cross tracks are considered in TTC.
         ego_not_in_common_or_connected_route_objs = timestamp not in timestamps_in_common_or_connected_route_objs
 
         tracked_objects = [
@@ -71,7 +75,10 @@ def extract_tracks_info_excluding_collided_tracks(
             and (
                 is_agent_ahead(ego_state.rear_axle, tracked_object.center)
                 or (
-                    ego_not_in_common_or_connected_route_objs
+                    (
+                        ego_not_in_common_or_connected_route_objs
+                        or map_api.is_in_layer(ego_state.rear_axle, layer=SemanticMapLayer.INTERSECTION)
+                    )
                     and not is_agent_behind(ego_state.rear_axle, tracked_object.center)
                 )
             )
@@ -197,7 +204,12 @@ class TimeToCollisionStatistics(MetricBase):
             history_tracks_speed,
             history_tracks_boxes,
         ) = extract_tracks_info_excluding_collided_tracks(
-            ego_states, ego_timestamps, observations, all_collisions, timestamps_in_common_or_connected_route_objs
+            ego_states,
+            ego_timestamps,
+            observations,
+            all_collisions,
+            timestamps_in_common_or_connected_route_objs,
+            history.map_api,
         )
 
         # Default TTC to be inf

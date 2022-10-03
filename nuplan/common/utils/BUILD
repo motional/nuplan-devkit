@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,6 +18,9 @@ py_library(
 py_library(
     name = "s3_utils",
     srcs = ["s3_utils.py"],
+    deps = [
+        requirement("boto3"),
+    ],
 )
 
 py_library(

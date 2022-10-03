@@ -1,8 +1,8 @@
-# Dataset setup
+# Dataset Setup
 
 ## Download
-To download nuPlan you need to go to the [Download page](https://nuplan.org/nuplan#download), 
-create an account and agree to the [Terms of Use](https://www.nuplan.org/terms-of-use).
+To download nuPlan you need to go to the [Download page](https://www.nuscenes.org/nuplan#download), 
+create an account and agree to the [Terms of Use](https://www.nuscenes.org/terms-of-use).
 After logging in you will see multiple archives. 
 For the devkit to work you will need to download *all* archives.
 Please unpack the archives to the `~/nuplan/dataset` folder.
@@ -32,7 +32,7 @@ The final hierarchy should look as follows (depending on the splits downloaded a
     │   └── us-pa-pittsburgh-hazelwood
     │       └── 9.17.1937
     │           └── map.gpkg
-    └── nuplan-v1.0
+    └── nuplan-v1.1
         ├── mini
         │   ├── 2021.05.12.22.00.38_veh-35_01008_01518.db
         │   ├── 2021.06.09.17.23.18_veh-38_00773_01140.db

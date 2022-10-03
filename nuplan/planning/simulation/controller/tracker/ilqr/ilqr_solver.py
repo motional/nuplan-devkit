@@ -29,7 +29,6 @@ Some of these include:
 
 References Used: https://people.eecs.berkeley.edu/~pabbeel/cs287-fa19/slides/Lec5-LQR.pdf and
                  https://www.cs.cmu.edu/~rsalakhu/10703/Lectures/Lecture_trajectoryoptimization.pdf
-Implementation/Derivation Page: https://confluence.ci.motional.com/confluence/x/VaOdCg
 """
 
 import time
@@ -558,7 +557,6 @@ class ILQRSolver:
         """
         Computes the locally optimal affine state feedback policy by applying dynamic programming to linear perturbation
         dynamics about a specified linearization trajectory.  We include a trust region penalty as part of the cost.
-        Refer to following page for details: https://confluence.ci.motional.com/confluence/x/VaOdCg
         :param current_iterate: Contains all relevant linearization information needed to compute LQR policy.
         :param reference_trajectory: The desired state trajectory we are tracking.
         :return: An affine state feedback policy - state feedback matrices and feedforward inputs found using LQR.

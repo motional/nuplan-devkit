@@ -7,7 +7,7 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, cast
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir
@@ -68,7 +68,7 @@ class GetScenariosFromDbFileParams:
     data_root: str
 
     # The absolute path log file to query
-    # e.g. /data/sets/nuplan-v1.0/mini/2021.10.11.08.31.07_veh-50_01750_01948.db
+    # e.g. /data/sets/nuplan-v1.1/mini/2021.10.11.08.31.07_veh-50_01750_01948.db
     log_file_absolute_path: str
 
     # Whether to expand multi-sample scenarios to multiple single-sample scenarios
@@ -223,6 +223,54 @@ def filter_num_scenarios_per_type(
     return scenario_dict
 
 
+# TODO: Move to SQL layer
+def filter_scenarios_by_timestamp(
+    scenario_dict: ScenarioDict,
+    timestamp_threshold_s: float = 5.0,
+) -> ScenarioDict:
+    """
+    Filter the scenarios in a scenario dictionary by timestamp. Scenarios that occur are within `timestamp_threshold` of a particular scenario will be removed.
+    This is only to be used during caching or during simulation. This currently cannot be used during training as `CachedScenario` does not implement timestamp information.
+    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type.
+    :param timestamp_threshold_s: Threshold for filtering out scenarios clustered together in time.
+    :return: Filtered scenario dictinoary.
+    """
+    for scenario_type in scenario_dict:
+        scenario_dict[scenario_type] = _filter_scenarios_by_timestamp(
+            scenario_dict[scenario_type], timestamp_threshold_s
+        )
+
+    return scenario_dict
+
+
+# TODO: Move to SQL layer
+def _filter_scenarios_by_timestamp(
+    scenario_list: List[NuPlanScenario], timestamp_threshold_s: float
+) -> List[NuPlanScenario]:
+    """
+    Filters the list of scenarios by timestamp.
+    :param scenario_list: List of scenarios to filtered.
+    :param timestamp_threshold_s: Threshold for filtering out scenarios clustered together in time.
+    :return: Filtered list of scenarios.
+    """
+    if len(scenario_list) == 0:
+        return scenario_list
+
+    def _extract_initial_lidar_timestamp(scenario: NuPlanScenario) -> int:
+        return cast(int, scenario._initial_lidar_timestamp)
+
+    scenario_list.sort(key=_extract_initial_lidar_timestamp)
+    filtered_scenarios = []
+    min_next_timestamp = scenario_list[0]._initial_lidar_timestamp * 1e-6  # convert to seconds
+
+    for scenario in scenario_list:
+        if scenario._initial_lidar_timestamp * 1e-6 >= min_next_timestamp:
+            filtered_scenarios.append(scenario)
+            min_next_timestamp = scenario._initial_lidar_timestamp * 1e-6 + timestamp_threshold_s
+
+    return filtered_scenarios
+
+
 def filter_total_num_scenarios(
     scenario_dict: ScenarioDict, limit_total_scenarios: Union[int, float], randomize: bool
 ) -> ScenarioDict:
@@ -303,6 +351,9 @@ def _filter_scenarios(
         scenario_list = scenario_list[:num_scenarios_to_keep]
 
         return scenario_list
+
+    if total_num_scenarios == 0 or required_num_scenarios == 0 or len(scenario_dict) == 0:
+        return {}
 
     if DEFAULT_SCENARIO_NAME in scenario_dict:
         num_default_scenarios = len(scenario_dict[DEFAULT_SCENARIO_NAME])

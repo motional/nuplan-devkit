@@ -5,7 +5,7 @@ import torch.utils.data
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
-from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
+from nuplan.planning.training.modeling.types import FeaturesType, ScenarioListType, TargetsType
 from nuplan.planning.training.preprocessing.feature_preprocessor import FeaturePreprocessor
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class ScenarioDataset(torch.utils.data.Dataset):
         self._feature_preprocessor = feature_preprocessor
         self._augmentors = augmentors
 
-    def __getitem__(self, idx: int) -> Tuple[FeaturesType, TargetsType]:
+    def __getitem__(self, idx: int) -> Tuple[FeaturesType, TargetsType, ScenarioListType]:
         """
         Retrieves the dataset examples corresponding to the input index
         :param idx: input index
@@ -54,8 +54,9 @@ class ScenarioDataset(torch.utils.data.Dataset):
 
         features = {key: value.to_feature_tensor() for key, value in features.items()}
         targets = {key: value.to_feature_tensor() for key, value in targets.items()}
+        scenarios = [scenario]
 
-        return features, targets
+        return features, targets, scenarios
 
     def __len__(self) -> int:
         """

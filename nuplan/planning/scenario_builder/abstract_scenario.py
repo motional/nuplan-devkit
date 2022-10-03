@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Set
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
@@ -149,6 +149,27 @@ class AbstractScenario(abc.ABC):
         Return tracked objects from iteration
         :param iteration: within scenario 0 <= iteration < number_of_iterations
         :return: DetectionsTracks.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_tracked_objects_within_time_window_at_iteration(
+        self,
+        iteration: int,
+        past_time_horizon: float,
+        future_time_horizon: float,
+        filter_track_tokens: Optional[Set[str]] = None,
+    ) -> DetectionsTracks:
+        """
+        Gets all tracked objects present within a time window that stretches from past_time_horizon before the iteration to future_time_horizon afterwards.
+        Also optionally filters the included results on the provided track_tokens.
+        Results will be sorted by object type, then by timestamp, then by track token.
+        :param iteration: The iteration of the scenario to query.
+        :param past_time_horizon: The amount of time to look into the past from the iteration timestamp.
+        :param future_time_horizon: The amount of time to look into the future from the iteration timestamp.
+        :param filter_track_tokens: If provided, then the results will be filtered to only contain objects with track_tokens included in the provided set. If None, then all results are returned.
+
+        :return: The retrieved detection tracks.
         """
         pass
 

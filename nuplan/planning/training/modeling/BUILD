@@ -27,6 +27,7 @@ py_library(
     name = "lightning_module_wrapper",
     srcs = ["lightning_module_wrapper.py"],
     deps = [
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/modeling/metrics:planning_metrics",

@@ -4,16 +4,26 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_python",
-    sha256 = "895fa3b03898d7708eb50ed34dcfb71c07866433df6912a6ff4f4fb473048f99",
-    strip_prefix = "rules_python-2b1d6beb4d5d8f59d629597e30e9aa519182d9a9",
+    sha256 = "9fcf91dbcc31fde6d1edb15f117246d912c33c36f44cf681976bd886538deba6",
+    strip_prefix = "rules_python-0.8.0",
     urls = [
-        "https://github.com/bazelbuild/rules_python/archive/2b1d6beb4d5d8f59d629597e30e9aa519182d9a9.tar.gz",
+        "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.8.0.tar.gz",
     ],
 )
 
 load("@rules_python//python/pip_install:repositories.bzl", "pip_install_dependencies")
 
 pip_install_dependencies()
+
+load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+
+python_register_toolchains(
+    name = "python3_9",
+    python_version = "3.9",
+)
+
+load("@python3_9//:defs.bzl", PYTHON_INTERPRETER_TARGET = "interpreter")
+load("@rules_python//python:pip.bzl", "pip_parse")
 
 http_archive(
     name = "com_github_bazelbuild_buildtools",
@@ -61,3 +71,69 @@ http_archive(
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
+
+# pip_parse() is used instead of pip_install() so that we can move pip installation to the build stage
+# instead of prior to the Bazel analysis phase (which is the case for pip_install()). This change will
+# help to speed up the overall build time and only download the dependencies as and when needed.
+#
+# pip_parse() also requires us to specify a fully resolved lock file for our Python dependencies. The
+# advantage to this is that it enforces fully deterministic builds. Without fully locked dependencies,
+# we cannot guarantee that two builds on the same commit use the same package versions.
+#
+# See:
+# - https://github.com/bazelbuild/rules_python#fetch-pip-dependencies-lazily
+# - https://github.com/bazelbuild/rules_python/blob/main/docs/pip.md#pip_parse
+# - https://github.com/bazelbuild/rules_python/blob/main/docs/pip.md#compile_pip_requirements
+#
+# The helper compile_pip_requirements() is used for regenerating the locked requirements.txt files.
+# Steps:
+# 1) Add/remove/modify package in requirements.txt.
+# 2) Validate locked requirements.txt can be generated:
+#     bazel test //path/to/package_deps:package_deps_test
+# 3) Update requirements_lock.txt:
+#     bazel run //path/to/package_deps.update
+# 4) Commit updated requirements_lock.txt
+
+PIP_INSTALL_TIMEOUT_SECONDS = 3600  # 60 minutes
+
+# "--only-binary=:all:" parameter below is to enforce pip to use prebuilt whl only,
+# to reduce external package preparation time.
+# For all packages with missing prebuilt binary, wheels are created manually and uploaded to Artifactory.
+# All such packages have `+av` suffix, just in case.
+# The project https://github.com/pypa/manylinux has been used - `quay.io/pypa/manylinux_2_24_x86_64` image
+#
+# To create and upload package, using `quay.io/pypa/manylinux_2_24_x86_64` docker image:
+# - download tarball from https://pypi.org/project/
+# - update `setup.py` and add `+av` suffix to version variable
+# - run `python setup.py sdist bdist_wheel upload -r nutonomypip`
+# Please refer to https://packaging.python.org/en/latest/tutorials/packaging-projects/ for further details
+
+PIP_EXTRA_ARGS = [
+    "--require-hashes",
+    "--index-url=https://pypi.org/simple",
+]
+
+# Base Python pip dependencies
+pip_parse(
+    name = "pip_nuplan_devkit_deps",
+    timeout = PIP_INSTALL_TIMEOUT_SECONDS,
+    extra_pip_args = PIP_EXTRA_ARGS,
+    python_interpreter_target = PYTHON_INTERPRETER_TARGET,
+    requirements_lock = "//:requirements_lock.txt",
+)
+
+load("@pip_nuplan_devkit_deps//:requirements.bzl", install_pip_deps = "install_deps")
+
+install_pip_deps()
+
+pip_parse(
+    name = "pip_torch_deps",
+    timeout = PIP_INSTALL_TIMEOUT_SECONDS,
+    extra_pip_args = PIP_EXTRA_ARGS,
+    python_interpreter_target = PYTHON_INTERPRETER_TARGET,
+    requirements_lock = "//:requirements_torch_lock.txt",
+)
+
+load("@pip_torch_deps//:requirements.bzl", install_pip_torch_deps = "install_deps")
+
+install_pip_torch_deps()

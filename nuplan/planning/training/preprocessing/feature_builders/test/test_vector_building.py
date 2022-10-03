@@ -20,6 +20,7 @@ from nuplan.planning.training.preprocessing.feature_builders.vector_builder_util
     get_on_route_status,
     get_route_lane_polylines_from_roadblock_ids,
     get_route_polygon_from_roadblock_ids,
+    prune_route_by_connectivity,
 )
 
 
@@ -40,6 +41,17 @@ class TestVectorUtils(unittest.TestCase):
 
         self.radius = 35
         self.map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES']
+
+    def test_prune_route_by_connectivity(self) -> None:
+        """
+        Test pruning route roadblock ids by those within query radius (specified in roadblock_ids)
+        maintaining connectivity.
+        """
+        route_roadblock_ids = ['-1', '0', '1', '2', '3']
+        roadblock_ids = {'0', '1', '3'}
+        pruned_route_roadblock_ids = prune_route_by_connectivity(route_roadblock_ids, roadblock_ids)
+
+        self.assertEqual(pruned_route_roadblock_ids, ['0', '1'])
 
     def test_get_lane_polylines(self) -> None:
         """
@@ -65,7 +77,9 @@ class TestVectorUtils(unittest.TestCase):
         """
         Test extracting route polygon from map given list of roadblock ids.
         """
-        route = get_route_polygon_from_roadblock_ids(self.map_api, self.route_roadblock_ids)
+        route = get_route_polygon_from_roadblock_ids(
+            self.map_api, self.ego_coords, self.radius, self.route_roadblock_ids
+        )
 
         assert type(route) == MapObjectPolylines
 
@@ -73,7 +87,9 @@ class TestVectorUtils(unittest.TestCase):
         """
         Test extracting route lane polylines from map given list of roadblock ids.
         """
-        route = get_route_lane_polylines_from_roadblock_ids(self.map_api, self.ego_coords, self.route_roadblock_ids)
+        route = get_route_lane_polylines_from_roadblock_ids(
+            self.map_api, self.ego_coords, self.radius, self.route_roadblock_ids
+        )
 
         assert type(route) == MapObjectPolylines
 

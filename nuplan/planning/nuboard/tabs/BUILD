@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,6 +16,7 @@ py_library(
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
+        requirement("bokeh"),
     ],
 )
 
@@ -23,12 +25,14 @@ py_library(
     srcs = ["histogram_tab.py"],
     deps = [
         "//nuplan/planning/metrics:metric_file",
-        "//nuplan/planning/nuboard:style",
         "//nuplan/planning/nuboard/base:base_tab",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs/config:histogram_tab_config",
         "//nuplan/planning/nuboard/tabs/js_code:histogram_tab_js_code",
+        "//nuplan/planning/nuboard/utils:nuboard_histogram_utils",
+        requirement("bokeh"),
+        requirement("numpy"),
     ],
 )
 
@@ -42,6 +46,8 @@ py_library(
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/tabs/config:overview_tab_config",
+        requirement("bokeh"),
+        requirement("numpy"),
     ],
 )
 
@@ -59,6 +65,9 @@ py_library(
         "//nuplan/planning/nuboard/tabs/config:scenario_tab_config",
         "//nuplan/planning/nuboard/tabs/js_code:scenario_tab_js_code",
         "//nuplan/planning/scenario_builder:abstract_scenario_builder",
+        requirement("bokeh"),
+        requirement("numpy"),
+        requirement("pandas"),
     ],
 )
 
@@ -72,5 +81,7 @@ py_library(
         "//nuplan/planning/nuboard/tabs/config:cloud_tab_config",
         "//nuplan/planning/nuboard/tabs/js_code:cloud_tab_js_code",
         "//nuplan/planning/nuboard/utils:nuboard_cloud_utils",
+        requirement("bokeh"),
+        requirement("boto3"),
     ],
 )

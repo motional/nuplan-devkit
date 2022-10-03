@@ -1,8 +1,11 @@
-from typing import Dict
+from typing import Dict, List
 
 import torch
 
-from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import AbstractModelFeature
+from nuplan.planning.training.preprocessing.feature_builders.abstract_feature_builder import (
+    AbstractModelFeature,
+    AbstractScenario,
+)
 
 
 class MissingFeature(Exception):
@@ -15,6 +18,7 @@ class MissingFeature(Exception):
 
 FeaturesType = Dict[str, AbstractModelFeature]
 TargetsType = Dict[str, AbstractModelFeature]
+ScenarioListType = List[AbstractScenario]
 TensorFeaturesType = Dict[str, torch.Tensor]
 
 

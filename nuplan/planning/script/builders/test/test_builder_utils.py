@@ -1,7 +1,7 @@
 import math
 import os
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from omegaconf import DictConfig
 
@@ -25,24 +25,44 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         self.max_lr = 1e-2
         self.betas = [0.9, 0.999]
         self.max_epochs = 2
+        self.exponential_lr_scheduler_cfg = {
+            '_target_': 'torch.optim.lr_scheduler.ExponentialLR',
+            'gamma': 0.9,
+            'steps_per_epoch': None,
+        }
+        self.one_cycle_lr_scheduler_cfg = {
+            '_target_': 'torch.optim.lr_scheduler.OneCycleLR',
+            'max_lr': self.max_lr,
+            'steps_per_epoch': None,
+            'div_factor': self.div_factor,
+        }
+        self.cfg_mock = DictConfig(
+            {
+                'optimizer': {'_target_': 'torch.optim.Adam', 'lr': self.lr, 'betas': self.betas.copy()},
+                'lightning': {
+                    'trainer': {
+                        'overfitting': {
+                            'enable': False,
+                            'params': {
+                                'overfit_batches': 1,
+                            },
+                        },
+                        'params': {
+                            'max_epochs': self.max_epochs,
+                        },
+                    },
+                    'distributed_training': {'equal_variance_scaling_strategy': False},
+                },
+                'dataloader': {'params': {'batch_size': self.batch_size}},
+                'warm_up_scheduler': {'lr_lambda': {'warm_up_steps': 0.0}},
+            }
+        )
 
     @patch.dict(os.environ, {"WORLD_SIZE": str(world_size)}, clear=True)
     def test_update_distributed_optimizer_config_equal_variance(self) -> None:
         """Test default setting where the lr is scaled to maintain equal variance."""
-        cfg_mock = Mock(DictConfig)
-
-        # Mock optimizer config
-        optimizer = Mock()
-        optimizer._target_ = 'torch.optim.Adam'
-        optimizer.betas = self.betas.copy()
-        optimizer.lr = self.lr
-
-        # Mock lightning config
-        lightning = Mock()
-        lightning.distributed_training.equal_variance_scaling_strategy = True
-
-        cfg_mock.optimizer = optimizer
-        cfg_mock.lightning = lightning
+        cfg_mock = self.cfg_mock.copy()
+        cfg_mock.lightning.distributed_training.equal_variance_scaling_strategy = True
 
         # test method of scaling lr to maintain equal_variance
         cfg_mock = update_distributed_optimizer_config(cfg_mock)
@@ -67,20 +87,7 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
     @patch.dict(os.environ, {"WORLD_SIZE": str(world_size)}, clear=True)
     def test_update_distributed_optimizer_config_linearly(self) -> None:
         """Test default setting where the lr is scaled linearly."""
-        cfg_mock = Mock(DictConfig)
-
-        # Mock optimizer config
-        optimizer = Mock()
-        optimizer._target_ = 'torch.optim.Adam'
-        optimizer.betas = self.betas.copy()
-        optimizer.lr = self.lr
-
-        # Mock lightning config
-        lightning = Mock()
-        lightning.distributed_training.equal_variance_scaling_strategy = False
-
-        cfg_mock.optimizer = optimizer
-        cfg_mock.lightning = lightning
+        cfg_mock = self.cfg_mock.copy()
 
         # test method of scaling lr linearly
         cfg_mock = update_distributed_optimizer_config(cfg_mock)
@@ -88,7 +95,7 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         msg = f'Expected {self.world_size*self.lr} but got {cfg_mock.optimizer.lr}'
         msg_beta_1 = f'Expected {self.betas[0]**self.world_size} but got {cfg_mock.optimizer.betas[0]}'
         msg_beta_2 = f'Expected {self.betas[1]**self.world_size} but got {cfg_mock.optimizer.betas[1]}'
-        print((self.betas[0] ** (self.world_size)), self.betas[0], self.world_size)
+
         self.assertTrue(float(cfg_mock.optimizer.lr) == self.world_size * self.lr, msg=msg)
         self.assertTrue(
             float(cfg_mock.optimizer.betas[0]) == (self.betas[0] ** (self.world_size)),
@@ -105,27 +112,10 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
         Test default setting where the lr_scheduler is not supported.
         Currently, anything other than OneCycleLR is not supported.
         """
-        cfg_mock = Mock(DictConfig)
-        # Mock lr_scheduler using ExponentialLR, which is not supported for scaling wrt multinode setting
-        lr_scheduler = Mock()
-        lr_scheduler._target_ = 'torch.optim.lr_scheduler.ExponentialLR'
-        lr_scheduler.gamma = 0.9
-        lr_scheduler.steps_per_epoch = None
-
-        # Mock lightning config
-        lightning = Mock()
-        lightning.trainer.overfitting.enable = True
-        lightning.trainer.overfitting.params.overfit_batches = 1
-        lightning.distributed_training.equal_variance_scaling_strategy = False
-        lightning.trainer.params.max_epochs = self.max_epochs
-
-        # Mock dataloader config
-        data_loader = Mock()
-        data_loader.params.batch_size = self.batch_size
-
-        cfg_mock.lr_scheduler = lr_scheduler
-        cfg_mock.lightning = lightning
-        cfg_mock.data_loader = data_loader
+        cfg_mock = self.cfg_mock.copy()
+        cfg_mock.lr_scheduler = self.exponential_lr_scheduler_cfg.copy()
+        cfg_mock.lightning.trainer.overfitting.enable = True
+        cfg_mock.lightning.trainer.overfitting.params.overfit_batches = 1
 
         # test that the steps_per_epoch attribute of the cfg was not edited
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
@@ -136,28 +126,10 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
     @patch.dict(os.environ, {"WORLD_SIZE": str(world_size)}, clear=True)
     def test_update_distributed_lr_scheduler_config_oclr_overfit_zero_batches(self) -> None:
         """Test default setting where the overfit_batches parameter is set to 0."""
-        cfg_mock = Mock(DictConfig)
-        # Mock lr_scheduler config
-        lr_scheduler = Mock()
-        lr_scheduler._target_ = 'torch.optim.lr_scheduler.OneCycleLR'
-        lr_scheduler.max_lr = self.max_lr
-        lr_scheduler.steps_per_epoch = None
-        lr_scheduler.div_factor = self.div_factor
-
-        # Mock lightning config
-        lightning = Mock()
-        lightning.trainer.overfitting.enable = True
-        lightning.trainer.overfitting.params.overfit_batches = 0
-        lightning.distributed_training.equal_variance_scaling_strategy = False
-        lightning.trainer.params.max_epochs = self.max_epochs
-
-        # Mock dataloader config
-        data_loader = Mock()
-        data_loader.params.batch_size = self.batch_size
-
-        cfg_mock.lr_scheduler = lr_scheduler
-        cfg_mock.lightning = lightning
-        cfg_mock.data_loader = data_loader
+        cfg_mock = self.cfg_mock.copy()
+        cfg_mock.lr_scheduler = self.one_cycle_lr_scheduler_cfg.copy()
+        cfg_mock.lightning.trainer.overfitting.enable = True
+        cfg_mock.lightning.trainer.overfitting.params.overfit_batches = 0
 
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
 
@@ -171,33 +143,15 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
     @patch.dict(os.environ, {"WORLD_SIZE": str(world_size)}, clear=True)
     def test_update_distributed_lr_scheduler_config_overfit_one_batches(self) -> None:
         """Test default setting where the overfit_batches parameter is set to 1."""
-        cfg_mock = Mock(DictConfig)
-        # Mock lr_scheduler config
-        lr_scheduler = Mock()
-        lr_scheduler._target_ = 'torch.optim.lr_scheduler.OneCycleLR'
-        lr_scheduler.max_lr = self.max_lr
-        lr_scheduler.steps_per_epoch = None
-        lr_scheduler.div_factor = self.div_factor
-
-        # Mock lightning config
-        lightning = Mock()
-        lightning.trainer.overfitting.enable = True
-        lightning.trainer.overfitting.params.overfit_batches = 1
-        lightning.distributed_training.equal_variance_scaling_strategy = False
-        lightning.trainer.params.max_epochs = self.max_epochs
-
-        # Mock dataloader config
-        data_loader = Mock()
-        data_loader.params.batch_size = self.batch_size
-
-        cfg_mock.lr_scheduler = lr_scheduler
-        cfg_mock.lightning = lightning
-        cfg_mock.data_loader = data_loader
+        cfg_mock = self.cfg_mock.copy()
+        cfg_mock.lr_scheduler = self.one_cycle_lr_scheduler_cfg.copy()
+        cfg_mock.lightning.trainer.overfitting.enable = True
+        cfg_mock.lightning.trainer.overfitting.params.overfit_batches = 1
 
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
 
         expected_steps_per_epoch = math.ceil(
-            lightning.trainer.overfitting.params.overfit_batches / self.world_size / self.max_epochs
+            cfg_mock.lightning.trainer.overfitting.params.overfit_batches / self.world_size / self.max_epochs
         )
 
         msg_steps_per_epoch = (
@@ -209,32 +163,16 @@ class TestUpdateDistributedTrainingCfg(unittest.TestCase):
     @patch.dict(os.environ, {"WORLD_SIZE": str(world_size)}, clear=True)
     def test_update_distributed_lr_scheduler_config_overfit_batches_fractional(self) -> None:
         """Test default setting where the overfit_batches parameter is set to 1."""
-        cfg_mock = Mock(DictConfig)
-        # Mock lr_scheduler config
-        lr_scheduler = Mock()
-        lr_scheduler._target_ = 'torch.optim.lr_scheduler.OneCycleLR'
-        lr_scheduler.max_lr = self.max_lr
-        lr_scheduler.steps_per_epoch = None
-        lr_scheduler.div_factor = self.div_factor
-
-        # Mock lightning config
-        lightning = Mock()
-        lightning.trainer.overfitting.enable = True
-        lightning.trainer.overfitting.params.overfit_batches = 0.5
-        lightning.distributed_training.equal_variance_scaling_strategy = False
-        lightning.trainer.params.max_epochs = self.max_epochs
-
-        # Mock dataloader config
-        data_loader = Mock()
-        data_loader.params.batch_size = self.batch_size
-
-        cfg_mock.lr_scheduler = lr_scheduler
-        cfg_mock.lightning = lightning
-        cfg_mock.data_loader = data_loader
+        cfg_mock = self.cfg_mock.copy()
+        cfg_mock.lr_scheduler = self.one_cycle_lr_scheduler_cfg.copy()
+        cfg_mock.lightning.trainer.overfitting.enable = True
+        cfg_mock.lightning.trainer.overfitting.params.overfit_batches = 0.5
 
         cfg_mock = update_distributed_lr_scheduler_config(cfg_mock, num_train_batches=self.num_train_batches)
 
-        batches_to_overfit = math.ceil(self.num_train_batches * lightning.trainer.overfitting.params.overfit_batches)
+        batches_to_overfit = math.ceil(
+            self.num_train_batches * cfg_mock.lightning.trainer.overfitting.params.overfit_batches
+        )
         expected_steps_per_epoch = math.ceil(math.ceil(batches_to_overfit / self.world_size) / self.max_epochs)
 
         msg_steps_per_epoch = (

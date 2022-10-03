@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,6 +34,7 @@ py_test(
     deps = [
         "//nuplan/planning/simulation/observation/idm:idm_policy",
         "//nuplan/planning/simulation/observation/idm:idm_states",
+        requirement("pytest"),
     ],
 )
 
@@ -43,6 +45,7 @@ py_test(
     data = [":test_json"],
     deps = [
         "//nuplan/planning/simulation/observation/idm:utils",
+        requirement("pytest"),
     ],
 )
 
@@ -63,6 +66,7 @@ py_test(
         "//nuplan/planning/simulation/observation/idm:idm_policy",
         "//nuplan/planning/simulation/observation/idm/test:utils",
         "//nuplan/planning/utils/serialization:from_scene",
+        requirement("pytest"),
     ],
 )
 
@@ -83,6 +87,7 @@ py_test(
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/simulation/observation:idm_agents",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        requirement("pytest"),
     ],
 )
 
@@ -97,5 +102,7 @@ py_test(
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:idm_agents",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        requirement("pytest"),
+        requirement("pyinstrument"),
     ],
 )

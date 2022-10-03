@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -32,5 +33,15 @@ py_test(
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("mock"),
+    ],
+)
+
+py_test(
+    name = "test_lr_scheduler_builder",
+    size = "small",
+    srcs = ["test_lr_scheduler_builder.py"],
+    deps = [
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
     ],
 )

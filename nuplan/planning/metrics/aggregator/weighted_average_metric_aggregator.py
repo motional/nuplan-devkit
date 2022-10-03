@@ -118,7 +118,7 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
                     assert weight is not None, f"Metric: {column_key} weight " f"should not be None!"
                     sum_weights += weight
                     metric_scores += weight * column_value
-            weighted_average_score = metric_scores / sum_weights if sum_weights else 1.0
+            weighted_average_score = metric_scores / sum_weights if sum_weights else 0.0
             final_score = multiple_factor * weighted_average_score
             scenario_metric_columns[scenario_name]['score'] = final_score
 

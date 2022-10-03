@@ -10,6 +10,7 @@ map_names:                          # Filter scenarios by map names
 
 num_scenarios_per_type: null        # Number of scenarios per type
 limit_total_scenarios: 0.01         # Limit total scenarios (float = fraction, int = num) - this filter can be applied on top of num_scenarios_per_type
+timestamp_threshold_s: null         # Filter scenarios to ensure scenarios have more than `timestamp_threshold_s` seconds between their initial lidar timestamps
 
 expand_scenarios: false             # Whether to expand multi-sample scenarios to multiple single-sample scenarios
 remove_invalid_goals: true          # Whether to remove scenarios where the mission goal is invalid

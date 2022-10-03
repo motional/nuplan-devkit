@@ -92,7 +92,7 @@ def _eval_model_and_write_to_scene(
     # collect data to write
     for data_idx, score_type in zip((best_n_idx, worst_n_idx, random_n_idx), ('best', 'worst', 'random')):
         for idx in data_idx:
-            features, targets = scenario_dataset[idx]
+            features, targets, _ = scenario_dataset[idx]
             scenario = scenario_dataset._scenarios[idx]
 
             # convert data to scenes

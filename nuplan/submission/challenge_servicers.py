@@ -110,6 +110,7 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
             mission_goal = se2_from_proto_se2(planner_initialization_message.mission_goal)
 
             map_api = self.map_manager.get_map(planner_initialization_message.map_name)
+            map_api.initialize_all_layers()
             planner_initialization.append(
                 PlannerInitialization(
                     route_roadblock_ids=route_roadblock_ids,

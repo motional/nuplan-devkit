@@ -7,7 +7,7 @@ num_res_blocks: 3
 num_attention_layers: 4
 a2a_dist_threshold: 20.0
 l2a_dist_threshold: 30.0
-num_output_features: 36
+num_output_features: 48
 feature_dim: 128
 
 # VectorMapFeatureBuilder
@@ -25,5 +25,5 @@ past_trajectory_sampling:
 future_trajectory_sampling:
   _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
   _convert_: 'all'
-  num_poses: 12      # target future poses
+  num_poses: 16      # target future poses
   time_horizon: 8.0  # [s] time horizon of future poses

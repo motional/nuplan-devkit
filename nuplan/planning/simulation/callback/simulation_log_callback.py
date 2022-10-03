@@ -5,10 +5,11 @@ from typing import List, Optional, Union
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
-from nuplan.planning.simulation.history.simulation_history import SimulationHistory
+from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_log import SimulationLog
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.planning.utils.multithreading.worker_pool import Task, WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,30 @@ class SimulationLogCallback(AbstractCallback):
         """
         scenario_directory = self._get_scenario_folder(planner.name(), setup.scenario)
         scenario_directory.mkdir(exist_ok=True, parents=True)
+
+    def on_initialization_end(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_step_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_step_end(self, setup: SimulationSetup, planner: AbstractPlanner, sample: SimulationHistorySample) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_planner_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_planner_end(self, setup: SimulationSetup, planner: AbstractPlanner, trajectory: AbstractTrajectory) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_simulation_start(self, setup: SimulationSetup) -> None:
+        """Inherited, see superclass."""
+        pass
 
     def on_simulation_end(self, setup: SimulationSetup, planner: AbstractPlanner, history: SimulationHistory) -> None:
         """

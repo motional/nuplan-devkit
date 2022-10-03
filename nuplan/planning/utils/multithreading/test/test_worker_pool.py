@@ -57,8 +57,8 @@ class TestWorkerPool(unittest.TestCase):
 
     def check_worker_map(self, worker: WorkerPool) -> None:
         """
-        Check whether worker.map passes all checks
-        :param worker: to be tested
+        Check whether worker.map passes all checks.
+        :param worker: to be tested.
         """
         task = Task(fn=matrix_multiplication)
         result = worker.map(task, self.lhs_matrix, self.rhs_matrix)

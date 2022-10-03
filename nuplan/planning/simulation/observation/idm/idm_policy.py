@@ -61,6 +61,7 @@ class IDMPolicy:
         """
         Sets the policy's desired velocity in free traffic [m/s]
         """
+        self._target_velocity = target_velocity
         assert target_velocity > 0, f"The target velocity must be greater than 0! {target_velocity} > 0"
 
     @property

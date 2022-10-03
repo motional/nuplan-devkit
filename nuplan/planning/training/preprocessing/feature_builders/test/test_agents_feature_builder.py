@@ -12,6 +12,7 @@ from nuplan.planning.simulation.simulation_time_controller.simulation_iteration 
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.training.preprocessing.feature_builders.agents_feature_builder import AgentsFeatureBuilder
 from nuplan.planning.training.preprocessing.features.agents import Agents
+from nuplan.planning.training.preprocessing.utils.agents_preprocessing import AgentInternalIndex, EgoInternalIndex
 
 
 class TestAgentsFeatureBuilder(unittest.TestCase):
@@ -135,9 +136,11 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
         # Create some mock data
         num_frames = 5
         num_agents = 3
-        past_ego_states = torch.zeros((num_frames, 5), dtype=torch.float32)
+        ego_dim = EgoInternalIndex.dim()
+        agent_dim = AgentInternalIndex.dim()
+        past_ego_states = torch.zeros((num_frames, ego_dim), dtype=torch.float32)
         past_timestamps = torch.tensor([i * 50 for i in range(num_frames)], dtype=torch.int64)
-        past_tracked_objects = [torch.ones((num_agents, 8), dtype=torch.float32) for _ in range(num_frames)]
+        past_tracked_objects = [torch.ones((num_agents, agent_dim), dtype=torch.float32) for _ in range(num_frames)]
         for i in range(num_frames):
             for j in range(num_agents):
                 past_tracked_objects[i][j, :] *= j + 1

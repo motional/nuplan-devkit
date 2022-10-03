@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -18,6 +19,7 @@ py_library(
         "//nuplan/planning/metrics/utils:state_extractors",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
+        requirement("sympy"),
     ],
 )
 
@@ -158,6 +160,8 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:oriented_box",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/base:metric_base",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",

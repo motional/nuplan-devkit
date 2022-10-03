@@ -1,4 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,6 +22,7 @@ py_test(
     size = "medium",
     srcs = ["test_collate.py"],
     deps = [
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing:feature_collate",
         "//nuplan/planning/training/preprocessing/features:raster",
@@ -34,6 +37,7 @@ py_test(
     srcs = ["test_collate_dataloader.py"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
@@ -47,6 +51,7 @@ py_test(
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
         "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_sequential",
+        requirement_torch("torch"),
     ],
 )
 
@@ -65,6 +70,7 @@ py_test(
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
         "//nuplan/planning/utils/multithreading:worker_sequential",
         "//nuplan/planning/utils/multithreading:worker_utils",
+        requirement("mock"),
     ],
 )
 

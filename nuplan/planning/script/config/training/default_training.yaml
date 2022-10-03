@@ -15,8 +15,9 @@ defaults:
   - callbacks: default_callbacks
 
   # Optimizer settings
-  - optimizer: adam # [adam, adamw] supported optimizers
-  - lr_scheduler: null # [one_cycle_lr] supported lr_schedulers
+  - optimizer: adam  # [adam, adamw] supported optimizers
+  - lr_scheduler: null  # [one_cycle_lr] supported lr_schedulers
+  - warm_up_lr_scheduler: null  # [linear_warm_up, constant_warm_up] supported warm up lr schedulers
 
   # Data Loading
   - data_loader: default_data_loader

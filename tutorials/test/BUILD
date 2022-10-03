@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -16,6 +17,7 @@ py_test(
         "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/script:run_nuboard",
         "//nuplan/planning/script:run_simulation",
+        "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:abstract_planner",
@@ -61,5 +63,8 @@ py_test(
     deps = [
         "//nuplan/database/nuplan_db_orm:nuplandb_wrapper",
         "//tutorials/utils:tutorial_utils",
+        requirement("testbook"),
+        requirement("ipykernel"),
+        requirement("ipywidgets"),
     ],
 )

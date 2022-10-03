@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -58,7 +58,6 @@ class NuPlanMap(AbstractMap):
             SemanticMapLayer.CROSSWALK: self._get_crosswalk,
             SemanticMapLayer.INTERSECTION: self._get_intersection,
             SemanticMapLayer.WALKWAYS: self._get_walkway,
-            SemanticMapLayer.PUDO: self._get_pudo,
             SemanticMapLayer.CARPARK_AREA: self._get_carpark_area,
         }
 
@@ -68,14 +67,12 @@ class NuPlanMap(AbstractMap):
             SemanticMapLayer.INTERSECTION: 'intersections',
             SemanticMapLayer.STOP_LINE: 'stop_polygons',
             SemanticMapLayer.CROSSWALK: 'crosswalks',
-            SemanticMapLayer.SPEED_BUMP: 'speed_bumps',
             SemanticMapLayer.DRIVABLE_AREA: 'drivable_area',
             SemanticMapLayer.LANE_CONNECTOR: 'lane_connectors',
             SemanticMapLayer.ROADBLOCK_CONNECTOR: 'lane_group_connectors',
             SemanticMapLayer.BASELINE_PATHS: 'baseline_paths',
             SemanticMapLayer.BOUNDARIES: 'boundaries',
             SemanticMapLayer.WALKWAYS: 'walkways',
-            SemanticMapLayer.PUDO: 'pudo_zones',
             SemanticMapLayer.CARPARK_AREA: 'carpark_areas',
         }
         self._raster_layer_mapping = {
@@ -84,6 +81,14 @@ class NuPlanMap(AbstractMap):
 
         # Special vector layer mapping for lane connector polygons.
         self._LANE_CONNECTOR_POLYGON_LAYER = 'gen_lane_connectors_scaled_width_polygons'
+
+    def __reduce__(self) -> Tuple[Type['NuPlanMap'], Tuple[Any, ...]]:
+        """
+        Hints on how to reconstruct the object when pickling.
+        This object is reconstructed by pickle to avoid serializing potentially large state/caches.
+        :return: Object type and constructor arguments to be used.
+        """
+        return self.__class__, (self._maps_db, self._map_name)
 
     @property
     def map_name(self) -> str:
@@ -228,6 +233,18 @@ class NuPlanMap(AbstractMap):
             return cast(npt.NDArray[np.float64], distances)
         else:
             return None
+
+    def initialize_all_layers(self) -> None:
+        """
+        Load all layers to vector map
+        :param: None
+        :return: None
+        """
+        for layer_name in self._vector_layer_mapping.values():
+            self._load_vector_map_layer(layer_name)
+        for layer_name in self._raster_layer_mapping.values():
+            self._load_vector_map_layer(layer_name)
+        self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER)
 
     def _semantic_vector_layer_map(self, layer: SemanticMapLayer) -> str:
         """
@@ -471,18 +488,6 @@ class NuPlanMap(AbstractMap):
         return (
             NuPlanPolygonMapObject(walkway_id, self._get_vector_map_layer(SemanticMapLayer.WALKWAYS))
             if walkway_id in self._get_vector_map_layer(SemanticMapLayer.WALKWAYS)["fid"].tolist()
-            else None
-        )
-
-    def _get_pudo(self, pudo_id: str) -> NuPlanPolygonMapObject:
-        """
-        Gets the pudo with the given pudo_id.
-        :param pudo_id: desired unique id of an extended pudo that should be extracted.
-        :return: NuPlanPolygonMapObject object.
-        """
-        return (
-            NuPlanPolygonMapObject(pudo_id, self._get_vector_map_layer(SemanticMapLayer.PUDO))
-            if pudo_id in self._get_vector_map_layer(SemanticMapLayer.PUDO)["fid"].tolist()
             else None
         )
 

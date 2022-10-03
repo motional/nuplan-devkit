@@ -1,4 +1,4 @@
-from typing import Any, Generator, List, Optional, Tuple, Type
+from typing import Any, Generator, List, Optional, Set, Tuple, Type
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
@@ -98,6 +98,18 @@ class CachedScenario(AbstractScenario):
     def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_tracked_objects_at_iteration.")
+
+    def get_tracked_objects_within_time_window_at_iteration(
+        self,
+        iteration: int,
+        past_time_horizon: float,
+        future_time_horizon: float,
+        filter_track_tokens: Optional[Set[str]] = None,
+    ) -> DetectionsTracks:
+        """Inherited, see superclass."""
+        raise NotImplementedError(
+            "CachedScenario does not implement get_tracked_objects_within_time_window_at_iteration."
+        )
 
     def get_sensors_at_iteration(self, iteration: int) -> Sensors:
         """Inherited, see superclass."""

@@ -1,29 +1,26 @@
 import logging
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 from bokeh.document.document import Document
 from bokeh.layouts import column, gridplot, layout
-from bokeh.models import Button, ColumnDataSource, Div, HoverTool, MultiChoice, Spinner, glyph
+from bokeh.models import Button, ColumnDataSource, Div, FactorRange, HoverTool, MultiChoice, Spinner, glyph
 from bokeh.plotting import figure
 
 from nuplan.planning.nuboard.base.base_tab import BaseTab
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
-from nuplan.planning.nuboard.style import PLOT_PALETTE, histogram_tab_style
 from nuplan.planning.nuboard.tabs.config.histogram_tab_config import (
-    PLANNER_CHECKBOX_GROUP_NAME,
-    HistogramData,
-    HistogramDataType,
-    HistogramEdgeData,
-    HistogramEdgesDataType,
+    HistogramConstantConfig,
     HistogramFigureData,
-    HistogramFigureDataType,
-    HistogramStatistics,
     HistogramTabBinSpinnerConfig,
     HistogramTabDefaultDivConfig,
+    HistogramTabFigureGridPlotStyleConfig,
+    HistogramTabFigureStyleConfig,
+    HistogramTabFigureTitleDivStyleConfig,
+    HistogramTabHistogramBarStyleConfig,
     HistogramTabMetricNameMultiChoiceConfig,
     HistogramTabModalQueryButtonConfig,
     HistogramTabPlotConfig,
@@ -34,6 +31,12 @@ from nuplan.planning.nuboard.tabs.js_code.histogram_tab_js_code import (
     HistogramTabLoadingJSCode,
     HistogramTabUpdateWindowsSizeJSCode,
 )
+from nuplan.planning.nuboard.utils.nuboard_histogram_utils import (
+    aggregate_metric_aggregator_dataframe_histogram_data,
+    aggregate_metric_statistics_dataframe_histogram_data,
+    compute_histogram_edges,
+    get_histogram_plot_x_range,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +45,11 @@ class HistogramTab(BaseTab):
     """Histogram tab in nuBoard."""
 
     def __init__(
-        self, doc: Document, experiment_file_data: ExperimentFileData, bins: int = 20, max_scenario_names: int = 20
+        self,
+        doc: Document,
+        experiment_file_data: ExperimentFileData,
+        bins: int = HistogramTabBinSpinnerConfig.default_bins,
+        max_scenario_names: int = 20,
     ):
         """
         Histogram for metric results about simulation.
@@ -57,7 +64,7 @@ class HistogramTab(BaseTab):
 
         # UI.
         # Planner selection
-        self.planner_checkbox_group.name = PLANNER_CHECKBOX_GROUP_NAME
+        self.planner_checkbox_group.name = HistogramConstantConfig.PLANNER_CHECKBOX_GROUP_NAME
         self.planner_checkbox_group.js_on_change("active", HistogramTabLoadingJSCode.get_js_code())
 
         # Scenario type multi choices
@@ -80,8 +87,8 @@ class HistogramTab(BaseTab):
         self._histogram_plots = column(self._default_div, **HistogramTabPlotConfig.get_config())
         self._histogram_plots.js_on_change("children", HistogramTabLoadingEndJSCode.get_js_code())
         self._histogram_figures: Optional[column] = None
-        self._aggregated_data: Optional[HistogramDataType] = None
-        self._histogram_edges: Optional[HistogramEdgesDataType] = None
+        self._aggregated_data: Optional[HistogramConstantConfig.HistogramDataType] = None
+        self._histogram_edges: Optional[HistogramConstantConfig.HistogramEdgesDataType] = None
         self._plot_data: Dict[str, List[glyph]] = defaultdict(list)
         self._init_selection()
 
@@ -147,8 +154,13 @@ class HistogramTab(BaseTab):
         # Aggregate data
         self._aggregated_data = self._aggregate_statistics()
 
+        # Aggregate scenario type scores
+        aggregated_scenario_type_score_data = self._aggregate_scenario_type_score_histogram()
+
+        self._aggregated_data.update(aggregated_scenario_type_score_data)
+
         # Compute histogram edges
-        self._histogram_edges = self._compute_histogram_edges()
+        self._histogram_edges = compute_histogram_edges(aggregated_data=self._aggregated_data, bins=self._bins)
 
         # Render histograms.
         self._histogram_figures = self._render_histograms()
@@ -190,6 +202,22 @@ class HistogramTab(BaseTab):
             self.window_width = self._scenario_type_multi_choice.tags[0]
             self.window_height = self.scenario_type_multi_choice.tags[1]
 
+    def _adjust_plot_width_size(self, n_bins: int) -> int:
+        """
+        Adjust plot width size based on number of bins.
+        :param n_bins: Number of bins.
+        :return Width size of a histogram plot.
+        """
+        base_plot_width: int = self.plot_sizes[0]
+        if n_bins < 20:
+            return base_plot_width
+        # Increase the width of 50 for every number of bins 20
+        width_multiplier_factor: int = (n_bins // 20) * 100
+        width_size: int = min(
+            base_plot_width + width_multiplier_factor, HistogramTabFigureStyleConfig.maximum_plot_width
+        )
+        return width_size
+
     def _init_selection(self) -> None:
         """Init histogram and scalar selection options."""
         # For planner checkbox
@@ -224,6 +252,7 @@ class HistogramTab(BaseTab):
         scenario_names: List[str],
         x_values: List[str],
         width: float = 0.4,
+        histogram_file_name: Optional[str] = None,
     ) -> None:
         """
         Plot a vertical bar plot.
@@ -236,6 +265,7 @@ class HistogramTab(BaseTab):
         :param scenario_names: A list of scenario names.
         :param x_values: X-axis values.
         :param width: Bar width.
+        :param histogram_file_name: Histogram file name for the histogram data.
         """
         y_values = deepcopy(counts)
         bottom: npt.NDArray[np.int64] = (
@@ -246,7 +276,7 @@ class HistogramTab(BaseTab):
         count_position = counts > 0
         bottom_arrays: npt.NDArray[np.int64] = bottom * count_position
         top = counts + bottom_arrays
-
+        histogram_file_names = [histogram_file_name] * len(top)
         data_source = ColumnDataSource(
             dict(
                 x=category,
@@ -255,6 +285,7 @@ class HistogramTab(BaseTab):
                 y_values=y_values,
                 x_values=x_values,
                 scenario_names=scenario_names,
+                histogram_file_name=histogram_file_names,
             )
         )
         figure_plot = histogram_figure_data.figure_plot
@@ -264,20 +295,12 @@ class HistogramTab(BaseTab):
             bottom="bottom",
             fill_color=color,
             legend_label=legend_label,
-            line_color=histogram_tab_style["quad_line_color"],
-            fill_alpha=histogram_tab_style["quad_alpha"],
-            line_alpha=histogram_tab_style["quad_alpha"],
-            line_width=histogram_tab_style["quad_line_width"],
             width=width,
             source=data_source,
+            **HistogramTabHistogramBarStyleConfig.get_config(),
         )
         self._plot_data[planner_name].append(vbar)
-
-        figure_plot.y_range.start = 0
-        figure_plot.legend.background_fill_alpha = histogram_tab_style["plot_legend_background_fill_alpha"]
-        figure_plot.legend.label_text_font_size = histogram_tab_style["plot_legend_label_text_font_size"]
-        figure_plot.yaxis.axis_label = histogram_tab_style["plot_yaxis_axis_label"]
-        figure_plot.grid.grid_line_color = histogram_tab_style["plot_grid_line_color"]
+        HistogramTabHistogramBarStyleConfig.update_histogram_bar_figure_style(histogram_figure=figure_plot)
 
     def plot_histogram(
         self,
@@ -289,6 +312,7 @@ class HistogramTab(BaseTab):
         color: str,
         scenario_names: List[str],
         x_values: List[str],
+        histogram_file_name: Optional[str] = None,
     ) -> None:
         """
         Plot a histogram.
@@ -301,6 +325,7 @@ class HistogramTab(BaseTab):
         :param color: Legend color.
         :param scenario_names: A list of scenario names.
         :param x_values: A list of x value names.
+        :param histogram_file_name: Histogram file name for the histogram data.
         """
         bottom: npt.NDArray[np.int64] = (
             np.zeros_like(hist)
@@ -310,6 +335,7 @@ class HistogramTab(BaseTab):
         hist_position = hist > 0
         bottom_arrays: npt.NDArray[np.int64] = bottom * hist_position
         top = hist + bottom_arrays
+        histogram_file_names = [histogram_file_name] * len(top)
         data_source = ColumnDataSource(
             dict(
                 top=top,
@@ -319,6 +345,7 @@ class HistogramTab(BaseTab):
                 y_values=hist,
                 x_values=x_values,
                 scenario_names=scenario_names,
+                histogram_file_name=histogram_file_names,
             )
         )
         figure_plot = histogram_figure_data.figure_plot
@@ -328,200 +355,129 @@ class HistogramTab(BaseTab):
             left="left",
             right="right",
             fill_color=color,
-            line_color=histogram_tab_style["quad_line_color"],
-            fill_alpha=histogram_tab_style["quad_alpha"],
-            line_alpha=histogram_tab_style["quad_alpha"],
             legend_label=legend_label,
-            line_width=histogram_tab_style["quad_line_width"],
+            **HistogramTabHistogramBarStyleConfig.get_config(),
             source=data_source,
         )
 
         self._plot_data[planner_name].append(quad)
-        figure_plot.y_range.start = 0
-        figure_plot.legend.background_fill_alpha = histogram_tab_style["plot_legend_background_fill_alpha"]
-        figure_plot.legend.label_text_font_size = histogram_tab_style["plot_legend_label_text_font_size"]
-        figure_plot.yaxis.axis_label = histogram_tab_style["plot_yaxis_axis_label"]
-        figure_plot.grid.grid_line_color = histogram_tab_style["plot_grid_line_color"]
+        HistogramTabHistogramBarStyleConfig.update_histogram_bar_figure_style(histogram_figure=figure_plot)
 
     def _render_histogram_plot(
         self,
         title: str,
         x_axis_label: str,
-        x_range: Optional[List[str]] = None,
+        x_range: Optional[Union[List[str], FactorRange]] = None,
+        histogram_file_name: Optional[str] = None,
     ) -> HistogramFigureData:
         """
         Render a histogram plot.
         :param title: Title.
-        :param x_axis_label: x axis label.
-        :param x_range: A list of category data if specify.
+        :param x_axis_label: x-axis label.
+        :param x_range: A list of category data if specified.
+        :param histogram_file_name: Histogram file name for the histogram plot.
         :return a figure.
         """
+        if x_range is None:
+            len_plot_width = 1
+        elif isinstance(x_range, list):
+            len_plot_width = len(x_range)
+        else:
+            len_plot_width = len(x_range.factors)
+
+        plot_width = self._adjust_plot_width_size(n_bins=len_plot_width)
         tooltips = [("Frequency", "@y_values"), ("Values", "@x_values{safe}"), ("Scenarios", "@scenario_names{safe}")]
+        if histogram_file_name:
+            tooltips.append(("File", "@histogram_file_name"))
+
         hover_tool = HoverTool(tooltips=tooltips, point_policy="follow_mouse")
         statistic_figure = figure(
-            background_fill_color=PLOT_PALETTE["background_white"],
-            title=f"{title}",
-            x_axis_label=f"{x_axis_label}",
-            margin=histogram_tab_style["statistic_figure_margin"],
-            width=self.plot_sizes[0],
-            height=self.plot_sizes[1],
-            x_range=x_range,
-            output_backend="webgl",
-            active_scroll="wheel_zoom",
+            **HistogramTabFigureStyleConfig.get_config(
+                title=title, x_axis_label=x_axis_label, width=plot_width, height=self.plot_sizes[1], x_range=x_range
+            ),
             tools=["pan", "wheel_zoom", "save", "reset", hover_tool],
         )
-
-        statistic_figure.title.text_font_size = histogram_tab_style["statistic_figure_title_text_font_size"]
-        statistic_figure.xaxis.axis_label_text_font_size = histogram_tab_style[
-            "statistic_figure_xaxis_axis_label_text_font_size"
-        ]
-        statistic_figure.xaxis.major_label_text_font_size = histogram_tab_style[
-            "statistic_figure_xaxis_major_label_text_font_size"
-        ]
-        statistic_figure.yaxis.axis_label_text_font_size = histogram_tab_style[
-            "statistic_figure_yaxis_axis_label_text_font_size"
-        ]
-        statistic_figure.yaxis.major_label_text_font_size = histogram_tab_style[
-            "statistic_figure_yaxis_major_label_text_font_size"
-        ]
-        statistic_figure.toolbar.logo = None
-
+        HistogramTabFigureStyleConfig.update_histogram_figure_style(histogram_figure=statistic_figure)
         return HistogramFigureData(figure_plot=statistic_figure)
 
-    def _render_histogram_layout(self, histograms: HistogramFigureDataType) -> List[column]:
+    def _render_histogram_layout(self, histograms: HistogramConstantConfig.HistogramFigureDataType) -> List[column]:
         """
         Render histogram layout.
         :param histograms: A dictionary of histogram names and their histograms.
         :return: A list of lists of figures (a list per row).
         """
         layouts = []
+        ncols = self.get_plot_cols(
+            plot_width=self.plot_sizes[0], default_ncols=HistogramConstantConfig.HISTOGRAM_TAB_DEFAULT_NUMBER_COLS
+        )
         for metric_statistics_name, statistics_data in histograms.items():
-            title_div = Div(
-                text=f"{metric_statistics_name}",
-                style={"font-size": "10pt", "width": "100%", "font-weight": "bold"},
-            )
+            title_div = Div(**HistogramTabFigureTitleDivStyleConfig.get_config(title=metric_statistics_name))
             figures = [histogram_figure.figure_plot for statistic_name, histogram_figure in statistics_data.items()]
             grid_plot = gridplot(
                 figures,
-                ncols=self.get_plot_cols(plot_width=self.plot_sizes[0]),
-                height=self.plot_sizes[1],
-                toolbar_location="left",
+                **HistogramTabFigureGridPlotStyleConfig.get_config(ncols=ncols, height=self.plot_sizes[1]),
             )
             grid_layout = column(title_div, grid_plot)
             layouts.append(grid_layout)
 
         return layouts
 
-    def _aggregate_statistics(self) -> HistogramDataType:
+    def _aggregate_scenario_type_score_histogram(self) -> HistogramConstantConfig.HistogramDataType:
+        """
+        Aggregate metric aggregator data.
+        :return: A dictionary of metric aggregator names and their metric scores.
+        """
+        data: HistogramConstantConfig.HistogramDataType = defaultdict(list)
+        selected_scenario_types = self._scenario_type_multi_choice.value
+
+        # Loop through all metric aggregators
+        for index, metric_aggregator_dataframes in enumerate(self.experiment_file_data.metric_aggregator_dataframes):
+            if index not in self._experiment_file_active_index:
+                continue
+            for metric_aggregator_filename, metric_aggregator_dataframe in metric_aggregator_dataframes.items():
+                # Aggregate a list of histogram data list
+                histogram_data_list = aggregate_metric_aggregator_dataframe_histogram_data(
+                    metric_aggregator_dataframe_index=index,
+                    metric_aggregator_dataframe=metric_aggregator_dataframe,
+                    scenario_types=selected_scenario_types,
+                    dataframe_file_name=metric_aggregator_filename,
+                )
+                if histogram_data_list:
+                    data[HistogramConstantConfig.SCENARIO_TYPE_SCORE_HISTOGRAM_NAME] += histogram_data_list
+
+        return data
+
+    def _aggregate_statistics(self) -> HistogramConstantConfig.HistogramDataType:
         """
         Aggregate statistics data.
         :return A dictionary of metric names and their aggregated data.
         """
-        data: HistogramDataType = defaultdict(list)
+        data: HistogramConstantConfig.HistogramDataType = defaultdict(list)
         scenario_types = self._scenario_type_multi_choice.value
         metric_choices = self._metric_name_multi_choice.value
-        if not len(scenario_types):
+        if not len(scenario_types) and not len(metric_choices):
+            return data
+
+        if 'all' in scenario_types:
             scenario_types = None
         else:
             scenario_types = tuple(scenario_types)
-
-        if not scenario_types and not metric_choices:
-            return data
 
         for index, metric_statistics_dataframes in enumerate(self.experiment_file_data.metric_statistics_dataframes):
             if index not in self._experiment_file_active_index:
                 continue
 
             for metric_statistics_dataframe in metric_statistics_dataframes:
-                if len(metric_choices) and metric_statistics_dataframe.metric_statistic_name not in metric_choices:
-                    continue
+                histogram_data_list = aggregate_metric_statistics_dataframe_histogram_data(
+                    metric_statistics_dataframe=metric_statistics_dataframe,
+                    metric_statistics_dataframe_index=index,
+                    scenario_types=scenario_types,
+                    metric_choices=metric_choices,
+                )
 
-                planner_names = metric_statistics_dataframe.planner_names
-                for planner_name in planner_names:
-
-                    data_frame = metric_statistics_dataframe.query_scenarios(
-                        scenario_types=scenario_types, planner_names=tuple([planner_name])
-                    )
-
-                    if not len(data_frame):
-                        continue
-
-                    histogram_statistics_dict = {}
-                    for statistic_name in metric_statistics_dataframe.statistic_names:
-                        columns = [
-                            f"{statistic_name}_stat_value",
-                            f"{statistic_name}_stat_unit",
-                            "scenario_name",
-                            "log_name",
-                        ]
-                        statistic_data_frame = data_frame[columns]
-
-                        # Value column index is 0, filter out inf values
-                        values: npt.NDArray[np.float64] = np.asarray(statistic_data_frame.iloc[:, 0])
-                        finite_states = np.isfinite(values)
-                        values = values[finite_states]
-
-                        scenarios: List[str] = list(np.asarray(statistic_data_frame.iloc[:, 2])[finite_states])
-                        log_names: List[str] = list(np.asarray(statistic_data_frame.iloc[:, 3])[finite_states])
-                        scenario_log_names: List[str] = []
-                        for scenario, log_name in zip(scenarios, log_names):
-                            scenario_log_names.append(scenario + " (" + log_name + ")")
-
-                        if values.dtype != "bool":
-                            values = np.round(values, 4)
-
-                        # Unit column index is 1
-                        unit = statistic_data_frame.iloc[0, 1]
-                        histogram_statistics = HistogramStatistics(
-                            unit=unit, values=values, scenarios=scenario_log_names
-                        )
-                        histogram_statistics_dict[statistic_name] = histogram_statistics
-
-                    histogram_data = HistogramData(
-                        experiment_index=index, planner_name=planner_name, statistics=histogram_statistics_dict
-                    )
-                    data[metric_statistics_dataframe.metric_statistic_name].append(histogram_data)
-
+                if histogram_data_list:
+                    data[metric_statistics_dataframe.metric_statistic_name] += histogram_data_list
         return data
-
-    def _compute_histogram_edges(self) -> HistogramEdgesDataType:
-        """
-        Compute histogram edges across different planners in the same metric statistics.
-        :return Histogram edge data.
-        """
-        histogram_edge_data: HistogramEdgesDataType = {}
-        if self._aggregated_data is None:
-            return histogram_edge_data
-
-        for metric_statistics_name, aggregated_histogram_data in self._aggregated_data.items():
-            if metric_statistics_name not in histogram_edge_data:
-                histogram_edge_data[metric_statistics_name] = {}
-            edge_data: Dict[str, HistogramEdgeData] = {}
-            for histogram_data in aggregated_histogram_data:
-                for statistic_name, statistic in histogram_data.statistics.items():
-                    unit = statistic.unit
-                    if unit in ["bool", "boolean"]:
-                        continue
-
-                    if statistic_name not in edge_data:
-                        edge_data[statistic_name] = HistogramEdgeData(unit=unit, values=statistic.values)
-                    else:
-                        edge_data[statistic_name].values = np.concatenate(
-                            [edge_data[statistic_name].values, statistic.values]
-                        )
-
-            for statistic_name, statistic_edge_data in edge_data.items():
-                unit = statistic_edge_data.unit
-                if unit in ["count"]:
-                    unique_values: npt.NDArray[np.float64] = np.unique(statistic_edge_data.values)
-                    histogram_edge_data[metric_statistics_name][statistic_name] = (
-                        None if not len(unique_values) else unique_values
-                    )
-                else:
-                    _, edges = np.histogram(statistic_edge_data.values, bins=self._bins)
-                    histogram_edge_data[metric_statistics_name][statistic_name] = None if not len(edges) else edges
-
-        return histogram_edge_data
 
     def _plot_bool_histogram(
         self,
@@ -531,6 +487,7 @@ class HistogramTab(BaseTab):
         planner_name: str,
         legend_name: str,
         color: str,
+        histogram_file_name: Optional[str] = None,
     ) -> None:
         """
         Plot boolean type of histograms.
@@ -540,17 +497,18 @@ class HistogramTab(BaseTab):
         :param planner_name: Planner name.
         :param legend_name: Legend name.
         :param color: Plot color.
+        :param histogram_file_name: Histogram file name for the histogram data.
         """
         # False and True
-        num_true = sum(values)
-        num_false = len(values) - num_true
+        num_true = np.nansum(values)
+        num_false = len(values[values == 0])
         scenario_names: List[List[str]] = [[] for _ in range(2)]  # False and True bins only
-
         # Get scenario names
         for index, scenario in enumerate(scenarios):
             scenario_name_index = 1 if values[index] else 0
             if not self._max_scenario_names or len(scenario_names[scenario_name_index]) < self._max_scenario_names:
                 scenario_names[scenario_name_index].append(scenario)
+
         scenario_names_flatten = ["<br>".join(names) if names else "" for names in scenario_names]
         counts: npt.NDArray[np.int64] = np.asarray([num_false, num_true])
         x_range = ["False", "True"]
@@ -564,6 +522,7 @@ class HistogramTab(BaseTab):
             color=color,
             scenario_names=scenario_names_flatten,
             x_values=x_values,
+            histogram_file_name=histogram_file_name,
         )
         counts = np.asarray(counts)
         if histogram_figure_data.frequency_array is None:
@@ -580,6 +539,7 @@ class HistogramTab(BaseTab):
         legend_name: str,
         color: str,
         edges: npt.NDArray[np.float64],
+        histogram_file_name: Optional[str] = None,
     ) -> None:
         """
         Plot count type of histograms.
@@ -590,6 +550,7 @@ class HistogramTab(BaseTab):
         :param legend_name: Legend name.
         :param color: Plot color.
         :param edges: Count edges.
+        :param histogram_file_name: Histogram file name for the histogram data.
         """
         uniques: Any = np.unique(values, return_inverse=True)
         unique_values: npt.NDArray[np.float64] = uniques[0]
@@ -597,10 +558,8 @@ class HistogramTab(BaseTab):
 
         counts = {value: 0 for value in edges}
         bin_count = np.bincount(unique_index)
-
         for index, count_value in enumerate(bin_count):
             counts[unique_values[index]] = count_value
-
         # Get scenario names
         scenario_names: List[List[str]] = [[] for _ in range(len(counts))]
         for index, bin_index in enumerate(unique_index):
@@ -620,6 +579,7 @@ class HistogramTab(BaseTab):
             scenario_names=scenario_names_flatten,
             width=0.1,
             x_values=category,
+            histogram_file_name=histogram_file_name,
         )
         if histogram_figure_data.frequency_array is None:
             histogram_figure_data.frequency_array = deepcopy(count_values)
@@ -635,6 +595,7 @@ class HistogramTab(BaseTab):
         legend_name: str,
         color: str,
         edges: npt.NDArray[np.float64],
+        histogram_file_name: Optional[str] = None,
     ) -> None:
         """
         Plot bin type of histograms.
@@ -645,6 +606,7 @@ class HistogramTab(BaseTab):
         :param legend_name: Legend name.
         :param color: Plot color.
         :param edges: Histogram bin edges.
+        :param histogram_file_name: Histogram file name for the histogram data.
         """
         hist, bins = np.histogram(values, bins=edges)
         value_bin_index: npt.NDArray[np.int64] = np.asarray(np.digitize(values, bins=bins[:-1]))
@@ -657,7 +619,7 @@ class HistogramTab(BaseTab):
         scenario_names_flatten = ["<br>".join(names) if names else "" for names in scenario_names]
 
         # Get x_values
-        bins = np.round(bins, 4)
+        bins = np.round(bins, HistogramTabFigureStyleConfig.decimal_places)
         x_values = [str(value) + ' - ' + str(bins[index + 1]) for index, value in enumerate(bins[:-1])]
         self.plot_histogram(
             histogram_figure_data=histogram_figure_data,
@@ -668,21 +630,21 @@ class HistogramTab(BaseTab):
             color=color,
             scenario_names=scenario_names_flatten,
             x_values=x_values,
+            histogram_file_name=histogram_file_name,
         )
         if histogram_figure_data.frequency_array is None:
             histogram_figure_data.frequency_array = deepcopy(hist)
         else:
             histogram_figure_data.frequency_array += hist
 
-    def _draw_histogram_data(self) -> HistogramFigureDataType:
+    def _draw_histogram_data(self) -> HistogramConstantConfig.HistogramFigureDataType:
         """
         Draw histogram data based on aggregated data.
         :return A dictionary of metric names and theirs histograms.
         """
-        histograms: HistogramFigureDataType = defaultdict()
+        histograms: HistogramConstantConfig.HistogramFigureDataType = defaultdict()
         if self._aggregated_data is None or self._histogram_edges is None:
             return histograms
-
         for metric_statistics_name, aggregated_histogram_data in self._aggregated_data.items():
             if metric_statistics_name not in histograms:
                 histograms[metric_statistics_name] = {}
@@ -699,22 +661,20 @@ class HistogramTab(BaseTab):
                 ]
                 for statistic_name, statistic in histogram_data.statistics.items():
                     unit = statistic.unit
-
+                    data: npt.NDArray[np.float64] = np.unique(
+                        self._histogram_edges[metric_statistics_name].get(statistic_name, None)
+                    )
+                    assert data is not None, f"Count edge data for {statistic_name} cannot be None!"
                     if statistic_name not in histograms[metric_statistics_name]:
-                        x_range: Optional[List[str]] = None
-                        # Boolean type of data
-                        if unit in ["bool", "boolean"]:
-                            x_range = ["False", "True"]
-                        elif unit in ["count"]:
-                            data = self._histogram_edges[metric_statistics_name].get(statistic_name, None)
-                            assert data is not None, f"Count edge data for {statistic_name} cannot be None!"
-                            x_range = [str(count) for count in data]
+                        x_range = get_histogram_plot_x_range(unit=unit, data=data)
                         histograms[metric_statistics_name][statistic_name] = self._render_histogram_plot(
-                            title=statistic_name, x_axis_label=unit, x_range=x_range
+                            title=statistic_name,
+                            x_axis_label=unit,
+                            x_range=x_range,
+                            histogram_file_name=histogram_data.histogram_file_name,
                         )
                     histogram_figure_data = histograms[metric_statistics_name][statistic_name]
                     values = statistic.values
-
                     # Boolean type of data
                     if unit in ["bool", "boolean"]:
                         self._plot_bool_histogram(
@@ -724,6 +684,7 @@ class HistogramTab(BaseTab):
                             planner_name=histogram_data.planner_name,
                             legend_name=legend_name,
                             color=color,
+                            histogram_file_name=histogram_data.histogram_file_name,
                         )
                     else:
                         edges = self._histogram_edges[metric_statistics_name][statistic_name]
@@ -740,6 +701,7 @@ class HistogramTab(BaseTab):
                                 legend_name=legend_name,
                                 color=color,
                                 edges=edges,
+                                histogram_file_name=histogram_data.histogram_file_name,
                             )
                         else:
                             self._plot_bin_histogram(
@@ -750,10 +712,21 @@ class HistogramTab(BaseTab):
                                 legend_name=legend_name,
                                 color=color,
                                 edges=edges,
+                                histogram_file_name=histogram_data.histogram_file_name,
                             )
 
+        # Make scenario type score always the first one
+        sorted_histograms = {}
+        if HistogramConstantConfig.SCENARIO_TYPE_SCORE_HISTOGRAM_NAME in histograms:
+            sorted_histograms[HistogramConstantConfig.SCENARIO_TYPE_SCORE_HISTOGRAM_NAME] = histograms[
+                HistogramConstantConfig.SCENARIO_TYPE_SCORE_HISTOGRAM_NAME
+            ]
         # Sort
-        sorted_histograms = {key: histograms[key] for key in sorted(histograms.keys(), reverse=False)}
+        sorted_histogram_keys = sorted(
+            (key for key in histograms.keys() if key != HistogramConstantConfig.SCENARIO_TYPE_SCORE_HISTOGRAM_NAME),
+            reverse=False,
+        )
+        sorted_histograms.update({key: histograms[key] for key in sorted_histogram_keys})
         return sorted_histograms
 
     def _render_histograms(self) -> List[column]:
@@ -767,10 +740,7 @@ class HistogramTab(BaseTab):
         if not layouts:
             layouts = [
                 column(
-                    self._default_div,
-                    css_classes=["histogram-plots"],
-                    width=800,
-                    name="histogram_plots",
+                    self._default_div, width=HistogramTabPlotConfig.default_width, **HistogramTabPlotConfig.get_config()
                 )
             ]
         return layouts

@@ -127,6 +127,16 @@ class NuPlanLaneConnector(LaneConnector):
         lane_connector_polygon_row = get_row_with_value(self._lane_connector_polygon_df, "lane_connector_fid", self.id)
         return lane_connector_polygon_row.geometry
 
+    def is_left_of(self, other: LaneConnector) -> bool:
+        """Inherited from superclass."""
+        # Due to lack of lane connector adjacency information, this always returns false
+        return False
+
+    def is_right_of(self, other: LaneConnector) -> bool:
+        """Inherited from superclass."""
+        # Due to lack of lane connector adjacency information, this always returns false
+        return False
+
     def get_roadblock_id(self) -> str:
         """Inherited from superclass."""
         return str(self._get_lane_connector()["lane_group_connector_fid"])

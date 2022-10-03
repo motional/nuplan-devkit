@@ -40,6 +40,22 @@ py_library(
 )
 
 py_library(
+    name = "kinematic_unicycle_layers_utils",
+    srcs = ["kinematic_unicycle_layers_utils.py"],
+    deps = [
+    ],
+)
+
+py_library(
+    name = "kinematic_unicycle_layer_rear_axle",
+    srcs = ["kinematic_unicycle_layer_rear_axle.py"],
+    deps = [
+        "//nuplan/planning/training/modeling/models/dynamics_layers:abstract_dynamics",
+        "//nuplan/planning/training/modeling/models/dynamics_layers:kinematic_unicycle_layers_utils",
+    ],
+)
+
+py_library(
     name = "deep_dynamical_system_layer",
     srcs = ["deep_dynamical_system_layer.py"],
     deps = [

@@ -109,7 +109,11 @@ class RemotePlanner(AbstractPlanner):
                 raise e
 
             planner_initializations.append(
-                chpb.PlannerInitializationLight(mission_goal=mission_goal, map_name=init.map_api.map_name)
+                chpb.PlannerInitializationLight(
+                    route_roadblock_ids=init.route_roadblock_ids,
+                    mission_goal=mission_goal,
+                    map_name=init.map_api.map_name,
+                )
             )
 
         return chpb.MultiPlannerInitializationLight(planner_initializations=planner_initializations)

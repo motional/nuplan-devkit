@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from functools import cached_property
-from typing import Any, Generator, List, Optional, Tuple, Type, cast
+from typing import Any, Generator, List, Optional, Set, Tuple, Type, cast
 
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
@@ -21,6 +21,7 @@ from nuplan.database.nuplan_db.nuplan_scenario_queries import (
     get_lidar_transform_matrix_for_lidarpc_token_from_db,
     get_lidarpc_token_timestamp_from_db,
     get_mission_goal_for_lidarpc_token_from_db,
+    get_roadblock_ids_for_lidarpc_token_from_db,
     get_sampled_ego_states_from_db,
     get_sampled_lidarpcs_from_db,
     get_statese2_for_lidarpc_token_from_db,
@@ -34,6 +35,7 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import (
     download_file_if_necessary,
     extract_lidarpc_tokens_as_scenario,
     extract_tracked_objects,
+    extract_tracked_objects_within_time_window,
 )
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
@@ -60,7 +62,7 @@ class NuPlanScenario(AbstractScenario):
         """
         Initialize the nuPlan scenario.
         :param data_root: The prefix for the log file. e.g. "/data/root/nuplan". For remote paths, this is where the file will be downloaded if necessary.
-        :param log_file_load_path: Name of the log that this scenario belongs to. e.g. "/data/sets/nuplan-v1.0/mini/2021.07.16.20.45.29_veh-35_01095_01486.db", "s3://path/to/db.db"
+        :param log_file_load_path: Name of the log that this scenario belongs to. e.g. "/data/sets/nuplan-v1.1/mini/2021.07.16.20.45.29_veh-35_01095_01486.db", "s3://path/to/db.db"
         :param initial_lidar_token: Token of the scenario's initial lidarpc.
         :param initial_lidar_timestamp: The timestamp of the initial lidarpc.
         :param scenario_type: Type of scenario (e.g. ego overtaking).
@@ -158,7 +160,7 @@ class NuPlanScenario(AbstractScenario):
         """
         return: Route roadblock ids extracted from expert trajectory.
         """
-        # TODO: update get_roadblock_ids_from_trajectory to take in generator
+        # TODO: remove this function in the next release (v0.12)
         expert_trajectory = list(self._extract_expert_trajectory())
         return get_roadblock_ids_from_trajectory(self.map_api, expert_trajectory)  # type: ignore
 
@@ -219,7 +221,9 @@ class NuPlanScenario(AbstractScenario):
 
     def get_route_roadblock_ids(self) -> List[str]:
         """Inherited, see superclass."""
-        return self._route_roadblock_ids
+        roadblock_ids = get_roadblock_ids_for_lidarpc_token_from_db(self._log_file, self._initial_lidar_token)
+        assert roadblock_ids is not None, "Unable to find Roadblock ids for current scenario"
+        return cast(List[str], roadblock_ids)
 
     def get_expert_goal_state(self) -> StateSE2:
         """Inherited, see superclass."""
@@ -238,6 +242,26 @@ class NuPlanScenario(AbstractScenario):
         assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration is out of scenario: {iteration}!"
         return DetectionsTracks(
             extract_tracked_objects(self._lidarpc_tokens[iteration], self._log_file, self._ground_truth_predictions)
+        )
+
+    def get_tracked_objects_within_time_window_at_iteration(
+        self,
+        iteration: int,
+        past_time_horizon: float,
+        future_time_horizon: float,
+        filter_track_tokens: Optional[Set[str]] = None,
+    ) -> DetectionsTracks:
+        """Inherited, see superclass."""
+        assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration is out of scenario: {iteration}!"
+        return DetectionsTracks(
+            extract_tracked_objects_within_time_window(
+                self._lidarpc_tokens[iteration],
+                self._log_file,
+                past_time_horizon,
+                future_time_horizon,
+                filter_track_tokens,
+                self._ground_truth_predictions,
+            )
         )
 
     def get_sensors_at_iteration(self, iteration: int) -> Sensors:

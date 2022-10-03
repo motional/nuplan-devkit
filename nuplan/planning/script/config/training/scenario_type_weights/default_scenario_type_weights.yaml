@@ -6,3 +6,6 @@ scenario_type_sampling_weights:
   enable: false
   scenario_type_weights:
     unknown: 1.0
+
+scenario_type_loss_weights:
+  unknown: 1.0

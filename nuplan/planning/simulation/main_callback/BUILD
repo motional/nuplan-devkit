@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,6 +27,7 @@ py_library(
     deps = [
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+        requirement("pyarrow"),
     ],
 )
 
@@ -51,7 +53,9 @@ py_library(
     name = "publisher_callback",
     srcs = ["publisher_callback.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+        requirement("boto3"),
     ],
 )
 
@@ -68,5 +72,21 @@ py_library(
     srcs = ["completion_callback.py"],
     deps = [
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+    ],
+)
+
+py_library(
+    name = "metric_summary_callback",
+    srcs = ["metric_summary_callback.py"],
+    deps = [
+        "//nuplan/planning/metrics:metric_dataframe",
+        "//nuplan/planning/nuboard/tabs/config:histogram_tab_config",
+        "//nuplan/planning/nuboard/utils",
+        "//nuplan/planning/nuboard/utils:nuboard_histogram_utils",
+        "//nuplan/planning/simulation/main_callback:abstract_main_callback",
+        requirement("matplotlib"),
+        requirement("numpy"),
+        requirement("pandas"),
+        requirement("tqdm"),
     ],
 )

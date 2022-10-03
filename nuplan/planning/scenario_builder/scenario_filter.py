@@ -16,6 +16,9 @@ class ScenarioFilter:
 
     num_scenarios_per_type: Optional[int]  # Number of scenarios per type
     limit_total_scenarios: Optional[Union[int, float]]  # Limit total scenarios (float = fraction, int = num)
+    timestamp_threshold_s: Optional[
+        float
+    ]  # Threshold for the interval of time between scenario initial lidar timestamps in seconds
 
     expand_scenarios: bool  # Whether to expand multi-sample scenarios to multiple single-sample scenarios
     remove_invalid_goals: bool  # Whether to remove scenarios where the mission goal is invalid

@@ -1,7 +1,21 @@
 _target_: nuplan.planning.scenario_builder.scenario_filter.ScenarioFilter
 _convert_: 'all'
 
-scenario_types: null                # List of scenario types to include
+scenario_types: # List of scenario types to include
+  - starting_left_turn
+  - starting_right_turn
+  - starting_straight_traffic_light_intersection_traversal
+  - stopping_with_lead
+  - high_lateral_acceleration
+  - high_magnitude_speed
+  - low_magnitude_speed
+  - traversing_pickup_dropoff
+  - waiting_for_pedestrian_to_cross
+  - behind_long_vehicle
+  - stationary_in_traffic
+  - near_multiple_vehicles
+  - changing_lane
+  - following_lane_with_lead
 scenario_tokens: null               # List of scenario tokens to include
 
 log_names: null                     # Filter scenarios by log names
@@ -9,6 +23,7 @@ map_names: null                     # Filter scenarios by map names
 
 num_scenarios_per_type: null        # Number of scenarios per type
 limit_total_scenarios: null         # Limit total scenarios (float = fraction, int = num) - this filter can be applied on top of num_scenarios_per_type
+timestamp_threshold_s: null         # Filter scenarios to ensure scenarios have more than `timestamp_threshold_s` seconds between their initial lidar timestamps
 
 expand_scenarios: false             # Whether to expand multi-sample scenarios to multiple single-sample scenarios
 remove_invalid_goals: true         # Whether to remove scenarios where the mission goal is invalid
