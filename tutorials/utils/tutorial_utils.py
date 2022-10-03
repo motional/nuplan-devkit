@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import numpy.typing as npt
 from bokeh.document.document import Document
-from bokeh.io import show
+from bokeh.io.notebook import show_app
 from bokeh.layouts import column
 
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
@@ -208,8 +208,13 @@ def serialize_scenario(
     return simulation_history
 
 
-def visualize_scenario(scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_visualization/') -> None:
-    """
+
+def visualize_scenario(
+    scenario: NuPlanScenario,
+    save_dir: str = '/tmp/scenario_visualization/',
+    notebook_url: str = "localhost:8888",
+    bokeh_port: int = 8889,
+) -> None:    """
     Visualize a scenario in Bokeh.
     :param scenario: Scenario object to be visualized.
     :param save_dir: Dir to save serialization and visualization artifacts.
@@ -220,11 +225,19 @@ def visualize_scenario(scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_
     simulation_scenario_key = save_scenes_to_dir(
         scenario=scenario, save_dir=save_dir, simulation_history=simulation_history
     )
-    visualize_scenarios([simulation_scenario_key], map_factory, Path(save_dir))
+    visualize_scenarios(
+        [simulation_scenario_key], map_factory, Path(save_dir), notebook_url=notebook_url, bokeh_port=bokeh_port
+    )
+
 
 
 def visualize_scenarios(
     simulation_scenario_keys: List[SimulationScenarioKey], map_factory: NuPlanMapFactory, save_path: Path
+    simulation_scenario_keys: List[SimulationScenarioKey],
+    map_factory: NuPlanMapFactory,
+    save_path: Path,
+    notebook_url: str = "localhost:8888",
+    bokeh_port: int = 8889,
 ) -> None:
     """
     Visualize scenarios in Bokeh.
@@ -267,7 +280,7 @@ def visualize_scenarios(
         doc.add_root(simulation_layouts)
         doc.add_next_tick_callback(complete_message)
 
-    show(bokeh_app)
+    show_app(bokeh_app, None, notebook_url, bokeh_port)
 
 
 def get_default_scenario_extraction(
@@ -324,7 +337,14 @@ def get_scenario_type_token_map(db_files: List[str]) -> Dict[str, List[Tuple[str
     return available_scenario_types
 
 
-def visualize_nuplan_scenarios(data_root: str, db_files: str, map_root: str, map_version: str) -> None:
+def visualize_nuplan_scenarios(
+    data_root: str,
+    db_files: str,
+    map_root: str,
+    map_version: str,
+    notebook_url: str = "localhost:8888",
+    bokeh_port: int = 8889,
+) -> None:
     """Create a dropdown box populated with unique scenario types to visualize from a database."""
     from IPython.display import clear_output, display
     from ipywidgets import Dropdown, Output
@@ -345,7 +365,7 @@ def visualize_nuplan_scenarios(data_root: str, db_files: str, map_root: str, map
             log_db_file, token = random.choice(scenario_type_token_map[scenario_type])
             scenario = get_default_scenario_from_token(data_root, log_db_file, token, map_root, map_version)
 
-            visualize_scenario(scenario)
+            visualize_scenario(scenario, notebook_url=notebook_url, bokeh_port=bokeh_port)
 
     display(drop_down)
     display(out)
