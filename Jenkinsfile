@@ -152,7 +152,7 @@ pipeline{
           //     --test_tag_filters=-gpu \
           //     //...
           // """
-          stash(name: "gpu_tests", includes: "README.md") // dummy stash to prevent errors
+          stash(name: "gpu_tests", includes: "README.md", allowEmpty: true) // dummy stash to prevent errors
           run_tests("gpu", "--test_tag_filters=-gpu --action_env=REQUIREMENTS_SHA=\"\$(sha256sum requirements.txt)\"")
           stash(name: "_gpu_coverage_report", includes: "_gpu_coverage_report.dat")
         }
