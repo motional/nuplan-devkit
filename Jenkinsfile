@@ -4,26 +4,13 @@ if (env.BRANCH_NAME != null && ! env.BRANCH_NAME.matches("^(master).*")) {
   jobManagement.abortPrevious()
 }
 
-def run_tests(type = "non_gpu", test_options = "",
-  requirements = "requirements.txt")
- {
-      sh """#!/bin/bash
-        set -eux
-        hostname # show current Pod hostname
-
-        echo 'Running unit tests...'
-
-        # cleanup old test results, before starting new coverage
-        TEST_LOGS_DIR=\$(${env.BAZEL_CMD} info bazel-testlogs 2</dev/null)
-        [ -d "\${TEST_LOGS_DIR}" ] && find \${TEST_LOGS_DIR} -name test.xml -delete
-
-        ${env.BAZEL_CMD} coverage \
-          ${env.BAZEL_OPTS} \
-          ${test_options} \
-          //...
-        rm -rf *coverage_report.dat
-        cp bazel-out/_coverage/_coverage_report.dat _${type}_coverage_report.dat && chmod +w _${type}_coverage_report.dat
-      """
+def publish_logs(prefix) {
+    sh """#!/bin/bash
+      set -eux
+      rm -rf reports
+      mkdir -p reports/${prefix}
+      find bazel-out/k8-fastbuild/testlogs/ -name 'test.xml' -exec cp --parents {} ${env.WORKSPACE}/reports/${prefix} \\;
+    """
 }
 
 pipeline{
@@ -62,7 +49,7 @@ pipeline{
     BAZEL_OPTS = "--local_cpu_resources=8 --jobs=8 --remote_cache=http://bazel-cache.ci.motional.com:80 --remote_upload_local_results=true"
 
     NUPLAN_DATA_ROOT         = "/data/sets/nuplan"
-    NUPLAN_DB_FILES          = "/data/sets/nuplan/nuplan-v1.1/mini"
+    NUPLAN_DB_FILES          = "/data/sets/nuplan/nuplan-v1.0/mini"
     NUPLAN_MAPS_ROOT         = "/data/sets/nuplan/maps"
     NUPLAN_MAP_VERSION       = "nuplan-maps-v1.0"
     NUPLAN_EXP_ROOT          = "/tmp/exp/nuplan"
@@ -144,17 +131,15 @@ pipeline{
     stage('Test') {
       steps {
         container('builder') {
-          
-          // sh """#!/bin/bash -eux
-          //   ${env.BAZEL_CMD} test \
-          //     ${env.BAZEL_OPTS} \
-          //     --action_env=REQUIREMENTS_SHA="\$(sha256sum requirements.txt)" \
-          //     --test_tag_filters=-gpu \
-          //     //...
-          // """
-          stash(name: "gpu_tests", includes: "README.md", allowEmpty: true) // dummy stash to prevent errors
-          run_tests("gpu", "--test_tag_filters=-gpu --action_env=REQUIREMENTS_SHA=\"\$(sha256sum requirements.txt)\"")
-          stash(name: "_gpu_coverage_report", includes: "_gpu_coverage_report.dat")
+          sh """#!/bin/bash -eux
+            ${env.BAZEL_CMD} test \
+              ${env.BAZEL_OPTS} \
+              --action_env=REQUIREMENTS_SHA="\$(sha256sum requirements.txt)" \
+              --test_tag_filters=-gpu \
+              //...
+          """
+          publish_logs('gpu_tests')
+          junit testResults: 'reports/**/test.xml', allowEmptyResults: true
         }
       }
     }
