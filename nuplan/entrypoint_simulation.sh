@@ -39,11 +39,15 @@ if [[ -n "${SCENARIO_FILTER_ID}" ]]; then
          +simulation="${NUPLAN_CHALLENGE}" \
          planner="${NUPLAN_PLANNER}" \
          worker=sequential \
+         scenario_builder=nuplan_challenge \
          scenario_builder.db_files="[${logs}]" \
+         scenario_filter=nuplan_challenge_scenarios \
          scenario_filter.scenario_tokens="[${tokens}]" \
          contestant_id=\"${CONTESTANT_ID}\" \
          submission_id=\"${SUBMISSION_ID}\" \
-         disable_callback_parallelization=true
+         disable_callback_parallelization=true \
+         main_callback.publisher_callback.s3_bucket="${NUPLAN_SERVER_S3_ROOT_URL}" \
+         main_callback.publisher_callback.remote_prefix="[\"${CONTESTANT_ID}\", \"${SUBMISSION_ID}\"]"
 else
     if [[ -z "${NUPLAN_CHALLENGE}" ]]; then
       export NUPLAN_CHALLENGE=open_loop_boxes
@@ -54,7 +58,7 @@ else
          worker=sequential \
          scenario_builder=nuplan_challenge \
          scenario_filter=nuplan_challenge_scenarios \
-         scenario_builder.db_files=/data/sets/nuplan/nuplan-v1.0/mini/2021.07.16.20.45.29_veh-35_01095_01486.db \
+         scenario_builder.db_files=/data/sets/nuplan/nuplan-v1.1/mini/2021.07.16.20.45.29_veh-35_01095_01486.db \
          scenario_filter.limit_total_scenarios=1 \
          contestant_id="${CONTESTANT_ID}" \
          submission_id="${SUBMISSION_ID}"

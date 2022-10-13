@@ -160,3 +160,10 @@ class AbstractMap(abc.ABC):
         :return: An array of shortest distance from each point to the nearest desired surface.
         """
         pass
+
+    @abc.abstractmethod
+    def initialize_all_layers(self) -> None:
+        """
+        Load all layers to vector map
+        """
+        pass

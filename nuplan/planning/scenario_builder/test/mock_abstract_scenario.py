@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -8,6 +8,7 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.test.test_utils import get_sample_agent
 from nuplan.common.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
 from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
@@ -101,6 +102,10 @@ class MockAbstractMap(AbstractMap):
         """Implemented. See interface."""
         raise NotImplementedError
 
+    def initialize_all_layers(self) -> None:
+        """Implemented. See interface."""
+        raise NotImplementedError
+
 
 class MockAbstractScenario(AbstractScenario):
     """Mock abstract scenario class used for testing."""
@@ -115,6 +120,7 @@ class MockAbstractScenario(AbstractScenario):
         number_of_detections: int = 10,
         initial_ego_state: StateSE2 = StateSE2(x=0.0, y=0.0, heading=0.0),
         mission_goal: StateSE2 = StateSE2(10, 0, 0),
+        tracked_object_types: List[TrackedObjectType] = [TrackedObjectType.VEHICLE],
     ):
         """
         Create mocked scenario where ego just goes straight with fixed velocity [m/s]
@@ -126,6 +132,7 @@ class MockAbstractScenario(AbstractScenario):
         :param number_of_detections: number of detections in the scenario
         :param initial_ego_state: Initial state of ego
         :param mission_goal: Dummy mission goal
+        :param tracked_object_types: FIXME
 
         """
         self._initial_time_us = initial_time_us
@@ -134,6 +141,7 @@ class MockAbstractScenario(AbstractScenario):
         self._number_of_future_iterations = number_of_future_iterations
         self._current_iteration = number_of_past_iterations
         self._total_iterations = number_of_past_iterations + number_of_future_iterations + 1
+        self._tracked_object_types = tracked_object_types
 
         # Create dummy ego trajectory
         acceleration = StateVector2D(0.0, 0.0)
@@ -162,7 +170,15 @@ class MockAbstractScenario(AbstractScenario):
         self._ego_states = planner.compute_trajectory([planner_input])[0].get_sampled_trajectory()
 
         self._tracked_objects = [
-            DetectionsTracks(TrackedObjects([get_sample_agent(token=str(idx)) for idx in range(number_of_detections)]))
+            DetectionsTracks(
+                TrackedObjects(
+                    [
+                        get_sample_agent(token=str(idx + type_idx * number_of_detections), agent_type=agent_type)
+                        for idx in range(number_of_detections)
+                        for type_idx, agent_type in enumerate(self._tracked_object_types)
+                    ]
+                )
+            )
             for _ in range(self._total_iterations)
         ]
         self._sensors = [
@@ -240,6 +256,16 @@ class MockAbstractScenario(AbstractScenario):
     def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
         """Implemented. See interface."""
         return self._tracked_objects[self._current_iteration + iteration]
+
+    def get_tracked_objects_within_time_window_at_iteration(
+        self,
+        iteration: int,
+        past_time_horizon: float,
+        future_time_horizon: float,
+        filter_track_tokens: Optional[Set[str]] = None,
+    ) -> DetectionsTracks:
+        """Implemented. See interface."""
+        raise NotImplementedError
 
     def get_sensors_at_iteration(self, iteration: int) -> Sensors:
         """Implemented. See interface."""

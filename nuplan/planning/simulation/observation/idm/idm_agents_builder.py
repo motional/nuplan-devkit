@@ -9,7 +9,7 @@ from nuplan.common.actor_state.oriented_box import OrientedBox
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
-from nuplan.common.maps.abstract_map_objects import GraphEdgeMapObject
+from nuplan.common.maps.abstract_map_objects import LaneGraphEdgeMapObject
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.idm.idm_agent import IDMAgent, IDMInitialState
 from nuplan.planning.simulation.observation.idm.idm_agent_manager import UniqueIDMAgents
@@ -23,7 +23,9 @@ from nuplan.planning.simulation.occupancy_map.strtree_occupancy_map import (
 logger = logging.getLogger(__name__)
 
 
-def get_starting_segment(agent: Agent, map_api: AbstractMap) -> Tuple[Optional[GraphEdgeMapObject], Optional[float]]:
+def get_starting_segment(
+    agent: Agent, map_api: AbstractMap
+) -> Tuple[Optional[LaneGraphEdgeMapObject], Optional[float]]:
     """
     Gets the map object that the agent is on and the progress along the segment.
     :param agent: The agent of interested.
@@ -37,7 +39,7 @@ def get_starting_segment(agent: Agent, map_api: AbstractMap) -> Tuple[Optional[G
     else:
         return None, None
 
-    segments: List[GraphEdgeMapObject] = map_api.get_all_map_objects(agent.center, layer)
+    segments: List[LaneGraphEdgeMapObject] = map_api.get_all_map_objects(agent.center, layer)
     if not segments:
         return None, None
 
@@ -138,6 +140,7 @@ def build_idm_agents_on_map_rails(
                 path_progress=progress,
                 predictions=agent.predictions,
             )
+            target_velocity = route.speed_limit_mps or target_velocity
             unique_agents[agent.track_token] = IDMAgent(
                 start_iteration=0,
                 initial_state=initial_state,

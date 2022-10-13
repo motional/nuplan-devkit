@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import torch
 
+from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.training.modeling.objectives.agents_imitation_objective import AgentsImitationObjective
 from nuplan.planning.training.preprocessing.features.agents_trajectories import AgentsTrajectories
 
@@ -32,7 +33,7 @@ class TestAgentImitationObjective(unittest.TestCase):
             )
         ]
 
-        self.objective = AgentsImitationObjective()
+        self.objective = AgentsImitationObjective(scenario_type_loss_weighting={})
 
     def test_compute_loss(self) -> None:
         """
@@ -40,9 +41,12 @@ class TestAgentImitationObjective(unittest.TestCase):
         """
         prediction = AgentsTrajectories(data=self.prediction_data)
         target = AgentsTrajectories(data=self.target_data)
+        scenarios = [CachedScenario(log_name='', token='lane_following_with_lead', scenario_type='') for _ in range(2)]
 
         loss = self.objective.compute(
-            {"agents_trajectory": prediction.to_feature_tensor()}, {"agents_trajectory": target.to_feature_tensor()}
+            {"agents_trajectory": prediction.to_feature_tensor()},
+            {"agents_trajectory": target.to_feature_tensor()},
+            scenarios,
         )
         self.assertEqual(loss, torch.tensor(0.5))
 
@@ -51,9 +55,12 @@ class TestAgentImitationObjective(unittest.TestCase):
         Test perfect prediction. The loss should be zero
         """
         target = AgentsTrajectories(data=self.target_data)
+        scenarios = [CachedScenario(log_name='', token='lane_following_with_lead', scenario_type='') for _ in range(2)]
 
         loss = self.objective.compute(
-            {"agents_trajectory": target.to_feature_tensor()}, {"agents_trajectory": target.to_feature_tensor()}
+            {"agents_trajectory": target.to_feature_tensor()},
+            {"agents_trajectory": target.to_feature_tensor()},
+            scenarios,
         )
         self.assertEqual(loss, torch.tensor(0.0))
 

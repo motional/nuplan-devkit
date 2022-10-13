@@ -20,7 +20,7 @@ defaults:
       - time_callback
       - metric_file_callback
       - metric_aggregator_callback
-
+      - metric_summary_callback
   - splitter: nuplan
 
   # Hyperparameters need to be specified
@@ -67,5 +67,5 @@ exit_on_failure: false
 max_callback_workers: 4
 
 # Disable callback parallelization when using the Sequential worker. By default, when running with the sequential worker,
-# on_simulation_end callbacks are submitted to a parallel worker.
-disable_callback_parallelization: false
+# on_simulation_end callbacks are not submitted to a parallel worker.
+disable_callback_parallelization: true

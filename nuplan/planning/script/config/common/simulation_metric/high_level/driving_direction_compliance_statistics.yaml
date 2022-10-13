@@ -5,7 +5,8 @@ driving_direction_compliance_statistics:
   category: 'Planning'
   metric_score_unit: 'bool'
 
-  driving_direction_violation_threshold: 1 # [m] Backward driving threshold
+  driving_direction_compliance_threshold: 2 # [m] Driving in opposite direction up to this threshold isn't considered violation
+  driving_direction_violation_threshold: 6 # [m] Driving in opposite direction above this threshold isn't tolerated
   time_horizon: 1 # [s] time horizon in which movement of the vehicle along baseline direction is computed.
 
   required_metrics:

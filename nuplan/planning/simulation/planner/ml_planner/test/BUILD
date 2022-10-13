@@ -18,6 +18,8 @@ py_test(
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/training/modeling/models:raster_model",
         "//nuplan/planning/training/modeling/models:simple_vector_map_model",
+        "//nuplan/planning/training/modeling/models:urban_driver_open_loop_model",
+        "//nuplan/planning/training/modeling/models:urban_driver_open_loop_model_utils",
         "//nuplan/planning/training/preprocessing/feature_builders:raster_feature_builder",
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
     ],

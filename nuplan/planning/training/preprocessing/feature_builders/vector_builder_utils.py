@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import numpy as np
 
@@ -249,6 +249,29 @@ def lane_segment_coords_from_lane_segment_vector(coords: List[List[List[float]]]
     return LaneSegmentCoords([(Point2D(start[0], start[1]), Point2D(end[0], end[1])) for start, end in coords])
 
 
+def prune_route_by_connectivity(route_roadblock_ids: List[str], roadblock_ids: Set[str]) -> List[str]:
+    """
+    Prune route by overlap with extracted roadblock elements within query radius to maintain connectivity in route
+    feature. Assumes route_roadblock_ids is ordered and connected to begin with.
+    :param route_roadblock_ids: List of roadblock ids representing route.
+    :param roadblock_ids: Set of ids of extracted roadblocks within query radius.
+    :return: List of pruned roadblock ids (connected and within query radius).
+    """
+    pruned_route_roadblock_ids: List[str] = []
+    route_start = False  # wait for route to come into query radius before declaring broken connection
+
+    for roadblock_id in route_roadblock_ids:
+
+        if roadblock_id in roadblock_ids:
+            pruned_route_roadblock_ids.append(roadblock_id)
+            route_start = True
+
+        elif route_start:  # connection broken
+            break
+
+    return pruned_route_roadblock_ids
+
+
 def get_lane_polylines(
     map_api: AbstractMap, point: Point2D, radius: float
 ) -> Tuple[MapObjectPolylines, MapObjectPolylines, MapObjectPolylines, LaneSegmentLaneIDs]:
@@ -316,15 +339,29 @@ def get_map_object_polygons(
     return MapObjectPolylines(polygons)
 
 
-def get_route_polygon_from_roadblock_ids(map_api: AbstractMap, route_roadblock_ids: List[str]) -> MapObjectPolylines:
+def get_route_polygon_from_roadblock_ids(
+    map_api: AbstractMap, point: Point2D, radius: float, route_roadblock_ids: List[str]
+) -> MapObjectPolylines:
     """
     Extract route polygon from map for route specified by list of roadblock ids. Polygon is represented as collection of
         polygons of roadblocks/roadblock connectors encompassing route.
     :param map_api: map to perform extraction on.
+    :param point: [m] x, y coordinates in global frame.
+    :param radius: [m] floating number about extraction query range.
     :param route_roadblock_ids: ids of roadblocks/roadblock connectors specifying route.
     :return: A route as sequence of roadblock/roadblock connector polygons.
     """
     route_polygons: List[List[Point2D]] = []
+
+    # extract roadblocks/connectors within query radius to limit route consideration
+    layer_names = [SemanticMapLayer.ROADBLOCK, SemanticMapLayer.ROADBLOCK_CONNECTOR]
+    layers = map_api.get_proximal_map_objects(point, radius, layer_names)
+    roadblock_ids: Set[str] = set()
+
+    for layer_name in layer_names:
+        roadblock_ids = roadblock_ids.union({map_object.id for map_object in layers[layer_name]})
+    # prune route by connected roadblocks within query radius
+    route_roadblock_ids = prune_route_by_connectivity(route_roadblock_ids, roadblock_ids)
 
     for route_roadblock_id in route_roadblock_ids:
         # roadblock
@@ -342,18 +379,29 @@ def get_route_polygon_from_roadblock_ids(map_api: AbstractMap, route_roadblock_i
 
 
 def get_route_lane_polylines_from_roadblock_ids(
-    map_api: AbstractMap, point: Point2D, route_roadblock_ids: List[str]
+    map_api: AbstractMap, point: Point2D, radius: float, route_roadblock_ids: List[str]
 ) -> MapObjectPolylines:
     """
     Extract route polylines from map for route specified by list of roadblock ids. Route is represented as collection of
         baseline polylines of all children lane/lane connectors or roadblock/roadblock connectors encompassing route.
     :param map_api: map to perform extraction on.
     :param point: [m] x, y coordinates in global frame.
+    :param radius: [m] floating number about extraction query range.
     :param route_roadblock_ids: ids of roadblocks/roadblock connectors specifying route.
     :return: A route as sequence of lane/lane connector polylines.
     """
     route_lane_polylines: List[List[Point2D]] = []  # shape: [num_lanes, num_points_per_lane (variable), 2]
     map_objects = []
+
+    # extract roadblocks/connectors within query radius to limit route consideration
+    layer_names = [SemanticMapLayer.ROADBLOCK, SemanticMapLayer.ROADBLOCK_CONNECTOR]
+    layers = map_api.get_proximal_map_objects(point, radius, layer_names)
+    roadblock_ids: Set[str] = set()
+
+    for layer_name in layer_names:
+        roadblock_ids = roadblock_ids.union({map_object.id for map_object in layers[layer_name]})
+    # prune route by connected roadblocks within query radius
+    route_roadblock_ids = prune_route_by_connectivity(route_roadblock_ids, roadblock_ids)
 
     for route_roadblock_id in route_roadblock_ids:
         # roadblock
@@ -387,6 +435,8 @@ def get_on_route_status(
     :return on_route_status: binary encoding of on route status for each input roadblock id.
     """
     if route_roadblock_ids:
+        # prune route to extracted roadblocks maintaining connectivity
+        route_roadblock_ids = prune_route_by_connectivity(route_roadblock_ids, set(roadblock_ids.roadblock_ids))
 
         # initialize on route status as OFF_ROUTE
         on_route_status = np.full(
@@ -567,7 +617,7 @@ def get_neighbor_vector_set_map(
 
     # extract route
     if VectorFeatureLayer.ROUTE_LANES in feature_layers:
-        route_polylines = get_route_lane_polylines_from_roadblock_ids(map_api, point, route_roadblock_ids)
+        route_polylines = get_route_lane_polylines_from_roadblock_ids(map_api, point, radius, route_roadblock_ids)
         coords[VectorFeatureLayer.ROUTE_LANES.name] = route_polylines
 
     # extract generic map objects

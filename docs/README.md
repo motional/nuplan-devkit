@@ -10,9 +10,11 @@ ______________________________________________________________________
   <a href="https://www.nuscenes.org/nuplan#download">Download</a> •
   <a href="#citation">Citation</a><br>
   <a href="#changelog">Changelog</a> •
-  <a href="#devkit-structure">Structure</a><br>
-  <a href="https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md">Setup</a> •
-  <a href="https://github.com/motional/nuplan-devkit/blob/master/tutorials/nuplan_framework.ipynb">Tutorial</a>
+  <a href="#devkit-structure">Structure</a> •
+  <a href="https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md">Setup</a> <br>
+  <a href="https://github.com/motional/nuplan-devkit/blob/master/tutorials/nuplan_framework.ipynb">Tutorial</a> •
+  <a href="https://nuplan-devkit.readthedocs.io/en/latest/">Documentation</a> •
+  <a href="https://eval.ai/web/challenges/challenge-page/1856/overview">Competition</a>
 </p>
 
 [![python](https://img.shields.io/badge/python-%20%203.9-blue.svg)]()
@@ -28,13 +30,17 @@ ______________________________________________________________________
 </div>
 
 ______________________________________________________________________
-## nuPlan Planning Challenge is live!
-The nuPlan Planning Challenge is now live! The warm-up stage has begun. Please check our competition landing [page](https://nuplan-devkit.readthedocs.io/en/latest/).
+## Planning challenges
+#### The nuPlan Planning Competition has been postponed to January 2023.
+#### The nuPlan Dataset v1.1 has been released. Please download the latest dataset from the nuPlan [page](https://www.nuscenes.org/nuplan#download).
 ______________________________________________________________________
 
 ## Changelog
+- Oct 13th 2022
+  * v1.1 Dataset: Full nuPlan dataset - improved route plan, traffic light status, mission goal and more!
+  * v1.0 Devkit: Update to nuplan-v1.1 dataset, metrics improvements, route plan fixes, documentation, IDMPlanner
 - Sep 09 2022
-  * v0.6 Devkit: COMPETITION WARM-UP PHASE RELEASE - smart agents optimizations, nuBoard improvements, metrics improvements, submission pipeline deployment and documentation.
+  * v0.6 Devkit: Smart agents optimizations, nuBoard improvements, metrics improvements, submission pipeline deployment and documentation.
 - Aug 26 2022
   * v0.5 Devkit: New map features, simulation improvements, open-loop detections with smart agents, iLQR tracker, metrics improvements and documentation.
 - Aug 05 2022
@@ -54,9 +60,9 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 ## Devkit and dataset setup
-Please refer to the [installation page](https://github.com/motional/nuplan-devkit/blob/master/docs/installation.md) for detailed instructions on how to setup the devkit.
+Please refer to the [installation page](https://nuplan-devkit.readthedocs.io/en/latest/installation.html) for detailed instructions on how to setup the devkit.
 
-Please refer to the [dataset page](https://github.com/motional/nuplan-devkit/blob/master/docs/dataset_setup.md) for detailed instructions on how to download and setup the dataset.
+Please refer to the [dataset page](https://nuplan-devkit.readthedocs.io/en/latest/dataset_setup.html) for detailed instructions on how to download and setup the dataset.
 
 ______________________________________________________________________
 
@@ -83,6 +89,11 @@ Please follow these steps to make yourself familiar with the nuPlan dataset:
 
 ______________________________________________________________________
 
+## Performance tuning guide
+Training configurations are important to ensure your expected system performance, for example preprocessing cost, training speed, and numerical stability. If you encounter problems related to aforementioned aspects, please refer to [performance tuning guide](https://github.com/motional/nuplan-devkit/blob/master/docs/performance_tuning_guide.md) to find potential solutions.
+
+______________________________________________________________________
+
 ## Devkit structure
 Our code is organized in these directories:
 
@@ -93,11 +104,13 @@ nuplan_devkit
 ├── nuplan          - The main source folder.
 │   ├── common      - Code shared by "database" and "planning".
 │   ├── database    - The core devkit used to load and render nuPlan dataset and maps.
-│   └── planning    - The stand-alone planning framework for simulation, training and evaluation.
+│   ├── planning    - The stand-alone planning framework for simulation, training and evaluation.
+│   ├── submission  - The submission engine used for the planning challenge.
 │   └── cli         - Command line interface tools for the nuPlan database.
 └── tutorials       - Interactive tutorials, see "Getting started".
 ```
 ______________________________________________________________________
+
 
 ## Citation
 Please use the following citation when referencing [nuPlan](https://arxiv.org/abs/2106.11810):

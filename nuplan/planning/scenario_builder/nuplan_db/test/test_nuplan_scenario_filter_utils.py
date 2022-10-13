@@ -1,9 +1,15 @@
 import unittest
-from typing import Dict, List
+from typing import Any, Callable, Dict, List
+from unittest.mock import Mock, patch
 
 from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import filter_total_num_scenarios
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
+    filter_scenarios_by_timestamp,
+    filter_total_num_scenarios,
+)
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import DEFAULT_SCENARIO_NAME
+from nuplan.planning.utils.multithreading.worker_utils import WorkerPool
 
 
 class TestNuPlanScenarioFilterUtils(unittest.TestCase):
@@ -31,6 +37,42 @@ class TestNuPlanScenarioFilterUtils(unittest.TestCase):
                 for i in range(120)
             ],
         }
+
+    def _get_mock_nuplan_scenario_dict_for_timestamp_filtering(self) -> Dict[str, List[CachedScenario]]:
+        """Gets mock scenario dict."""
+        mock_scenario_dict = {
+            DEFAULT_SCENARIO_NAME: [Mock(NuPlanScenario) for _ in range(0, 100, 3)],
+            'lane_following_with_lead': [Mock(NuPlanScenario) for _ in range(0, 100, 6)],
+            'lane_following_without_lead': [Mock(NuPlanScenario) for _ in range(3)],
+        }
+
+        for i in range(0, len(mock_scenario_dict[DEFAULT_SCENARIO_NAME]) * int(1e6), int(1e6)):
+            mock_scenario_dict[DEFAULT_SCENARIO_NAME][int(i / 1e6)]._initial_lidar_timestamp = i * 3
+        for i in range(0, len(mock_scenario_dict['lane_following_with_lead']) * int(1e6), int(1e6)):
+            mock_scenario_dict['lane_following_with_lead'][int(i / 1e6)]._initial_lidar_timestamp = i * 6
+
+        mock_scenario_dict['lane_following_without_lead'][0]._initial_lidar_timestamp = 5.0 * int(1e6)
+        mock_scenario_dict['lane_following_without_lead'][1]._initial_lidar_timestamp = 100.0 * int(1e6)
+        mock_scenario_dict['lane_following_without_lead'][2]._initial_lidar_timestamp = 6.0 * int(1e6)
+
+        return mock_scenario_dict
+
+    def _get_mock_worker_map(self) -> Callable[..., List[Any]]:
+        """
+        Gets mock worker_map function.
+        """
+
+        def mock_worker_map(worker: WorkerPool, fn: Callable[..., List[Any]], input_objects: List[Any]) -> List[Any]:
+            """
+            Mock function for worker_map
+            :param worker: Worker pool
+            :param fn: Callable function
+            :param input_objects: List of objects to be used as input
+            :return: List of output objects
+            """
+            return fn(input_objects)
+
+        return mock_worker_map
 
     def test_filter_total_num_scenarios_int_max_scenarios_requires_removing_known_scenario_types(self) -> None:
         """
@@ -192,6 +234,37 @@ class TestNuPlanScenarioFilterUtils(unittest.TestCase):
             len(final_scenario_dict['unprotected_left_turn']), len(mock_scenario_dict['unprotected_left_turn'])
         )
         self.assertEqual(sum(len(scenarios) for scenarios in final_scenario_dict.values()), limit_total_scenarios)
+
+    def test_filter_scenarios_by_timestamp(self) -> None:
+        """
+        Tests filter_scenarios_by_timestamp with default threshold
+        """
+        mock_worker_map = self._get_mock_worker_map()
+        mock_nuplan_scenario_dict = self._get_mock_nuplan_scenario_dict_for_timestamp_filtering()
+        with patch(
+            "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils.worker_map", mock_worker_map
+        ):
+            final_scenario_dict = filter_scenarios_by_timestamp(mock_nuplan_scenario_dict.copy())
+            # final_scenario_dict['lane_following_with_lead'] bins (bucket to list of initial lidar timestamps) before filtering
+            # {5: [0], 10: [6], 15: [12], 20: [18], 25: [24], 35: [30], 40: [36], 45: [42], 50: [48],
+            # 55: [54], 65: [60], 70: [66], 75: [72], 80: [78], 85: [84], 95: [90], 100: [96]}
+            self.assertEqual(
+                len(final_scenario_dict['lane_following_with_lead']),
+                len(mock_nuplan_scenario_dict['lane_following_with_lead']),
+            )
+            # final_scenario_dict[DEFAULT_SCENARIO_NAME] bins (bucket to list of initial lidar timestamps) before filtering
+            # {5: [0, 3], 10: [6, 9], 15: [12], 20: [15, 18], 25: [21, 24], 30: [27], 35: [30, 33],
+            # 40: [36, 39], 45: [42], 50: [45, 48], 55: [51, 54], 60: [57], 65: [60, 63], 70: [66, 69],
+            # 75: [72], 80: [75, 78], 85: [81, 84], 90: [87], 95: [90, 93], 100: [96, 99]}
+            self.assertEqual(
+                len(final_scenario_dict[DEFAULT_SCENARIO_NAME]),
+                len(mock_nuplan_scenario_dict[DEFAULT_SCENARIO_NAME]) * 0.5,
+            )
+            # check that error is not thrown when there are no scenarios in the bins in between
+            self.assertEqual(
+                len(final_scenario_dict['lane_following_without_lead']),
+                len(mock_nuplan_scenario_dict['lane_following_without_lead']) - 1,
+            )
 
 
 if __name__ == '__main__':

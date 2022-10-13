@@ -1,4 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,7 +15,10 @@ py_library(
 py_library(
     name = "logging_builder",
     srcs = ["logging_builder.py"],
-    deps = [],
+    deps = [
+        requirement("tqdm"),
+        requirement("omegaconf"),
+    ],
 )
 
 py_library(
@@ -88,6 +93,7 @@ py_library(
         "//nuplan/planning/scenario_builder:abstract_scenario_builder",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script/builders/utils:utils_type",
+        requirement("pyogrio"),
     ],
 )
 
@@ -161,6 +167,7 @@ py_library(
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/script/builders:scenario_building_builder",
         "//nuplan/planning/script/builders:scenario_filter_builder",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
         "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/utils/multithreading:worker_pool",
         "//nuplan/planning/utils/multithreading:worker_utils",
@@ -187,6 +194,7 @@ py_library(
         "//nuplan/planning/training/modeling:torch_module_wrapper",
         "//nuplan/planning/training/preprocessing:feature_preprocessor",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement_torch("pytorch-lightning"),
     ],
 )
 
@@ -241,6 +249,7 @@ py_library(
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
         "//nuplan/planning/simulation/main_callback:metric_aggregator_callback",
         "//nuplan/planning/simulation/main_callback:metric_file_callback",
+        "//nuplan/planning/simulation/main_callback:metric_summary_callback",
         "//nuplan/planning/simulation/main_callback:multi_main_callback",
         "//nuplan/planning/simulation/main_callback:publisher_callback",
         "//nuplan/planning/simulation/main_callback:time_callback",
@@ -282,5 +291,14 @@ py_library(
     srcs = ["training_callback_builder.py"],
     deps = [
         "//nuplan/planning/script/builders/utils:utils_type",
+    ],
+)
+
+py_library(
+    name = "lr_scheduler_builder",
+    srcs = ["lr_scheduler_builder.py"],
+    deps = [
+        "//nuplan/planning/script/builders/utils:utils_type",
+        "//nuplan/planning/utils/lr_schedulers:sequential_lr_scheduler",
     ],
 )

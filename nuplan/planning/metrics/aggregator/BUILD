@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,6 +13,7 @@ py_library(
     srcs = ["abstract_metric_aggregator.py"],
     deps = [
         "//nuplan/planning/metrics:metric_dataframe",
+        requirement("pyarrow"),
     ],
 )
 

@@ -31,7 +31,7 @@ class MetricAggregatorCallback(AbstractMainCallback):
             # Load metric parquet files
             metric_dataframes = {}
 
-            metrics = self._metric_save_path.rglob("*")
+            metrics = self._metric_save_path.rglob("*.parquet")
             if metric_aggregator.challenge is None:
                 challenge_metrics = list(metrics)
             else:
@@ -50,7 +50,7 @@ class MetricAggregatorCallback(AbstractMainCallback):
                 logger.info(f"Running metric aggregator: {metric_aggregator.name}")
                 metric_aggregator(metric_dataframes=metric_dataframes)
             else:
-                logger.warning("No metric files found for aggregation!")
+                logger.warning(f"{metric_aggregator.name}: No metric files found for aggregation!")
 
         end_time = time.perf_counter()
         elapsed_time_s = end_time - start_time

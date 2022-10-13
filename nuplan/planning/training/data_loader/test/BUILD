@@ -1,4 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -7,6 +9,7 @@ py_library(
     srcs = ["skeleton_test_dataloader.py"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
@@ -22,6 +25,8 @@ py_library(
         "//nuplan/planning/training/preprocessing/target_builders:ego_trajectory_target_builder",
         "//nuplan/planning/training/preprocessing/test:dummy_vectormap_builder",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("ray"),
+        requirement_torch("pytorch-lightning"),
     ],
 )
 
@@ -55,5 +60,6 @@ py_test(
     srcs = ["test_distributed_sampler_wrapper.py"],
     deps = [
         "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
+        requirement_torch("torch"),
     ],
 )

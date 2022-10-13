@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,6 +18,8 @@ py_test(
     srcs = ["test_geometry.py"],
     deps = [
         "//nuplan/database/utils:geometry",
+        requirement("numpy"),
+        requirement("pyquaternion"),
     ],
 )
 
@@ -28,6 +31,8 @@ py_test(
         "//nuplan/database/utils:geometry",
         "//nuplan/database/utils:measure",
         "//nuplan/database/utils/boxes:box3d",
+        requirement("numpy"),
+        requirement("pyquaternion"),
     ],
 )
 
@@ -37,5 +42,7 @@ py_test(
     srcs = ["test_plot.py"],
     deps = [
         "//nuplan/database/utils:plot",
+        requirement("numpy"),
+        requirement("Pillow"),
     ],
 )

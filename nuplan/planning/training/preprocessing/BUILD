@@ -13,6 +13,7 @@ py_library(
     srcs = ["feature_preprocessor.py"],
     deps = [
         "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
         "//nuplan/planning/training/preprocessing/target_builders:abstract_target_builder",

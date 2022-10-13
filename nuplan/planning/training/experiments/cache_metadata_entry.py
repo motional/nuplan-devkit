@@ -1,4 +1,5 @@
 import logging
+import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, List, Optional, cast
@@ -52,12 +53,16 @@ def save_cache_metadata(cache_metadata_entries: List[CacheMetadataEntry], cache_
     # Convert list of dataclasses into list of dictionaries
     cache_metadata_entries_dicts = [asdict(entry) for entry in cache_metadata_entries]
     cache_name = cache_path.name
-
+    using_s3_cache_path = str(cache_path).startswith('s3:/')
     # Convert s3 path into proper string format
-    sanitised_cache_path = sanitise_s3_path(cache_path)
-    cache_metadata_storage_path = f'{sanitised_cache_path}/metadata/{cache_name}_metadata_node_{node_id}.csv'
-    logger.info(f'Using cache_metadata_storage_path: {cache_metadata_storage_path}')
+    sanitized_cache_path = sanitize_s3_path(cache_path) if using_s3_cache_path else str(cache_path)
 
+    cache_metadata_storage_path = os.path.join(
+        sanitized_cache_path, 'metadata', f'{cache_name}_metadata_node_{node_id}.csv'
+    )
+    if not using_s3_cache_path:
+        Path(cache_metadata_storage_path).parent.mkdir(parents=True, exist_ok=True)
+    logger.info(f'Using cache_metadata_storage_path: {cache_metadata_storage_path}')
     pd.DataFrame(cache_metadata_entries_dicts).to_csv(cache_metadata_storage_path, index=False)
 
 
@@ -71,7 +76,7 @@ def _read_metadata_from_s3(inputs: List[ReadMetadataFromS3Input]) -> List[CacheM
     if len(inputs) == 0:
         return outputs
 
-    sanitized_cache_path = sanitise_s3_path(inputs[0].cache_path)
+    sanitized_cache_path = sanitize_s3_path(inputs[0].cache_path)
     s3_store = S3Store(sanitized_cache_path)
 
     for input_value in inputs:
@@ -101,9 +106,9 @@ def read_cache_metadata(
     return cast(List[CacheMetadataEntry], result)
 
 
-def sanitise_s3_path(s3_path: Path) -> str:
+def sanitize_s3_path(s3_path: Path) -> str:
     """
-    Sanitises s3 paths from Path objects to string.
+    Sanitizes s3 paths from Path objects to string.
     :param s3_path: Path object of s3 path
     :return: s3 path with the correct format as a string.
     """

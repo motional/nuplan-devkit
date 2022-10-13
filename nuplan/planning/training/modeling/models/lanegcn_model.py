@@ -166,7 +166,7 @@ class LaneGCN(TorchModuleWrapper):
         # Map and agent features have different size across batch so we use per sample feature extraction
         for sample_idx in range(batch_size):
 
-            sample_ego_feature = self.ego_feature_extractor(ego_past_trajectory[sample_idx].view(1, -1))
+            sample_ego_feature = self.ego_feature_extractor(ego_past_trajectory[sample_idx].reshape(1, -1))
             sample_ego_center = ego_agent_features.get_ego_agents_center_in_sample(sample_idx)
 
             # Check for empty vector map input

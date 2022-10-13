@@ -322,7 +322,7 @@ class TestLaneGCN(unittest.TestCase):
     def test_backprop(self) -> None:
         """
         Tests that the LaneGCN model can train with DDP.
-        This test was developed in response to an error related to zero agent input
+        This test was developed in response to an error related to zero agent input.
         """
         self._init_distributed_process_group()
 

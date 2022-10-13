@@ -1,6 +1,6 @@
 import pickle
 import sqlite3
-from typing import Generator, List, Optional, Tuple, Union
+from typing import Generator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 from pyquaternion import Quaternion
@@ -19,6 +19,49 @@ from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLig
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
 from nuplan.database.nuplan_db.query_session import execute_many, execute_one
 from nuplan.database.utils.label.utils import local2agent_type, raw_mapping
+
+
+def _parse_tracked_object_row(row: sqlite3.Row) -> TrackedObject:
+    """
+    A convenience method to parse a TrackedObject from a sqlite3 row.
+    :param row: The row from the DB query.
+    :return: The parsed TrackedObject.
+    """
+    category_name = row["category_name"]
+    pose = StateSE2(row["x"], row["y"], row["yaw"])
+    oriented_box = OrientedBox(pose, width=row["width"], length=row["length"], height=row["height"])
+
+    # These next two are globals
+    label_local = raw_mapping["global2local"][category_name]
+    tracked_object_type = TrackedObjectType[local2agent_type[label_local]]
+
+    if tracked_object_type in AGENT_TYPES:
+        return Agent(
+            tracked_object_type=tracked_object_type,
+            oriented_box=oriented_box,
+            velocity=StateVector2D(row["vx"], row["vy"]),
+            predictions=[],  # to be filled in later
+            angular_velocity=np.nan,
+            metadata=SceneObjectMetadata(
+                token=row["token"].hex(),
+                track_token=row["track_token"].hex(),
+                track_id=None,
+                timestamp_us=row["timestamp"],
+                category_name=category_name,
+            ),
+        )
+    else:
+        return StaticObject(
+            tracked_object_type=tracked_object_type,
+            oriented_box=oriented_box,
+            metadata=SceneObjectMetadata(
+                token=row["token"].hex(),
+                track_token=row["track_token"].hex(),
+                track_id=None,
+                timestamp_us=row["timestamp"],
+                category_name=category_name,
+            ),
+        )
 
 
 def get_lidarpc_token_by_index_from_db(log_file: str, index: int) -> Optional[str]:
@@ -231,6 +274,27 @@ def get_mission_goal_for_lidarpc_token_from_db(log_file: str, token: str) -> Opt
 
     q = Quaternion(row["qw"], row["qx"], row["qy"], row["qz"])
     return StateSE2(row["x"], row["y"], q.yaw_pitch_roll[0])
+
+
+def get_roadblock_ids_for_lidarpc_token_from_db(log_file: str, lidarpc_token: str) -> Optional[List[str]]:
+    """
+    Get the scene roadblock ids from the db for a given lidar_pc token.
+    :param log_file: The db file to query.
+    :param lidarpc_token: The token for which to query the current state.
+    :return: List of roadblock ids as str.
+    """
+    query = """
+        SELECT  s.roadblock_ids
+        FROM scene AS s
+        INNER JOIN lidar_pc AS lp
+            ON lp.scene_token = s.token
+        WHERE lp.token = ?
+    """
+    # Each row is a space-separated list of route roadblock IDS, e.g. "123 234 345"
+    row = execute_one(query, (bytearray.fromhex(lidarpc_token),), log_file)
+    if row is None:
+        return None
+    return str(row["roadblock_ids"]).split(" ")
 
 
 def get_statese2_for_lidarpc_token_from_db(log_file: str, token: str) -> Optional[StateSE2]:
@@ -522,6 +586,64 @@ def get_traffic_light_status_for_lidarpc_token_from_db(
         )
 
 
+def get_tracked_objects_within_time_interval_from_db(
+    log_file: str, start_timestamp: int, end_timestamp: int, filter_track_tokens: Optional[Set[str]] = None
+) -> Generator[TrackedObject, None, None]:
+    """
+    Gets all of the tracked objects between the provided timestamps, inclusive.
+    Optionally filters on a user-provided set of track tokens.
+
+    This query will not obtain the future waypoints.
+    For that, call `get_future_waypoints_for_agents_from_db()`
+    with the tokens of the agents of interest.
+
+    :param log_file: The log file to query.
+    :param start_timestamp: The starting timestamp for which to query, in uS.
+    :param end_timestamp: The ending timestamp for which to query, in uS.
+    :param filter_track_tokens: If provided, only agents with `track_tokens` present in the provided set will be returned.
+      If not provided, then all agents present at every time stamp will be returned.
+    :return: A generator of TrackedObjects, sorted by TimeStamp, then TrackedObject.
+    """
+    args: List[Union[int, bytearray]] = [start_timestamp, end_timestamp]
+
+    filter_clause = ""
+    if filter_track_tokens is not None:
+        filter_clause = """
+            AND lb.track_token IN ({('?,'*len(filter_track_tokens))[:-1]})
+        """
+        for token in filter_track_tokens:
+            args.append(bytearray.fromhex(token))
+
+    query = f"""
+        SELECT  c.name AS category_name,
+                lb.x,
+                lb.y,
+                lb.z,
+                lb.yaw,
+                lb.width,
+                lb.length,
+                lb.height,
+                lb.vx,
+                lb.vy,
+                lb.token,
+                lb.track_token,
+                lp.timestamp
+        FROM lidar_box AS lb
+        INNER JOIN track AS t
+            ON t.token = lb.track_token
+        INNER JOIN category AS c
+            ON c.token = t.category_token
+        INNER JOIN lidar_pc AS lp
+            ON lp.token = lb.lidar_pc_token
+        WHERE lp.timestamp >= ?
+            AND lp.timestamp <= ?
+            {filter_clause}
+        ORDER BY lp.timestamp ASC, lb.track_token ASC;
+    """
+    for row in execute_many(query, args, log_file):
+        yield _parse_tracked_object_row(row)
+
+
 def get_tracked_objects_for_lidarpc_token_from_db(log_file: str, token: str) -> Generator[TrackedObject, None, None]:
     """
     Get all tracked objects for a given lidar_pc.
@@ -561,41 +683,7 @@ def get_tracked_objects_for_lidarpc_token_from_db(log_file: str, token: str) -> 
     """
 
     for row in execute_many(query, (bytearray.fromhex(token),), log_file):
-        category_name = row["category_name"]
-        pose = StateSE2(row["x"], row["y"], row["yaw"])
-        oriented_box = OrientedBox(pose, width=row["width"], length=row["length"], height=row["height"])
-
-        # These next two are globals
-        label_local = raw_mapping["global2local"][category_name]
-        tracked_object_type = TrackedObjectType[local2agent_type[label_local]]
-
-        if tracked_object_type in AGENT_TYPES:
-            yield Agent(
-                tracked_object_type=tracked_object_type,
-                oriented_box=oriented_box,
-                velocity=StateVector2D(row["vx"], row["vy"]),
-                predictions=[],  # to be filled in later
-                angular_velocity=np.nan,
-                metadata=SceneObjectMetadata(
-                    token=row["token"].hex(),
-                    track_token=row["track_token"].hex(),
-                    track_id=None,
-                    timestamp_us=row["timestamp"],
-                    category_name=category_name,
-                ),
-            )
-        else:
-            yield StaticObject(
-                tracked_object_type=tracked_object_type,
-                oriented_box=oriented_box,
-                metadata=SceneObjectMetadata(
-                    token=row["token"].hex(),
-                    track_token=row["track_token"].hex(),
-                    track_id=None,
-                    timestamp_us=row["timestamp"],
-                    category_name=category_name,
-                ),
-            )
+        yield _parse_tracked_object_row(row)
 
 
 def get_future_waypoints_for_agents_from_db(

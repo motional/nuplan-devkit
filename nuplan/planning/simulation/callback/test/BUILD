@@ -1,4 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -30,6 +32,7 @@ py_test(
         "//nuplan/planning/simulation/simulation_time_controller:abstract_simulation_time_controller",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+        requirement("msgpack"),
     ],
 )
 
@@ -66,6 +69,8 @@ py_test(
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        requirement_torch("torch"),
+        requirement_torch("tensorboard"),
     ],
 )
 

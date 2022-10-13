@@ -262,4 +262,6 @@ class DataModule(pl.LightningDataModule):
         :param device: Desired device.
         :return: Batch in new device.
         """
-        return tuple(move_features_type_to_device(features, device) for features in batch)
+        return tuple(
+            (move_features_type_to_device(batch[0], device), move_features_type_to_device(batch[1], device), batch[2])
+        )

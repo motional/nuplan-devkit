@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -40,6 +41,8 @@ py_library(
     deps = [
         "//nuplan/common/utils:helpers",
         "//nuplan/database/maps_db:metadata",
+        requirement("opencv-python"),
+        requirement("geopandas"),
     ],
 )
 
@@ -53,6 +56,10 @@ py_library(
         "//nuplan/database/maps_db:layer",
         "//nuplan/database/maps_db:layer_dataset_ops",
         "//nuplan/database/maps_db:metadata",
+        requirement("rasterio"),
+        requirement("fiona"),
+        requirement("pyogrio"),
+        requirement("geopandas"),
     ],
 )
 
@@ -73,5 +80,6 @@ py_library(
     srcs = ["map_explorer.py"],
     deps = [
         "//nuplan/database/maps_db:map_api",
+        requirement("descartes"),
     ],
 )

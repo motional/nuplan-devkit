@@ -358,7 +358,7 @@ def extract_roadblock_objects(map_api: AbstractMap, point: Point2D) -> List[Road
         return cast(List[RoadBlockGraphEdgeMapObject], roadblock_conns)
 
 
-# TODO: Update nuplan scenario to use route roadblock ids from db once available
+# TODO: Update nuplan scenario to use route roadblock ids from db once available (@christopher.eriksen: PAC-2679)
 def get_roadblock_ids_from_trajectory(map_api: AbstractMap, ego_states: List[EgoState]) -> List[str]:
     """
     Extract ids of roadblocks and roadblock connectors containing points in specified trajectory.

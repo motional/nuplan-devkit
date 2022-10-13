@@ -313,7 +313,6 @@ def test_get_available_map_objects(map_factory: NuPlanMapFactory) -> None:
         SemanticMapLayer.INTERSECTION,
         SemanticMapLayer.WALKWAYS,
         SemanticMapLayer.CARPARK_AREA,
-        SemanticMapLayer.PUDO,
     }
 
 
@@ -330,6 +329,15 @@ def test_get_drivable_area(map_factory: NuPlanMapFactory) -> None:
     drivable_fids = nuplan_map._vector_map[target_layer]['fid'].to_list()
     base_fids = [fid for layer in base_layers for fid in nuplan_map._vector_map[layer]['fid'].to_list()]
     assert sorted(drivable_fids) == sorted(base_fids)
+
+
+def test_initialize_all_layers(map_factory: NuPlanMapFactory) -> None:
+    """Tests initialize all layers function"""
+    nuplan_map = map_factory.build_map_from_name("us-nv-las-vegas-strip")
+
+    assert not nuplan_map._vector_map
+    nuplan_map.initialize_all_layers()
+    assert nuplan_map._vector_map
 
 
 if __name__ == "__main__":

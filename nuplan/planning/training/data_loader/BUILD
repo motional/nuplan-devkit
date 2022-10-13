@@ -7,6 +7,7 @@ py_library(
     srcs = ["datamodule.py"],
     deps = [
         "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:scenario_dataset",
         "//nuplan/planning/training/data_loader:splitter",
         "//nuplan/planning/training/modeling:types",

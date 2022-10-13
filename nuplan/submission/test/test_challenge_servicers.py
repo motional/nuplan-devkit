@@ -50,7 +50,12 @@ class TestDetectionTracksChallengeServicer(TestCase):
             call(initialization_2.mission_goal),
         ]
         mock_s2_conversion.assert_has_calls(calls)
-        map_calls = [call(initialization_1.map_name), call(initialization_2.map_name)]
+        map_calls = [
+            call(initialization_1.map_name),
+            call().initialize_all_layers(),
+            call(initialization_2.map_name),
+            call().initialize_all_layers(),
+        ]
         self.servicer.map_manager.get_map.assert_has_calls(map_calls)
         self.servicer.planner.initialize.assert_called_once_with(["planner_initialization"] * 2)
 

@@ -54,6 +54,23 @@ class KinematicHistoryAgentAugmentor(AbstractAugmentor):
         self._random_offset_generator = UniformNoise(low, high) if use_uniform_noise else GaussianNoise(mean, std)
         self._augment_prob = augment_prob
 
+    def safety_check(self, ego: npt.NDArray[np.float32], agents: npt.NDArray[np.float32]) -> bool:
+        """
+        Check if the augmented trajectory violates any safety check (going backwards, collision with other agents).
+        :param ego: Perturbed ego feature tensor to be validated.
+        :param agents: List of agent features to validate against.
+        :return: Bool reflecting feature validity.
+        """
+        # Check if ego goes backward after the perturbation
+        if np.diff(ego, axis=0)[-1][0] < 0.0001:
+            return False
+
+        # Check if there is collision between ego and other agents
+        dist_to_the_closest_agent = np.min(np.linalg.norm(np.array(agents)[:, :, :2] - ego[-1, :2], axis=1))
+        if dist_to_the_closest_agent < 2.5:
+            return False
+        return True
+
     def augment(
         self, features: FeaturesType, targets: TargetsType, scenario: Optional[AbstractScenario] = None
     ) -> Tuple[FeaturesType, TargetsType]:
@@ -66,8 +83,8 @@ class KinematicHistoryAgentAugmentor(AbstractAugmentor):
             trajectory_length = len(features['agents'].ego[batch_idx]) - 1
             _optimizer = ConstrainedNonlinearSmoother(trajectory_length, self._dt)
 
-            features['agents'].ego[batch_idx][-1] += self._random_offset_generator.sample()
-            ego_trajectory: npt.NDArray[np.float32] = features['agents'].ego[batch_idx]
+            ego_trajectory: npt.NDArray[np.float32] = np.copy(features['agents'].ego[batch_idx])
+            ego_trajectory[-1] += self._random_offset_generator.sample()
             ego_x, ego_y, ego_yaw = ego_trajectory.T
             ego_velocity = np.linalg.norm(np.diff(ego_trajectory[:, :2], axis=0), axis=1)
 
@@ -97,7 +114,8 @@ class KinematicHistoryAgentAugmentor(AbstractAugmentor):
             )
             ego_perturb = ego_perturb.T
 
-            features["agents"].ego[batch_idx] = np.float32(ego_perturb)
+            if self.safety_check(ego_perturb, features['agents'].agents[batch_idx]):
+                features["agents"].ego[batch_idx] = np.float32(ego_perturb)
 
         return features, targets
 

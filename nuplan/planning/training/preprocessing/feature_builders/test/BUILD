@@ -13,6 +13,22 @@ py_test(
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
+    ],
+)
+
+py_test(
+    name = "test_generic_agents_feature_builder",
+    size = "medium",
+    srcs = ["test_generic_agents_feature_builder.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/training/preprocessing/feature_builders:generic_agents_feature_builder",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
+        "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
     ],
 )
 

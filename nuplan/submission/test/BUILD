@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -8,6 +9,7 @@ py_test(
     srcs = ["test_submission_container.py"],
     deps = [
         "//nuplan/submission:submission_container",
+        requirement("docker"),
     ],
 )
 

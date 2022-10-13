@@ -31,6 +31,7 @@ class HistogramTabUpdateWindowsSizeJSCode:
         return CustomJS(
             args={},
             code="""
+                console.log(cb_obj.tags);
                 cb_obj.tags = [window.outerWidth, window.outerHeight];
             """,
         )

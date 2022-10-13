@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -42,6 +43,7 @@ py_binary(
         "//nuplan/planning/script/builders:simulation_builder",
         "//nuplan/planning/script/builders:simulation_callback_builder",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        requirement_torch("pytorch-lightning"),
     ],
 )
 
@@ -56,6 +58,7 @@ py_binary(
         "//nuplan/planning/script:utils",
         "//nuplan/planning/script/builders:metric_aggregator_builder",
         "//nuplan/planning/simulation/main_callback:metric_aggregator_callback",
+        "//nuplan/planning/simulation/main_callback:metric_summary_callback",
     ],
 )
 
@@ -78,6 +81,7 @@ py_binary(
     srcs = ["run_training.py"],
     data = [
         "//nuplan/planning/script:yaml",
+        requirement_torch("pytorch-lightning"),
     ],
     deps = [
         "//nuplan/planning/script:utils",

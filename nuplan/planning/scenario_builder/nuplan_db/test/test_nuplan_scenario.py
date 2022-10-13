@@ -1,6 +1,6 @@
 import gc
 import unittest
-from typing import Callable, Generator, List, Optional, Tuple
+from typing import Callable, Generator, List, Optional, Set, Tuple
 
 import guppy
 import mock
@@ -403,6 +403,164 @@ class TestNuPlanScenario(unittest.TestCase):
                     self.assertEqual(iter_val + i, str_token_to_int(test_obj.metadata.token))
                     self.assertEqual(iter_val + i + 100, str_token_to_int(test_obj.metadata.track_token))
                     self.assertEqual(TrackedObjectType.CZONE_SIGN, test_obj.tracked_object_type)
+
+    def test_get_tracked_objects_within_time_window_at_iteration(self) -> None:
+        """
+        Tests that the get_tracked_objects_within_time_window_at_iteration method works properly
+        """
+        lidarpc_tokens_patch_fxn = self._get_sampled_lidarpc_tokens_in_time_window_patch(
+            expected_log_file="data_root/log_name.db",
+            expected_start_timestamp=int((1 * 1e6) + 2345),
+            expected_end_timestamp=int((21 * 1e6) + 2345),
+            expected_subsample_step=2,
+        )
+
+        download_file_patch_fxn = self._get_download_file_if_necessary_patch(
+            expected_data_root="data_root/", expected_log_file_load_path="data_root/log_name.db"
+        )
+
+        for iter_val in [3, 4]:
+
+            def get_token_timestamp_patch(log_file: str, token: str) -> int:
+                """
+                The patch for get_lidarpc_token_timestamp_from_db that validates the arguments and generates fake data.
+                """
+                self.assertEqual("data_root/log_name.db", log_file)
+                self.assertEqual(int_to_str_token(iter_val), token)
+
+                return int(iter_val * 1e6)
+
+            def tracked_objects_within_time_interval_patch(
+                log_file: str, start_timestamp: int, end_timestamp: int, filter_tokens: Optional[Set[str]]
+            ) -> Generator[TrackedObject, None, None]:
+                """
+                The patch for get_tracked_objects_for_lidarpc_token that validates the arguments and generates fake data.
+                """
+                self.assertEqual("data_root/log_name.db", log_file)
+                self.assertEqual((iter_val - 2) * 1e6, start_timestamp)
+                self.assertEqual((iter_val + 2) * 1e6, end_timestamp)
+                self.assertIsNone(filter_tokens)
+
+                for time_idx in range(-2, 3, 1):
+                    # return 2 agents and 2 static objects
+                    for idx in range(0, 4, 1):
+                        box = OrientedBox(center=StateSE2(x=10, y=10, heading=10), length=10, width=10, height=10)
+
+                        metadata = SceneObjectMetadata(
+                            token=int_to_str_token(idx + iter_val),
+                            track_token=int_to_str_token(idx + iter_val + 100),
+                            track_id=None,
+                            timestamp_us=(iter_val + time_idx) * 1e6,
+                            category_name="foo",
+                        )
+
+                        if idx < 2:
+                            yield Agent(
+                                tracked_object_type=TrackedObjectType.VEHICLE,
+                                oriented_box=box,
+                                velocity=StateVector2D(x=10, y=10),
+                                metadata=metadata,
+                            )
+                        else:
+                            yield StaticObject(
+                                tracked_object_type=TrackedObjectType.CZONE_SIGN, oriented_box=box, metadata=metadata
+                            )
+
+            # Mock the interpolation so that validating the data is easier
+            def interpolate_future_waypoints_patch(
+                waypoints: List[InterpolatableState], time_horizon: float, interval_s: float
+            ) -> List[Optional[InterpolatableState]]:
+                """
+                The patch for interpolate_future_waypoints that validates the arguments and generates fake data.
+                """
+                self.assertEqual(4, len(waypoints))
+                self.assertEqual(0.5, interval_s)
+                self.assertEqual(5, time_horizon)
+
+                return waypoints
+
+            def future_waypoints_for_agents_patch(
+                log_file: str, agents_tokens: List[str], start_time: int, end_time: int
+            ) -> Generator[Tuple[str, Waypoint], None, None]:
+                """
+                The patch for get_future_waypoints_for_agents_from_db that validates the arguments and generates fake data.
+                """
+                self.assertEqual("data_root/log_name.db", log_file)
+                self.assertEqual(end_time - start_time, 5 * 1e6)
+                self.assertEqual(2, len(agents_tokens))
+
+                # tokens can be provided in any order
+                check_tokens = [str_token_to_int(t) for t in agents_tokens]
+                check_tokens.sort()
+                self.assertEqual(iter_val + 100, check_tokens[0])
+                self.assertEqual(iter_val + 100 + 1, check_tokens[1])
+
+                # generate fake data
+                for i in range(8):
+                    waypoint = Waypoint(
+                        time_point=TimePoint(time_us=i),
+                        oriented_box=OrientedBox(center=StateSE2(x=i, y=i, heading=i), length=i, width=i, height=i),
+                        velocity=None,
+                    )
+
+                    token = check_tokens[0] if i < 4 else check_tokens[1]
+
+                    yield (int_to_str_token(token), waypoint)
+
+            with mock.patch(
+                "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario.download_file_if_necessary",
+                download_file_patch_fxn,
+            ), mock.patch(
+                "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils.get_sampled_lidarpc_tokens_in_time_window_from_db",
+                lidarpc_tokens_patch_fxn,
+            ), mock.patch(
+                "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils.get_tracked_objects_within_time_interval_from_db",
+                tracked_objects_within_time_interval_patch,
+            ), mock.patch(
+                "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils.get_future_waypoints_for_agents_from_db",
+                future_waypoints_for_agents_patch,
+            ), mock.patch(
+                "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils.get_lidarpc_token_timestamp_from_db",
+                get_token_timestamp_patch,
+            ), mock.patch(
+                "nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils.interpolate_future_waypoints",
+                interpolate_future_waypoints_patch,
+            ):
+                scenario = self._make_test_scenario()
+                agents = scenario.get_tracked_objects_within_time_window_at_iteration(iter_val, 2, 2)
+                objects = agents.tracked_objects.tracked_objects
+                self.assertEqual(20, len(objects))
+
+                # For the given queries, there should be 5 windows of objects returned.
+                # Objects are sorted by type, then by timestamp.
+                # So, we should see [Agent1_1, Agent1_2, Agent2_1, Agent2_2, ..., SO1_1, SO_1_2, ...]
+                #   for (type)(timestamp)_(track_token)
+                num_objects = 2
+                for window in range(0, 5, 1):
+                    for object_num in range(0, 2, 1):
+                        start_agent_idx = window * 2
+
+                        # Agent
+                        test_obj = objects[start_agent_idx + object_num]
+                        self.assertTrue(isinstance(test_obj, Agent))
+                        self.assertEqual(iter_val + object_num, str_token_to_int(test_obj.metadata.token))
+                        self.assertEqual(iter_val + object_num + 100, str_token_to_int(test_obj.metadata.track_token))
+                        self.assertEqual(TrackedObjectType.VEHICLE, test_obj.tracked_object_type)
+                        self.assertIsNotNone(test_obj.predictions)
+                        object_waypoints = test_obj.predictions[0].waypoints
+                        self.assertEqual(4, len(object_waypoints))
+                        for j in range(len(object_waypoints)):
+                            self.assertEqual(j + (object_num * len(object_waypoints)), object_waypoints[j].x)
+
+                        # Static object
+                        start_obj_idx = 10 + (window * 2)
+                        test_obj = objects[start_obj_idx + object_num]
+                        self.assertTrue(isinstance(test_obj, StaticObject))
+                        self.assertEqual(iter_val + object_num + num_objects, str_token_to_int(test_obj.metadata.token))
+                        self.assertEqual(
+                            iter_val + object_num + num_objects + 100, str_token_to_int(test_obj.metadata.track_token)
+                        )
+                        self.assertEqual(TrackedObjectType.CZONE_SIGN, test_obj.tracked_object_type)
 
     def test_nuplan_scenario_memory_usage(self) -> None:
         """

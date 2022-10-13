@@ -42,12 +42,32 @@ py_test(
 )
 
 py_test(
+    name = "test_kinematic_history_generic_agent_augmentation",
+    srcs = ["test_kinematic_history_generic_agent_augmentation.py"],
+    deps = [
+        "//nuplan/planning/training/data_augmentation:kinematic_history_generic_agent_augmentation",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
+    ],
+)
+
+py_test(
     name = "test_agent_dropout_augmentation",
     srcs = ["test_agent_dropout_augmentation.py"],
     deps = [
         "//nuplan/planning/training/data_augmentation:agent_dropout_augmentation",
         "//nuplan/planning/training/data_augmentation:data_augmentation_util",
         "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/features:trajectory",
+    ],
+)
+
+py_test(
+    name = "test_generic_agent_dropout_augmentation",
+    srcs = ["test_generic_agent_dropout_augmentation.py"],
+    deps = [
+        "//nuplan/planning/training/data_augmentation:data_augmentation_util",
+        "//nuplan/planning/training/data_augmentation:generic_agent_dropout_augmentation",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
         "//nuplan/planning/training/preprocessing/features:trajectory",
     ],
 )

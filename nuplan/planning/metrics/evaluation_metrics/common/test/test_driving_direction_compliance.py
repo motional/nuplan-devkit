@@ -23,7 +23,8 @@ def test_ego_no_backward_driving(scene: Dict[str, Any]) -> None:
         "driving_direction_compliance",
         "Planning",
         lane_change_metric,
-        driving_direction_violation_threshold=2,
+        driving_direction_compliance_threshold=2,
+        driving_direction_violation_threshold=6,
         time_horizon=1,
     )
     metric_statistic_test(scene=scene, metric=metric)
@@ -32,7 +33,7 @@ def test_ego_no_backward_driving(scene: Dict[str, Any]) -> None:
 @nuplan_test(path='json/driving_direction_compliance/ego_drives_backward.json')
 def test_ego_backward_driving(scene: Dict[str, Any]) -> None:
     """
-    Tests ego progress metric when ego drives backward.
+    Tests ego progress metric when ego drives backward more than driving_direction_violation_threshold.
     :param scene: the json scene
     """
     lane_change_metric = EgoLaneChangeStatistics('lane_change', 'Planning', 0.3)
@@ -42,7 +43,28 @@ def test_ego_backward_driving(scene: Dict[str, Any]) -> None:
         "driving_direction_compliance",
         "Planning",
         lane_change_metric,
-        driving_direction_violation_threshold=2,
+        driving_direction_compliance_threshold=2,
+        driving_direction_violation_threshold=6,
+        time_horizon=1,
+    )
+    metric_statistic_test(scene=scene, metric=metric)
+
+
+@nuplan_test(path='json/driving_direction_compliance/ego_slightly_drives_backward.json')
+def test_ego_slightly_backward_driving(scene: Dict[str, Any]) -> None:
+    """
+    Tests ego progress metric when ego drives backward more than driving_direction_compliance_threshold but less than driving_direction_violation_threshold.
+    :param scene: the json scene
+    """
+    lane_change_metric = EgoLaneChangeStatistics('lane_change', 'Planning', 0.3)
+    history, mock_abstract_scenario = build_mock_history_scenario_test(scene)
+    lane_change_metric.compute(history, mock_abstract_scenario)
+    metric = DrivingDirectionComplianceStatistics(
+        "driving_direction_compliance",
+        "Planning",
+        lane_change_metric,
+        driving_direction_compliance_threshold=2,
+        driving_direction_violation_threshold=15,
         time_horizon=1,
     )
     metric_statistic_test(scene=scene, metric=metric)

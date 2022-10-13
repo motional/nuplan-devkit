@@ -2,6 +2,7 @@ from nuplan.planning.simulation.callback.abstract_callback import AbstractCallba
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.planning.simulation.visualization.abstract_visualization import AbstractVisualization
 
 
@@ -21,6 +22,14 @@ class VisualizationCallback(AbstractCallback):
         """
         self._visualization.render_scenario(setup.scenario, True)
 
+    def on_initialization_end(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_step_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
     def on_step_end(self, setup: SimulationSetup, planner: AbstractPlanner, sample: SimulationHistorySample) -> None:
         """
         Render sample after a step
@@ -29,6 +38,18 @@ class VisualizationCallback(AbstractCallback):
         self._visualization.render_observations(sample.observation)
         self._visualization.render_trajectory(sample.trajectory.get_sampled_trajectory())
         self._visualization.render(sample.iteration)
+
+    def on_planner_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_planner_end(self, setup: SimulationSetup, planner: AbstractPlanner, trajectory: AbstractTrajectory) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_simulation_start(self, setup: SimulationSetup) -> None:
+        """Inherited, see superclass."""
+        pass
 
     def on_simulation_end(self, setup: SimulationSetup, planner: AbstractPlanner, history: SimulationHistory) -> None:
         """

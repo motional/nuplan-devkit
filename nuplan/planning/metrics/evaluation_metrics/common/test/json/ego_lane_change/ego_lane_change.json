@@ -77,13 +77,26 @@
     ],
     "expected": {
         "statistics": [
-            ["COUNT", 1],
-            ["MAX", 2.0],
-            ["MIN", 2.0],
-            ["MEAN", 2.0],
-            ["P90", 2.0],
-            ["RATIO", 0.0],
-            ["BOOLEAN", true]
+            [
+                "COUNT",
+                1
+            ],
+            [
+                "MAX",
+                2.0
+            ],
+            [
+                "MEAN",
+                2.0
+            ],
+            [
+                "RATIO",
+                0.0
+            ],
+            [
+                "BOOLEAN",
+                true
+            ]
         ],
         "time_series": {}
     },

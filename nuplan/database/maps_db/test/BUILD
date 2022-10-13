@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,6 +16,7 @@ py_test(
         "//nuplan/database/maps_db:layer",
         "//nuplan/database/maps_db:metadata",
         "//nuplan/database/maps_db:utils",
+        requirement("numpy"),
     ],
 )
 

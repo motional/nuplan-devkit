@@ -8,6 +8,7 @@ from nuplan_devkit.nuplan.planning.training.modeling.objectives.trajectory_weigh
     TrajectoryWeightDecayImitationObjective,
 )
 
+from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 
 
@@ -30,7 +31,7 @@ class TestTrajectoryWeightDecayImitationObjective(unittest.TestCase):
             ]
         )
 
-        self.objective = TrajectoryWeightDecayImitationObjective()
+        self.objective = TrajectoryWeightDecayImitationObjective(scenario_type_loss_weighting={})
 
     def test_compute_loss(self) -> None:
         """
@@ -38,9 +39,10 @@ class TestTrajectoryWeightDecayImitationObjective(unittest.TestCase):
         """
         prediction = Trajectory(data=self.prediction_data)
         target = Trajectory(data=self.target_data)
+        scenarios = [CachedScenario(log_name='', token='lane_following_with_lead', scenario_type='') for _ in range(2)]
 
         loss = self.objective.compute(
-            {"trajectory": prediction.to_feature_tensor()}, {"trajectory": target.to_feature_tensor()}
+            {"trajectory": prediction.to_feature_tensor()}, {"trajectory": target.to_feature_tensor()}, scenarios
         )
         torch.testing.assert_allclose(loss, torch.tensor(0.60653, dtype=torch.float64))
 
@@ -49,9 +51,10 @@ class TestTrajectoryWeightDecayImitationObjective(unittest.TestCase):
         Test perfect prediction. The loss should be zero
         """
         target = Trajectory(data=self.target_data)
+        scenarios = [CachedScenario(log_name='', token='lane_following_with_lead', scenario_type='') for _ in range(2)]
 
         loss = self.objective.compute(
-            {"trajectory": target.to_feature_tensor()}, {"trajectory": target.to_feature_tensor()}
+            {"trajectory": target.to_feature_tensor()}, {"trajectory": target.to_feature_tensor()}, scenarios
         )
         self.assertEqual(loss, torch.tensor(0.0))
 

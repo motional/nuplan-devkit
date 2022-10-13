@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -22,6 +23,7 @@ py_test(
         "//nuplan/planning/nuboard/utils/test:utils",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
         "//nuplan/planning/simulation/main_callback:metric_file_callback",
+        requirement("bokeh"),
     ],
 )
 
@@ -46,5 +48,6 @@ py_test(
         "//nuplan/planning/nuboard/base:simulation_tile",
         "//nuplan/planning/nuboard/utils/test:utils",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
+        requirement("bokeh"),
     ],
 )

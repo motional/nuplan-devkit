@@ -18,6 +18,7 @@ from nuplan.planning.simulation.history.simulation_history import SimulationHist
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.planning.utils.color import TrajectoryColors
 from nuplan.planning.utils.serialization.to_scene import (
     to_scene_agent_prediction_from_boxes,
@@ -176,6 +177,30 @@ class SerializationCallback(AbstractCallback):
         """
         scenario_directory = self._get_scenario_folder(planner.name(), setup.scenario)
         scenario_directory.mkdir(exist_ok=True, parents=True)
+
+    def on_initialization_end(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_step_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_step_end(self, setup: SimulationSetup, planner: AbstractPlanner, sample: SimulationHistorySample) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_planner_start(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_planner_end(self, setup: SimulationSetup, planner: AbstractPlanner, trajectory: AbstractTrajectory) -> None:
+        """Inherited, see superclass."""
+        pass
+
+    def on_simulation_start(self, setup: SimulationSetup) -> None:
+        """Inherited, see superclass."""
+        pass
 
     def on_simulation_end(self, setup: SimulationSetup, planner: AbstractPlanner, history: SimulationHistory) -> None:
         """

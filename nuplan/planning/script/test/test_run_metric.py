@@ -1,5 +1,6 @@
 import unittest
 from copy import deepcopy
+from pathlib import Path
 
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
@@ -45,8 +46,9 @@ class TestRunMetric(SkeletonTestSimulation):
                     *self.default_overrides,
                     '+simulation=open_loop_boxes',
                     'run_metric=false',
-                    'experiment_name=simulation_metric_test',
+                    'experiment_name=open_loop_boxes/simulation_metric_test',
                     'worker=sequential',
+                    'main_callback=[time_callback]',
                 ],
             )
             run_simulation(cfg)
@@ -62,9 +64,14 @@ class TestRunMetric(SkeletonTestSimulation):
         with initialize_config_dir(config_dir=self.config_path):
             cfg = compose(
                 config_name=METRIC_AGGREGATOR_CONFIG_NAME,
-                overrides=[self.search_path, f'output_dir={exp_output_dir}', "challenges=['']"],
+                overrides=[self.search_path, f'output_dir={exp_output_dir}', "challenges=['open_loop_boxes']"],
             )
             run_metric_aggregator(cfg)
+            # Check file output
+            metric_aggregator_output = Path(cfg.aggregator_save_path)
+            aggregator_output_file_length = len(list(metric_aggregator_output.rglob("*")))
+            # Only one for the open_loop_boxes challenge
+            self.assertEqual(aggregator_output_file_length, 1)
 
 
 if __name__ == '__main__':

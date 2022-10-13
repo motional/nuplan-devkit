@@ -258,10 +258,10 @@ class Agents(AbstractModelFeature):
         return feature_cls(
             [
                 [
-                    [half_width, half_length, 1.0],
-                    [-half_width, half_length, 1.0],
-                    [-half_width, -half_length, 1.0],
-                    [half_width, -half_length, 1.0],
+                    [half_length, half_width, 1.0],
+                    [-half_length, half_width, 1.0],
+                    [-half_length, -half_width, 1.0],
+                    [half_length, -half_width, 1.0],
                 ]
                 for half_width, half_length in zip(half_widths, half_lengths)
             ]

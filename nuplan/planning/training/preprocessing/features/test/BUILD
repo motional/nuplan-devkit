@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -8,6 +9,15 @@ py_test(
     srcs = ["test_agents.py"],
     deps = [
         "//nuplan/planning/training/preprocessing/features:agents",
+    ],
+)
+
+py_test(
+    name = "test_generic_agents",
+    size = "medium",
+    srcs = ["test_generic_agents.py"],
+    deps = [
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
     ],
 )
 
@@ -48,5 +58,6 @@ py_test(
     srcs = ["test_vector_utils.py"],
     deps = [
         "//nuplan/planning/training/preprocessing/features:vector_utils",
+        requirement("pyquaternion"),
     ],
 )

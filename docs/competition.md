@@ -1,6 +1,8 @@
 nuPlan Planning Challenge
 =========================
 
+## The nuPlan Planning Competition has been postponed to January 2023.
+
 ### Overview
 
 The main focus of the nuPlan planning challenge is to evaluate a motion planning system in realistic driving scenarios, using multiple performance metrics. In this challenge, it is assumed that a planner will consume a top-down semantic representation of detected traffic participants (vehicles, bicycles, etc.) and static obstacles and plan the vehicle’s future trajectory for a specific time horizon. The challenge is organized into three increasingly complex modes:
@@ -11,11 +13,11 @@ The main focus of the nuPlan planning challenge is to evaluate a motion planning
 
 ### Competition Timeline
 
-*   September 9th, 2022 - Warm-up phase opens for submission
-*   September 20th, 2022 - Test phase opens for submission
-*   November 15th, 2022 - Competition closes
-*   November 22nd, 2022 - Finalists are announced and invited to share their code with us for verification
-*   November 29nd 2022 - Winners are announced
+*   January 16th, 2023 - Warm-up phase opens for submission
+*   January 30th, 2023 - Test phase opens for submission
+*   End of April (exact dates TBA), 2023 - Competition closes
+*   May (exact dates TBA), 2023 - Finalists are announced and invited to share their code with us for verification
+*   May (exact dates TBA), 2023 - Winners are announced
 
 ### How to enter
 
@@ -27,9 +29,20 @@ The main focus of the nuPlan planning challenge is to evaluate a motion planning
 
 #### Making a submission
 
-1.  Go through the [nuPlan submission tutorial](https://nuplan-devkit.readthedocs.io/en/latest/nuplan_submission_tutorial.html). The tutorial will show how to create a valid Docker image.
-2.  Submit your Docker image through [EvalAI](https://eval.ai/web/challenges/challenge-page/1856/overview).
+1. Go through the [nuPlan submission tutorial](https://nuplan-devkit.readthedocs.io/en/latest/nuplan_submission_tutorial.html). The tutorial will show how to create a valid Docker image.
+2. Submit your Docker image through [EvalAI](https://eval.ai/web/challenges/challenge-page/1856/overview).
+3. Send the following information to nuScenes@motional.com after submitting on EvalAI
 
+```
+- Team name
+- Method name
+- Authors
+- Affiliations
+- Method description (5+ sentences)
+- Project URL
+- Paper URL
+- Submission ID
+```
 
 #### Evaluation protocol and rules
 Participants of the nuPlan planning challenge will submit their code to the challenge’s cloud-based evaluation server through EvalAI - an open-source evaluation platform. The code will be submitted in the form of a Docker image and will be executed for each of the challenge modes
@@ -62,9 +75,9 @@ to 10 submissions. The submissions will be run on all three challenges. The scen
 are the same as the ones that will be used for the test phase. However, the number of scenarios run will be smaller,
 and the data is not taken from the test split. The metrics and the overall scores will be displayed on the leaderboard.
 
-Start: September 9th, 2022
+Start: January 16th, 2023
 
-End: November 15th, 2022 
+End: End of April (exact dates TBA)
 
 #### Test Phase
 The results from the test phase will be used to determine the winners of each challenge. All submissions will be evaluated on a 
@@ -73,9 +86,9 @@ be invited to share their code with the organizers. Once the submissions from th
 organizers, the same scores are used to determine the winners of each challenge. Participants will be allowed to 
 submit a maximum of three submissions.
 
-Start: September 20th, 2022
+Start: January 30th, 2023
 
-End: November 15th, 2022 
+End: End of April (exact dates TBA)
 
 ### Challenges
 
@@ -137,7 +150,7 @@ In this challenge, the planner outputs a planned trajectory using the informatio
 
 | Configuration | Value |
 | ------------- | ----- |
-| Controller    | [LQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/lqr.py)  |
+| Controller    | [iLQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/ilqr_tracker.py)  |
 | Observations  | <ul><li>Vehicles<li>Pedestrians<li>Cyclists<li>Generic Objects<li>Traffic cone<li>Barriers<li>Construction Zones Signs</li></ul>                          |
 
 
@@ -163,7 +176,7 @@ In the final and most complex challenge, the vehicles in the scene become reacti
 
 | Configuration | Value |
 | ------------- | ----- |
-| Controller    | [LQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/lqr.py)  |
+| Controller    | [iLQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/ilqr_tracker.py) |
 | Observations  | <ul><li>Reactive:<ul><li>Vehicles</li></ul><li>Open-loop<ul><li>Pedestrians<li>Generic Objects<li>Traffic cone<li>Barriers<li>Construction Zones Signs</li></ul> </li></ul>|
 
 ##### Scoring

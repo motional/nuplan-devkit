@@ -48,7 +48,7 @@ class TestMetricAggregatorCallback(TestCase):
         metric_file_callback.on_run_simulation_end()
 
         # Expectations check
-        logger.warning.assert_has_calls([call('No metric files found for aggregation!')])
+        logger.warning.assert_has_calls([call('dummy_metric_aggregator: No metric files found for aggregation!')])
         logger.info.assert_has_calls([call('Metric aggregator: 00:00:00 [HH:MM:SS]')])
 
 

@@ -1,4 +1,4 @@
-nuPlan schema
+nuPlan Schema
 ==========
 
 This document describes the database schema used in nuPlan. All annotations and metadata (including calibration, maps, 

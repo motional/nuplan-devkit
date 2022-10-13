@@ -15,6 +15,7 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils imp
     ScenarioDict,
     discover_log_dbs,
     filter_num_scenarios_per_type,
+    filter_scenarios_by_timestamp,
     filter_total_num_scenarios,
     get_scenarios_from_log_file,
     scenario_dict_to_list,
@@ -51,7 +52,7 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         :param db_files: Path to load the log database(s) from.
                          It can be a local/remote path to a single database, list of databases or dir of databases.
                          If None, all database filenames found under `data_root` will be used.
-                         E.g.: /data/sets/nuplan-v1.0-mini/2021.10.11.08.31.07_veh-50_01750_01948.db
+                         E.g.: /data/sets/nuplan-v1.1-mini/2021.10.11.08.31.07_veh-50_01750_01948.db
         :param map_version: Version of map database to load. The map database is passed to each loaded log database.
         :param max_workers: Maximum number of workers to use when loading the databases concurrently.
                             Only used when the number of databases to load is larger than this parameter.
@@ -174,6 +175,14 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 ),
                 enable=(scenario_filter.limit_total_scenarios is not None),
                 name='limit_total_scenarios',
+            ),
+            FilterWrapper(
+                fn=partial(
+                    filter_scenarios_by_timestamp,
+                    timestamp_threshold_s=scenario_filter.timestamp_threshold_s,
+                ),
+                enable=(scenario_filter.timestamp_threshold_s is not None),
+                name='filter_scenarios_by_timestamp',
             ),
         ]
 

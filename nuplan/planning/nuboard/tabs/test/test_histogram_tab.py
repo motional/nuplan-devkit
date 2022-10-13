@@ -23,7 +23,9 @@ class TestHistogramTab(SkeletonTestTab):
 
         # Update scenario name choices
         self.histogram_tab._metric_name_multi_choice.value = ["ego_acceleration_statistics"]
+        self.histogram_tab._setting_modal_query_button_on_click()
 
+        self.assertIn('ego_acceleration_statistics', self.histogram_tab._aggregated_data)
         self.assertEqual(len(self.histogram_tab.histogram_plots.children), 1)
 
     def test_file_paths_on_change(self) -> None:
@@ -33,7 +35,7 @@ class TestHistogramTab(SkeletonTestTab):
             experiment_file_data=new_experiment_file_data, experiment_file_active_index=[]
         )
         self.assertEqual(self.histogram_tab._scenario_type_multi_choice.value, [])
-        self.assertEqual(self.histogram_tab._scenario_type_multi_choice.options, [])
+        self.assertEqual(self.histogram_tab._scenario_type_multi_choice.options, ['all'])
         self.assertEqual(self.histogram_tab._metric_name_multi_choice.value, [])
         self.assertEqual(self.histogram_tab._metric_name_multi_choice.options, [])
 

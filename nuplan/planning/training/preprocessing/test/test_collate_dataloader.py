@@ -70,7 +70,7 @@ class TestCollateDataLoader(unittest.TestCase):
         iterations = min(len(dataloader), NUM_BATCHES)
 
         for _ in range(iterations):
-            features, targets = next(dataloader_iter)
+            features, targets, scenarios = next(dataloader_iter)
             self.assertTrue("vector_map" in features.keys())
             vector_map: VectorMap = features["vector_map"]
             self.assertEqual(vector_map.num_of_batches, self.batch_size)

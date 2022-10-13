@@ -34,8 +34,8 @@
     "expected": {
         "statistics": [
             [
-                "BOOLEAN",
-                false
+                "VALUE",
+                0.0
             ],
             [
                 "MIN",

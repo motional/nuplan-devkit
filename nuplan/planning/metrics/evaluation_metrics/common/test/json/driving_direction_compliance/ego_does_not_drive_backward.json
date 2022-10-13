@@ -63,7 +63,7 @@
     ],
     "expected": {
         "statistics": [
-            ["BOOLEAN", true],
+            ["VALUE", 1.0],
             ["MIN", 0.0]
         ],
         "time_series": {}

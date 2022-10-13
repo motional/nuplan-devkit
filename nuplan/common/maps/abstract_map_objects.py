@@ -173,29 +173,28 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
         :param other: Lane to check if it is adjacent to self.
         :return: True if self and other are in the same roadblock and adjacent.
         """
+        # Due to lack of lane connector adjacency information, lane connector boundaries do not align so this is always False
         return self.is_same_roadblock(other) and (
             self.right_boundary.id == other.left_boundary.id or self.left_boundary.id == other.right_boundary.id
         )
 
+    @abc.abstractmethod
     def is_left_of(self, other: Lane) -> bool:
         """
         :param other: Lane to check if self is left of.
         :return: True if self and other are in the same RoadBlock and self is anywhere to the left of other.
         :raise AssertionError: if lanes are not in the same RoadBlock.
         """
-        assert self.is_same_roadblock(other)
+        pass
 
-        return self.right_boundary.id == other.left_boundary.id
-
+    @abc.abstractmethod
     def is_right_of(self, other: Lane) -> bool:
         """
         :param other: Lane to check if self is right of.
         :return: True if self and other are in the same RoadBlock and self is anywhere to the right of other.
         :raise AssertionError: if lanes are not in the same RoadBlock.
         """
-        assert self.is_same_roadblock(other)
-
-        return self.left_boundary.id == other.right_boundary.id
+        pass
 
     @property
     @abc.abstractmethod

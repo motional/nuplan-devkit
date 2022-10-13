@@ -1,12 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "lidar_pc",
     srcs = ["lidar_pc.py"],
-    deps = [
-    ],
 )
 
 py_library(
@@ -34,6 +33,7 @@ py_library(
         "//nuplan/common/actor_state:waypoint",
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/database/utils/label:utils",
+        requirement("pyquaternion"),
     ],
 )
 

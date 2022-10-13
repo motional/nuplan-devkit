@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -42,6 +43,8 @@ py_library(
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/utils:color",
         "//nuplan/planning/utils/serialization:to_scene",
+        requirement("ujson"),
+        requirement("msgpack"),
     ],
 )
 

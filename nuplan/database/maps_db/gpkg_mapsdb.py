@@ -6,7 +6,7 @@ import os
 import time
 import warnings
 from functools import lru_cache
-from typing import List, Sequence
+from typing import Any, List, Sequence, Tuple, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -87,6 +87,14 @@ class GPKGMapsDB(IMapsDB):
 
         # Load map data to trigger automatic downloading.
         self._load_map_data()
+
+    def __reduce__(self) -> Tuple[Type['GPKGMapsDB'], Tuple[Any, ...]]:
+        """
+        Hints on how to reconstruct the object when pickling.
+        This object is reconstructed by pickle to avoid serializing potentially large state/caches.
+        :return: Object type and constructor arguments to be used.
+        """
+        return self.__class__, (self._map_version, self._map_root)
 
     def _load_map_data(self) -> None:
         """Load all available maps once to trigger automatic downloading if the maps are loaded for the first time."""

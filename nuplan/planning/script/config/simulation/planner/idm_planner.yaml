@@ -1,0 +1,11 @@
+idm_planner:
+  _target_: nuplan.planning.simulation.planner.idm_planner.IDMPlanner
+  _convert_: 'all'
+  target_velocity: 10             # Desired velocity in free traffic [m/s]
+  min_gap_to_lead_agent: 1.0      # Minimum relative distance to lead vehicle [m]
+  headway_time: 1.5               # Desired time headway. The minimum possible time to the vehicle in front [s]
+  accel_max: 1.0                  # Maximum acceleration [m/s^2]
+  decel_max: 3.0                  # Maximum deceleration (positive value) [m/s^2]
+  planned_trajectory_samples: 16  # Number of trajectory samples to generate
+  planned_trajectory_sample_interval: 0.5  # The sampling time interval between samples [s]
+  occupancy_map_radius: 40        # The range around the ego to add objects to be considered [m]

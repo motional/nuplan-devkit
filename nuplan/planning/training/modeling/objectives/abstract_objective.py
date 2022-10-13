@@ -3,7 +3,7 @@ from typing import Dict, List
 
 import torch
 
-from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
+from nuplan.planning.training.modeling.types import FeaturesType, ScenarioListType, TargetsType
 
 
 def aggregate_objectives(objectives: Dict[str, torch.Tensor], agg_mode: str) -> torch.Tensor:
@@ -37,7 +37,7 @@ class AbstractObjective(ABC):
         pass
 
     @abstractmethod
-    def compute(self, predictions: FeaturesType, targets: TargetsType) -> torch.Tensor:
+    def compute(self, predictions: FeaturesType, targets: TargetsType, scenarios: ScenarioListType) -> torch.Tensor:
         """
         Computes the objective's loss given the ground truth targets and the model's predictions.
 

@@ -2,9 +2,32 @@ import logging
 from pathlib import Path
 from typing import List
 
+import pandas as pd
+
+from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 
 logger = logging.getLogger(__name__)
+
+
+def metric_statistics_reader(parquet_file: Path) -> MetricStatisticsDataFrame:
+    """
+    Reader for a metric statistic parquet file.
+    :param parquet_file: Parquet file path to read.
+    :return MetricStatisticsDataFrame.
+    """
+    data_frame = MetricStatisticsDataFrame.load_parquet(parquet_file)
+    return data_frame
+
+
+def metric_aggregator_reader(parquet_file: Path) -> pd.DataFrame:
+    """
+    Reader for a metric aggregator parquet file.
+    :param parquet_file: Parquet file path to read.
+    :return Pandas data frame.
+    """
+    data_frame = pd.read_parquet(parquet_file)
+    return data_frame
 
 
 def check_nuboard_file_paths(main_paths: List[str]) -> List[Path]:

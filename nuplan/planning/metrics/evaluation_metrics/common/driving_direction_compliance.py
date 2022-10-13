@@ -26,7 +26,8 @@ class DrivingDirectionComplianceStatistics(MetricBase):
         name: str,
         category: str,
         lane_change_metric: EgoLaneChangeStatistics,
-        driving_direction_violation_threshold: float = 1,
+        driving_direction_compliance_threshold: float = 2,
+        driving_direction_violation_threshold: float = 6,
         time_horizon: float = 1,
         metric_score_unit: Optional[str] = None,
     ) -> None:
@@ -35,13 +36,15 @@ class DrivingDirectionComplianceStatistics(MetricBase):
         :param name: Metric name.
         :param category: Metric category.
         :param lane_change_metric: Lane change metric.
-        :param driving_direction_violation_threshold: Threshold for backward driving.
+        :param driving_direction_compliance_threshold: Driving in opposite direction up to this threshold isn't considered violation
+        :param driving_direction_violation_threshold: Driving in opposite direction above this threshold isn't tolerated
         :param time_horizon: Movement of the vehicle along baseline direction during a horizon time_horizon is
         considered for evaluation.
         :param metric_score_unit: Metric final score unit.
         """
         super().__init__(name=name, category=category, metric_score_unit=metric_score_unit)
         self._lane_change_metric = lane_change_metric
+        self._driving_direction_compliance_threshold = driving_direction_compliance_threshold
         self._driving_direction_violation_threshold = driving_direction_violation_threshold
         self._time_horizon = time_horizon
 
@@ -122,7 +125,12 @@ class DrivingDirectionComplianceStatistics(MetricBase):
         progress_over_interval = self._extract_metric(ego_poses, ego_driven_route, n_horizon)
 
         max_negative_progress_over_interval = abs(min(progress_over_interval))
-        driving_direction_violation = max_negative_progress_over_interval > self._driving_direction_violation_threshold
+        if max_negative_progress_over_interval < self._driving_direction_compliance_threshold:
+            driving_direction_score = 1.0
+        elif max_negative_progress_over_interval < self._driving_direction_violation_threshold:
+            driving_direction_score = 0.5
+        else:
+            driving_direction_score = 0.0
 
         time_series = TimeSeries(
             unit="progress_along_driving_direction_in_last_" + f'{self._time_horizon}' + "_seconds_[m]",
@@ -132,10 +140,10 @@ class DrivingDirectionComplianceStatistics(MetricBase):
 
         statistics = [
             Statistic(
-                name=f'{self.name}',
-                unit=MetricStatisticsType.BOOLEAN.unit,
-                value=float(not driving_direction_violation),
-                type=MetricStatisticsType.BOOLEAN,
+                name=f'{self.name}' + '_score',
+                unit='value',
+                value=float(driving_direction_score),
+                type=MetricStatisticsType.VALUE,
             ),
             Statistic(
                 name="min_progress_along_driving_direction_in_" + f'{self._time_horizon}' + "_second_interval",

@@ -240,22 +240,10 @@ class EgoLaneChangeStatistics(MetricBase):
                     type=MetricStatisticsType.MAX,
                 ),
                 Statistic(
-                    name=f"min_{self.name}_duration",
-                    unit="seconds",
-                    value=np.min(lane_change_durations),
-                    type=MetricStatisticsType.MIN,
-                ),
-                Statistic(
                     name=f"avg_{self.name}_duration",
                     unit="seconds",
                     value=float(np.mean(lane_change_durations)),
                     type=MetricStatisticsType.MEAN,
-                ),
-                Statistic(
-                    name=f"p90_{self.name}_duration",
-                    unit="seconds",
-                    value=np.percentile(lane_change_durations, 90),
-                    type=MetricStatisticsType.P90,
                 ),
                 Statistic(
                     name=f"ratio_of_failed_{self.name}",

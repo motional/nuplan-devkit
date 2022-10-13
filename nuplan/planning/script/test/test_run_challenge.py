@@ -11,7 +11,7 @@ class TestRunChallenge(SkeletonTestSimulation):
 
     def test_simulation_challenge_1(self) -> None:
         """
-        Sanity test for challenge 1 simulation.
+        Sanity check for challenge 1 simulation.
         """
         with initialize_config_dir(config_dir=self.config_path):
             cfg = compose(

@@ -103,6 +103,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 expand_scenarios=False,
                 remove_invalid_goals=False,
                 shuffle=False,
+                timestamp_threshold_s=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -169,6 +170,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 expand_scenarios=False,
                 remove_invalid_goals=False,
                 shuffle=False,
+                timestamp_threshold_s=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -239,6 +241,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 expand_scenarios=False,
                 remove_invalid_goals=False,
                 shuffle=False,
+                timestamp_threshold_s=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -304,6 +307,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 expand_scenarios=False,
                 remove_invalid_goals=False,
                 shuffle=False,
+                timestamp_threshold_s=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
