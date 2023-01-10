@@ -66,7 +66,7 @@ class KinematicBicycleModel(AbstractMotionModel):
         accel = state.dynamic_car_state.rear_axle_acceleration_2d.x
         steering_angle = state.tire_steering_angle
 
-        ideal_accel = (ideal_dynamic_state.rear_axle_acceleration_2d.x,)
+        ideal_accel = ideal_dynamic_state.rear_axle_acceleration_2d.x
         ideal_steering_angle = dt_control * ideal_dynamic_state.tire_steering_rate + steering_angle
 
         updated_accel = dt_control / (dt_control + self._accel_time_constant) * (ideal_accel - accel) + accel
