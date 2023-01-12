@@ -1,5 +1,5 @@
 # @package _global_
-experiment_name: training_simple_vector_model
+job_name: simple_vector_model
 py_func: train
 objective_aggregate_mode: mean
 

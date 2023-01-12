@@ -36,7 +36,7 @@ class TestLogFuturePlanner(unittest.TestCase):
         """Test compute_trajectory"""
         planner_input = self._get_mock_planner_input()
         start_time = time.perf_counter()
-        trajectory = self.planner.compute_single_trajectory(planner_input)
+        trajectory = self.planner.compute_trajectory(planner_input)
         compute_trajectory_time = time.perf_counter() - start_time
         self.assertEqual(len(trajectory.get_sampled_trajectory()), self.num_poses + 1)
 

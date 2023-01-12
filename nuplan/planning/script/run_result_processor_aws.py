@@ -83,6 +83,7 @@ def main(cfg: DictConfig) -> None:
     # Set up configuration
     cfg.output_dir = str(local_output_dir)
     cfg.scenario_metric_paths = _list_subdirs_filtered(local_output_dir, re.compile(f'/{cfg.metric_folder_name}$'))
+    logger.info("Found metric paths %s" % cfg.scenario_metric_paths)
 
     aggregated_metric_save_path = local_output_dir / cfg.aggregated_metric_folder_name
 
@@ -126,11 +127,7 @@ def main(cfg: DictConfig) -> None:
             "remote_path": 'aggregated_metrics',
         }
         result_remote_prefix = [str(cfg.contestant_id), str(cfg.submission_id)]
-        result_s3_client = get_s3_client(
-            'nuplan',
-            aws_access_key_id=os.getenv("NUPLAN_SERVER_AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY"),
-        )
+        result_s3_client = get_s3_client()
         result_publisher_callback = PublisherCallback(
             simulation_results,
             remote_prefix=result_remote_prefix,
@@ -139,16 +136,11 @@ def main(cfg: DictConfig) -> None:
         )
         result_publisher_callback.on_run_simulation_end()
 
-        summary_s3_client = get_s3_client(
-            'nuscenes',
-            aws_access_key_id=os.getenv("NUSCENES_SERVER_AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("NUSCENES_SERVER_AWS_SECRET_ACCESS_KEY"),
-        )
         summary_publisher_callback = PublisherCallback(
             summary_results,
             remote_prefix=["public/leaderboard/planning/2022", cfg.submission_id],
-            s3_client=summary_s3_client,
-            s3_bucket=os.getenv("NUSCENES_SERVER_S3_ROOT_URL"),
+            s3_client=result_s3_client,
+            s3_bucket=os.getenv("NUPLAN_SERVER_S3_ROOT_URL"),
         )
         summary_publisher_callback.on_run_simulation_end()
 

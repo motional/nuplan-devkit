@@ -136,8 +136,8 @@ def run_runners(
     reports = execute_runners(
         runners=runners,
         worker=common_builder.worker,
-        num_gpus=cfg.number_of_gpus_used_for_one_simulation,
-        num_cpus=cfg.number_of_cpus_used_for_one_simulation,
+        num_gpus=cfg.number_of_gpus_allocated_per_simulation,
+        num_cpus=cfg.number_of_cpus_allocated_per_simulation,
         exit_on_failure=cfg.exit_on_failure,
         verbose=cfg.verbose,
     )

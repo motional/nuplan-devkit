@@ -1,5 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,6 +15,16 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:compute",
+    ],
+)
+
+py_test(
+    name = "test_torch_geometry",
+    size = "small",
+    srcs = ["test_torch_geometry.py"],
+    deps = [
+        "//nuplan/common/geometry:torch_geometry",
+        requirement_torch("torch"),
     ],
 )
 

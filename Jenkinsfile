@@ -4,6 +4,15 @@ if (env.BRANCH_NAME != null && ! env.BRANCH_NAME.matches("^(master).*")) {
   jobManagement.abortPrevious()
 }
 
+def publish_logs(prefix) {
+    sh """#!/bin/bash
+      set -eux
+      rm -rf reports
+      mkdir -p reports/${prefix}
+      find bazel-out/k8-fastbuild/testlogs/ -name 'test.xml' -exec cp --parents {} ${env.WORKSPACE}/reports/${prefix} \\;
+    """
+}
+
 pipeline{
   agent {
     kubernetes(
@@ -129,6 +138,8 @@ pipeline{
               --test_tag_filters=-gpu \
               //...
           """
+          publish_logs('gpu_tests')
+          junit testResults: 'reports/**/test.xml', allowEmptyResults: true
         }
       }
     }

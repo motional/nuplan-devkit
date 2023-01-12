@@ -31,11 +31,13 @@ from nuplan.planning.training.modeling.models.urban_driver_open_loop_model_utils
 )
 from nuplan.planning.training.modeling.torch_module_wrapper import TorchModuleWrapper
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
-from nuplan.planning.training.preprocessing.feature_builders.agents_feature_builder import AgentsFeatureBuilder
+from nuplan.planning.training.preprocessing.feature_builders.generic_agents_feature_builder import (
+    GenericAgentsFeatureBuilder,
+)
 from nuplan.planning.training.preprocessing.feature_builders.vector_set_map_feature_builder import (
     VectorSetMapFeatureBuilder,
 )
-from nuplan.planning.training.preprocessing.features.agents import Agents
+from nuplan.planning.training.preprocessing.features.generic_agents import GenericAgents
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 from nuplan.planning.training.preprocessing.features.vector_set_map import VectorSetMap
 from nuplan.planning.training.preprocessing.target_builders.ego_trajectory_target_builder import (
@@ -67,6 +69,8 @@ class UrbanDriverOpenLoopModelFeatureParams:
         total_max_points: maximum number of points per element, to maintain fixed sized features.
         feature_dimension: feature size, to maintain fixed sized features.
         agent_features: Agent features to request from agent feature builder.
+        ego_dimension: Feature dimensionality to keep from ego features.
+        agent_dimension: Feature dimensionality to keep from agent features.
         max_agents: maximum number of agents, to maintain fixed sized features.
         past_trajectory_sampling: Sampling parameters for past trajectory.
         map_features: Map features to request from vector set map feature builder.
@@ -82,6 +86,8 @@ class UrbanDriverOpenLoopModelFeatureParams:
     total_max_points: int
     feature_dimension: int
     agent_features: List[str]
+    ego_dimension: int
+    agent_dimension: int
     max_agents: int
     past_trajectory_sampling: TrajectorySampling
     map_features: List[str]
@@ -104,7 +110,7 @@ class UrbanDriverOpenLoopModelFeatureParams:
             raise AssertionError(f"Feature dimension must be >=2! Got: {self.feature_dimension}")
 
         # sanitize feature types
-        for feature_name in ["NONE", "EGO", "VEHICLE"]:
+        for feature_name in ["NONE", "EGO"]:
             if feature_name not in self.feature_types:
                 raise AssertionError(f"{feature_name} must be among feature types! Got: {self.feature_types}")
 
@@ -116,8 +122,8 @@ class UrbanDriverOpenLoopModelFeatureParams:
         Sanitize agent feature parameters.
         :raise AssertionError if parameters invalid.
         """
-        if "EGO" not in self.agent_features:
-            raise AssertionError(f"EGO must be among agent features! Got: {self.agent_features}")
+        if "EGO" in self.agent_features:
+            raise AssertionError("EGO must not be among agent features!")
         for feature_name in self.agent_features:
             if feature_name not in self.feature_types:
                 raise AssertionError(f"Agent feature {feature_name} not in feature_types: {self.feature_types}!")
@@ -193,7 +199,7 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
                     radius=feature_params.vector_set_map_feature_radius,
                     interpolation_method=feature_params.interpolation_method,
                 ),
-                AgentsFeatureBuilder(feature_params.past_trajectory_sampling),
+                GenericAgentsFeatureBuilder(feature_params.agent_features, feature_params.past_trajectory_sampling),
             ],
             target_builders=[EgoTrajectoryTargetBuilder(target_params.future_trajectory_sampling)],
             future_trajectory_sampling=target_params.future_trajectory_sampling,
@@ -224,15 +230,17 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
             dropout=self._model_params.global_head_dropout,
         )
 
-    def extract_agent_features(self, ego_agent_features: Agents, batch_size: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def extract_agent_features(
+        self, ego_agent_features: GenericAgents, batch_size: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Extract ego and agent features into format expected by network and build accompanying availability matrix.
-        :param ego_agent_features: Agents features to be extracted
+        :param ego_agent_features: agent features to be extracted (ego + other agents)
         :param batch_size: number of samples in batch to extract
         :return:
-            agent_features: <torch.FloatTensor: batch_size, num_elements (polylines) (1+max_agents),
+            agent_features: <torch.FloatTensor: batch_size, num_elements (polylines) (1+max_agents*num_agent_types),
                 num_points_per_element, feature_dimension>. Stacked ego, agent, and map features.
-            agent_avails: <torch.BoolTensor: batch_size, num_elements (polylines) (1+max_agents),
+            agent_avails: <torch.BoolTensor: batch_size, num_elements (polylines) (1+max_agents*num_agent_types),
                 num_points_per_element>. Bool specifying whether feature is available or zero padded.
         """
         agent_features = []  # List[<torch.FloatTensor: max_agents+1, total_max_points, feature_dimension>: batch_size]
@@ -240,56 +248,111 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
 
         # features have different size across batch so we use per sample feature extraction
         for sample_idx in range(batch_size):
-            # ego features
+            # Ego features
+            # maintain fixed feature size through trimming/padding
             sample_ego_feature = ego_agent_features.ego[sample_idx][
-                ..., : self._feature_params.feature_dimension
+                ..., : min(self._feature_params.ego_dimension, self._feature_params.feature_dimension)
             ].unsqueeze(0)
-            if Agents.ego_state_dim() < self._feature_params.feature_dimension:
+            if (
+                min(self._feature_params.ego_dimension, GenericAgents.ego_state_dim())
+                < self._feature_params.feature_dimension
+            ):
                 sample_ego_feature = pad_polylines(sample_ego_feature, self._feature_params.feature_dimension, dim=2)
 
-            # agent features
-            if ego_agent_features.has_agents(sample_idx):  # if there exist at least one valid agent in the sample
-                # num_frames x num_agents x num_features -> num_agents x num_frames x num_features
-                sample_agents_feature = torch.permute(ego_agent_features.agents[sample_idx], (1, 0, 2))
-                sample_agents_feature = sample_agents_feature[..., : self._feature_params.feature_dimension]
-                if Agents.ego_state_dim() < self._feature_params.feature_dimension:
-                    sample_agents_feature = pad_polylines(
-                        sample_agents_feature, self._feature_params.feature_dimension, dim=2
-                    )
-
-                # add ego feature to front of agent features
-                sample_agent_features = torch.cat([sample_ego_feature, sample_agents_feature], dim=0)
-            else:
-                sample_agent_features = sample_ego_feature
-
-            sample_agent_avails = torch.ones(
-                sample_agent_features.shape[0],
-                sample_agent_features.shape[1],
+            sample_ego_avails = torch.ones(
+                sample_ego_feature.shape[0],
+                sample_ego_feature.shape[1],
                 dtype=torch.bool,
-                device=sample_agent_features.device,
+                device=sample_ego_feature.device,
             )
 
-            # reverse agent points so frames are in reverse chronological order, i.e. (t_0, t_-1, ..., t_-N)
-            sample_agent_features = torch.flip(sample_agent_features, dims=[1])
+            # reverse points so frames are in reverse chronological order, i.e. (t_0, t_-1, ..., t_-N)
+            sample_ego_feature = torch.flip(sample_ego_feature, dims=[1])
 
-            # maintain fixed number of points per agent polyline
-            sample_agent_features = sample_agent_features[:, : self._feature_params.total_max_points, ...]
-            sample_agent_avails = sample_agent_avails[:, : self._feature_params.total_max_points, ...]
-            if sample_agent_features.shape[1] < self._feature_params.total_max_points:
-                sample_agent_features = pad_polylines(
-                    sample_agent_features, self._feature_params.total_max_points, dim=1
-                )
-                sample_agent_avails = pad_avails(sample_agent_avails, self._feature_params.total_max_points, dim=1)
+            # maintain fixed number of points per polyline
+            sample_ego_feature = sample_ego_feature[:, : self._feature_params.total_max_points, ...]
+            sample_ego_avails = sample_ego_avails[:, : self._feature_params.total_max_points, ...]
+            if sample_ego_feature.shape[1] < self._feature_params.total_max_points:
+                sample_ego_feature = pad_polylines(sample_ego_feature, self._feature_params.total_max_points, dim=1)
+                sample_ego_avails = pad_avails(sample_ego_avails, self._feature_params.total_max_points, dim=1)
 
-            # maintained fixed number of agent polylines per sample
-            sample_agent_features = sample_agent_features[: self._feature_params.max_agents + 1, ...]
-            sample_agent_avails = sample_agent_avails[: self._feature_params.max_agents + 1, ...]
-            if sample_agent_features.shape[0] < (self._feature_params.max_agents + 1):  # agents + ego
-                sample_agent_features = pad_polylines(sample_agent_features, self._feature_params.max_agents + 1, dim=0)
-                sample_agent_avails = pad_avails(sample_agent_avails, self._feature_params.max_agents + 1, dim=0)
+            sample_features = [sample_ego_feature]
+            sample_avails = [sample_ego_avails]
 
-            agent_features.append(sample_agent_features)
-            agent_avails.append(sample_agent_avails)
+            # Agent features
+            for feature_name in self._feature_params.agent_features:
+                # if there exist at least one valid agent in the sample
+                if ego_agent_features.has_agents(feature_name, sample_idx):
+                    # num_frames x num_agents x num_features -> num_agents x num_frames x num_features
+                    sample_agent_features = torch.permute(
+                        ego_agent_features.agents[feature_name][sample_idx], (1, 0, 2)
+                    )
+                    # maintain fixed feature size through trimming/padding
+                    sample_agent_features = sample_agent_features[
+                        ..., : min(self._feature_params.agent_dimension, self._feature_params.feature_dimension)
+                    ]
+                    if (
+                        min(self._feature_params.agent_dimension, GenericAgents.agents_states_dim())
+                        < self._feature_params.feature_dimension
+                    ):
+                        sample_agent_features = pad_polylines(
+                            sample_agent_features, self._feature_params.feature_dimension, dim=2
+                        )
+
+                    sample_agent_avails = torch.ones(
+                        sample_agent_features.shape[0],
+                        sample_agent_features.shape[1],
+                        dtype=torch.bool,
+                        device=sample_agent_features.device,
+                    )
+
+                    # reverse points so frames are in reverse chronological order, i.e. (t_0, t_-1, ..., t_-N)
+                    sample_agent_features = torch.flip(sample_agent_features, dims=[1])
+
+                    # maintain fixed number of points per polyline
+                    sample_agent_features = sample_agent_features[:, : self._feature_params.total_max_points, ...]
+                    sample_agent_avails = sample_agent_avails[:, : self._feature_params.total_max_points, ...]
+                    if sample_agent_features.shape[1] < self._feature_params.total_max_points:
+                        sample_agent_features = pad_polylines(
+                            sample_agent_features, self._feature_params.total_max_points, dim=1
+                        )
+                        sample_agent_avails = pad_avails(
+                            sample_agent_avails, self._feature_params.total_max_points, dim=1
+                        )
+
+                    # maintained fixed number of agent polylines of each type per sample
+                    sample_agent_features = sample_agent_features[: self._feature_params.max_agents, ...]
+                    sample_agent_avails = sample_agent_avails[: self._feature_params.max_agents, ...]
+                    if sample_agent_features.shape[0] < (self._feature_params.max_agents):
+                        sample_agent_features = pad_polylines(
+                            sample_agent_features, self._feature_params.max_agents, dim=0
+                        )
+                        sample_agent_avails = pad_avails(sample_agent_avails, self._feature_params.max_agents, dim=0)
+
+                else:
+                    sample_agent_features = torch.zeros(
+                        self._feature_params.max_agents,
+                        self._feature_params.total_max_points,
+                        self._feature_params.feature_dimension,
+                        dtype=torch.float32,
+                        device=sample_ego_feature.device,
+                    )
+                    sample_agent_avails = torch.zeros(
+                        self._feature_params.max_agents,
+                        self._feature_params.total_max_points,
+                        dtype=torch.bool,
+                        device=sample_agent_features.device,
+                    )
+
+                # add features, avails to sample
+                sample_features.append(sample_agent_features)
+                sample_avails.append(sample_agent_avails)
+
+            sample_features = torch.cat(sample_features, dim=0)
+            sample_avails = torch.cat(sample_avails, dim=0)
+
+            agent_features.append(sample_features)
+            agent_avails.append(sample_avails)
         agent_features = torch.stack(agent_features)
         agent_avails = torch.stack(agent_avails)
 
@@ -360,7 +423,7 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
         :param features: input features containing
                         {
                             "vector_set_map": VectorSetMap,
-                            "agents": Agents,
+                            "generic_agents": GenericAgents,
                         }
         :return: targets: predictions from network
                         {
@@ -369,7 +432,7 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
         """
         # Recover features
         vector_set_map_data = cast(VectorSetMap, features["vector_set_map"])
-        ego_agent_features = cast(Agents, features["agents"])
+        ego_agent_features = cast(GenericAgents, features["generic_agents"])
         batch_size = ego_agent_features.batch_size
 
         # Extract features across batch
@@ -398,6 +461,7 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
         type_embedding = self.type_embedding(
             batch_size,
             self._feature_params.max_agents,
+            self._feature_params.agent_features,
             self._feature_params.map_features,
             self._feature_params.max_elements,
             device=features.device,
@@ -405,10 +469,14 @@ class UrbanDriverOpenLoopModel(TorchModuleWrapper):
 
         # disable certain elements on demand
         if self._feature_params.disable_agents:
-            invalid_polys[:, 1 : (1 + self._feature_params.max_agents)] = 1  # agents won't create attention
+            invalid_polys[
+                :, 1 : (1 + self._feature_params.max_agents * len(self._feature_params.agent_features))
+            ] = 1  # agents won't create attention
 
         if self._feature_params.disable_map:
-            invalid_polys[:, (1 + self._feature_params.max_agents) :] = 1  # map features won't create attention
+            invalid_polys[
+                :, (1 + self._feature_params.max_agents * len(self._feature_params.agent_features)) :
+            ] = 1  # map features won't create attention
 
         invalid_polys[:, 0] = 0  # make ego always available in global graph
 

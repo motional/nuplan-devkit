@@ -14,6 +14,9 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils imp
     GetScenariosFromDbFileParams,
     ScenarioDict,
     discover_log_dbs,
+    filter_ego_starts,
+    filter_ego_stops,
+    filter_non_stationary_ego,
     filter_num_scenarios_per_type,
     filter_scenarios_by_timestamp,
     filter_total_num_scenarios,
@@ -22,7 +25,6 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils imp
 )
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import ScenarioMapping, absolute_path_to_log_name
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilter
-from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
 
 logger = logging.getLogger(__name__)
@@ -41,7 +43,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         verbose: bool = True,
         scenario_mapping: Optional[ScenarioMapping] = None,
         vehicle_parameters: Optional[VehicleParameters] = None,
-        ground_truth_predictions: Optional[TrajectorySampling] = None,
     ):
         """
         Initialize scenario builder that filters and retrieves scenarios from the nuPlan dataset.
@@ -66,7 +67,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         self._map_version = map_version
         self._max_workers = max_workers
         self._verbose = verbose
-        self._ground_truth_predictions = ground_truth_predictions
         self._scenario_mapping = scenario_mapping if scenario_mapping is not None else ScenarioMapping({}, None)
         self._vehicle_parameters = vehicle_parameters if vehicle_parameters is not None else get_pacifica_parameters()
 
@@ -83,7 +83,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
             self._verbose,
             self._scenario_mapping,
             self._vehicle_parameters,
-            self._ground_truth_predictions,
         )
 
     @classmethod
@@ -132,7 +131,6 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 map_version=self._map_version,
                 scenario_mapping=self._scenario_mapping,
                 vehicle_parameters=self._vehicle_parameters,
-                ground_truth_predictions=self._ground_truth_predictions,
                 filter_tokens=scenario_filter.scenario_tokens,
                 filter_types=scenario_filter.scenario_types,
                 filter_map_names=scenario_filter.map_names,
@@ -183,6 +181,32 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 ),
                 enable=(scenario_filter.timestamp_threshold_s is not None),
                 name='filter_scenarios_by_timestamp',
+            ),
+            FilterWrapper(
+                fn=partial(
+                    filter_non_stationary_ego,
+                    minimum_threshold=scenario_filter.ego_displacement_minimum_m,
+                ),
+                enable=(scenario_filter.ego_displacement_minimum_m is not None),
+                name='filter_non_stationary_ego',
+            ),
+            FilterWrapper(
+                fn=partial(
+                    filter_ego_starts,
+                    speed_threshold=scenario_filter.ego_start_speed_threshold,
+                    speed_noise_tolerance=scenario_filter.speed_noise_tolerance,
+                ),
+                enable=(scenario_filter.ego_start_speed_threshold is not None),
+                name='filter_ego_starts',
+            ),
+            FilterWrapper(
+                fn=partial(
+                    filter_ego_stops,
+                    speed_threshold=scenario_filter.ego_stop_speed_threshold,
+                    speed_noise_tolerance=scenario_filter.speed_noise_tolerance,
+                ),
+                enable=(scenario_filter.ego_stop_speed_threshold is not None),
+                name='filter_ego_stops',
             ),
         ]
 

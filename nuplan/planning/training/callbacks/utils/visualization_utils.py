@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -8,9 +8,11 @@ from scipy.spatial.transform import Rotation
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.planning.training.preprocessing.features.agents import Agents
+from nuplan.planning.training.preprocessing.features.generic_agents import GenericAgents
 from nuplan.planning.training.preprocessing.features.raster import Raster
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 from nuplan.planning.training.preprocessing.features.vector_map import VectorMap
+from nuplan.planning.training.preprocessing.features.vector_set_map import VectorSetMap
 
 
 class Color(Enum):
@@ -65,7 +67,7 @@ def _draw_trajectory(
 
 
 def _create_map_raster(
-    vector_map: VectorMap,
+    vector_map: Union[VectorMap, VectorSetMap],
     radius: float,
     size: int,
     bit_shift: int,
@@ -86,15 +88,15 @@ def _create_map_raster(
     :return: Instantiated grid.
     """
     # Extract coordinates from vector map feature
-    vector_coords = vector_map.coords[0]  # Get first sample in batch
+    vector_coords = vector_map.get_lane_coords(0)  # Get first sample in batch
 
     # Align coordinates to map and clip them based on radius
-    num_lane_segments = vector_coords.shape[0]
+    num_elements, num_points, _ = vector_coords.shape
     map_ortho_align = Rotation.from_euler('z', 90, degrees=True).as_matrix().astype(np.float32)
-    coords = vector_coords.reshape(num_lane_segments * 2, 2)
+    coords = vector_coords.reshape(num_elements * num_points, 2)
     coords = np.concatenate((coords, np.zeros_like(coords[:, 0:1])), axis=-1)
     coords = (map_ortho_align @ coords.T).T
-    coords = coords[:, :2].reshape(num_lane_segments, 2, 2)
+    coords = coords[:, :2].reshape(num_elements, num_points, 2)
     coords[..., 0] = np.clip(coords[..., 0], -radius, radius)
     coords[..., 1] = np.clip(coords[..., 1], -radius, radius)
 
@@ -123,12 +125,12 @@ def _create_map_raster(
 
 
 def _create_agents_raster(
-    agents: Agents, radius: float, size: int, bit_shift: int, pixel_size: float, color: int = 1
+    agents: Union[Agents, GenericAgents], radius: float, size: int, bit_shift: int, pixel_size: float, color: int = 1
 ) -> npt.NDArray[np.uint8]:
     """
     Create agents raster layer to be visualized.
 
-    :param agents: Agents feature object.
+    :param agents: agents feature object (either Agents or GenericAgents).
     :param radius: [m] Radius of grid.
     :param bit_shift: Bit shift when drawing or filling precise polylines/rectangles.
     :param pixel_size: [m] Size of each pixel.
@@ -140,10 +142,12 @@ def _create_agents_raster(
     agents_raster: npt.NDArray[np.uint8] = np.zeros((size, size), dtype=np.uint8)
 
     # Extract array data from features
-    # Get first sample in batch
-    agents_array: npt.NDArray[np.float32] = np.asarray(agents.get_present_agents_in_sample(0))
-    # Get first sample in batch
-    agents_corners: npt.NDArray[np.float32] = np.asarray(agents.get_agent_corners_in_sample(0))
+    agents_array: npt.NDArray[np.float32] = np.asarray(
+        agents.get_present_agents_in_sample(0)
+    )  # Get first sample in batch
+    agents_corners: npt.NDArray[np.float32] = np.asarray(
+        agents.get_agent_corners_in_sample(0)
+    )  # Get first sample in batch
 
     if len(agents_array) == 0:
         return agents_raster
@@ -207,8 +211,8 @@ def _create_ego_raster(
 
 
 def get_raster_from_vector_map_with_agents(
-    vector_map: VectorMap,
-    agents: Agents,
+    vector_map: Union[VectorMap, VectorSetMap],
+    agents: Union[Agents, GenericAgents],
     target_trajectory: Optional[Trajectory] = None,
     predicted_trajectory: Optional[Trajectory] = None,
     pixel_size: float = 0.5,
@@ -219,8 +223,8 @@ def get_raster_from_vector_map_with_agents(
     """
     Create rasterized image from vector map and list of agents.
 
-    :param vector_map: Vector map feature to visualize.
-    :param agents: Agents feature to visualize.
+    :param vector_map: Vector map/vector set map feature to visualize.
+    :param agents: Agents/GenericAgents feature to visualize.
     :param target_trajectory: Target trajectory to visualize.
     :param predicted_trajectory: Predicted trajectory to visualize.
     :param pixel_size: [m] Size of a pixel.

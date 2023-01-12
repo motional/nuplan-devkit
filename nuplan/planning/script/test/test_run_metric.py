@@ -23,7 +23,6 @@ class TestRunMetric(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     '+simulation=open_loop_boxes',
                     f'simulation_log_main_path={self.tmp_dir.name}',
@@ -42,7 +41,6 @@ class TestRunMetric(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     '+simulation=open_loop_boxes',
                     'run_metric=false',
@@ -64,7 +62,7 @@ class TestRunMetric(SkeletonTestSimulation):
         with initialize_config_dir(config_dir=self.config_path):
             cfg = compose(
                 config_name=METRIC_AGGREGATOR_CONFIG_NAME,
-                overrides=[self.search_path, f'output_dir={exp_output_dir}', "challenges=['open_loop_boxes']"],
+                overrides=[f'output_dir={exp_output_dir}', "challenges=['open_loop_boxes']"],
             )
             run_metric_aggregator(cfg)
             # Check file output

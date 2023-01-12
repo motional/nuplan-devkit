@@ -1,8 +1,6 @@
 nuPlan Planning Challenge
 =========================
 
-## The nuPlan Planning Competition has been postponed to January 2023.
-
 ### Overview
 
 The main focus of the nuPlan planning challenge is to evaluate a motion planning system in realistic driving scenarios, using multiple performance metrics. In this challenge, it is assumed that a planner will consume a top-down semantic representation of detected traffic participants (vehicles, bicycles, etc.) and static obstacles and plan the vehicle’s future trajectory for a specific time horizon. The challenge is organized into three increasingly complex modes:
@@ -13,11 +11,12 @@ The main focus of the nuPlan planning challenge is to evaluate a motion planning
 
 ### Competition Timeline
 
-*   January 16th, 2023 - Warm-up phase opens for submission
-*   January 30th, 2023 - Test phase opens for submission
-*   End of April (exact dates TBA), 2023 - Competition closes
-*   May (exact dates TBA), 2023 - Finalists are announced and invited to share their code with us for verification
-*   May (exact dates TBA), 2023 - Winners are announced
+*   January 30th, 2023 - Warm-up phase and Test phase opens for submission
+*   May 18th, 2023 - Competition closes
+*   May 19th, 2023 - Finalists are announced and invited to share their code with us for verification
+*   June 2th, 2023 - Winners are announced
+*   June 18th, 2023 - The competition results are presented at the [New Advances On Autonomous Driving](https://opendrivelab.com/event/cvpr23_ADworkshop) workshop at CVPR 2023
+
 
 ### How to enter
 
@@ -75,9 +74,9 @@ to 10 submissions. The submissions will be run on all three challenges. The scen
 are the same as the ones that will be used for the test phase. However, the number of scenarios run will be smaller,
 and the data is not taken from the test split. The metrics and the overall scores will be displayed on the leaderboard.
 
-Start: January 16th, 2023
+Start: January 30th, 2023
 
-End: End of April (exact dates TBA)
+End: May 18th, 2023
 
 #### Test Phase
 The results from the test phase will be used to determine the winners of each challenge. All submissions will be evaluated on a 
@@ -88,7 +87,7 @@ submit a maximum of three submissions.
 
 Start: January 30th, 2023
 
-End: End of April (exact dates TBA)
+End: May 18th, 2023
 
 ### Challenges
 
@@ -150,7 +149,7 @@ In this challenge, the planner outputs a planned trajectory using the informatio
 
 | Configuration | Value |
 | ------------- | ----- |
-| Controller    | [iLQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/ilqr_tracker.py)  |
+| Controller    | [LQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/lqr.py)  |
 | Observations  | <ul><li>Vehicles<li>Pedestrians<li>Cyclists<li>Generic Objects<li>Traffic cone<li>Barriers<li>Construction Zones Signs</li></ul>                          |
 
 
@@ -176,7 +175,7 @@ In the final and most complex challenge, the vehicles in the scene become reacti
 
 | Configuration | Value |
 | ------------- | ----- |
-| Controller    | [iLQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/ilqr_tracker.py) |
+| Controller    | [LQR](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/simulation/controller/tracker/lqr.py) |
 | Observations  | <ul><li>Reactive:<ul><li>Vehicles</li></ul><li>Open-loop<ul><li>Pedestrians<li>Generic Objects<li>Traffic cone<li>Barriers<li>Construction Zones Signs</li></ul> </li></ul>|
 
 ##### Scoring

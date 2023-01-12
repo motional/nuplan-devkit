@@ -10,7 +10,10 @@ import torch
 from pyquaternion import Quaternion
 
 from nuplan.planning.script.builders.utils.utils_type import are_the_same_type, validate_type
-from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import LaneSegmentTrafficLightData
+from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import (
+    LaneSegmentTrafficLightData,
+    VectorFeatureLayer,
+)
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import (
     AbstractModelFeature,
     FeatureDataType,
@@ -200,6 +203,17 @@ class VectorSetMap(AbstractModelFeature):
         """
         return cls._traffic_light_status_dim
 
+    def get_lane_coords(self, sample_idx: int) -> FeatureDataType:
+        """
+        Retrieve lane coordinates at given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: lane coordinate features.
+        """
+        lane_coords = self.coords[VectorFeatureLayer.LANE.name][sample_idx]
+        if lane_coords.size == 0:
+            raise RuntimeError("Lane feature is empty!")
+        return lane_coords
+
     @classmethod
     def collate(cls, batch: List[VectorSetMap]) -> VectorSetMap:
         """Implemented. See interface."""
@@ -279,7 +293,7 @@ class VectorSetMap(AbstractModelFeature):
                     for feature_name, feature_avails in self.availabilities.items()
                 },
             )
-            for sample_idx in range(self.num_of_batches)
+            for sample_idx in range(self.batch_size)
         ]
 
     def rotate(self, quaternion: Quaternion) -> VectorSetMap:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import List
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.metric_callback import MetricCallback, run_metric_engine
@@ -26,7 +25,7 @@ class MetricRunner(AbstractRunner):
         self._simulation_log = simulation_log
         self._metric_callback = metric_callback
 
-    def run(self) -> List[RunnerReport]:
+    def run(self) -> RunnerReport:
         """
         Run through all metric runners with simulation logs.
         :return A list of runner reports.
@@ -34,18 +33,17 @@ class MetricRunner(AbstractRunner):
         start_time = time.perf_counter()
 
         # Initialize reports for all the simulations that will run
-        reports: List[RunnerReport] = [
-            RunnerReport(
-                succeeded=True,
-                error_message=None,
-                start_time=start_time,
-                end_time=None,
-                planner_report=None,
-                scenario_name=self._simulation_log.scenario.scenario_name,
-                planner_name=self._simulation_log.planner.name(),
-                log_name=self._simulation_log.scenario.log_name,
-            )
-        ]
+        report = RunnerReport(
+            succeeded=True,
+            error_message=None,
+            start_time=start_time,
+            end_time=None,
+            planner_report=None,
+            scenario_name=self._simulation_log.scenario.scenario_name,
+            planner_name=self._simulation_log.planner.name(),
+            log_name=self._simulation_log.scenario.log_name,
+        )
+
         run_metric_engine(
             metric_engine=self._metric_callback.metric_engine,
             scenario=self._simulation_log.scenario,
@@ -56,16 +54,16 @@ class MetricRunner(AbstractRunner):
         enc_time = time.perf_counter()
 
         # Only one metric runner, so it always updates the first report
-        reports[0].end_time = enc_time
+        report.end_time = enc_time
 
-        return reports
+        return report
 
     @property
-    def scenarios(self) -> List[AbstractScenario]:
+    def scenario(self) -> AbstractScenario:
         """
-        :return: Get a list of scenarios.
+        :return: Get the scenario.
         """
-        return [self._simulation_log.scenario]
+        return self._simulation_log.scenario
 
     @property
     def planner(self) -> AbstractPlanner:

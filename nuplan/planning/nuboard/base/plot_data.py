@@ -796,6 +796,7 @@ class SimulationFigure:
                 'Crosswalk': SemanticMapLayer.CROSSWALK.name,
                 'Walkway': SemanticMapLayer.WALKWAYS.name,
                 'Carpark': SemanticMapLayer.CARPARK_AREA.name,
+                'RoadBlock': SemanticMapLayer.ROADBLOCK.name,
                 'Lane Connector': SemanticMapLayer.LANE_CONNECTOR.name,
                 'Lane Line': SemanticMapLayer.LANE.name,
             }
@@ -851,7 +852,7 @@ class SimulationFigure:
                 glyphs += self._get_trajectory_glyph_to_update(glyph_name=glyph_name)
             elif glyph_name in ['Vehicle', 'Pedestrian', 'Bicycle', 'Generic', 'Traffic Cone', 'Barrier', 'Czone Sign']:
                 glyphs += self._get_agent_glyph_to_update(glyph_name=glyph_name)
-            elif glyph_name in ['Lane', 'Intersection', 'Stop Line', 'Crosswalk', 'Walkway', 'Carpark']:
+            elif glyph_name in ['Lane', 'Intersection', 'Stop Line', 'Crosswalk', 'Walkway', 'Carpark', 'RoadBlock']:
                 map_polygon_name = self.get_glyph_name_from_checkbox_group(glyph_checkbox_group_name=glyph_name)
                 glyphs += [self.map_polygon_plots.get(map_polygon_name, None)]
             elif glyph_name in ['Lane Connector', 'Lane Line']:

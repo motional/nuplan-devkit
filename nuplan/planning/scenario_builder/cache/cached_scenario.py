@@ -6,6 +6,7 @@ from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, Transform
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
+from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 
 class CachedScenario(AbstractScenario):
@@ -95,7 +96,11 @@ class CachedScenario(AbstractScenario):
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_expert_goal_state.")
 
-    def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
+    def get_tracked_objects_at_iteration(
+        self,
+        iteration: int,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
+    ) -> DetectionsTracks:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_tracked_objects_at_iteration.")
 
@@ -105,6 +110,7 @@ class CachedScenario(AbstractScenario):
         past_time_horizon: float,
         future_time_horizon: float,
         filter_track_tokens: Optional[Set[str]] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> DetectionsTracks:
         """Inherited, see superclass."""
         raise NotImplementedError(
@@ -154,13 +160,21 @@ class CachedScenario(AbstractScenario):
         raise NotImplementedError("CachedScenario does not implement get_past_sensors.")
 
     def get_past_tracked_objects(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> Generator[DetectionsTracks, None, None]:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_past_tracked_objects.")
 
     def get_future_tracked_objects(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> Generator[DetectionsTracks, None, None]:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_future_tracked_objects.")

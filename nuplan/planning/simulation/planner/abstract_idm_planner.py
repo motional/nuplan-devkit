@@ -93,6 +93,7 @@ class AbstractIDMPlanner(AbstractPlanner, ABC):
         :param route_roadblock_ids: A list of roadblock ids that make up the ego's route
         """
         assert self._map_api, "_map_api has not yet been initialized. Please call the initialize() function first!"
+        self._route_roadblocks = []
         for id_ in route_roadblock_ids:
             block = self._map_api.get_map_object(id_, SemanticMapLayer.ROADBLOCK)
             block = block or self._map_api.get_map_object(id_, SemanticMapLayer.ROADBLOCK_CONNECTOR)

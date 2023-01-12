@@ -18,10 +18,6 @@ class LogPlaybackController(AbstractEgoController):
         self.scenario = scenario
         self.current_iteration = 0
 
-    def initialize(self) -> None:
-        """Inherited, see superclass."""
-        pass
-
     def reset(self) -> None:
         """Inherited, see superclass."""
         self.current_iteration = 0

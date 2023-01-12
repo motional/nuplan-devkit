@@ -22,7 +22,10 @@ py_library(
     name = "caching",
     srcs = ["caching.py"],
     deps = [
+        "//nuplan/common/utils:file_backed_barrier",
+        "//nuplan/common/utils:helpers",
         "//nuplan/common/utils:s3_utils",
+        "//nuplan/database/common/blob_store:s3_store",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_filter_utils",
         "//nuplan/planning/script/builders:model_builder",

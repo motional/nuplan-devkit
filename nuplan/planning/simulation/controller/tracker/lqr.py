@@ -1,119 +1,133 @@
 import logging
 from enum import IntEnum
-from typing import Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 import numpy.typing as npt
-import scipy.interpolate as sp_interp
-import sympy as sym
-from control import StateSpace, ctrb, dlqr
-from sympy import Matrix, cos, sin, tan
 
 from nuplan.common.actor_state.dynamic_car_state import DynamicCarState
 from nuplan.common.actor_state.ego_state import EgoState
-from nuplan.common.actor_state.state_representation import StateVector2D, TimePoint
+from nuplan.common.actor_state.state_representation import StateVector2D
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
 from nuplan.database.utils.measure import angle_diff
 from nuplan.planning.simulation.controller.tracker.abstract_tracker import AbstractTracker
+from nuplan.planning.simulation.controller.tracker.tracker_utils import (
+    _generate_profile_from_initial_condition_and_derivatives,
+    get_interpolated_reference_trajectory_poses,
+    get_velocity_curvature_profiles_with_derivatives_from_poses,
+)
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 
 logger = logging.getLogger(__name__)
 
 
-class StateIndex(IntEnum):
+class LateralStateIndex(IntEnum):
     """
-    Index mapping for the state vector
-    """
-
-    X_POS = 0  # [m] The x position in global coordinates.
-    Y_POS = 1  # [m] The y position in global coordinates.
-    HEADING = 2  # [rad] The yaw in global coordinates.
-    VELOCITY = 3  # [m/s] The velocity along the longitudinal axis of the vehicles.
-    STEERING_ANGLE = 4  # [rad] The wheel angle relative to the longitudinal axis of the vehicle.
-
-
-class InputIndex(IntEnum):
-    """
-    Index mapping for the input vector
+    Index mapping for the lateral dynamics state vector.
     """
 
-    ACCEL = 0  # [m/s^2] The acceleration along the longitudinal axis of the vehicles.
-    STEERING_RATE = 1  # [rad/s] The steering rate.
+    LATERAL_ERROR = 0  # [m] The lateral error with respect to the planner centerline at the vehicle's rear axle center.
+    HEADING_ERROR = 1  # [rad] The heading error "".
+    STEERING_ANGLE = 2  # [rad] The wheel angle relative to the longitudinal axis of the vehicle.
 
 
 class LQRTracker(AbstractTracker):
     """
     Implements an LQR tracker for a kinematic bicycle model.
-    States: [x, y, heading, velocity, steering_angle]
-    Inputs: [acceleration, steering_rate]
-    Dynamics:
-        x_dot              = velocity * cos(heading)
-        y_dot              = velocity * sin(heading)
-        heading_dot        = velocity * tan(steering_angle) / car_length
-        velocity_dot       = acceleration
-        steering_angle_dot = steering_rate
 
-    The state space is discretized using zoh and the discrete ARE is solved.
-    The control action passed on to the motion model are:
+    We decouple into two subsystems, longitudinal and lateral, with small angle approximations for linearization.
+    We then solve two sequential LQR subproblems to find acceleration and steering rate inputs.
+
+    Longitudinal Subsystem:
+        States: [velocity]
+        Inputs: [acceleration]
+        Dynamics (continuous time):
+            velocity_dot = acceleration
+
+    Lateral Subsystem (After Linearization/Small Angle Approximation):
+        States: [lateral_error, heading_error, steering_angle]
+        Inputs: [steering_rate]
+        Parameters: [velocity, curvature]
+        Dynamics (continuous time):
+            lateral_error_dot  = velocity * heading_error
+            heading_error_dot  = velocity * (steering_angle / wheelbase_length - curvature)
+            steering_angle_dot = steering_rate
+
+    The continuous time dynamics are discretized using Euler integration and zero-order-hold on the input.
+    In case of a stopping reference, we use a simplified stopping P controller instead of LQR.
+
+    The final control inputs passed on to the motion model are:
         - acceleration
-        - steering angle
-
-    Integral Action Augmentation:
-    The system dynamics are augmented introduce integral action.
-
-    x_dot = Ax + Bu
-    z_dot = Cx - r   # integral of output (error)
-
-    Augmented discrete state space:
-    x_hat_dot = | A 0||x| + |B|u
-                |-C I||z| + |0|
+        - steering_rate
     """
 
     def __init__(
         self,
-        q_diag: npt.NDArray[np.float64],
-        r_diag: npt.NDArray[np.float64],
-        proportional_gain: float,
-        look_ahead_seconds: float,
-        look_ahead_meters: float,
+        q_longitudinal: npt.NDArray[np.float64],
+        r_longitudinal: npt.NDArray[np.float64],
+        q_lateral: npt.NDArray[np.float64],
+        r_lateral: npt.NDArray[np.float64],
+        discretization_time: float,
+        tracking_horizon: int,
+        jerk_penalty: float,
+        curvature_rate_penalty: float,
+        stopping_proportional_gain: float,
         stopping_velocity: float,
         vehicle: VehicleParameters = get_pacifica_parameters(),
     ):
         """
         Constructor for LQR controller
-        :param q_diag: The diagonal terms of the Q matrix
-        :param r_diag: The diagonal terms of the R matrix
-        :param proportional_gain: The proportional_gain term for the P controller
-        :param look_ahead_seconds: [s] The lookahead time
-        :param look_ahead_meters: [m] The lookahead distance
+        :param q_longitudinal: The weights for the Q matrix for the longitudinal subystem.
+        :param r_longitudinal: The weights for the R matrix for the longitudinal subystem.
+        :param q_lateral: The weights for the Q matrix for the lateral subystem.
+        :param r_lateral: The weights for the R matrix for the lateral subystem.
+        :param discretization_time: [s] The time interval used for discretizing the continuous time dynamics.
+        :param tracking_horizon: How many discrete time steps ahead to consider for the LQR objective.
+        :param stopping_proportional_gain: The proportional_gain term for the P controller when coming to a stop.
+        :param stopping_velocity: [m/s] The velocity below which we are deemed to be stopping and we don't use LQR.
         :param vehicle: Vehicle parameters
         """
-        assert len(q_diag) == 6, "q_diag has to have length of 6"
-        assert len(r_diag) == 2, "r_diag has to have length of 2"
-        assert proportional_gain >= 0, "proportional_gain has to be greater than 0"
-        assert look_ahead_seconds >= 0, "look_ahead_seconds has to be greater than 0"
-        assert look_ahead_meters >= 0, "look_ahead_meters has to be greater than 0"
-        assert stopping_velocity >= 0, "stopping_velocity has to be greater than 0"
+        # Longitudinal LQR Parameters
+        assert len(q_longitudinal) == 1, "q_longitudinal should have 1 element (velocity)."
+        assert len(r_longitudinal) == 1, "r_longitudinal should have 1 element (acceleration)."
+        self._q_longitudinal: npt.NDArray[np.float64] = np.diag(q_longitudinal)
+        self._r_longitudinal: npt.NDArray[np.float64] = np.diag(r_longitudinal)
 
-        self._epsilon = 1e-6
-        self._vehicle = vehicle
+        # Lateral LQR Parameters
+        assert len(q_lateral) == 3, "q_lateral should have 3 elements (lateral_error, heading_error, steering_angle)."
+        assert len(r_lateral) == 1, "r_lateral should have 1 element (steering_rate)."
+        self._q_lateral: npt.NDArray[np.float64] = np.diag(q_lateral)
+        self._r_lateral: npt.NDArray[np.float64] = np.diag(r_lateral)
 
-        # Controller parameters
-        self._q_matrix: npt.NDArray[np.float64] = np.diag(q_diag)
-        self._r_matrix: npt.NDArray[np.float64] = np.diag(r_diag)
-        self._proportional_gain = proportional_gain
-        self._look_ahead_seconds = look_ahead_seconds
-        self._look_ahead_meters = look_ahead_meters
+        # Validate cost matrices for longitudinal and lateral LQR.
+        for attr in ["_q_lateral", "_q_longitudinal"]:
+            assert np.all(np.diag(getattr(self, attr)) >= 0.0), f"self.{attr} must be positive semidefinite."
+
+        for attr in ["_r_lateral", "_r_longitudinal"]:
+            assert np.all(np.diag(getattr(self, attr)) > 0.0), f"self.{attr} must be positive definite."
+
+        # Common LQR Parameters
+        # Note we want a horizon > 1 so that steering rate actually can impact lateral/heading error in discrete time.
+        assert discretization_time > 0.0, "The discretization_time should be positive."
+        assert (
+            tracking_horizon > 1
+        ), "We expect the horizon to be greater than 1 - else steering_rate has no impact with Euler integration."
+        self._discretization_time = discretization_time
+        self._tracking_horizon = tracking_horizon
+        self._wheel_base = vehicle.wheel_base
+
+        # Velocity/Curvature Estimation Parameters
+        assert jerk_penalty > 0.0, "The jerk penalty must be positive."
+        assert curvature_rate_penalty > 0.0, "The curvature rate penalty must be positive."
+        self._jerk_penalty = jerk_penalty
+        self._curvature_rate_penalty = curvature_rate_penalty
+
+        # Stopping Controller Parameters
+        assert stopping_proportional_gain > 0, "stopping_proportional_gain has to be greater than 0."
+        assert stopping_velocity > 0, "stopping_velocity has to be greater than 0."
+        self._stopping_proportional_gain = stopping_proportional_gain
         self._stopping_velocity = stopping_velocity
-
-        # set to None to allow lazily loading of jacobians
-        self._a_matrix: Optional[Matrix] = None
-        self._b_matrix: Optional[Matrix] = None
-
-    def initialize(self) -> None:
-        """Inherited, see superclass."""
-        self._a_matrix, self._b_matrix = self._compute_linear_state_space()
 
     def track_trajectory(
         self,
@@ -123,45 +137,28 @@ class LQRTracker(AbstractTracker):
         trajectory: AbstractTrajectory,
     ) -> DynamicCarState:
         """Inherited, see superclass."""
-        sampling_time = next_iteration.time_point.time_s - current_iteration.time_point.time_s
-        state_vector: npt.NDArray[np.float64] = np.array(
-            [
-                initial_state.rear_axle.x,
-                initial_state.rear_axle.y,
-                initial_state.rear_axle.heading,
-                initial_state.dynamic_car_state.rear_axle_velocity_2d.x,
-                initial_state.tire_steering_angle,
-            ]
-        )
-        # Dynamically reduce the lookahead with velocity
-        # At high velocity the reference pose at the next time step becomes further away from the state.
-        # This in turn induces a large error and hence the LQR commands large acceleration.
-        # Hence, we must reduce the lookahead to keep the distance from the LQR state bounded.
-        look_ahead_seconds = min(
-            self._look_ahead_meters / (abs(state_vector[StateIndex.VELOCITY]) + self._epsilon), self._look_ahead_seconds
+        initial_velocity, initial_lateral_state_vector = self._compute_initial_velocity_and_lateral_state(
+            current_iteration, initial_state, trajectory
         )
 
-        try:
-            sample_time = current_iteration.time_point + TimePoint(int(look_ahead_seconds * 1e6))
-            next_state = trajectory.get_state_at_time(sample_time)
-            reference_velocity = self._infer_refernce_velocity(trajectory, sample_time)
-
-        except AssertionError as e:
-            raise AssertionError("Lookahead time exceeds trajectory length!") from e
-
-        reference_vector: npt.NDArray[np.float64] = np.array(
-            [
-                next_state.rear_axle.x,
-                next_state.rear_axle.y,
-                next_state.rear_axle.heading,
-                reference_velocity,
-                next_state.tire_steering_angle,
-            ]
+        reference_velocity, curvature_profile = self._compute_reference_velocity_and_curvature_profile(
+            current_iteration, trajectory
         )
 
-        accel_cmd, steering_rate_cmd = self._compute_control_action(
-            state_vector, reference_vector, initial_state, sampling_time
-        )
+        should_stop = reference_velocity <= self._stopping_velocity and initial_velocity <= self._stopping_velocity
+
+        if should_stop:
+            accel_cmd, steering_rate_cmd = self._stopping_controller(initial_velocity, reference_velocity)
+        else:
+            accel_cmd = self._longitudinal_lqr_controller(initial_velocity, reference_velocity)
+            velocity_profile = _generate_profile_from_initial_condition_and_derivatives(
+                initial_condition=initial_velocity,
+                derivatives=np.ones(self._tracking_horizon, dtype=np.float64) * accel_cmd,
+                discretization_time=self._discretization_time,
+            )[: self._tracking_horizon]
+            steering_rate_cmd = self._lateral_lqr_controller(
+                initial_lateral_state_vector, velocity_profile, curvature_profile
+            )
 
         return DynamicCarState.build_from_rear_axle(
             rear_axle_to_center_dist=initial_state.car_footprint.rear_axle_to_center_dist,
@@ -170,173 +167,222 @@ class LQRTracker(AbstractTracker):
             tire_steering_rate=steering_rate_cmd,
         )
 
-    @staticmethod
-    def _infer_refernce_velocity(trajectory: AbstractTrajectory, sample_time: TimePoint) -> float:
-        """
-        Calculates the reference velocity from the give pose trajectory.
-        :param trajectory: The reference trajectory to track.
-        :param sample_time: The time point to sample the trajectory.
-        :return: [m/s] The velocity reference.
-        """
-        sampled_ego_trajectory = trajectory.get_sampled_trajectory()
-        rear_axle_poses: npt.NDArray[np.int32] = np.array(
-            [[*sample.rear_axle.point] for sample in sampled_ego_trajectory]
-        )
-        time_point: npt.NDArray[np.int32] = np.array([sample.time_point.time_us for sample in sampled_ego_trajectory])
-        approx_vel = np.diff(rear_axle_poses.transpose()) / np.diff(time_point * 1e-6)
-        interp = sp_interp.interp1d(time_point[:-1], approx_vel, axis=1)
-        return float(np.hypot(*interp(sample_time.time_us)))
-
-    def _compute_control_action(
+    def _compute_initial_velocity_and_lateral_state(
         self,
-        state: npt.NDArray[np.float64],
-        reference: npt.NDArray[np.float64],
-        ego_state: EgoState,
-        sampling_time: float,
-    ) -> Tuple[float, float]:
+        current_iteration: SimulationIteration,
+        initial_state: EgoState,
+        trajectory: AbstractTrajectory,
+    ) -> Tuple[float, npt.NDArray[np.float64]]:
         """
-        Computes the control action given a state and a reference.
-        :param state: The current state.
-        :param reference: The reference to track.
-        :param ego_state: The ego state.
-        :param sampling_time: [s] The sampling interval.
-        :return: The control actions ([m/s^2] accel, [rad/s] steering rate)
+        This method projects the initial tracking error into vehicle/Frenet frame.  It also extracts initial velocity.
+        :param current_iteration: Used to get the current time.
+        :param initial_state: The current state for ego.
+        :param trajectory: The reference trajectory we are tracking.
+        :return: Initial velocity [m/s] and initial lateral state.
         """
-        tracking_error: npt.NDArray[np.float64] = self._compute_error(state, reference, sampling_time)
+        # Get initial trajectory state.
+        initial_trajectory_state = trajectory.get_state_at_time(current_iteration.time_point)
 
-        # Stopping case
-        if (
-            reference[StateIndex.VELOCITY] < self._stopping_velocity
-            and state[StateIndex.VELOCITY] < self._stopping_velocity
-        ):
-            # Apply proportional controller
-            accel = -self._proportional_gain * tracking_error[StateIndex.VELOCITY]
-            return accel, 0.0
+        # Determine initial error state.
+        x_error = initial_state.rear_axle.x - initial_trajectory_state.rear_axle.x
+        y_error = initial_state.rear_axle.y - initial_trajectory_state.rear_axle.y
+        heading_reference = initial_trajectory_state.rear_axle.heading
 
-        return self._compute_lqr_control_action(tracking_error, ego_state, sampling_time)
+        lateral_error = -x_error * np.sin(heading_reference) + y_error * np.cos(heading_reference)
+        heading_error = angle_diff(initial_state.rear_axle.heading, heading_reference, 2 * np.pi)
 
-    def _compute_lqr_control_action(
-        self, tracking_error: npt.NDArray[np.float64], ego_state: EgoState, sampling_time: float
-    ) -> Tuple[float, float]:
-        """
-        Compute the control action using LQR policy
-        :param tracking_error: <np.ndarray: num_states> The tracking error vector.
-        :param ego_state: The ego state.
-        :param sampling_time: [s] The sampling interval.
-        :return: The control actions ([m/s^2] accel, [rad/s] steering rate)
-        """
-        # Linearize system around the current ego state
-        a_matrix, b_matrix = self._linearize_model(
-            heading=ego_state.rear_axle.heading,
-            velocity=ego_state.dynamic_car_state.rear_axle_velocity_2d.x,
-            steering_angle=ego_state.tire_steering_angle,
+        # Return initial velocity and lateral state vector.
+        initial_velocity = initial_state.dynamic_car_state.rear_axle_velocity_2d.x
+
+        initial_lateral_state_vector: npt.NDArray[np.float64] = np.array(
+            [
+                lateral_error,
+                heading_error,
+                initial_state.tire_steering_angle,
+            ],
+            dtype=np.float64,
         )
 
-        # Discretize System
-        sys = StateSpace(a_matrix, b_matrix, np.zeros_like(a_matrix), np.zeros_like(b_matrix))
-        discrete_sys = sys.sample(sampling_time)
+        return initial_velocity, initial_lateral_state_vector
 
-        try:
-            # Solve the discrete lqr problem
-            gain_matrix, _, _ = dlqr(discrete_sys, self._q_matrix, self._r_matrix)
-            # Control feedback law u[t+1] = -Ku[t]
-            control_action = -gain_matrix.dot(tracking_error)
+    def _compute_reference_velocity_and_curvature_profile(
+        self,
+        current_iteration: SimulationIteration,
+        trajectory: AbstractTrajectory,
+    ) -> Tuple[float, npt.NDArray[np.float64]]:
+        """
+        This method computes reference velocity and curvature profile based on the reference trajectory.
+        We use a lookahead time equal to self._tracking_horizon * self._discretization_time.
+        :param current_iteration: Used to get the current time.
+        :param trajectory: The reference trajectory we are tracking.
+        :return: The reference velocity [m/s] and curvature profile [rad] to track.
+        """
+        times_s, poses = get_interpolated_reference_trajectory_poses(trajectory, self._discretization_time)
 
-        except np.linalg.LinAlgError:
-            logger.warning(
-                "Failed to solve for LQR gain matrix. Applying zero action \n "
-                "Controllability matrix not full rank: %d < 5\n"
-                "Linearization point [heading, velocity, steering angle: [%0.2f, %0.2f, %0.2f]",
-                np.linalg.matrix_rank(ctrb(a_matrix, b_matrix)),
-                ego_state.rear_axle.heading,
-                ego_state.dynamic_car_state.rear_axle_velocity_2d.x,
-                ego_state.tire_steering_angle,
+        (
+            velocity_profile,
+            acceleration_profile,
+            curvature_profile,
+            curvature_rate_profile,
+        ) = get_velocity_curvature_profiles_with_derivatives_from_poses(
+            discretization_time=self._discretization_time,
+            poses=poses,
+            jerk_penalty=self._jerk_penalty,
+            curvature_rate_penalty=self._curvature_rate_penalty,
+        )
+
+        reference_time = current_iteration.time_point.time_s + self._tracking_horizon * self._discretization_time
+        reference_velocity = np.interp(reference_time, times_s[:-1], velocity_profile)
+
+        profile_times = [
+            current_iteration.time_point.time_s + x * self._discretization_time for x in range(self._tracking_horizon)
+        ]
+        reference_curvature_profile = np.interp(profile_times, times_s[:-1], curvature_profile)
+
+        return float(reference_velocity), reference_curvature_profile
+
+    def _stopping_controller(
+        self,
+        initial_velocity: float,
+        reference_velocity: float,
+    ) -> Tuple[float, float]:
+        """
+        Apply proportional controller when at near-stop conditions.
+        :param initial_velocity: [m/s] The current velocity of ego.
+        :param reference_velocity: [m/s] The reference velocity to track.
+        :return: Acceleration [m/s^2] and zero steering_rate [rad/s] command.
+        """
+        accel = -self._stopping_proportional_gain * (initial_velocity - reference_velocity)
+        return accel, 0.0
+
+    def _longitudinal_lqr_controller(
+        self,
+        initial_velocity: float,
+        reference_velocity: float,
+    ) -> float:
+        """
+        This longitudinal controller determines an acceleration input to minimize velocity error at a lookahead time.
+        :param initial_velocity: [m/s] The current velocity of ego.
+        :param reference_velocity: [m/s] The reference_velocity to track at a lookahead time.
+        :return: Acceleration [m/s^2] command based on LQR.
+        """
+        # We assume that we hold the acceleration constant for the entire tracking horizon.
+        # Given this, we can show the following where N = self._tracking_horizon and dt = self._discretization_time:
+        # velocity_N = velocity_0 + (N * dt) * acceleration
+        A: npt.NDArray[np.float64] = np.array([1.0], dtype=np.float64)
+        B: npt.NDArray[np.float64] = np.array([self._tracking_horizon * self._discretization_time], dtype=np.float64)
+
+        accel_cmd = self._solve_one_step_lqr(
+            initial_state=np.array([initial_velocity], dtype=np.float64),
+            reference_state=np.array([reference_velocity], dtype=np.float64),
+            Q=self._q_longitudinal,
+            R=self._r_longitudinal,
+            A=A,
+            B=B,
+            g=np.zeros(1, dtype=np.float64),
+            angle_diff_indices=[],
+        )
+
+        return float(accel_cmd)
+
+    def _lateral_lqr_controller(
+        self,
+        initial_lateral_state_vector: npt.NDArray[np.float64],
+        velocity_profile: npt.NDArray[np.float64],
+        curvature_profile: npt.NDArray[np.float64],
+    ) -> float:
+        """
+        This lateral controller determines a steering_rate input to minimize lateral errors at a lookahead time.
+        It requires a velocity sequence as a parameter to ensure linear time-varying lateral dynamics.
+        :param initial_lateral_state_vector: The current lateral state of ego.
+        :param velocity_profile: [m/s] The velocity over the entire self._tracking_horizon-step lookahead.
+        :param curvature_profile: [rad] The curvature over the entire self._tracking_horizon-step lookahead..
+        :return: Steering rate [rad/s] command based on LQR.
+        """
+        assert len(velocity_profile) == self._tracking_horizon, (
+            f"The linearization velocity sequence should have length {self._tracking_horizon} "
+            f"but is {len(velocity_profile)}."
+        )
+        assert len(curvature_profile) == self._tracking_horizon, (
+            f"The linearization curvature sequence should have length {self._tracking_horizon} "
+            f"but is {len(curvature_profile)}."
+        )
+
+        # Set up the lateral LQR problem using the constituent linear time-varying (affine) system dynamics.
+        # Ultimately, we'll end up with the following problem structure where N = self._tracking_horizon:
+        # lateral_error_N = A @ lateral_error_0 + B @ steering_rate + g
+        n_lateral_states = len(LateralStateIndex)
+        I: npt.NDArray[np.float64] = np.eye(n_lateral_states, dtype=np.float64)
+
+        A: npt.NDArray[np.float64] = I
+        B: npt.NDArray[np.float64] = np.zeros((n_lateral_states, 1), dtype=np.float64)
+        g: npt.NDArray[np.float64] = np.zeros(n_lateral_states, dtype=np.float64)
+
+        # Convenience aliases for brevity.
+        idx_lateral_error = LateralStateIndex.LATERAL_ERROR
+        idx_heading_error = LateralStateIndex.HEADING_ERROR
+        idx_steering_angle = LateralStateIndex.STEERING_ANGLE
+
+        input_matrix: npt.NDArray[np.float64] = np.zeros((n_lateral_states, 1), np.float64)
+        input_matrix[idx_steering_angle] = self._discretization_time
+
+        for index_step, (velocity, curvature) in enumerate(zip(velocity_profile, curvature_profile)):
+            state_matrix_at_step: npt.NDArray[np.float64] = np.eye(n_lateral_states, dtype=np.float64)
+            state_matrix_at_step[idx_lateral_error, idx_heading_error] = velocity * self._discretization_time
+            state_matrix_at_step[idx_heading_error, idx_steering_angle] = (
+                velocity * self._discretization_time / self._wheel_base
             )
-            control_action = np.array([0.0, 0.0])
 
-        return control_action[InputIndex.ACCEL], control_action[InputIndex.STEERING_RATE]
+            affine_term: npt.NDArray[np.float64] = np.zeros(n_lateral_states, dtype=np.float64)
+            affine_term[idx_heading_error] = -velocity * curvature * self._discretization_time
+
+            A = state_matrix_at_step @ A
+            B = state_matrix_at_step @ B + input_matrix
+            g = state_matrix_at_step @ g + affine_term
+
+        steering_rate_cmd = self._solve_one_step_lqr(
+            initial_state=initial_lateral_state_vector,
+            reference_state=np.zeros(n_lateral_states, dtype=np.float64),
+            Q=self._q_lateral,
+            R=self._r_lateral,
+            A=A,
+            B=B,
+            g=g,
+            angle_diff_indices=[idx_heading_error, idx_steering_angle],
+        )
+
+        return float(steering_rate_cmd)
 
     @staticmethod
-    def _compute_error(
-        state: npt.NDArray[np.float64], reference: npt.NDArray[np.float64], sampling_time: float
+    def _solve_one_step_lqr(
+        initial_state: npt.NDArray[np.float64],
+        reference_state: npt.NDArray[np.float64],
+        Q: npt.NDArray[np.float64],
+        R: npt.NDArray[np.float64],
+        A: npt.NDArray[np.float64],
+        B: npt.NDArray[np.float64],
+        g: npt.NDArray[np.float64],
+        angle_diff_indices: List[int] = [],
     ) -> npt.NDArray[np.float64]:
         """
-        Compute the error between the state and reference.
-        :param state: State vector.
-        :param reference: Reference vector.
-        :param sampling_time: [s] The sampling interval.
+        This function uses LQR to find an optimal input to minimize tracking error in one step of dynamics.
+        The dynamics are next_state = A @ initial_state + B @ input + g and our target is the reference_state.
+        :param initial_state: The current state.
+        :param reference_state: The desired state in 1 step (according to A,B,g dynamics).
+        :param Q: The state tracking 2-norm cost matrix.
+        :param R: The input 2-norm cost matrix.
+        :param A: The state dynamics matrix.
+        :param B: The input dynamics matrix.
+        :param g: The offset/affine dynamics term.
+        :param angle_diff_indices: The set of state indices for which we need to apply angle differences, if defined.
+        :return: LQR optimal input for the 1-step problem.
         """
-        error: npt.NDArray[np.float64] = state - reference
+        state_error_zero_input = A @ initial_state + g - reference_state
 
-        # Handle angular states
-        error[StateIndex.HEADING] = angle_diff(state[StateIndex.HEADING], reference[StateIndex.HEADING], 2 * np.pi)
-        error[StateIndex.STEERING_ANGLE] = angle_diff(
-            state[StateIndex.STEERING_ANGLE], reference[StateIndex.STEERING_ANGLE], 2 * np.pi
-        )
+        for angle_diff_index in angle_diff_indices:
+            state_error_zero_input[angle_diff_index] = angle_diff(
+                state_error_zero_input[angle_diff_index], 0.0, 2 * np.pi
+            )
 
-        # Handle error integral term
-        integral_term = error * sampling_time
-        return np.concatenate((error, [integral_term[StateIndex.VELOCITY]]))
-
-    def _linearize_model(
-        self, heading: float, velocity: float, steering_angle: float
-    ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-        """
-        Linearizes the kinematic bicycle model around the given operating point.
-        :param heading: [rad] heading linearization point.
-        :param velocity: [m/s] velocity linearization point.
-        :param steering_angle: [rad] steering_angle linearization point.
-        :return: The A and B matrices of the linearized dynamics of the kinematic bicycle model x_dot = Ax(t) + Bu(t).
-        """
-        if self._a_matrix is None or self._b_matrix is None:
-            raise ValueError("A and B state space matrices are None. Need to initialize the tracker first!")
-
-        # Substitute in linearization point
-        a_matrix = self._a_matrix.subs([('theta', heading), ('vel', velocity), ('delta', steering_angle)])
-
-        a_matrix = np.array(a_matrix).astype(np.float64)
-        b_matrix: npt.NDArray[np.float64] = np.array(self._b_matrix).astype(np.float64)
-
-        # Augment the system with integrators
-        num_states = a_matrix.shape[0]
-        num_inputs = b_matrix.shape[1]
-
-        # Process the states to be integrated
-        c_matrix = np.zeros((1, len(StateIndex)))
-        c_matrix[0][StateIndex.VELOCITY] = 1.0
-        num_integrators = c_matrix.shape[0]
-
-        a_matrix = np.block([[a_matrix, np.zeros((num_states, num_integrators))], [-c_matrix, np.eye(num_integrators)]])
-        b_matrix = np.vstack([b_matrix, np.zeros((num_integrators, num_inputs))])
-
-        return a_matrix, b_matrix
-
-    def _compute_linear_state_space(self) -> Tuple[Matrix, Matrix]:
-        """
-        Calculate the A and B jacobian of a kinematic bicycle model where the reference is at the rear axle.
-        Where A is the jacobian wrt to the state vector and B jacobian is wrt to the input vector. Together they
-        describe the linear system model x_dot = Ax(t) + Bu(t).
-        :returns: A and B jacobians.
-        """
-        # State vector
-        x = sym.Symbol('x')  # [m] x position in world frame
-        y = sym.Symbol('y')  # [m] y position in world frame
-        theta = sym.Symbol('theta')  # [rad] Heading at the rear axle
-        vel = sym.Symbol('vel')  # [m/s] velocity
-        delta = sym.Symbol('delta')  # [rad] steering angle
-
-        state_vector = Matrix([x, y, theta, vel, delta])
-
-        # Input vector
-        accel = sym.Symbol('accel')  # [m/s^2] acceleration
-        phi = sym.Symbol('phi')  # [rad/s] steering rate
-        input_vector = Matrix([accel, phi])
-
-        # Dynamics
-        x_dot = vel * cos(theta)
-        y_dot = vel * sin(theta)
-        theta_dot = vel * tan(delta) / self._vehicle.wheel_base
-
-        ode = Matrix([x_dot, y_dot, theta_dot, accel, phi])
-
-        return ode.jacobian(state_vector), ode.jacobian(input_vector)
+        lqr_input = -np.linalg.inv(B.T @ Q @ B + R) @ B.T @ Q @ state_error_zero_input
+        return lqr_input

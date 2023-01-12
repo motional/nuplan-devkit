@@ -23,6 +23,7 @@ py_library(
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/simulation/observation:observation_type",
+        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
     ],
 )
 

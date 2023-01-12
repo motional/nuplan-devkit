@@ -43,7 +43,9 @@ py_library(
         ":proto_converters",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:map_manager",
+        "//nuplan/planning/script/builders:planner_builder",
         "//nuplan/planning/simulation/planner:abstract_planner",
+        requirement("omegaconf"),
     ],
 )
 

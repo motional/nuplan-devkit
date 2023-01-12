@@ -61,18 +61,20 @@ class TestGenericAgents(unittest.TestCase):
         self.assertIsInstance(feature.ego[0], np.ndarray)
         for feature_name in self.agent_features:
             self.assertIsInstance(feature.agents[feature_name][0], np.ndarray)
-            self.assertIsInstance(feature.get_flatten_agents_features_in_sample(feature_name, 0), np.ndarray)
+            self.assertIsInstance(feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0), np.ndarray)
             self.assertEqual(
-                feature.get_flatten_agents_features_in_sample(feature_name, 0).shape, (2, feature.agents_features_dim)
+                feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0).shape,
+                (2, feature.agents_features_dim),
             )
 
         feature = feature.to_feature_tensor()
         self.assertIsInstance(feature.ego[0], torch.Tensor)
         for feature_name in self.agent_features:
             self.assertIsInstance(feature.agents[feature_name][0], torch.Tensor)
-            self.assertIsInstance(feature.get_flatten_agents_features_in_sample(feature_name, 0), torch.Tensor)
+            self.assertIsInstance(feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0), torch.Tensor)
             self.assertEqual(
-                feature.get_flatten_agents_features_in_sample(feature_name, 0).shape, (2, feature.agents_features_dim)
+                feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0).shape,
+                (2, feature.agents_features_dim),
             )
 
     def test_no_agents(self) -> None:
@@ -90,9 +92,10 @@ class TestGenericAgents(unittest.TestCase):
         self.assertIsInstance(feature.ego[0], np.ndarray)
         for feature_name in self.agent_features:
             self.assertIsInstance(feature.agents[feature_name][0], np.ndarray)
-            self.assertIsInstance(feature.get_flatten_agents_features_in_sample(feature_name, 0), np.ndarray)
+            self.assertIsInstance(feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0), np.ndarray)
             self.assertEqual(
-                feature.get_flatten_agents_features_in_sample(feature_name, 0).shape, (0, feature.agents_features_dim)
+                feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0).shape,
+                (0, feature.agents_features_dim),
             )
             self.assertEqual(feature.num_agents_in_sample(feature_name, 0), 0)
 
@@ -103,9 +106,10 @@ class TestGenericAgents(unittest.TestCase):
         self.assertIsInstance(feature.ego[0], torch.Tensor)
         for feature_name in self.agent_features:
             self.assertIsInstance(feature.agents[feature_name][0], torch.Tensor)
-            self.assertIsInstance(feature.get_flatten_agents_features_in_sample(feature_name, 0), torch.Tensor)
+            self.assertIsInstance(feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0), torch.Tensor)
             self.assertEqual(
-                feature.get_flatten_agents_features_in_sample(feature_name, 0).shape, (0, feature.agents_features_dim)
+                feature.get_flatten_agents_features_by_type_in_sample(feature_name, 0).shape,
+                (0, feature.agents_features_dim),
             )
             self.assertEqual(feature.num_agents_in_sample(feature_name, 0), 0)
 

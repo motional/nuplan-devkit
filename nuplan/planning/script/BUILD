@@ -13,6 +13,11 @@ filegroup(
     srcs = glob(["**/*.yaml"]),
 )
 
+filegroup(
+    name = "init",
+    srcs = glob(["**/__init__.py"]),
+)
+
 py_binary(
     name = "utils",
     srcs = ["utils.py"],
@@ -35,9 +40,11 @@ py_binary(
     name = "run_simulation",
     srcs = ["run_simulation.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        ":init",
+        ":yaml",
     ],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/script:utils",
         "//nuplan/planning/script/builders:scenario_building_builder",
         "//nuplan/planning/script/builders:simulation_builder",
@@ -51,7 +58,8 @@ py_binary(
     name = "run_metric_aggregator",
     srcs = ["run_metric_aggregator.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        ":init",
+        ":yaml",
     ],
     deps = [
         ":run_simulation",
@@ -66,7 +74,8 @@ py_binary(
     name = "run_metric",
     srcs = ["run_metric.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        ":init",
+        ":yaml",
     ],
     deps = [
         "//nuplan/planning/script:run_simulation",
@@ -80,10 +89,13 @@ py_binary(
     name = "run_training",
     srcs = ["run_training.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        ":init",
+        ":yaml",
         requirement_torch("pytorch-lightning"),
     ],
     deps = [
+        ":profiler_context_manager",
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/script:utils",
         "//nuplan/planning/script/builders:folder_builder",
         "//nuplan/planning/script/builders:logging_builder",
@@ -99,7 +111,8 @@ py_binary(
     name = "run_nuboard",
     srcs = ["run_nuboard.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        ":init",
+        ":yaml",
     ],
     deps = [
         "//nuplan/planning/nuboard",
@@ -113,7 +126,8 @@ py_binary(
     name = "run_result_processor_aws",
     srcs = ["run_result_processor_aws.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        ":init",
+        ":yaml",
     ],
     deps = [
         ":run_metric_aggregator",
@@ -131,7 +145,14 @@ py_binary(
     srcs = ["run_submission_planner.py"],
     deps = [
         "//nuplan/planning/script:utils",
-        "//nuplan/planning/script/builders:planner_builder",
         "//nuplan/submission:submission_planner",
+    ],
+)
+
+py_binary(
+    name = "profiler_context_manager",
+    srcs = ["profiler_context_manager.py"],
+    deps = [
+        "//nuplan/planning/training/callbacks:profile_callback",
     ],
 )

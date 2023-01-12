@@ -39,7 +39,7 @@ class AbstractTrajectory(metaclass=ABCMeta):
         """
         :return: the time duration of the trajectory in micro seconds
         """
-        return self.end_time.time_us - self.start_time.time_us  # type: ignore
+        return int(self.end_time.time_us - self.start_time.time_us)
 
     @abstractmethod
     def get_state_at_time(self, time_point: TimePoint) -> Any:
@@ -48,7 +48,18 @@ class AbstractTrajectory(metaclass=ABCMeta):
         :param time_point: Time for which are want to query a state.
         :return: State at the specified time.
 
-        :raises Exception: Throws an exception in case a time_point is beyond range of a trajectory.
+        :raises AssertionError: Throws an exception in case a time_point is beyond range of a trajectory.
+        """
+        pass
+
+    @abstractmethod
+    def get_state_at_times(self, time_points: List[TimePoint]) -> List[Any]:
+        """
+        Get the state of the actor at the specified time points.
+        :param time_points: List of time points for which are want to query a state.
+        :return: States at the specified time.
+
+        :raises AssertionError: Throws an exception in case a time_point is beyond range of a trajectory.
         """
         pass
 

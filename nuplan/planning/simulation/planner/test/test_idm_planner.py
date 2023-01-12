@@ -49,7 +49,7 @@ class TestAbstractIDMPlanner(unittest.TestCase):
         """Test initialize"""
         initialization = MagicMock()
         self.planner.initialize(initialization)
-        mock_initialize_route_plan.assert_called_once_with(initialization[0].route_roadblock_ids)
+        mock_initialize_route_plan.assert_called_once_with(initialization.route_roadblock_ids)
 
     @patch(f"{TEST_FILE_PATH}.path_to_linestring")
     @patch(f"{TEST_FILE_PATH}.create_path_from_se2")
@@ -103,11 +103,11 @@ class TestAbstractIDMPlanner(unittest.TestCase):
     ) -> None:
         """Test compute_trajectory"""
         # Create mocks for List[PlannerInput]
-        planner_input = [MagicMock()]
+        planner_input = MagicMock()
         mock_ego_state = Mock()
         mock_traffic_light_data = call()
-        planner_input[0].history.current_state = (mock_ego_state, Mock())
-        planner_input[0].traffic_light_data = mock_traffic_light_data
+        planner_input.history.current_state = (mock_ego_state, Mock())
+        planner_input.traffic_light_data = mock_traffic_light_data
 
         # Create mocks for _construct_occupancy_map
         mock_occupancy_map = Mock()
@@ -116,7 +116,7 @@ class TestAbstractIDMPlanner(unittest.TestCase):
 
         self.planner.compute_trajectory(planner_input)
         mock_initialize_ego_path.assert_called_once_with(mock_ego_state)
-        mock_construct_occupancy_map.assert_called_once_with(*planner_input[0].history.current_state)
+        mock_construct_occupancy_map.assert_called_once_with(*planner_input.history.current_state)
         mock_annotate_occupancy_map.assert_called_once_with(mock_traffic_light_data, mock_occupancy_map)
         mock_get_planned_trajectory.assert_called_once_with(
             mock_ego_state, mock_occupancy_map, mock_unique_observations
@@ -127,26 +127,22 @@ class TestAbstractIDMPlanner(unittest.TestCase):
         history_buffer = SimulationHistoryBuffer.initialize_from_scenario(10, self.scenario, DetectionsTracks)
 
         self.planner.initialize(
-            [
-                PlannerInitialization(
-                    self.scenario.get_route_roadblock_ids(),
-                    self.scenario.get_mission_goal(),
-                    self.scenario.map_api,
-                )
-            ]
+            PlannerInitialization(
+                self.scenario.get_route_roadblock_ids(),
+                self.scenario.get_mission_goal(),
+                self.scenario.map_api,
+            )
         )
         trajectories = self.planner.compute_trajectory(
-            [
-                PlannerInput(
-                    SimulationIteration(self.scenario.get_time_point(0), 0),
-                    history_buffer,
-                    list(self.scenario.get_traffic_light_status_at_iteration(0)),
-                )
-            ]
+            PlannerInput(
+                SimulationIteration(self.scenario.get_time_point(0), 0),
+                history_buffer,
+                list(self.scenario.get_traffic_light_status_at_iteration(0)),
+            )
         )
 
         # Plus 1 because the planner should append it's current state
-        self.assertEqual(self.planned_trajectory_samples + 1, len(trajectories[0].get_sampled_trajectory()))
+        self.assertEqual(self.planned_trajectory_samples + 1, len(trajectories.get_sampled_trajectory()))
 
 
 if __name__ == '__main__':

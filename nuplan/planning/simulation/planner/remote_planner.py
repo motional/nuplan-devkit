@@ -63,10 +63,9 @@ class RemotePlanner(AbstractPlanner):
 
         self._channel = None
         self._stub = None
-        self.serialized_observations: Optional[List[List[bytes]]] = None
-        self.serialized_states: Optional[List[List[bytes]]] = None
-        self.sample_intervals: Optional[List[float]] = None
-        self._consume_batched_inputs = False
+        self.serialized_observation: Optional[List[bytes]] = None
+        self.serialized_state: Optional[List[bytes]] = None
+        self.sample_interval: Optional[float] = None
         self._compute_trajectory_timeout = compute_trajectory_timeout
 
     def __reduce__(
@@ -81,44 +80,34 @@ class RemotePlanner(AbstractPlanner):
         """Inherited, see superclass."""
         return "RemotePlanner"
 
-    @property
-    def consume_batched_inputs(self) -> bool:
-        """Inherited, see superclass."""
-        return self._consume_batched_inputs
-
     def observation_type(self) -> Type[Observation]:
         """Inherited, see superclass."""
         return DetectionsTracks  # type: ignore
 
     @staticmethod
     def _planner_initializations_to_message(
-        initialization: List[PlannerInitialization],
-    ) -> chpb.MultiPlannerInitializationLight:
+        initialization: PlannerInitialization,
+    ) -> chpb.PlannerInitializationLight:
         """
-        Converts a list of PlannerInitialization to the message specified in the protocol files.
+        Converts a PlannerInitialization to the message specified in the protocol files.
         :param initialization: The initialization parameters for the planner
         :return: A initialization message
         """
-        planner_initializations = []
+        try:
+            mission_goal = proto_se2_from_se2(initialization.mission_goal)
+        except AttributeError as e:
+            logger.error("Mission goal was None!")
+            raise e
 
-        for init in initialization:
-            try:
-                mission_goal = proto_se2_from_se2(init.mission_goal)
-            except AttributeError as e:
-                logger.error("Mission goal was None!")
-                raise e
+        planner_initialization = chpb.PlannerInitializationLight(
+            route_roadblock_ids=initialization.route_roadblock_ids,
+            mission_goal=mission_goal,
+            map_name=initialization.map_api.map_name,
+        )
 
-            planner_initializations.append(
-                chpb.PlannerInitializationLight(
-                    route_roadblock_ids=init.route_roadblock_ids,
-                    mission_goal=mission_goal,
-                    map_name=init.map_api.map_name,
-                )
-            )
+        return planner_initialization
 
-        return chpb.MultiPlannerInitializationLight(planner_initializations=planner_initializations)
-
-    def initialize(self, initialization: List[PlannerInitialization], timeout: float = 5) -> None:
+    def initialize(self, initialization: PlannerInitialization, timeout: float = 5) -> None:
         """
         Creates the container manager, and runs the specified docker image. The communication port is created using
         the PID from the ray worker. Sends a request to initialize the remote planner.
@@ -148,7 +137,7 @@ class RemotePlanner(AbstractPlanner):
         logger.info(f"Trying to communicate on port {NETWORK}:{self.port}")
 
         try:
-            initialization_response, elapsed_time = keep_trying(
+            _, _ = keep_trying(
                 self._stub.InitializePlanner,  # type: ignore
                 [planner_initializations_message],
                 {},
@@ -160,129 +149,99 @@ class RemotePlanner(AbstractPlanner):
             submission_logger.error(e)
             raise e
 
-        # The initialization tells us if the RemotePlanner is able to handle batch inputs
-        self._consume_batched_inputs = initialization_response.consume_batched_inputs
         logger.info("Planner initialized!")
 
-    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: PlannerInput) -> AbstractTrajectory:
         """
         Computes the ego vehicle trajectory.
-        :param current_input: List of planner inputs for where for each of them trajectory should be computed
-            In this case the list represents batched simulations. In case consume_batched_inputs is False
-            the list has only single element
-        :return: Trajectories representing the predicted ego's position in future for every input iteration
-            In case consume_batched_inputs is False, return only a single trajectory in a list.
+        :param current_input: Planner input for which trajectory should be computed
+        :return: Trajectory representing the predicted ego's position in future for every input iteration
         """
-        logger.debug(f"Client sending planner input: {current_input}")
+        logger.debug("Client sending planner input: %s" % current_input)
 
-        trajectories = self._compute_trajectory(self._stub, current_input=current_input)
+        trajectory = self._compute_trajectory(self._stub, current_input=current_input)
 
-        return trajectories
+        return trajectory
 
     def _compute_trajectory(
-        self, stub: chpb_grpc.DetectionTracksChallengeStub, current_input: List[PlannerInput]
-    ) -> List[AbstractTrajectory]:
+        self, stub: chpb_grpc.DetectionTracksChallengeStub, current_input: PlannerInput
+    ) -> AbstractTrajectory:
         """
-        Sends a request to compute the trajectories given the PlannerInput to the remote planner.
-        :param stub:
-        :param current_input: List of planner inputs for where for each of them trajectory should be computed
-        :return: Trajectories representing the predicted ego's position in future for every input iteration
-            In case consume_batched_inputs is False, return only a single trajectory in a list.
+        Sends a request to compute the trajectory given the PlannerInput to the remote planner.
+        :param stub: Service interface
+        :param current_input: Planner input for which a trajectory should be computed.
+        :return: Trajectory representing the predicted ego's position in future for every input iteration
         """
-        logging.debug(f"Client sending observation of size: {len(current_input)}")
+        logging.debug("Client sending observation...")
 
-        self.serialized_states, self.serialized_observations, self.sample_intervals = self._get_history_update(
+        self.serialized_state, self.serialized_observation, self.sample_interval = self._get_history_update(
             current_input
         )
 
-        serialized_simulation_iterations = [
-            chpb.SimulationIteration(time_us=planner_input.iteration.time_us, index=planner_input.iteration.index)
-            for planner_input in current_input
-        ]
+        serialized_simulation_iteration = chpb.SimulationIteration(
+            time_us=current_input.iteration.time_us, index=current_input.iteration.index
+        )
 
-        if self.sample_intervals:
-            serialized_buffers = [
-                chpb.SimulationHistoryBuffer(ego_states=state, observations=observation, sample_interval=interval)
-                for state, observation, interval in zip(
-                    self.serialized_states, self.serialized_observations, self.sample_intervals
-                )
-            ]
+        if self.sample_interval:
+            serialized_buffer = chpb.SimulationHistoryBuffer(
+                ego_states=self.serialized_state,
+                observations=self.serialized_observation,
+                sample_interval=self.sample_interval,
+            )
         else:
-            serialized_buffers = [
-                chpb.SimulationHistoryBuffer(ego_states=state, observations=observation, sample_interval=None)
-                for state, observation in zip(self.serialized_states, self.serialized_observations)
-            ]
-
-        tl_data = self._build_tl_message_from_planner_inputs(current_input)
-
-        planner_inputs = [
-            chpb.PlannerInput(
-                simulation_iteration=simulation_iteration,
-                simulation_history_buffer=simulation_history_buffer,
-                traffic_light_data=tl_data,
+            serialized_buffer = chpb.SimulationHistoryBuffer(
+                ego_states=self.serialized_state, observations=self.serialized_observation, sample_interval=None
             )
-            for simulation_iteration, simulation_history_buffer in zip(
-                serialized_simulation_iterations, serialized_buffers
-            )
-        ]
+
+        tl_data = self._build_tl_message_from_planner_input(current_input)
+
+        planner_input = chpb.PlannerInput(
+            simulation_iteration=serialized_simulation_iteration,
+            simulation_history_buffer=serialized_buffer,
+            traffic_light_data=tl_data,
+        )
+
         try:
-            trajectory_message = stub.ComputeTrajectory(
-                chpb.MultiPlannerInput(planner_inputs=planner_inputs), timeout=self._compute_trajectory_timeout
-            )
+            trajectory_message = stub.ComputeTrajectory(planner_input, timeout=self._compute_trajectory_timeout)
         except grpc.RpcError as e:
             submission_logger.error("Trajectory computation service failed!")
             submission_logger.error(e)
             raise e
 
-        trajectories = [interp_traj_from_proto_traj(proto_traj) for proto_traj in trajectory_message.trajectories]
+        return interp_traj_from_proto_traj(trajectory_message)
 
-        return trajectories
-
-    def _get_history_update(
-        self, multi_planner_input: List[PlannerInput]
-    ) -> Tuple[List[List[bytes]], List[List[bytes]], Optional[List[float]]]:
+    def _get_history_update(self, planner_input: PlannerInput) -> Tuple[List[bytes], List[bytes], Optional[float]]:
         """
         Gets the new states and observations from the input. If no cache is present, the entire history is
         serialized, otherwise just the last element.
-        :param multi_planner_input: The inputs for planners
+        :param planner_input: The input for planners
         :return: Tuple with new serialized state and observations.
         """
         # If we have no previous states, we keep all history
-        keep_all_history = not self.serialized_states and not self.serialized_observations
+        keep_all_history = not self.serialized_state and not self.serialized_observation
 
-        # Initialize the lists
-        batch_size = len(multi_planner_input)
-        multi_serialized_states: List[List[bytes]] = [[]] * batch_size
-        multi_serialized_observations: List[List[bytes]] = [[]] * batch_size
-        sample_intervals: List[float] = []
+        if keep_all_history:
+            serialized_state = [pickle.dumps(state) for state in planner_input.history.ego_states]
+            serialized_observation = [pickle.dumps(obs) for obs in planner_input.history.observations]
+        else:
+            last_ego_state, last_observations = planner_input.history.current_state
+            serialized_state = [pickle.dumps(last_ego_state)]
+            serialized_observation = [pickle.dumps(last_observations)]
 
-        for i, planner_input in enumerate(multi_planner_input):
-            sample_intervals.append(planner_input.history.sample_interval)
+        sample_interval = planner_input.history.sample_interval if not self.sample_interval else None
 
-            if keep_all_history:
-                multi_serialized_states[i] = [pickle.dumps(state) for state in planner_input.history.ego_states]
-                multi_serialized_observations[i] = [pickle.dumps(obs) for obs in planner_input.history.observations]
-            else:
-                last_ego_state, last_observations = planner_input.history.current_state
-                multi_serialized_states[i] = [pickle.dumps(last_ego_state)]
-                multi_serialized_observations[i] = [pickle.dumps(last_observations)]
-
-        sample_intervals_: Optional[List[float]] = sample_intervals if not self.sample_intervals else None
-
-        return multi_serialized_states, multi_serialized_observations, sample_intervals_
+        return serialized_state, serialized_observation, sample_interval
 
     @staticmethod
-    def _build_tl_message_from_planner_inputs(planner_inputs: List[PlannerInput]) -> List[chpb.TrafficLightStatusData]:
-        tl_data = []
-        for planner_input in planner_inputs:
-            tl_status_data: List[List[chpb.TrafficLightStatusData]]
-            if planner_input.traffic_light_data is None:
-                tl_status_data = [[]]
-            else:
-                tl_status_data = [
-                    proto_tl_status_data_from_tl_status_data(tl_status_data)
-                    for tl_status_data in planner_input.traffic_light_data
-                ]
-            tl_data.extend(tl_status_data)
+    def _build_tl_message_from_planner_input(planner_input: PlannerInput) -> chpb.TrafficLightStatusData:
 
-        return tl_data
+        tl_status_data: List[List[chpb.TrafficLightStatusData]]
+        if planner_input.traffic_light_data is None:
+            tl_status_data = [[]]
+        else:
+            tl_status_data = [
+                proto_tl_status_data_from_tl_status_data(tl_status_data)
+                for tl_status_data in planner_input.traffic_light_data
+            ]
+
+        return tl_status_data

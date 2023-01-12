@@ -12,6 +12,7 @@ from nuplan.common.geometry.convert import (
     numpy_array_to_absolute_velocity,
     pose_from_matrix,
     relative_to_absolute_poses,
+    vector_2d_from_magnitude_angle,
 )
 
 
@@ -153,6 +154,18 @@ class TestConvert(unittest.TestCase):
             self.assertEqual(np_p[0], se2_p.x)
             self.assertEqual(np_p[1], se2_p.y)
             self.assertEqual(np_p[2], se2_p.heading)
+
+    @patch("nuplan.common.geometry.convert.np")
+    @patch("nuplan.common.geometry.convert.StateVector2D")
+    def test_vector_2d_from_magnitude_angle(self, vector: Mock, mock_np: Mock) -> None:
+        """Tests that projection to vector works as expected."""
+        magnitude = Mock()
+        angle = Mock()
+
+        result = vector_2d_from_magnitude_angle(magnitude, angle)
+
+        self.assertEqual(result, vector.return_value)
+        vector.assert_called_once_with(mock_np.cos() * magnitude, mock_np.sin() * angle)
 
 
 if __name__ == "__main__":

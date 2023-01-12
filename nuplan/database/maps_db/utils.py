@@ -4,14 +4,11 @@ from mmap import PROT_READ, mmap
 from typing import Dict, List, Tuple, Union
 
 import cv2
+import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 
-from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.maps_db.metadata import MapLayerMeta
-
-suppress_geopandas_warning()
-import geopandas as gpd  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

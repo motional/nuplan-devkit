@@ -3,10 +3,7 @@ Welcome to the nuplan-devkit's documentation!
 
 .. note::
 
-   This project is under active development.
-
-.. warning::
-    The nuPlan Planning Competition has been postponed to January 2023.
+   The nuPlan Planning Competition is live!
 
 .. toctree::
    :hidden:

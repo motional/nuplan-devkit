@@ -30,10 +30,6 @@ class TwoStageController(AbstractEgoController):
         # set to None to allow lazily loading of initial ego state
         self._current_state: Optional[EgoState] = None
 
-    def initialize(self) -> None:
-        """Inherited, see superclass."""
-        self._tracker.initialize()
-
     def reset(self) -> None:
         """Inherited, see superclass."""
         self._current_state = None

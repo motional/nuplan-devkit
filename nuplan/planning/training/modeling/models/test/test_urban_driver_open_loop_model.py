@@ -27,7 +27,7 @@ from nuplan.planning.training.modeling.models.urban_driver_open_loop_model_utils
     pad_polylines,
 )
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType
-from nuplan.planning.training.preprocessing.features.agents import Agents
+from nuplan.planning.training.preprocessing.features.generic_agents import GenericAgents
 from nuplan.planning.training.preprocessing.features.trajectory import Trajectory
 from nuplan.planning.training.preprocessing.features.vector_set_map import VectorSetMap
 
@@ -167,12 +167,14 @@ class TestTypeEmbedding(unittest.TestCase):
             'NONE': -1,
             'EGO': 0,
             'VEHICLE': 1,
-            'LANE': 2,
-            'STOP_LINE': 3,
-            'CROSSWALK': 4,
-            'LEFT_BOUNDARY': 5,
-            'RIGHT_BOUNDARY': 6,
-            'ROUTE_LANES': 7,
+            'BICYCLE': 2,
+            'PEDESTRIAN': 3,
+            'LANE': 4,
+            'STOP_LINE': 5,
+            'CROSSWALK': 6,
+            'LEFT_BOUNDARY': 7,
+            'RIGHT_BOUNDARY': 8,
+            'ROUTE_LANES': 9,
         }
         self.model = TypeEmbedding(self.embedding_dim, self.feature_types)
 
@@ -187,6 +189,7 @@ class TestTypeEmbedding(unittest.TestCase):
         device = torch.device("cpu")
         batch_size = 2
         max_agents = 30
+        agent_features = ['VEHICLE', 'BICYCLE', 'PEDESTRIAN']
         map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES']
         max_elements = {
             'LANE': 30,
@@ -196,9 +199,9 @@ class TestTypeEmbedding(unittest.TestCase):
             'CROSSWALK': 20,
             'ROUTE_LANES': 30,
         }
-        num_elements = 1 + max_agents + sum(max_elements.values())
+        num_elements = 1 + max_agents * len(agent_features) + sum(max_elements.values())
 
-        output = self.model.forward(batch_size, max_agents, map_features, max_elements, device)
+        output = self.model.forward(batch_size, max_agents, agent_features, map_features, max_elements, device)
         self.assertIsInstance(output, torch.Tensor)
         self.assertEqual(output.shape, (batch_size, num_elements, self.embedding_dim))
 
@@ -309,16 +312,20 @@ class TestUrbanDriverOpenLoop(unittest.TestCase):
                 'NONE': -1,
                 'EGO': 0,
                 'VEHICLE': 1,
-                'LANE': 2,
-                'STOP_LINE': 3,
-                'CROSSWALK': 4,
-                'LEFT_BOUNDARY': 5,
-                'RIGHT_BOUNDARY': 6,
-                'ROUTE_LANES': 7,
+                'BICYCLE': 2,
+                'PEDESTRIAN': 3,
+                'LANE': 4,
+                'STOP_LINE': 5,
+                'CROSSWALK': 6,
+                'LEFT_BOUNDARY': 7,
+                'RIGHT_BOUNDARY': 8,
+                'ROUTE_LANES': 9,
             },
             total_max_points=20,
             feature_dimension=8,
-            agent_features=['EGO', 'VEHICLE'],
+            agent_features=['VEHICLE', 'BICYCLE', 'PEDESTRIAN'],
+            ego_dimension=3,
+            agent_dimension=8,
             max_agents=30,
             past_trajectory_sampling=TrajectorySampling(time_horizon=2.0, num_poses=4),
             map_features=['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES'],
@@ -412,16 +419,21 @@ class TestUrbanDriverOpenLoop(unittest.TestCase):
             availabilities=availabilities,
         )
 
-        ego_agents = [torch.zeros((num_frames, Agents.ego_state_dim()), dtype=torch.float32, device=device)]
-        agent_agents = [
-            torch.zeros((num_frames, num_agents, Agents.agents_states_dim()), dtype=torch.float32, device=device)
-        ]
+        ego_agents = [torch.zeros((num_frames, GenericAgents.ego_state_dim()), dtype=torch.float32, device=device)]
+        agent_agents = {
+            feature_name: [
+                torch.zeros(
+                    (num_frames, num_agents, GenericAgents.agents_states_dim()), dtype=torch.float32, device=device
+                )
+            ]
+            for feature_name in self.feature_params.agent_features
+        }
 
-        agents_feature = Agents(ego=ego_agents, agents=agent_agents)
+        generic_agents_feature = GenericAgents(ego=ego_agents, agents=agent_agents)
 
         return {
             "vector_set_map": vector_set_map_feature,
-            "agents": agents_feature,
+            "generic_agents": generic_agents_feature,
         }
 
     def _find_free_port(self) -> int:

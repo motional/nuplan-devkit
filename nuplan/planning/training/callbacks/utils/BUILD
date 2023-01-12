@@ -32,9 +32,11 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
         "//nuplan/planning/training/preprocessing/features:raster",
         "//nuplan/planning/training/preprocessing/features:trajectory",
         "//nuplan/planning/training/preprocessing/features:vector_map",
+        "//nuplan/planning/training/preprocessing/features:vector_set_map",
         requirement("opencv-python"),
     ],
 )

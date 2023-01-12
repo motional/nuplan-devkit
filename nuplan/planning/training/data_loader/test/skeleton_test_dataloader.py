@@ -82,6 +82,10 @@ class SkeletonTestDataloader(unittest.TestCase):
             remove_invalid_goals=False,
             shuffle=True,
             timestamp_threshold_s=None,
+            ego_displacement_minimum_m=None,
+            ego_start_speed_threshold=None,
+            ego_stop_speed_threshold=None,
+            speed_noise_tolerance=None,
         )
 
         self.augmentors = [

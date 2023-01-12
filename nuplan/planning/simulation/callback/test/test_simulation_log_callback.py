@@ -92,10 +92,13 @@ def objects_are_equal(a: object, b: object) -> bool:
 
     Other types are currently unsupported.
 
-    :param a: a in a == b, must implement __dict__.
-    :param b: b in a == b, must implement __dict__.
+    :param a: a in a == b, must implement __dict__ or be directly comparable.
+    :param b: b in a == b, must implement __dict__ or be directly comparable.
     :return: true if both objects are the same, otherwise false.
     """
+    if not hasattr(a, "__dict__") and not hasattr(b, "__dict__"):
+        return a == b
+
     a_dict = a.__dict__
     b_dict = b.__dict__
 
@@ -110,9 +113,6 @@ def objects_are_equal(a: object, b: object) -> bool:
         if callable(a_dict[key]):
             if not callable_name_matches(a_dict[key], b_dict[key]):
                 return False
-        elif isinstance(a_dict[key], str):
-            if a_dict[key] != b_dict[key]:
-                return False
         elif hasattr(a_dict[key], "__dict__"):
             if not objects_are_equal(a_dict[key], b_dict[key]):
                 return False
@@ -123,9 +123,7 @@ def objects_are_equal(a: object, b: object) -> bool:
             if not iterator_is_equal(a_dict[key], b_dict[key]):
                 return False
         else:
-            if a_dict[key] != b_dict[key]:
-                return False
-
+            return objects_are_equal(a_dict[key], b_dict[key])
     return True
 
 

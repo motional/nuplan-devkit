@@ -522,7 +522,7 @@ class TestAgentsFeatureBuilder(unittest.TestCase):
 
         yaw_rate = compute_yaw_rate_from_state_tensors(agent_states, time_stamps)
         self.assertEqual((num_frames, num_agents), yaw_rate.shape)
-        self.assertTrue(torch.allclose(torch.ones((num_frames, num_agents)), yaw_rate))
+        self.assertTrue(torch.allclose(torch.ones((num_frames, num_agents), dtype=torch.float64), yaw_rate))
 
     def test_filter_agents_tensor(self) -> None:
         """

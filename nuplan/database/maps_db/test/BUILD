@@ -24,6 +24,7 @@ py_test(
     name = "test_map_api",
     size = "large",
     srcs = ["test_map_api.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:map_api",
@@ -36,6 +37,7 @@ py_test(
     name = "test_map_explorer",
     size = "small",
     srcs = ["test_map_explorer.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:map_api",

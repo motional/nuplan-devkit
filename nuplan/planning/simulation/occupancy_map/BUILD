@@ -12,7 +12,6 @@ py_library(
     name = "geopandas_occupancy_map",
     srcs = ["geopandas_occupancy_map.py"],
     deps = [
-        "//nuplan/common/utils:helpers",
         "//nuplan/planning/simulation/occupancy_map:abstract_occupancy_map",
         requirement("geopandas"),
         requirement("rtree"),
@@ -26,5 +25,6 @@ py_library(
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/simulation/observation/idm:utils",
         "//nuplan/planning/simulation/occupancy_map:abstract_occupancy_map",
+        requirement("shapely"),
     ],
 )

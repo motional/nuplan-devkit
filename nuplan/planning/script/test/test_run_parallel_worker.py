@@ -17,7 +17,6 @@ class TestRunParallelWorker(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'worker=single_machine_thread_pool',
                     'scenario_filter.limit_total_scenarios=2',

@@ -12,13 +12,6 @@ class AbstractTracker(abc.ABC):
     """
 
     @abc.abstractmethod
-    def initialize(self) -> None:
-        """
-        Initializes the tracker.
-        """
-        pass
-
-    @abc.abstractmethod
     def track_trajectory(
         self,
         current_iteration: SimulationIteration,

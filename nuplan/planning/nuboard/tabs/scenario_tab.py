@@ -210,7 +210,7 @@ class ScenarioTab(BaseTab):
             name='scenario_object_checkbox_group',
         )
         self._object_checkbox_group.on_change('active', self._object_checkbox_group_active_on_change)
-        trajectories = ['Expert Trajectory', 'Ego Trajectory', 'Goal', 'Traffic Light']
+        trajectories = ['Expert Trajectory', 'Ego Trajectory', 'Goal', 'Traffic Light', 'RoadBlock']
         self._traj_checkbox_group = CheckboxGroup(
             labels=trajectories,
             active=list(range(len(trajectories))),

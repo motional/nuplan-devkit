@@ -4,11 +4,12 @@ import abc
 from typing import Generator, List, Optional, Set
 
 from nuplan.common.actor_state.ego_state import EgoState
-from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
+from nuplan.common.actor_state.state_representation import StateSE2, TimeDuration, TimePoint
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.maps.abstract_map import AbstractMap
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, Transform
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
+from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 
 class AbstractScenario(abc.ABC):
@@ -111,6 +112,14 @@ class AbstractScenario(abc.ABC):
         """
         return self.get_time_point(self.get_number_of_iterations() - 1)
 
+    @property
+    def duration_s(self) -> TimeDuration:
+        """
+        Get the duration of the scenario in seconds
+        :return: the difference in seconds between the scenario's final and first timepoints.
+        """
+        return TimeDuration.from_s(self.end_time.time_s - self.start_time.time_s)
+
     @abc.abstractmethod
     def get_lidar_to_ego_transform(self) -> Transform:
         """
@@ -144,10 +153,15 @@ class AbstractScenario(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
+    def get_tracked_objects_at_iteration(
+        self,
+        iteration: int,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
+    ) -> DetectionsTracks:
         """
         Return tracked objects from iteration
         :param iteration: within scenario 0 <= iteration < number_of_iterations
+        :param future_trajectory_sampling: sampling parameters of agent future ground truth predictions if desired.
         :return: DetectionsTracks.
         """
         pass
@@ -159,16 +173,18 @@ class AbstractScenario(abc.ABC):
         past_time_horizon: float,
         future_time_horizon: float,
         filter_track_tokens: Optional[Set[str]] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> DetectionsTracks:
         """
         Gets all tracked objects present within a time window that stretches from past_time_horizon before the iteration to future_time_horizon afterwards.
         Also optionally filters the included results on the provided track_tokens.
         Results will be sorted by object type, then by timestamp, then by track token.
         :param iteration: The iteration of the scenario to query.
-        :param past_time_horizon: The amount of time to look into the past from the iteration timestamp.
-        :param future_time_horizon: The amount of time to look into the future from the iteration timestamp.
-        :param filter_track_tokens: If provided, then the results will be filtered to only contain objects with track_tokens included in the provided set. If None, then all results are returned.
-
+        :param past_time_horizon [s]: The amount of time to look into the past from the iteration timestamp.
+        :param future_time_horizon [s]: The amount of time to look into the future from the iteration timestamp.
+        :param filter_track_tokens: If provided, then the results will be filtered to only contain objects with
+            track_tokens included in the provided set. If None, then all results are returned.
+        :param future_trajectory_sampling: sampling parameters of agent future ground truth predictions if desired.
         :return: The retrieved detection tracks.
         """
         pass
@@ -249,7 +265,7 @@ class AbstractScenario(abc.ABC):
         Find timesteps in future
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
         :param num_samples: number of entries in the future
-        :param time_horizon: the desired horizon to the future
+        :param time_horizon [s]: the desired horizon to the future
         :return: the future timestamps with the best matching entries to the desired time_horizon/num_samples
         timestamp (best matching to the database)
         """
@@ -263,7 +279,7 @@ class AbstractScenario(abc.ABC):
         Find timesteps in past
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
         :param num_samples: number of entries in the past
-        :param time_horizon: the desired horizon to the past
+        :param time_horizon [s]: the desired horizon to the past
         :return: the future timestamps with the best matching entries to the desired time_horizon/num_samples
         timestamp (best matching to the database)
         """
@@ -277,7 +293,7 @@ class AbstractScenario(abc.ABC):
         Find ego future trajectory
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
         :param num_samples: number of entries in the future
-        :param time_horizon: the desired horizon to the future
+        :param time_horizon [s]: the desired horizon to the future
         :return: the future ego trajectory with the best matching entries to the desired time_horizon/num_samples
         timestamp (best matching to the database)
         """
@@ -291,7 +307,7 @@ class AbstractScenario(abc.ABC):
         Find ego past trajectory
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
         :param num_samples: number of entries in the future
-        :param time_horizon: the desired horizon to the future
+        :param time_horizon [s]: the desired horizon to the future
         :return: the past ego trajectory with the best matching entries to the desired time_horizon/num_samples
         timestamp (best matching to the database)
         """
@@ -305,7 +321,7 @@ class AbstractScenario(abc.ABC):
         Find past sensors
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
         :param num_samples: number of entries in the future
-        :param time_horizon: the desired horizon to the future
+        :param time_horizon [s]: the desired horizon to the future
         :return: the past sensors with the best matching entries to the desired time_horizon/num_samples
         timestamp (best matching to the database)
         """
@@ -313,26 +329,36 @@ class AbstractScenario(abc.ABC):
 
     @abc.abstractmethod
     def get_past_tracked_objects(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> Generator[DetectionsTracks, None, None]:
         """
-        Find past detections
-        :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
-        :param num_samples: number of entries in the future
-        :param time_horizon: the desired horizon to the future
-        :return: the past detections
+        Find past detections.
+        :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
+        :param num_samples: number of entries in the future.
+        :param time_horizon [s]: the desired horizon to the future.
+        :param future_trajectory_sampling: sampling parameters of agent future ground truth predictions if desired.
+        :return: the past detections.
         """
         pass
 
     @abc.abstractmethod
     def get_future_tracked_objects(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> Generator[DetectionsTracks, None, None]:
         """
-        Find future detections
-        :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
-        :param num_samples: number of entries in the future
-        :param time_horizon: the desired horizon to the future
-        :return: the past detections
+        Find future detections.
+        :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
+        :param num_samples: number of entries in the future.
+        :param time_horizon [s]: the desired horizon to the future.
+        :param future_trajectory_sampling: sampling parameters of agent future ground truth predictions if desired.
+        :return: the past detections.
         """
         pass

@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, cast
 
+import geopandas
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -24,12 +25,8 @@ from nuplan.common.maps.nuplan_map.roadblock import NuPlanRoadBlock
 from nuplan.common.maps.nuplan_map.roadblock_connector import NuPlanRoadBlockConnector
 from nuplan.common.maps.nuplan_map.stop_line import NuPlanStopLine
 from nuplan.common.maps.nuplan_map.utils import is_in_type, raster_layer_from_map_layer
-from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.maps_db.imapsdb import IMapsDB
 from nuplan.database.maps_db.layer import MapLayer
-
-suppress_geopandas_warning()
-import geopandas  # noqa: E402
 
 
 class NuPlanMap(AbstractMap):

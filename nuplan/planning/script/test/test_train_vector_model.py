@@ -19,7 +19,6 @@ class TestTrainVectorModel(SkeletonTestTrain):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'py_func=train',
                     '+training=training_simple_vector_model',

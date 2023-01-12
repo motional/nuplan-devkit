@@ -1,5 +1,4 @@
 import logging
-import pathlib
 from dataclasses import dataclass
 
 import pytorch_lightning as pl
@@ -12,7 +11,6 @@ from nuplan.planning.script.builders.training_builder import (
     build_trainer,
 )
 from nuplan.planning.script.builders.utils.utils_config import scale_cfg_for_distributed_training
-from nuplan.planning.training.callbacks.profile_callback import ProfileCallback
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -42,13 +40,6 @@ def build_training_engine(cfg: DictConfig, worker: WorkerPool) -> TrainingEngine
     """
     logger.info('Building training engine...')
 
-    # Construct profiler
-    profiler = ProfileCallback(pathlib.Path(cfg.output_dir)) if cfg.enable_profiling else None
-
-    # Start profiler if enabled
-    if profiler:
-        profiler.start_profiler("build_training_engine")
-
     # Create model
     torch_module_wrapper = build_torch_module_wrapper(cfg.model)
 
@@ -69,9 +60,5 @@ def build_training_engine(cfg: DictConfig, worker: WorkerPool) -> TrainingEngine
     trainer = build_trainer(cfg)
 
     engine = TrainingEngine(trainer=trainer, datamodule=datamodule, model=model)
-
-    # Save profiler output
-    if profiler:
-        profiler.save_profiler("build_training_engine")
 
     return engine

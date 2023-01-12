@@ -8,13 +8,13 @@ from nuplan.planning.simulation.callback.metric_callback import MetricCallback
 from nuplan.planning.simulation.callback.simulation_log_callback import SimulationLogCallback
 from nuplan.planning.simulation.runner.abstract_runner import AbstractRunner
 from nuplan.planning.simulation.runner.runner_report import RunnerReport
-from nuplan.planning.simulation.runner.simulations_runner import SimulationsRunner
+from nuplan.planning.simulation.runner.simulations_runner import SimulationRunner
 from nuplan.planning.utils.multithreading.worker_pool import Task, WorkerPool
 
 logger = logging.getLogger(__name__)
 
 
-def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) -> List[RunnerReport]:
+def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) -> RunnerReport:
     """
     Proxy for calling simulation.
     :param sim_runner: A simulation runner which will execute all batched simulations.
@@ -24,7 +24,7 @@ def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) ->
     # Store start time so that if the simulations fail, we know how long they ran for
     start_time = time.perf_counter()
     try:
-        return sim_runner.run()  # type: ignore
+        return sim_runner.run()
     except Exception as e:
         error = traceback.format_exc()
 
@@ -34,9 +34,7 @@ def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) ->
         logger.warning(f"Simulation failed with error:\n {e}")
 
         # Log the failed scenario log/tokens
-        failed_scenarios = str()
-        for scenario in sim_runner.scenarios:
-            failed_scenarios += f"[{scenario.log_name}, {scenario.scenario_name}]\n"
+        failed_scenarios = f"[{sim_runner.scenario.log_name}, {sim_runner.scenario.scenario_name}]\n"
         logger.warning(f"\nFailed simulation [log,token]:\n {failed_scenarios}")
 
         logger.warning("----------- Simulation failed!")
@@ -45,24 +43,19 @@ def run_simulation(sim_runner: AbstractRunner, exit_on_failure: bool = False) ->
         if exit_on_failure:
             raise RuntimeError('Simulation failed')
 
-        # If one of the batch of simulations fails, all reports contain the same error
-        reports = []
         end_time = time.perf_counter()
-        for scenario in sim_runner.scenarios:
-            reports.append(
-                RunnerReport(
-                    succeeded=False,
-                    error_message=error,
-                    start_time=start_time,
-                    end_time=end_time,
-                    planner_report=None,
-                    scenario_name=scenario.scenario_name,
-                    planner_name=sim_runner.planner.name(),
-                    log_name=scenario.log_name,
-                )
-            )
+        report = RunnerReport(
+            succeeded=False,
+            error_message=error,
+            start_time=start_time,
+            end_time=end_time,
+            planner_report=None,
+            scenario_name=sim_runner.scenario.scenario_name,
+            planner_name=sim_runner.planner.name(),
+            log_name=sim_runner.scenario.log_name,
+        )
 
-        return reports
+        return report
 
 
 def execute_runners(
@@ -87,17 +80,17 @@ def execute_runners(
     # Start simulations
     number_of_sims = len(runners)
     logger.info(f"Starting {number_of_sims} simulations using {worker.__class__.__name__}!")
-    reports: List[List[RunnerReport]] = worker.map(
+    reports: List[RunnerReport] = worker.map(
         Task(fn=run_simulation, num_gpus=num_gpus, num_cpus=num_cpus), runners, exit_on_failure, verbose=verbose
     )
     # Store the results in a dictionary so we can easily store error tracebacks in the next step, if needed
     results: Dict[Tuple[str, str, str], RunnerReport] = {
-        (report.scenario_name, report.planner_name, report.log_name): report for batch in reports for report in batch
+        (report.scenario_name, report.planner_name, report.log_name): report for report in reports
     }
 
     # Iterate over runners, finding the callbacks which may have run asynchronously, and gathering their results
-    simulations_runners = (runner for runner in runners if isinstance(runner, SimulationsRunner))
-    relevant_simulations = ((simulation, runner) for runner in simulations_runners for simulation in runner.simulations)
+    simulations_runners = (runner for runner in runners if isinstance(runner, SimulationRunner))
+    relevant_simulations = ((runner.simulation, runner) for runner in simulations_runners)
     callback_futures_lists = (
         (callback.futures, simulation, runner)
         for (simulation, runner) in relevant_simulations

@@ -92,16 +92,20 @@ def construct_urban_driver_open_loop_ml_planner() -> MLPlanner:
             'NONE': -1,
             'EGO': 0,
             'VEHICLE': 1,
-            'LANE': 2,
-            'STOP_LINE': 3,
-            'CROSSWALK': 4,
-            'LEFT_BOUNDARY': 5,
-            'RIGHT_BOUNDARY': 6,
-            'ROUTE_LANES': 7,
+            'BICYCLE': 2,
+            'PEDESTRIAN': 3,
+            'LANE': 4,
+            'STOP_LINE': 5,
+            'CROSSWALK': 6,
+            'LEFT_BOUNDARY': 7,
+            'RIGHT_BOUNDARY': 8,
+            'ROUTE_LANES': 9,
         },
         total_max_points=20,
         feature_dimension=8,
-        agent_features=['EGO', 'VEHICLE'],
+        agent_features=['VEHICLE', 'BICYCLE', 'PEDESTRIAN'],
+        ego_dimension=3,
+        agent_dimension=8,
         max_agents=30,
         past_trajectory_sampling=TrajectorySampling(time_horizon=2.0, num_poses=4),
         map_features=['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES'],
@@ -179,25 +183,18 @@ class TestMlPlanner(unittest.TestCase):
             mission_goal=scenario.get_mission_goal(),
             map_api=scenario.map_api,
         )
-        planner.initialize([initialization])
+        planner.initialize(initialization)
         # Compute Trajectory
         trajectory = planner.compute_trajectory(
-            [
-                PlannerInput(
-                    iteration=SimulationIteration(index=0, time_point=scenario.start_time),
-                    history=history,
-                    traffic_light_data=scenario.get_traffic_light_status_at_iteration(0),
-                )
-            ]
-        )[0]
+            PlannerInput(
+                iteration=SimulationIteration(index=0, time_point=scenario.start_time),
+                history=history,
+                traffic_light_data=list(scenario.get_traffic_light_status_at_iteration(0)),
+            )
+        )
         self.assertNotEqual(trajectory, None)
         # +1 because the predicted trajectory does not contain ego's initial state
         self.assertEqual(len(trajectory.get_sampled_trajectory()), planner._num_output_dim + 1)
-
-        self.assertFalse(planner.consume_batched_inputs)
-        with self.assertRaises(RuntimeError):
-            # Make sure we raise of batched simulation
-            planner.initialize_with_check([initialization, initialization])
 
 
 if __name__ == '__main__':

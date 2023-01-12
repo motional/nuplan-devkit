@@ -7,6 +7,7 @@ py_test(
     name = "test_lanegcn",
     size = "medium",
     srcs = ["test_lanegcn.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/training/modeling:types",
@@ -23,6 +24,7 @@ py_test(
     name = "test_simple_vector_map_model",
     size = "medium",
     srcs = ["test_simple_vector_map_model.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/training/modeling:types",
@@ -38,12 +40,13 @@ py_test(
     name = "test_urban_driver_open_loop_model",
     size = "small",
     srcs = ["test_urban_driver_open_loop_model.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/modeling/models:urban_driver_open_loop_model",
         "//nuplan/planning/training/modeling/models:urban_driver_open_loop_model_utils",
-        "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
         "//nuplan/planning/training/preprocessing/features:trajectory",
         "//nuplan/planning/training/preprocessing/features:vector_set_map",
         requirement_torch("torch"),

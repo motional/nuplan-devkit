@@ -1,5 +1,5 @@
 # @package _global_
-experiment_name: remote_closed_loop_reactive_agents
+job_name: remote_closed_loop_reactive_agents
 
 defaults:
   - override /observation: idm_agents_observation

@@ -11,8 +11,6 @@ map_version: nuplan-maps-v1.0
 max_workers: null
 verbose: ${verbose}
 
-ground_truth_predictions: null
-
 defaults:
   - vehicle_parameters: nuplan_vehicle_parameters
   - scenario_mapping: nuplan_scenario_mapping

@@ -46,6 +46,7 @@ py_test(
     name = "test_abstract_idm_planner",
     size = "medium",
     srcs = ["test_abstract_idm_planner.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:agent",
         "//nuplan/common/actor_state:ego_state",
@@ -64,6 +65,7 @@ py_test(
     name = "test_idm_planner",
     size = "medium",
     srcs = ["test_idm_planner.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/maps:abstract_map_objects",

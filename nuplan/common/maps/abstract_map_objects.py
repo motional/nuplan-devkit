@@ -206,14 +206,12 @@ class LaneGraphEdgeMapObject(GraphEdgeMapObject):
         pass
 
     @abc.abstractmethod
-    def get_width_left_right(
-        self, point: Point2D, include_outside: bool = False
-    ) -> Tuple[Optional[float], Optional[float]]:
+    def get_width_left_right(self, point: Point2D, include_outside: bool = False) -> Tuple[float, float]:
         """
         Gets distance to left and right sides of the lane from point.
         :param point: Point in global frame.
         :param include_outside: Allow point to be outside of lane.
-        :return: The distance to left and right sides of the lane else None if point is outside lane and include_outside is False.
+        :return: The distance to left and right sides of the lane. If the query is invalid, inf is returned.
             If point is outside the LaneGraphEdgeMapObject and cannot be projected onto the LaneGraphEdgeMapObject and
             include_outside is True then the distance to the edge on the nearest end is returned.
         """

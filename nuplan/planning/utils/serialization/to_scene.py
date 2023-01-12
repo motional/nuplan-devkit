@@ -278,8 +278,20 @@ def _to_scene_agent_prediction(tracked_object: TrackedObject, color: Color) -> D
     :return a prediction scene.
     """
 
-    def extract_prediction_state(pose: StateSE2, timestamp: float) -> Dict[str, Any]:
-        return {'pose': [pose.x, pose.y, pose.heading], 'polygon': [[pose.x, pose.y]], 'timestamp': timestamp}
+    def extract_prediction_state(pose: StateSE2, time_delta: float, speed: float) -> Dict[str, Any]:
+        """
+        Extract the representation of prediction state for scene.
+        :param pose: Track pose.
+        :param time_delta: Time difference from initial timestamp.
+        :param speed: Speed of track.
+        :return: Scene-like dict containing prediction state.
+        """
+        return {
+            'pose': [pose.x, pose.y, pose.heading],
+            'polygon': [[pose.x, pose.y]],
+            'timestamp': time_delta,
+            'speed': speed,
+        }
 
     # Convert driven trajectory
     past_states = (
@@ -287,7 +299,9 @@ def _to_scene_agent_prediction(tracked_object: TrackedObject, color: Color) -> D
         if not tracked_object.past_trajectory
         else [
             extract_prediction_state(
-                waypoint.oriented_box.center, tracked_object.metadata.timestamp_s - waypoint.time_point.time_s
+                waypoint.oriented_box.center,
+                tracked_object.metadata.timestamp_s - waypoint.time_point.time_s,
+                waypoint.velocity.magnitude() if waypoint.velocity is not None else 0,
             )
             for waypoint in tracked_object.past_trajectory.waypoints
             if waypoint
@@ -297,7 +311,9 @@ def _to_scene_agent_prediction(tracked_object: TrackedObject, color: Color) -> D
     # Convert future trajectories
     future_states = [
         extract_prediction_state(
-            waypoint.oriented_box.center, waypoint.time_point.time_s - mode.waypoints[0].time_point.time_s
+            waypoint.oriented_box.center,
+            waypoint.time_point.time_s - mode.waypoints[0].time_point.time_s,
+            waypoint.velocity.magnitude() if waypoint.velocity is not None else 0,
         )
         for mode in tracked_object.predictions
         for waypoint in mode.waypoints

@@ -17,7 +17,6 @@ class TestRunRayWorker(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'worker=ray_distributed',
                     'worker.debug_mode=true',

@@ -17,9 +17,6 @@ class SkeletonTestSimulation(unittest.TestCase):
         self.config_path = os.path.join(main_path, '../config/simulation/')
         # Since we are not using the default config in this test, we need to specify the Hydra search path in the
         # compose API override, otherwise the Jenkins build fails because bazel cannot find the simulation config file.
-        common_dir = 'file://' + os.path.join(main_path, '..', 'config', 'common')
-        experiment_dir = 'file://' + os.path.join(main_path, '..', 'experiments')
-        self.search_path = f'hydra.searchpath=[{common_dir}, {experiment_dir}]'
         self.tmp_dir = tempfile.TemporaryDirectory()
         # Default hydra overrides for quick unit testing
         self.default_overrides = [
@@ -30,6 +27,7 @@ class SkeletonTestSimulation(unittest.TestCase):
             'scenario_filter.limit_total_scenarios=2',
             'exit_on_failure=true',
             f'group={self.tmp_dir.name}',
+            'job_name=test_simulation',
             'output_dir=${group}/${experiment}',
         ]
 

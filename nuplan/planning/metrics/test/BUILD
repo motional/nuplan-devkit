@@ -11,6 +11,7 @@ py_test(
     name = "test_metric_engine",
     size = "medium",
     srcs = ["test_metric_engine.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",

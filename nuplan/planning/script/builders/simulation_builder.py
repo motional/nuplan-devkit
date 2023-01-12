@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -15,7 +15,7 @@ from nuplan.planning.simulation.callback.multi_callback import MultiCallback
 from nuplan.planning.simulation.controller.abstract_controller import AbstractEgoController
 from nuplan.planning.simulation.observation.abstract_observation import AbstractObservation
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
-from nuplan.planning.simulation.runner.simulations_runner import SimulationsRunner
+from nuplan.planning.simulation.runner.simulations_runner import SimulationRunner
 from nuplan.planning.simulation.simulation import Simulation
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
 from nuplan.planning.simulation.simulation_time_controller.abstract_simulation_time_controller import (
@@ -33,7 +33,7 @@ def build_simulations(
     callbacks: List[AbstractCallback],
     callbacks_worker: Optional[WorkerPool] = None,
     pre_built_planners: Optional[List[AbstractPlanner]] = None,
-) -> List[SimulationsRunner]:
+) -> List[SimulationRunner]:
     """
     Build simulations.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
@@ -64,15 +64,18 @@ def build_simulations(
 
     logger.info('Building simulations from %s scenarios...', len(scenarios))
 
+    # Cache used to keep a single instance of non-thread-safe planners
+    planners_cache: Dict[str, AbstractPlanner] = dict()
+
     # Build a metric metadata file
     for scenario in scenarios:
 
-        # Build planners.
+        # Build planners
         if pre_built_planners is None:
             if 'planner' not in cfg.keys():
                 raise KeyError('Planner not specified in config. Please specify a planner using "planner" field.')
 
-            planners = build_planners(cfg.planner, scenario)
+            planners = build_planners(cfg.planner, scenario, planners_cache)
         else:
             planners = pre_built_planners
 
@@ -113,7 +116,7 @@ def build_simulations(
                 callback=MultiCallback(callbacks + stateful_callbacks),
                 simulation_history_buffer_duration=cfg.simulation_history_buffer_duration,
             )
-            simulations.append(SimulationsRunner([simulation], planner))
+            simulations.append(SimulationRunner(simulation, planner))
 
     logger.info('Building simulations...DONE!')
     return simulations

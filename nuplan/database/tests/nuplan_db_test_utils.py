@@ -14,12 +14,13 @@ from nuplan.database.nuplan_db_orm.nuplandb import NuPlanDB
 from nuplan.database.nuplan_db_orm.nuplandb_wrapper import NuPlanDBWrapper, discover_log_dbs
 from nuplan.database.nuplan_db_orm.track import Track
 
-DEFAULT_TEST_DB_INDEX = 0  # default database index to load when only a single database is required
+DEFAULT_TEST_DB_INDEX = 1  # default database index to load when only a single database is required
 DEFAULT_TEST_CAMERA_INDEX = 0  # default camera for testing
 DEFAULT_TEST_EGO_POSE_INDEX = 0  # default ego pose for testing
 DEFAULT_TEST_LIDAR_INDEX = 0  # default lidar pc for testing
 DEFAULT_TEST_LIDAR_PC_INDEX = 1000  # default lidar pc for testing
 DEFAULT_TEST_LIDAR_BOX_INDEX = 5000  # default lidar box for testing
+DEFAULT_TEST_LIDAR_BOX_INDEX_VEHICLE = 5004  # default lidar box for testing
 DEFAULT_TEST_TRACK_INDEX = 100  # default track for testing
 DEFAULT_TEST_LIDAR_PC_WITH_BLOB_TOKEN = 100  # default lidar pc with blob for testing - sensor blobs not yet supported
 DEFAULT_TEST_IMAGE_WITH_BLOB_TOKEN = 0  # default image with blob for testing - sensor blobs not yet supported
@@ -143,6 +144,13 @@ def get_test_nuplan_lidar_box() -> LidarBox:
     """Get a nuPlan lidar box object with default settings to be used in testing."""
     db = get_test_nuplan_db()
     return db.lidar_box[DEFAULT_TEST_LIDAR_BOX_INDEX]
+
+
+@lru_cache(maxsize=1)
+def get_test_nuplan_lidar_box_vehicle() -> LidarBox:
+    """Get a nuPlan lidar box object with default settings to be used in testing."""
+    db = get_test_nuplan_db()
+    return db.lidar_box[DEFAULT_TEST_LIDAR_BOX_INDEX_VEHICLE]
 
 
 @lru_cache(maxsize=1)

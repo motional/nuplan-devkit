@@ -23,58 +23,32 @@ def for_each(fn: Callable[[Any], Any], items: List[Any]) -> None:
         fn(item)
 
 
-class SimulationsRunner(AbstractRunner):
+class SimulationRunner(AbstractRunner):
     """
     Manager which executes multiple simulations with the same planner
     """
 
-    def __init__(self, simulations: List[Simulation], planner: AbstractPlanner):
+    def __init__(self, simulation: Simulation, planner: AbstractPlanner):
         """
         Initialize the simulations manager
-        :param simulations: List of simulations which will be executed
+        :param simulation: Simulation which will be executed
         :param planner: which should be used to compute the desired ego's trajectory
         """
-        self._simulations = simulations
+        self._simulation = simulation
         self._planner = planner
-
-        if len(simulations) > 1 and not planner.consume_batched_inputs:
-            # Raise in case planner is not able to consume batched inputs and it can consume only single input
-            raise RuntimeError(
-                f"Planner: {planner.name()} can not consume batches inputs from batches: {len(simulations)}!"
-            )
-
-    def get_running_simulations(self) -> List[Simulation]:
-        """
-        :return: List of simulations that are still running
-        """
-        return [sim for sim in self.simulations if sim.is_simulation_running()]
 
     def _initialize(self) -> None:
         """
         Initialize the planner
         """
         # Execute specific callback
-        for_each(lambda sim: sim.callback.on_initialization_start(sim.setup, self.planner), self.simulations)
+        self._simulation.callback.on_initialization_start(self._simulation.setup, self._planner)
 
         # Initialize Planner
-        self.planner.initialize_with_check([simulation.initialize() for simulation in self.simulations])
+        self.planner.initialize(self._simulation.initialize())
 
         # Execute specific callback
-        for_each(lambda sim: sim.callback.on_initialization_end(sim.setup, self.planner), self.simulations)
-
-    @property
-    def simulations(self) -> List[Simulation]:
-        """
-        :return: List of simulations run by the SimulationRunner
-        """
-        return self._simulations
-
-    @property
-    def scenarios(self) -> List[AbstractScenario]:
-        """
-        :return: Get a list of scenarios.
-        """
-        return [sim.scenario for sim in self.simulations]
+        self._simulation.callback.on_initialization_end(self._simulation.setup, self._planner)
 
     @property
     def planner(self) -> AbstractPlanner:
@@ -83,7 +57,21 @@ class SimulationsRunner(AbstractRunner):
         """
         return self._planner
 
-    def run(self) -> List[RunnerReport]:
+    @property
+    def simulation(self) -> Simulation:
+        """
+        :return: Simulation used by the SimulationRunner
+        """
+        return self._simulation
+
+    @property
+    def scenario(self) -> AbstractScenario:
+        """
+        :return: Get the scenario relative to the simulation.
+        """
+        return self.simulation.scenario
+
+    def run(self) -> RunnerReport:
         """
         Run through all simulations. The steps of execution follow:
          - Initialize all planners
@@ -93,75 +81,53 @@ class SimulationsRunner(AbstractRunner):
         start_time = time.perf_counter()
 
         # Initialize reports for all the simulations that will run
-        reports = []
-        for simulation in self.simulations:
-            reports.append(
-                RunnerReport(
-                    succeeded=True,
-                    error_message=None,
-                    start_time=start_time,
-                    end_time=None,
-                    planner_report=None,
-                    scenario_name=simulation.scenario.scenario_name,
-                    planner_name=self.planner.name(),
-                    log_name=simulation.scenario.log_name,
-                )
-            )
+        report = RunnerReport(
+            succeeded=True,
+            error_message=None,
+            start_time=start_time,
+            end_time=None,
+            planner_report=None,
+            scenario_name=self._simulation.scenario.scenario_name,
+            planner_name=self.planner.name(),
+            log_name=self._simulation.scenario.log_name,
+        )
 
         # Execute specific callback
-        for_each(lambda sim: sim.callback.on_simulation_start(sim.setup), self.simulations)
+        self.simulation.callback.on_simulation_start(self.simulation.setup)
 
         # Initialize all simulations
         self._initialize()
 
-        while len(simulations := self.get_running_simulations()) > 0:
-            # Extract all running simulations
-            logger.debug(f"Number of running simulations: {len(simulations)}")
-
+        while self.simulation.is_simulation_running():
             # Execute specific callback
-            for_each(lambda sim: sim.callback.on_step_start(sim.setup, self.planner), simulations)
+            self.simulation.callback.on_step_start(self.simulation.setup, self._planner)
 
             # Perform step
-            planner_inputs = [simulation.get_planner_input() for simulation in simulations]
-            logger.debug(
-                f"Simulation iterations: {[planner_input.iteration.index for planner_input in planner_inputs]}"
-            )
+            planner_input = self._simulation.get_planner_input()
+            logger.debug("Simulation iterations: %s" % planner_input.iteration.index)
 
             # Execute specific callback
-            for_each(lambda sim: sim.callback.on_planner_start(sim.setup, self.planner), simulations)
+            self._simulation.callback.on_planner_start(self.simulation.setup, self.planner)
 
             # Plan path based on all planner's inputs
-            trajectories = self.planner.compute_trajectory(planner_inputs)
-            if len(trajectories) != len(planner_inputs):
-                # Raise in case the planner did not return the right number of output trajectories
-                raise RuntimeError(
-                    "The length of planner input and output is not "
-                    f"the same {len(trajectories)} != {len(planner_inputs)}!"
-                )
+            trajectory = self.planner.compute_trajectory(planner_input)
 
-            # Propagate all simulations based on planner trajectory
-            for trajectory, simulation in zip(trajectories, simulations):
-                simulation.callback.on_planner_end(simulation.setup, self.planner, trajectory)
-                simulation.propagate(trajectory)
+            # Propagate simulation based on planner trajectory
+            self._simulation.callback.on_planner_end(self.simulation.setup, self.planner, trajectory)
+            self.simulation.propagate(trajectory)
 
             # Execute specific callback
-            for_each(
-                lambda sim: sim.callback.on_step_end(simulation.setup, self.planner, simulation.history.last()),
-                simulations,
-            )
+            self.simulation.callback.on_step_end(self.simulation.setup, self.planner, self.simulation.history.last())
 
             # Store reports for simulations which just finished running
             current_time = time.perf_counter()
-            for simulation in simulations:
-                if not simulation._is_simulation_running:
-                    sim_index = self.simulations.index(simulation)
-                    reports[sim_index].end_time = current_time
+            if not self.simulation.is_simulation_running():
+                report.end_time = current_time
 
         # Execute specific callback
-        for_each(lambda sim: sim.callback.on_simulation_end(sim.setup, self.planner, sim.history), self.simulations)
+        self.simulation.callback.on_simulation_end(self.simulation.setup, self.planner, self.simulation.history)
 
         planner_report = self.planner.generate_planner_report()
-        for report in reports:
-            report.planner_report = planner_report
+        report.planner_report = planner_report
 
-        return reports
+        return report

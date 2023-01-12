@@ -75,12 +75,10 @@ class TestMapApi(unittest.TestCase):
         """
         line_coords = LineString([(1.0, 1.0), (10.0, 10.0)])
         box_coords = [0.0, 0.0, 11.0, 11.0]
-        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords))
+        self.assertTrue(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords))
 
         box_coords = [0.0, 0.0, 8.0, 8.0]
-        self.assertFalse(
-            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords)
-        )
+        self.assertFalse(self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords))
 
     def test_line_intersects_patch(self) -> None:
         """
@@ -89,12 +87,12 @@ class TestMapApi(unittest.TestCase):
         line_coords = LineString([(0.0, 0.0), (10.0, 10.0)])
         box_coords = [0.0, 0.0, 11.0, 11.0]
         self.assertTrue(
-            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords, 'intersect')
+            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords, 'intersect')
         )
 
         box_coords = [11.0, 11.0, 16.0, 16.0]
         self.assertFalse(
-            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(np.array(line_coords), box_coords, 'intersect')
+            self.nuplan_maps[self.locations[0]]._is_line_record_in_patch(line_coords, box_coords, 'intersect')
         )
 
     def test_polygon_in_patch(self) -> None:

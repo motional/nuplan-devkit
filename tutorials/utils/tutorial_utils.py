@@ -5,12 +5,13 @@ from collections import defaultdict
 from dataclasses import dataclass
 from os.path import join
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
 from bokeh.document.document import Document
 from bokeh.io import show
+from bokeh.io.state import curstate
 from bokeh.layouts import column
 
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
@@ -60,7 +61,7 @@ def construct_nuboard_hydra_paths(base_config_path: str) -> HydraConfigPaths:
     """
     Specifies relative paths to nuBoard configs to pass to hydra to declutter tutorial.
     :param base_config_path: Base config path.
-    :return Hydra config path.
+    :return: Hydra config path.
     """
     common_dir = "file://" + join(base_config_path, 'config', 'common')
     config_name = 'default_nuboard'
@@ -73,7 +74,7 @@ def construct_simulation_hydra_paths(base_config_path: str) -> HydraConfigPaths:
     """
     Specifies relative paths to simulation configs to pass to hydra to declutter tutorial.
     :param base_config_path: Base config path.
-    :return Hydra config path.
+    :return: Hydra config path.
     """
     common_dir = "file://" + join(base_config_path, 'config', 'common')
     config_name = 'default_simulation'
@@ -90,7 +91,7 @@ def save_scenes_to_dir(
     :param scenario: Scenario.
     :param save_dir: Save path.
     :param simulation_history: Simulation history.
-    :return Scenario key of simulation.
+    :return: Scenario key of simulation.
     """
     planner_name = "tutorial_planner"
     scenario_type = scenario.scenario_type
@@ -126,6 +127,7 @@ def _create_dummy_simple_planner(
     :param acceleration: [m/s^2] constant ego acceleration, till limited by max_velocity.
     :param horizon_seconds: [s] time horizon being run.
     :param sampling_time: [s] sampling timestep.
+    :return: dummy simple planner.
     """
     acceleration_np: npt.NDArray[np.float32] = np.asarray(acceleration)
     return SimplePlanner(
@@ -142,8 +144,8 @@ def _create_dummy_simulation_history_buffer(
     Create dummy SimulationHistoryBuffer.
     :param scenario: Scenario.
     :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
-    :param num_samples: number of entries in the future.
     :param time_horizon: the desired horizon to the future.
+    :param num_samples: number of entries in the future.
     :param buffer_size: size of buffer.
     :return: SimulationHistoryBuffer.
     """
@@ -174,7 +176,7 @@ def serialize_scenario(
     :param scenario: Scenario.
     :param num_poses: Number of poses in trajectory.
     :param future_time_horizon: Future time horizon in trajectory.
-    :return A list of scene dicts.
+    :return: SimulationHistory containing all scenes.
     """
     simulation_history = SimulationHistory(scenario.map_api, scenario.get_mission_goal())
     ego_controller = PerfectTrackingController(scenario)
@@ -208,11 +210,14 @@ def serialize_scenario(
     return simulation_history
 
 
-def visualize_scenario(scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_visualization/') -> None:
+def visualize_scenario(
+    scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_visualization/', bokeh_port: int = 8899
+) -> None:
     """
     Visualize a scenario in Bokeh.
     :param scenario: Scenario object to be visualized.
     :param save_dir: Dir to save serialization and visualization artifacts.
+    :param bokeh_port: Port that the server bokeh starts to render the generate the visualization will run on.
     """
     map_factory = NuPlanMapFactory(get_maps_db(map_root=scenario.map_root, map_version=scenario.map_version))
 
@@ -220,24 +225,46 @@ def visualize_scenario(scenario: NuPlanScenario, save_dir: str = '/tmp/scenario_
     simulation_scenario_key = save_scenes_to_dir(
         scenario=scenario, save_dir=save_dir, simulation_history=simulation_history
     )
-    visualize_scenarios([simulation_scenario_key], map_factory, Path(save_dir))
+    visualize_scenarios([simulation_scenario_key], map_factory, Path(save_dir), bokeh_port=bokeh_port)
 
 
 def visualize_scenarios(
-    simulation_scenario_keys: List[SimulationScenarioKey], map_factory: NuPlanMapFactory, save_path: Path
+    simulation_scenario_keys: List[SimulationScenarioKey],
+    map_factory: NuPlanMapFactory,
+    save_path: Path,
+    bokeh_port: int = 8899,
 ) -> None:
     """
     Visualize scenarios in Bokeh.
     :param simulation_scenario_keys: A list of simulation scenario keys.
     :param map_factory: Map factory object to use for rendering.
     :param save_path: Path where to save the scene dict.
+    :param bokeh_port: Port that the server bokeh starts to render the generate the visualization will run on.
     """
 
     def complete_message() -> None:
+        """Logging to print once the visualization is ready."""
         logger.info("Done rendering!")
 
+    def notebook_url_callback(server_port: Optional[int]) -> str:
+        """
+        Callback that configures the bokeh server started by bokeh.io.show to accept requests
+        from any origin. Without this, running a notebook on a port other than 8888 results in
+        scenario visualizations not being rendered. For reference, see:
+            - show() docs: https://docs.bokeh.org/en/latest/docs/reference/io.html#bokeh.io.show
+            - downstream usage: https://github.com/bokeh/bokeh/blob/aae3034/src/bokeh/io/notebook.py#L545
+        :param server_port: Passed by bokeh to indicate what port it started a server on (random by default).
+        :return: Origin string and server url used by bokeh.
+        """
+        if server_port is None:
+            return "*"
+        return f"http://localhost:{server_port}"
+
     def bokeh_app(doc: Document) -> None:
-        """Run bokeh app in jupyter notebook."""
+        """
+        Run bokeh app in jupyter notebook.
+        :param doc: Bokeh document to render.
+        """
         # Change simulation_main_path to a folder where you want to save rendered videos.
         nuboard_file = NuBoardFile(
             simulation_main_path=save_path.name,
@@ -267,7 +294,15 @@ def visualize_scenarios(
         doc.add_root(simulation_layouts)
         doc.add_next_tick_callback(complete_message)
 
-    show(bokeh_app)
+    # bokeh.io.show starts a server on `bokeh_port`, but doesn't return a handle to it. If it isn't
+    # shut down, we get a port-in-use error when generating the new visualization. Thus, we search for
+    # any server currently running on the assigned port and shut it down before calling `show` again.
+    for server_uuid, server in curstate().uuid_to_server.items():
+        if server.port == bokeh_port:
+            server.unlisten()
+            logging.debug("Shut down bokeh server %s running on port %d", server_uuid, bokeh_port)
+
+    show(bokeh_app, notebook_url=notebook_url_callback, port=bokeh_port)
 
 
 def get_default_scenario_extraction(
@@ -290,7 +325,7 @@ def get_default_scenario_from_token(
 ) -> NuPlanScenario:
     """
     Build a scenario with default parameters for visualization.
-    :param log_db: Log database object that the token belongs to.
+    :param data_root: The root directory to use for looking for db files.
     :param log_file_full_path: The full path to the log db file to use.
     :param token: Lidar pc token to be used as anchor for the scenario.
     :param map_root: The root directory to use for looking for maps.
@@ -310,12 +345,15 @@ def get_default_scenario_from_token(
         map_name=map_name,
         scenario_extraction_info=get_default_scenario_extraction(),
         ego_vehicle_parameters=get_pacifica_parameters(),
-        ground_truth_predictions=None,
     )
 
 
 def get_scenario_type_token_map(db_files: List[str]) -> Dict[str, List[Tuple[str, str]]]:
-    """Get a map from scenario types to lists of all instances for a given scenario type in the database."""
+    """
+    Get a map from scenario types to lists of all instances for a given scenario type in the database.
+    :param db_files: db files to search for available scenario types.
+    :return: dictionary mapping scenario type to list of db/token pairs of that type.
+    """
     available_scenario_types = defaultdict(list)
     for db_file in db_files:
         for tag, token in get_lidarpc_tokens_with_scenario_tag_from_db(db_file):
@@ -324,8 +362,17 @@ def get_scenario_type_token_map(db_files: List[str]) -> Dict[str, List[Tuple[str
     return available_scenario_types
 
 
-def visualize_nuplan_scenarios(data_root: str, db_files: str, map_root: str, map_version: str) -> None:
-    """Create a dropdown box populated with unique scenario types to visualize from a database."""
+def visualize_nuplan_scenarios(
+    data_root: str, db_files: str, map_root: str, map_version: str, bokeh_port: int = 8899
+) -> None:
+    """
+    Create a dropdown box populated with unique scenario types to visualize from a database.
+    :param data_root: The root directory to use for looking for db files.
+    :param db_files: List of db files to load.
+    :param map_root: The root directory to use for looking for maps.
+    :param map_version: The map version to use.
+    :param bokeh_port: Port that the server bokeh starts to render the generate the visualization will run on.
+    """
     from IPython.display import clear_output, display
     from ipywidgets import Dropdown, Output
 
@@ -337,15 +384,19 @@ def visualize_nuplan_scenarios(data_root: str, db_files: str, map_root: str, map
     drop_down = Dropdown(description='Scenario', options=sorted(scenario_type_token_map.keys()))
 
     def scenario_dropdown_handler(change: Any) -> None:
-        """Dropdown handler that randomly chooses a scenario from the selected scenario type and renders it."""
+        """
+        Dropdown handler that randomly chooses a scenario from the selected scenario type and renders it.
+        :param change: Object containing scenario selection.
+        """
         with out:
             clear_output()
+
             logger.info("Randomly rendering a scenario...")
             scenario_type = str(change.new)
             log_db_file, token = random.choice(scenario_type_token_map[scenario_type])
             scenario = get_default_scenario_from_token(data_root, log_db_file, token, map_root, map_version)
 
-            visualize_scenario(scenario)
+            visualize_scenario(scenario, bokeh_port=bokeh_port)
 
     display(drop_down)
     display(out)

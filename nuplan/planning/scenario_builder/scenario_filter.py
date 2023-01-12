@@ -19,10 +19,20 @@ class ScenarioFilter:
     timestamp_threshold_s: Optional[
         float
     ]  # Threshold for the interval of time between scenario initial lidar timestamps in seconds
+    ego_displacement_minimum_m: Optional[float]  # Inclusive minimum threshold for total distance covered
+    # (meters, frame-by-frame) by the ego center for scenario to be kept
 
     expand_scenarios: bool  # Whether to expand multi-sample scenarios to multiple single-sample scenarios
     remove_invalid_goals: bool  # Whether to remove scenarios where the mission goal is invalid
     shuffle: bool  # Whether to shuffle the scenarios
+
+    ego_start_speed_threshold: Optional[float] = None  # Exclusive threshold that the ego's speed must rise above.
+    # (meters per second) for scenario to be kept
+    ego_stop_speed_threshold: Optional[float] = None  # Inclusive threshold that the ego's speed must fall below.
+    # (meters per second) for scenario to be kept
+    speed_noise_tolerance: Optional[
+        float
+    ] = None  # Value at or below which a speed change between two timepoints should be ignored as noise.
 
     def __post_init__(self) -> None:
         """Sanitize class attributes."""

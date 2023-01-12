@@ -81,7 +81,7 @@ def approximate_derivatives(
     window_length: int = 5,
     poly_order: int = 2,
     deriv_order: int = 1,
-    eps_dx: float = 1e-4,
+    axis: int = -1,
 ) -> npt.NDArray[np.float32]:
     """
     Given two equal-length sequences y and x, compute an approximation to the n-th
@@ -89,14 +89,13 @@ def approximate_derivatives(
     values at the x's.  We assume the x's are increasing and equally-spaced.
     :param y: The dependent variable (say of length n)
     :param x: The independent variable (must have the same length n).  Must be strictly
-        increasing.
+        increasing and equally-spaced.
     :param window_length: The order (default 5) of the Savitsky-Golay filter used.
         (Ignored if the x's are not equally-spaced.)  Must be odd and at least 3
     :param poly_order: The degree (default 2) of the filter polynomial used.  Must
         be less than the window_length
     :param deriv_order: The order of derivative to compute (default 1)
-    :param eps_dx:  The maximum allowed relative difference between successive x's
-        (default 1e-4)
+    :param axis: The axis of the array x along which the filter is to be applied. Default is -1.
     :return Derivatives.
     """
     window_length = min(window_length, len(x))
@@ -110,11 +109,7 @@ def approximate_derivatives(
 
     dx = dx.mean()
     derivative: npt.NDArray[np.float32] = savgol_filter(
-        y,
-        polyorder=poly_order,
-        window_length=window_length,
-        deriv=deriv_order,
-        delta=dx,
+        y, polyorder=poly_order, window_length=window_length, deriv=deriv_order, delta=dx, axis=axis
     )
     return derivative
 

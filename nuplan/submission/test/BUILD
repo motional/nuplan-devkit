@@ -17,6 +17,7 @@ py_test(
     name = "test_challenge_servicers",
     size = "small",
     srcs = ["test_challenge_servicers.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/submission:challenge_pb2",
         "//nuplan/submission:challenge_servicers",
@@ -27,6 +28,7 @@ py_test(
     name = "test_submission_planner",
     size = "small",
     srcs = ["test_submission_planner.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/submission:submission_planner",
     ],

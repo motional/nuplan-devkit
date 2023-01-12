@@ -1,5 +1,5 @@
 # @package _global_
-experiment_name: simulation_open_loop_boxes
+job_name: open_loop_boxes
 
 defaults:
   - override /observation: box_observation

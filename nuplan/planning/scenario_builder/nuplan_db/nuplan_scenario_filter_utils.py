@@ -6,8 +6,11 @@ import os
 import random
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import IntEnum
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union, cast
+
+import numpy as np
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir
@@ -18,7 +21,6 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import (
     ScenarioMapping,
     download_file_if_necessary,
 )
-from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
 
 logger = logging.getLogger(__name__)
@@ -85,9 +87,6 @@ class GetScenariosFromDbFileParams:
 
     # The ego vehicle parameters to pass to the constructed scenarios.
     vehicle_parameters: VehicleParameters
-
-    # The ground_truth_prediction sampling parameters to pass to the constructed scenarios.
-    ground_truth_predictions: Optional[TrajectorySampling]
 
     # If provided, the tokens on which to filter.
     filter_tokens: Optional[List[str]]
@@ -194,7 +193,6 @@ def get_scenarios_from_db_file(params: GetScenariosFromDbFileParams) -> Scenario
                 row["map_name"],
                 extraction_info,
                 params.vehicle_parameters,
-                params.ground_truth_predictions,
             )
         )
 
@@ -394,6 +392,146 @@ def filter_invalid_goals(scenario_dict: ScenarioDict, worker: WorkerPool) -> Sce
     for scenario_type in scenario_dict:
         scenario_dict[scenario_type] = worker_map(worker, _filter_goals, scenario_dict[scenario_type])
 
+    return scenario_dict
+
+
+def _is_non_stationary(scenario: NuPlanScenario, minimum_threshold: float) -> bool:
+    """
+    Determines whether the ego cumulatively moves at least minimum_threshold meters over the course of a given scenario
+    :param scenario: a NuPlan expert scenario
+    :param minimum_threshold: minimum distance in meters (inclusive) the ego center has to travel in the scenario
+        for the ego to be determined non-stationary
+    :return: True if the cumulative frame-to-frame displacement of the ego center in the scenario
+        is >= the minimum threshold
+    """
+    trajectory = scenario.get_ego_future_trajectory(iteration=0, time_horizon=scenario.duration_s.time_s)
+    trajectory_xy_matrix = np.array([[state.center.x, state.center.y] for state in trajectory])  # type: ignore
+    current_state = trajectory_xy_matrix[:-1]
+    next_state = trajectory_xy_matrix[1:]
+    total_ego_displacement = np.sum(np.linalg.norm(next_state - current_state, axis=1))
+    return bool(total_ego_displacement >= minimum_threshold)
+
+
+def filter_non_stationary_ego(scenario_dict: ScenarioDict, minimum_threshold: float) -> ScenarioDict:
+    """
+    Filters a ScenarioDict, leaving only scenarios (of any type) in which the ego center travels at least
+        minimum_threshold meters cumulatively. These are "non-stationary ego scenarios"
+    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type. Modified by function
+    :param minimum_threshold: minimum distance in meters (inclusive, cumulative) the ego center has to travel in a given
+        scenario for the scenario to be called a non-stationary ego scenario
+    :return: Filtered scenario dictionary where the cumulative frame-to-frame displacement of the ego center in the
+        scenario is >= the minimum threshold
+    """
+    for scenario_type in scenario_dict:
+        scenario_dict[scenario_type] = list(
+            filter(lambda scenario: _is_non_stationary(scenario, minimum_threshold), scenario_dict[scenario_type])
+        )
+    return scenario_dict
+
+
+class EdgeType(IntEnum):
+    """
+    Indices corresponding to relationships between two values adjacent in time.
+    """
+
+    RISING = 0
+    FALLING = 1
+
+
+def _check_for_speed_edge(
+    scenario: NuPlanScenario, speed_threshold: float, speed_noise_tolerance: float, edge_type: EdgeType
+) -> bool:
+    """
+    For a given scenario, determine whether there is a sub-scenario in which the ego's speed either
+        rises above or falls below the speed_threshold.
+
+    :param scenario: a NuPlan scenario
+    :speed_threshold: what rear axle speed does the ego have to pass above (exclusive) to have "started moving?"
+        likewise, what rear axle speed does the ego have to fall below (inclusive) to have "stopped moving?"
+    :param speed_noise_tolerance: a value at or below which a speed change be ignored as noise.
+    :param edge_type: are we filtering for speed RISING above the threshold or FALLING below the threshold?
+    :return: a boolean, revealing whether a RISING/FALLING ego speed edge is present in the given scenario.
+        or equal to the speed threshold and a subsequent frame in which the ego's speed is above the speed threshold.
+        The second tells whether the scenario contains one frame in which the ego's speed is above the speed
+        threshold and a subsequent frame in which the ego's speed is below or equal to the speed threshold.
+    """
+    if speed_noise_tolerance is None:
+        speed_noise_tolerance = 0.1
+
+    initial_ego_state = scenario.get_ego_state_at_iteration(0)
+    current_speed, start_detector, stop_detector = (
+        initial_ego_state.dynamic_car_state.rear_axle_velocity_2d.magnitude(),
+    ) * 3
+
+    edge_type_presence = [False, False]  # index 0 is presence of RISING, index 1 is presence of FALLING
+
+    for next_ego_state in scenario.get_ego_future_trajectory(iteration=0, time_horizon=scenario.duration_s.time_s):
+        next_speed = next_ego_state.dynamic_car_state.rear_axle_velocity_2d.magnitude()
+
+        if next_speed > start_detector:
+            start_detector = next_speed
+            if (
+                start_detector > speed_threshold >= stop_detector
+                and start_detector - stop_detector > speed_noise_tolerance
+            ):
+                edge_type_presence[EdgeType.RISING] = True
+                stop_detector = start_detector
+
+        if next_speed < stop_detector:
+            stop_detector = next_speed
+            if (
+                start_detector > speed_threshold >= stop_detector
+                and start_detector - stop_detector > speed_noise_tolerance
+            ):
+                edge_type_presence[EdgeType.FALLING] = True
+                start_detector = stop_detector
+
+    return edge_type_presence[edge_type]
+
+
+def filter_ego_starts(
+    scenario_dict: ScenarioDict, speed_threshold: float, speed_noise_tolerance: float
+) -> ScenarioDict:
+    """
+    Filters a ScenarioDict, leaving only scenarios where the ego has started from a static position at some point
+
+    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type. Modified by function
+    :param speed_threshold: exclusive minimum velocity in meters per second that the ego rear axle must reach to be
+        considered started
+    :return: Filtered scenario dictionary where the ego reaches a speed greater than speed_threshold m/s from below
+        at some point in all scenarios
+    """
+    for scenario_type in scenario_dict:
+        scenario_dict[scenario_type] = list(
+            filter(
+                lambda scenario: _check_for_speed_edge(
+                    scenario, speed_threshold, speed_noise_tolerance, EdgeType.RISING
+                ),
+                scenario_dict[scenario_type],
+            )
+        )
+    return scenario_dict
+
+
+def filter_ego_stops(scenario_dict: ScenarioDict, speed_threshold: float, speed_noise_tolerance: float) -> ScenarioDict:
+    """
+    Filters a ScenarioDict, leaving only scenarios where the ego has stopped from a moving position at some point
+
+    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type. Modified by function
+    :param speed_threshold: inclusive maximum velocity in meters per second that the ego rear axle must reach to be
+        considered stopped
+    :return: Filtered scenario dictionary where the ego reaches a speed less than or equal to speed_threshold m/s
+        from above at some point in all scenarios
+    """
+    for scenario_type in scenario_dict:
+        scenario_dict[scenario_type] = list(
+            filter(
+                lambda scenario: _check_for_speed_edge(
+                    scenario, speed_threshold, speed_noise_tolerance, EdgeType.FALLING
+                ),
+                scenario_dict[scenario_type],
+            )
+        )
     return scenario_dict
 
 

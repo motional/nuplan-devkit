@@ -7,7 +7,7 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "skeleton_test_train",
     srcs = ["skeleton_test_train.py"],
-    deps = [
+    data = [
         "//nuplan/planning/script:run_training",
     ],
 )
@@ -15,10 +15,12 @@ py_library(
 py_library(
     name = "skeleton_test_simulation",
     srcs = ["skeleton_test_simulation.py"],
+    data = [
+        "//nuplan/planning/script:run_simulation",
+    ],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
-        "//nuplan/planning/script:run_simulation",
         "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",
@@ -37,8 +39,10 @@ py_test(
     size = "large",
     srcs = ["test_config_dataloader.py"],
     data = [
+        "//nuplan/planning/script:init",
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script/builders:data_augmentation_builder",
@@ -65,8 +69,10 @@ py_test(
     size = "medium",
     srcs = ["test_model_build.py"],
     data = [
+        "//nuplan/planning/script:init",
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",
@@ -86,9 +92,7 @@ py_test(
     name = "test_run_simulation",
     size = "small",
     srcs = ["test_run_simulation.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_simulation",
     ],
@@ -101,9 +105,11 @@ py_test(
     data = [
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_simulation",
         "//nuplan/planning/script:run_submission_planner",
+        requirement("protobuf"),
     ],
 )
 
@@ -111,9 +117,7 @@ py_test(
     name = "test_run_challenge",
     size = "small",
     srcs = ["test_run_challenge.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_simulation",
     ],
@@ -123,9 +127,7 @@ py_test(
     name = "test_run_ray_worker",
     size = "small",
     srcs = ["test_run_ray_worker.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_simulation",
     ],
@@ -135,9 +137,7 @@ py_test(
     name = "test_run_parallel_worker",
     size = "small",
     srcs = ["test_run_parallel_worker.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_simulation",
     ],
@@ -147,9 +147,7 @@ py_test(
     name = "test_run_sequential_worker",
     size = "small",
     srcs = ["test_run_sequential_worker.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_simulation",
     ],
@@ -160,12 +158,12 @@ py_test(
     size = "small",
     srcs = ["test_run_metric.py"],
     data = [
-        "//nuplan/planning/script:yaml",
-    ],
-    deps = [
-        ":skeleton_test_simulation",
         "//nuplan/planning/script:run_metric",
         "//nuplan/planning/script:run_metric_aggregator",
+    ],
+    tags = ["integration"],
+    deps = [
+        ":skeleton_test_simulation",
     ],
 )
 
@@ -174,12 +172,12 @@ py_test(
     size = "small",
     srcs = ["test_run_metric_aggregator.py"],
     data = [
-        "//nuplan/planning/script:yaml",
-    ],
-    deps = [
-        ":skeleton_test_simulation",
         "//nuplan/planning/script:run_metric",
         "//nuplan/planning/script:run_metric_aggregator",
+    ],
+    tags = ["integration"],
+    deps = [
+        ":skeleton_test_simulation",
         requirement("hydra-core"),
     ],
 )
@@ -189,14 +187,14 @@ py_test(
     size = "medium",
     srcs = ["test_run_nuboard.py"],
     data = [
-        "//nuplan/planning/script:yaml",
+        "//nuplan/planning/script:run_nuboard",
+        "//nuplan/planning/script:run_simulation",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_acceleration",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_jerk",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_nuboard",
-        "//nuplan/planning/script:run_simulation",
         "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:worker_pool_builder",
@@ -216,13 +214,9 @@ py_test(
     name = "test_train_raster_model",
     size = "enormous",
     srcs = ["test_train_raster_model.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
     tags = ["manual"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
         "//nuplan/planning/script/builders:training_metrics_builder",
@@ -240,12 +234,9 @@ py_test(
     name = "test_train_urban_driver_open_loop_model",
     size = "enormous",
     srcs = ["test_train_urban_driver_open_loop_model.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
@@ -255,9 +246,9 @@ py_test(
         "//nuplan/planning/training/callbacks:scenario_scoring_callback",
         "//nuplan/planning/training/callbacks:stepwise_augmentation_scheduler",
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
-        "//nuplan/planning/training/data_augmentation:agent_dropout_augmentation",
         "//nuplan/planning/training/data_augmentation:data_augmentation_util",
-        "//nuplan/planning/training/data_augmentation:kinematic_history_agent_augmentation",
+        "//nuplan/planning/training/data_augmentation:generic_agent_dropout_augmentation",
+        "//nuplan/planning/training/data_augmentation:kinematic_history_generic_agent_augmentation",
         "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         "//nuplan/planning/training/data_loader:log_splitter",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
@@ -272,13 +263,9 @@ py_test(
     name = "test_train_vector_model",
     size = "enormous",
     srcs = ["test_train_vector_model.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
     tags = ["manual"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
         "//nuplan/planning/script/builders:training_metrics_builder",
@@ -299,15 +286,12 @@ py_test(
     name = "test_train_overfitting",
     size = "enormous",
     srcs = ["test_train_overfitting.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
     tags = [
         "cpu:20",
+        "integration",
     ],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
@@ -332,13 +316,9 @@ py_test(
     name = "test_cache",
     size = "enormous",
     srcs = ["test_cache.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
     tags = ["manual"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
         "//nuplan/planning/script/builders:training_metrics_builder",
@@ -354,12 +334,9 @@ py_test(
     name = "test_one_cycle_lr_scheduler",
     size = "enormous",
     srcs = ["test_one_cycle_lr_scheduler.py"],
-    data = [
-        "//nuplan/planning/script:yaml",
-    ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
-        "//nuplan/planning/script:run_training",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:lr_scheduler_builder",
         "//nuplan/planning/script/builders:training_callback_builder",

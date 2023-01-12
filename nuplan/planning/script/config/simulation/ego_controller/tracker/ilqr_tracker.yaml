@@ -1,7 +1,7 @@
 _target_: nuplan.planning.simulation.controller.tracker.ilqr_tracker.ILQRTracker
 _convert_: all
 
-n_horizon: 10  # Maximum time horizon (number of discrete time steps) that we should plan ahead.
+n_horizon: 40  # Maximum time horizon (number of discrete time steps) that we should plan ahead.
 
 ilqr_solver:
   _target_: nuplan.planning.simulation.controller.tracker.ilqr.ilqr_solver.ILQRSolver
@@ -23,7 +23,7 @@ ilqr_solver:
     state_trust_region_entries: [1.0, 1.0, 1.0, 1.0, 1.0]
     input_trust_region_entries: [1.0, 1.0]
 
-    max_ilqr_iterations: 10  # Maximum number of iterations to run iLQR before timeout.
+    max_ilqr_iterations: 20  # Maximum number of iterations to run iLQR before timeout.
     convergence_threshold: 1e-6  # Threshold for delta inputs below which we can terminate iLQR early.
     max_solve_time: 0.05  # [s] If defined, sets a maximum time to run a solve call of iLQR before terminating.
 

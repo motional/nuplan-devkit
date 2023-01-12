@@ -4,13 +4,9 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Dict
 
+import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
-
-from nuplan.common.utils.helpers import suppress_geopandas_warning
-
-suppress_geopandas_warning()
-import geopandas as gpd  # noqa: E402
 
 Transform = npt.NDArray[np.float32]  # 4x4 homogeneous transformation matrix
 
@@ -61,25 +57,18 @@ class StopLineType(IntEnum):
     TRAFFIC_LIGHT = 2
     TURN_STOP = 3
     YIELD = 4
+    UNKNOWN = 5
 
 
-def stopline_type_to_gpkg(stopline_type: StopLineType) -> str:
+class PudoType(IntEnum):
     """
-    Converts StopLineType to gpkg str
-    gpkg str, the layer name used in the GeoPandas database.
-    :param stopline_type: StopLine type to convert
-    :return: gpkg str corresponding to stopline_type
+    Enum for PudoType
     """
-    if stopline_type == StopLineType.PED_CROSSING:
-        return "PedCrossing"
-    elif stopline_type == StopLineType.STOP_SIGN:
-        return "StopSign"
-    elif stopline_type == StopLineType.TRAFFIC_LIGHT:
-        return "TrafficLight"
-    elif stopline_type == StopLineType.TURN_STOP:
-        return "TurnStop"
-    else:
-        return "Yield"
+
+    PICK_UP_DROP_OFF = 0
+    PICK_UP_ONLY = 1
+    DROP_OFF_ONLY = 2
+    UNKNOWN = 3
 
 
 class IntersectionType(IntEnum):

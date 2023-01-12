@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Dict, List, Optional, Tuple
 
 from shapely.ops import nearest_points
@@ -8,6 +9,8 @@ from shapely.strtree import STRtree
 from nuplan.common.actor_state.scene_object import SceneObject
 from nuplan.planning.simulation.occupancy_map.abstract_occupancy_map import Geometry, OccupancyMap
 
+# ignoring shapely RuntimeWarning: invalid value encountered in line_locate_point
+warnings.filterwarnings(action='ignore', message="(.|\n)*invalid value encountered in line_locate_point(.|\n)*")
 GeometryMap = Dict[str, Geometry]
 
 
@@ -28,15 +31,17 @@ class STRTreeOccupancyMap(OccupancyMap):
         assert self.contains(geometry_id), "This occupancy map does not contain given geometry id"
 
         strtree, index_by_id = self._build_strtree(geometry_id)
-        nearest = strtree.nearest(self.get(geometry_id))
+        nearest_index = strtree.nearest(self.get(geometry_id))
+        nearest = strtree.geometries.take(nearest_index)
         p1, p2 = nearest_points(self.get(geometry_id), nearest)
         return index_by_id[id(nearest)], nearest, p1.distance(p2)
 
     def intersects(self, geometry: Geometry) -> OccupancyMap:
         """Inherited, see superclass."""
         strtree, index_by_id = self._build_strtree()
+        indices = strtree.query(geometry)
         return STRTreeOccupancyMap(
-            {index_by_id[id(geom)]: geom for geom in strtree.query(geometry) if geom.intersects(geometry)}
+            {index_by_id[id(geom)]: geom for geom in strtree.geometries.take(indices) if geom.intersects(geometry)}
         )
 
     def insert(self, geometry_id: str, geometry: Geometry) -> None:
@@ -99,7 +104,7 @@ class STRTreeOccupancyMap(OccupancyMap):
         else:
             temp_geom_map = self._geom_map
 
-        strtree = STRtree(temp_geom_map.values())
+        strtree = STRtree(list(temp_geom_map.values()))
         index_by_id = {id(geom): geom_id for geom_id, geom in temp_geom_map.items()}
 
         return strtree, index_by_id

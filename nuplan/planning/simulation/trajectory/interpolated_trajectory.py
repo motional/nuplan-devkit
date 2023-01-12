@@ -63,13 +63,13 @@ class InterpolatedTrajectory(AbstractTrajectory):
         """Inherited, see superclass."""
         return self._trajectory[-1].time_point
 
-    def get_state_at_time(self, time_point: TimePoint) -> Any:
+    def get_state_at_time(self, time_point: TimePoint) -> InterpolatableState:
         """Inherited, see superclass."""
         start_time = self.start_time
         end_time = self.end_time
 
         assert start_time <= time_point <= end_time, (
-            f"Timeout exceeds trajectory! "
+            f"Interpolation time not in trajectory time window! "
             f"{start_time.time_s - start_time.time_s} "
             f"<= {time_point.time_s - start_time.time_s} "
             f"<= {end_time.time_s - start_time.time_s}"
@@ -79,6 +79,31 @@ class InterpolatedTrajectory(AbstractTrajectory):
         angular_states = list(self._angular_interpolator.interpolate(time_point.time_us))
 
         return self._trajectory_class.from_split_state(SplitState(linear_states, angular_states, self._fixed_state))
+
+    def get_state_at_times(self, time_points: List[TimePoint]) -> List[InterpolatableState]:
+        """Inherited, see superclass."""
+        start_time = self.start_time
+        end_time = self.end_time
+
+        assert start_time <= min(time_points), (
+            f"Interpolation time not in trajectory time window! The following is not satisfied:"
+            f"Trajectory start time: ({start_time.time_s}) <= Earliest interpolation time ({min(time_points).time_s}) "
+            f"{max(time_points).time_s} <= {end_time.time_s} "
+        )
+
+        assert max(time_points) <= end_time, (
+            f"Interpolation time not in trajectory time window! The following is not satisfied:"
+            f"Trajectory end time: ({end_time.time_s}) >= Latest interpolation time ({max(time_points).time_s}) "
+        )
+
+        interpolation_times = [t.time_us for t in time_points]
+        linear_states = list(self._function_interp_linear(interpolation_times))
+        angular_states = list(self._angular_interpolator.interpolate(interpolation_times))
+
+        return [
+            self._trajectory_class.from_split_state(SplitState(lin_state, ang_state, self._fixed_state))
+            for lin_state, ang_state in zip(linear_states, angular_states)
+        ]
 
     def get_sampled_trajectory(self) -> List[InterpolatableState]:
         """Inherited, see superclass."""

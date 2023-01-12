@@ -30,6 +30,7 @@ defaults:
   - data_augmentation_scheduler: null  # [default_augmentation_schedulers, stepwise_augmentation_probability_scheduler, stepwise_noise_parameter_scheduler] supported data augmentation schedulers
   - scenario_type_weights: default_scenario_type_weights
 
+experiment_name: 'training'
 objective_aggregate_mode: ??? # How to aggregate multiple objectives, can be 'mean', 'max', 'sum'
 
 # Cache parameters

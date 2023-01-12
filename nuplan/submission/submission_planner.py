@@ -3,11 +3,11 @@ import os
 from concurrent import futures
 
 import grpc
+from omegaconf import DictConfig
 
 from nuplan.common.maps.map_manager import MapManager
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.database.maps_db.gpkg_mapsdb import GPKGMapsDB
-from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.submission import challenge_pb2_grpc as chpb_grpc
 from nuplan.submission.challenge_servicers import DetectionTracksChallengeServicer
 
@@ -20,10 +20,10 @@ class SubmissionPlanner:
     trajectory computation.
     """
 
-    def __init__(self, planner: AbstractPlanner):
+    def __init__(self, planner_config: DictConfig):
         """
         Prepares the planner and the server. The communication port is read from an environmental variable.
-        :param planner: The planner to be used for trajectory computation
+        :param planner_config: The planner configuration to instantiate the planner
         """
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
         map_version = os.getenv('NUPLAN_MAP_VERSION', 'nuplan-maps-v1.0')
@@ -35,7 +35,7 @@ class SubmissionPlanner:
         )
         map_manager = MapManager(map_factory)
         chpb_grpc.add_DetectionTracksChallengeServicer_to_server(
-            DetectionTracksChallengeServicer(planner, map_manager), self.server
+            DetectionTracksChallengeServicer(planner_config, map_manager), self.server
         )
 
         port = os.getenv("SUBMISSION_CONTAINER_PORT", 50051)

@@ -19,6 +19,7 @@ py_test(
     size = "small",
     srcs = ["test_ego_stop_at_stop_line.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/maps:abstract_map",
         "//nuplan/common/utils/testing:nuplan_test",

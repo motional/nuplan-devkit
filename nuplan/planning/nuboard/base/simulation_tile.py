@@ -335,11 +335,15 @@ class SimulationTile:
             return
 
         images = []
-        scenario_name = self._selected_scenario_keys[figure_index].scenario_name
-        scenario_type = self._selected_scenario_keys[figure_index].scenario_type
-        planner_name = self._selected_scenario_keys[figure_index].planner_name
+        scenario_key = self._selected_scenario_keys[figure_index]
+        scenario_name = scenario_key.scenario_name
+        scenario_type = scenario_key.scenario_type
+        planner_name = scenario_key.planner_name
         video_name = scenario_type + "_" + planner_name + "_" + scenario_name + ".avi"
-        video_path = Path(self._experiment_file_data.file_paths[figure_index].simulation_main_path) / "video_screenshot"
+        nuboard_file_index = scenario_key.nuboard_file_index
+        video_path = (
+            Path(self._experiment_file_data.file_paths[nuboard_file_index].simulation_main_path) / "video_screenshot"
+        )
         if not video_path.exists():
             video_path.mkdir(parents=True, exist_ok=True)
         video_save_path = video_path / video_name
@@ -353,9 +357,12 @@ class SimulationTile:
                 chrome_options = webdriver.ChromeOptions()
                 chrome_options.headless = True
                 driver = webdriver.Chrome(chrome_options=chrome_options)
+                driver.set_window_size(1920, 1080)
                 shape = None
                 simulation_figure = self._create_initial_figure(
-                    figure_index=figure_index, backend="canvas", figure_sizes=simulation_tile_style["figure_sizes"]
+                    figure_index=figure_index,
+                    backend="canvas",
+                    figure_sizes=simulation_tile_style["render_figure_sizes"],
                 )
                 # Copy the data sources
                 simulation_figure.copy_datasources(selected_simulation_figure)
@@ -456,15 +463,29 @@ class SimulationTile:
             (SemanticMapLayer.WALKWAYS, simulation_map_layer_color[SemanticMapLayer.WALKWAYS]),
             (SemanticMapLayer.CARPARK_AREA, simulation_map_layer_color[SemanticMapLayer.CARPARK_AREA]),
         ]
+        roadblock_ids = main_figure.scenario.get_route_roadblock_ids()
+        if roadblock_ids:
+            polygon_layer_names.append(
+                (SemanticMapLayer.ROADBLOCK, simulation_map_layer_color[SemanticMapLayer.ROADBLOCK])
+            )
 
         for layer_name, color in polygon_layer_names:
-            layer = nearest_vector_map[layer_name]
             map_polygon = MapPoint(point_2d=[])
-
-            for map_obj in layer:
-                coords = map_obj.polygon.exterior.coords
-                points = [Point2D(x=x, y=y) for x, y in coords]
-                map_polygon.point_2d.append(points)
+            # Render RoadBlock
+            if layer_name == SemanticMapLayer.ROADBLOCK:
+                layer = nearest_vector_map[SemanticMapLayer.LANE] + nearest_vector_map[SemanticMapLayer.LANE_CONNECTOR]
+                for map_obj in layer:
+                    roadblock_id = map_obj.get_roadblock_id()
+                    if roadblock_id in roadblock_ids:
+                        coords = map_obj.polygon.exterior.coords
+                        points = [Point2D(x=x, y=y) for x, y in coords]
+                        map_polygon.point_2d.append(points)
+            else:
+                layer = nearest_vector_map[layer_name]
+                for map_obj in layer:
+                    coords = map_obj.polygon.exterior.coords
+                    points = [Point2D(x=x, y=y) for x, y in coords]
+                    map_polygon.point_2d.append(points)
 
             polygon_source = ColumnDataSource(
                 dict(

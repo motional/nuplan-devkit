@@ -7,9 +7,6 @@ from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
 
-# EgoState is used if trajectory contains ego positions
-# Waypoint is used if trajectory contains agent positions
-# TODO Refactor EgoState such that it will inherit from Waypoint
 WaypointTypes = Union[Waypoint, EgoState]
 
 

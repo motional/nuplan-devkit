@@ -32,8 +32,8 @@ class Waypoint(InterpolatableState):
                 self._oriented_box.center.x,
                 self._oriented_box.center.y,
                 self._oriented_box.center.heading,
-                self._velocity.x if self._velocity else None,
-                self._velocity.y if self._velocity else None,
+                self._velocity.x if self._velocity is not None else None,
+                self._velocity.y if self._velocity is not None else None,
             )
         )
 
@@ -121,8 +121,8 @@ class Waypoint(InterpolatableState):
             self._oriented_box.length,
             self._oriented_box.width,
             self._oriented_box.height,
-            self._velocity.x if self._velocity else None,
-            self._velocity.y if self._velocity else None,
+            self._velocity.x if self._velocity is not None else None,
+            self._velocity.y if self._velocity is not None else None,
         ]
 
     @staticmethod
@@ -137,7 +137,7 @@ class Waypoint(InterpolatableState):
         return Waypoint(
             time_point=TimePoint(int(vector[0])),
             oriented_box=OrientedBox(StateSE2(vector[1], vector[2], vector[3]), vector[4], vector[5], vector[6]),
-            velocity=StateVector2D(vector[7], vector[8]) if vector[7] and vector[8] else None,
+            velocity=StateVector2D(vector[7], vector[8]) if vector[7] is not None and vector[8] is not None else None,
         )
 
     def to_split_state(self) -> SplitState:
@@ -146,8 +146,8 @@ class Waypoint(InterpolatableState):
             self.time_point.time_us,
             self._oriented_box.center.x,
             self._oriented_box.center.y,
-            self._velocity.x if self._velocity else None,
-            self._velocity.y if self._velocity else None,
+            self._velocity.x if self._velocity is not None else None,
+            self._velocity.y if self._velocity is not None else None,
         ]
         angular_states = [self._oriented_box.center.heading]
         fixed_state = [self._oriented_box.width, self._oriented_box.length, self._oriented_box.height]
@@ -170,6 +170,6 @@ class Waypoint(InterpolatableState):
                 height=split_state.fixed_states[2],
             ),
             velocity=StateVector2D(split_state.linear_states[3], split_state.linear_states[4])
-            if split_state.linear_states[3] and split_state.linear_states[4]
+            if split_state.linear_states[3] is not None and split_state.linear_states[4] is not None
             else None,
         )

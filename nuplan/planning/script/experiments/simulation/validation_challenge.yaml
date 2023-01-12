@@ -1,5 +1,5 @@
 # @package _global_
-experiment_name: validation_challenge
+job_name: validation_challenge
 
 defaults:
   - override /observation: box_observation

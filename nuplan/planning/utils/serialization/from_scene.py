@@ -121,7 +121,10 @@ def from_scene_to_tracked_objects(scene: Dict[str, Any]) -> TrackedObjects:
         'pedestrians': TrackedObjectType.PEDESTRIAN,
     }
     for label, object_type in scene_labels_map.items():
-        tracked_objects.extend([from_scene_tracked_object(scene_object, object_type) for scene_object in scene[label]])
+        if label in scene:
+            tracked_objects.extend(
+                [from_scene_tracked_object(scene_object, object_type) for scene_object in scene[label]]
+            )
 
     return TrackedObjects(tracked_objects)
 

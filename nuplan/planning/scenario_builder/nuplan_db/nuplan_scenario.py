@@ -57,7 +57,6 @@ class NuPlanScenario(AbstractScenario):
         map_name: str,
         scenario_extraction_info: Optional[ScenarioExtractionInfo],
         ego_vehicle_parameters: VehicleParameters,
-        ground_truth_predictions: Optional[TrajectorySampling] = None,
     ) -> None:
         """
         Initialize the nuPlan scenario.
@@ -72,7 +71,6 @@ class NuPlanScenario(AbstractScenario):
         :param scenario_extraction_info: Structure containing information used to extract the scenario.
             None means the scenario has no length and it is comprised only by the initial lidarpc.
         :param ego_vehicle_parameters: Structure containing the vehicle parameters.
-        :param ground_truth_predictions: True if you want to extract agent future ground truth predictions.
         """
         self._blob_store: Optional[BlobStore] = None  # Lazily create
 
@@ -86,7 +84,6 @@ class NuPlanScenario(AbstractScenario):
         self._map_name = map_name
         self._scenario_extraction_info = scenario_extraction_info
         self._ego_vehicle_parameters = ego_vehicle_parameters
-        self._ground_truth_predictions = ground_truth_predictions
 
         # If scenario extraction info is provided, check that the subsample ratio is valid
         if self._scenario_extraction_info is not None:
@@ -128,7 +125,6 @@ class NuPlanScenario(AbstractScenario):
                 self._map_name,
                 self._scenario_extraction_info,
                 self._ego_vehicle_parameters,
-                self._ground_truth_predictions,
             ),
         )
 
@@ -237,11 +233,15 @@ class NuPlanScenario(AbstractScenario):
         """Inherited, see superclass."""
         return get_ego_state_for_lidarpc_token_from_db(self._log_file, self._lidarpc_tokens[iteration])
 
-    def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
+    def get_tracked_objects_at_iteration(
+        self,
+        iteration: int,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
+    ) -> DetectionsTracks:
         """Inherited, see superclass."""
         assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration is out of scenario: {iteration}!"
         return DetectionsTracks(
-            extract_tracked_objects(self._lidarpc_tokens[iteration], self._log_file, self._ground_truth_predictions)
+            extract_tracked_objects(self._lidarpc_tokens[iteration], self._log_file, future_trajectory_sampling)
         )
 
     def get_tracked_objects_within_time_window_at_iteration(
@@ -250,6 +250,7 @@ class NuPlanScenario(AbstractScenario):
         past_time_horizon: float,
         future_time_horizon: float,
         filter_track_tokens: Optional[Set[str]] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> DetectionsTracks:
         """Inherited, see superclass."""
         assert 0 <= iteration < self.get_number_of_iterations(), f"Iteration is out of scenario: {iteration}!"
@@ -260,7 +261,7 @@ class NuPlanScenario(AbstractScenario):
                 past_time_horizon,
                 future_time_horizon,
                 filter_track_tokens,
-                self._ground_truth_predictions,
+                future_trajectory_sampling,
             )
         )
 
@@ -309,24 +310,28 @@ class NuPlanScenario(AbstractScenario):
         )
 
     def get_past_tracked_objects(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> Generator[DetectionsTracks, None, None]:
         """Inherited, see superclass."""
         # TODO: This can be made even more efficient with a batch query
         for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, False):
-            yield DetectionsTracks(
-                extract_tracked_objects(lidar_pc.token, self._log_file, self._ground_truth_predictions)
-            )
+            yield DetectionsTracks(extract_tracked_objects(lidar_pc.token, self._log_file, future_trajectory_sampling))
 
     def get_future_tracked_objects(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> Generator[DetectionsTracks, None, None]:
         """Inherited, see superclass."""
         # TODO: This can be made even more efficient with a batch query
         for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True):
-            yield DetectionsTracks(
-                extract_tracked_objects(lidar_pc.token, self._log_file, self._ground_truth_predictions)
-            )
+            yield DetectionsTracks(extract_tracked_objects(lidar_pc.token, self._log_file, future_trajectory_sampling))
 
     def get_past_sensors(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None

@@ -69,6 +69,7 @@ py_test(
     name = "test_scenario_tab",
     size = "medium",
     srcs = ["test_scenario_tab.py"],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_tab",
         "//nuplan/common/actor_state:vehicle_parameters",

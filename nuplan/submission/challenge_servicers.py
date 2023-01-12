@@ -1,9 +1,12 @@
 import logging
 import pickle
-from typing import Any, List, Optional
+from typing import Any, Optional
+
+from omegaconf import DictConfig
 
 from nuplan.common.actor_state.state_representation import TimePoint
 from nuplan.common.maps.map_manager import MapManager
+from nuplan.planning.script.builders.planner_builder import build_planners
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
 from nuplan.planning.simulation.planner.abstract_planner import (
     AbstractPlanner,
@@ -28,14 +31,20 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
     It keeps a rolling history buffer to avoid unnecessary serialization/deserialization.
     """
 
-    def __init__(self, planner: AbstractPlanner, map_manager: MapManager):
+    def __init__(
+        self,
+        planner_config: DictConfig,
+        map_manager: MapManager,
+    ):
         """
-        :param planner: The planner to be used by the service
-        :param map_manager: The map manager
+        :param planner_config: The planner configuration to instantiate the planner.
+        :param map_manager: The map manager.
         """
-        self.planner = planner
+        self.planner: Optional[AbstractPlanner] = None
+        self._planner_config = planner_config
         self.map_manager = map_manager
-        self.simulation_history_buffers: List[Optional[SimulationHistoryBuffer]] = []
+        self.simulation_history_buffer: Optional[SimulationHistoryBuffer] = None
+        self._initialized = False
 
     @staticmethod
     def _extract_simulation_iteration(planner_input_message: chpb.PlannerInput) -> SimulationIteration:
@@ -45,13 +54,12 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
         )
 
     def _build_planner_input(
-        self, planner_input_message: chpb.PlannerInput, buffer: Optional[SimulationHistoryBuffer], idx: int
+        self, planner_input_message: chpb.PlannerInput, buffer: Optional[SimulationHistoryBuffer]
     ) -> PlannerInput:
         """
         Builds a PlannerInput from a serialized PlannerInput message and an existing data buffer
         :param planner_input_message: the serialized message
         :param buffer: The history buffer
-        :param idx: Index of buffer wrt the list of buffers available.
         :return: PlannerInput object
         """
         simulation_iteration = self._extract_simulation_iteration(planner_input_message)
@@ -72,76 +80,60 @@ class DetectionTracksChallengeServicer(chpb_grpc.DetectionTracksChallengeService
             buffer = SimulationHistoryBuffer.initialize_from_list(
                 len(states), states, observations, new_data.sample_interval
             )
-            self.simulation_history_buffers[idx] = buffer
+            self.simulation_history_buffer = buffer
 
         tl_data_messages = planner_input_message.traffic_light_data
         tl_data = [tl_status_data_from_proto_tl_status_data(tl_data_message) for tl_data_message in tl_data_messages]
 
         return PlannerInput(iteration=simulation_iteration, history=buffer, traffic_light_data=tl_data)
 
-    def _build_planner_inputs(self, planner_input_messages: List[chpb.PlannerInput]) -> List[PlannerInput]:
-        """
-        Builds a list of PlannerInput from a list of serialized PlannerInput messages
-        :param planner_input_messages: the serialized messages
-        :return: List of deserialized PlannerInput objects
-        """
-        planner_inputs = []
-
-        for i, (planner_input_message, buffer) in enumerate(
-            zip(planner_input_messages, self.simulation_history_buffers)
-        ):
-            planner_inputs.append(self._build_planner_input(planner_input_message, buffer, i))
-
-        return planner_inputs
-
     def InitializePlanner(
-        self, planner_initialization_messages: chpb.MultiPlannerInitializationLight, context: Any
-    ) -> chpb.PlannerInitializationResponse:
+        self, planner_initialization_message: chpb.PlannerInitializationLight, context: Any
+    ) -> chpb.Empty:
         """
         Service to initialize the planner given the initialization request.
-        :param planner_initialization_messages: Message containing initialization details
+        :param planner_initialization_message: Message containing initialization details
         :param context
         """
+        planners = build_planners(self._planner_config, None)
+        assert len(planners) == 1, f"Configuration should build exactly 1 planner, got {len(planners)} instead!"
+        self.planner = planners[0]
+
         logger.info("Initialization request received..")
-        planner_initialization = []
 
-        for planner_initialization_message in planner_initialization_messages.planner_initializations:
-            route_roadblock_ids = planner_initialization_message.route_roadblock_ids
-            mission_goal = se2_from_proto_se2(planner_initialization_message.mission_goal)
+        route_roadblock_ids = planner_initialization_message.route_roadblock_ids
+        mission_goal = se2_from_proto_se2(planner_initialization_message.mission_goal)
 
-            map_api = self.map_manager.get_map(planner_initialization_message.map_name)
-            map_api.initialize_all_layers()
-            planner_initialization.append(
-                PlannerInitialization(
-                    route_roadblock_ids=route_roadblock_ids,
-                    mission_goal=mission_goal,
-                    map_api=map_api,
-                )
-            )
-            self.simulation_history_buffers.append(None)
+        map_api = self.map_manager.get_map(planner_initialization_message.map_name)
+        map_api.initialize_all_layers()
+        planner_initialization = PlannerInitialization(
+            route_roadblock_ids=route_roadblock_ids,
+            mission_goal=mission_goal,
+            map_api=map_api,
+        )
+
+        self.simulation_history_buffer = None
 
         self.planner.initialize(planner_initialization)
 
-        initialization_response = chpb.PlannerInitializationResponse(
-            consume_batched_inputs=self.planner.consume_batched_inputs
-        )
-
         logging.info("Planner initialized!")
+        self._initialized = True
+        return chpb.Empty()
 
-        return initialization_response
-
-    def ComputeTrajectory(self, planner_input_message: chpb.MultiPlannerInput, context: Any) -> chpb.MultiTrajectory:
+    def ComputeTrajectory(self, planner_input_message: chpb.PlannerInput, context: Any) -> chpb.Trajectory:
         """
         Service to compute a trajectory given a planner input message
         :param planner_input_message: Message containing the input to the planner
         :param context
         :return Message containing the computed trajectories
         """
-        assert self.simulation_history_buffers, "Planner has not been initialized. Please call InitializePlanner"
+        assert self._initialized, "Planner has not been initialized. Please call InitializePlanner"
 
-        planner_inputs = self._build_planner_inputs(planner_input_message.planner_inputs)
+        planner_inputs = self._build_planner_input(planner_input_message, self.simulation_history_buffer)
 
-        trajectories = self.planner.compute_trajectory(planner_inputs)
-        serialized_trajectories = [proto_traj_from_inter_traj(trajectory) for trajectory in trajectories]
+        if isinstance(self.planner, AbstractPlanner):
+            trajectory = self.planner.compute_trajectory(planner_inputs)
 
-        return chpb.MultiTrajectory(trajectories=serialized_trajectories)
+            return proto_traj_from_inter_traj(trajectory)
+
+        raise RuntimeError("The planner was not initialized correctly!")

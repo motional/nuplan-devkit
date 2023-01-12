@@ -32,7 +32,7 @@ class MetricAggregatorCallback(AbstractMainCallback):
             metric_dataframes = {}
 
             metrics = self._metric_save_path.rglob("*.parquet")
-            if metric_aggregator.challenge is None:
+            if not metric_aggregator.challenge:
                 challenge_metrics = list(metrics)
             else:
                 challenge_metrics = [path for path in metrics if metric_aggregator.challenge in str(path)]
@@ -51,6 +51,9 @@ class MetricAggregatorCallback(AbstractMainCallback):
                 metric_aggregator(metric_dataframes=metric_dataframes)
             else:
                 logger.warning(f"{metric_aggregator.name}: No metric files found for aggregation!")
+                logger.warning(
+                    "If you didn't expect this, ensure that the challenge name is part of your submitted job name."
+                )
 
         end_time = time.perf_counter()
         elapsed_time_s = end_time - start_time

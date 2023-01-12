@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple, Union
 
+import geopandas as gp
 import pandas
 from shapely.geometry import LineString, Polygon
 
-from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.planning.simulation.occupancy_map.abstract_occupancy_map import Geometry, OccupancyMap
-
-suppress_geopandas_warning()
-import geopandas as gp  # noqa: E402
 
 
 class GeoPandasOccupancyMap(OccupancyMap):

@@ -33,6 +33,7 @@ class EgoLonJerkStatistics(WithinBoundMetricBase):
             statistic_unit_name='meters_per_second_cubed',
             extract_function=extract_ego_jerk,
             extract_function_params={'acceleration_coordinate': 'x'},
+            min_within_bound_threshold=-self._max_abs_lon_jerk,
             max_within_bound_threshold=self._max_abs_lon_jerk,
         )
         return metric_statistics

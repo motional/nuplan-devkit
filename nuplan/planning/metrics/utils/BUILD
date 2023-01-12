@@ -52,6 +52,7 @@ py_test(
     name = "testing_utils",
     size = "small",
     srcs = ["testing_utils.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",

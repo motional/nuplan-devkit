@@ -58,15 +58,16 @@ class IDMPlanner(AbstractIDMPlanner):
 
         self._initialized = False
 
-    def initialize(self, initialization: List[PlannerInitialization]) -> None:
+    def initialize(self, initialization: PlannerInitialization) -> None:
         """Inherited, see superclass."""
-        self._map_api = initialization[0].map_api
-        self._initialize_route_plan(initialization[0].route_roadblock_ids)
+        self._map_api = initialization.map_api
+        self._initialize_route_plan(initialization.route_roadblock_ids)
+        self._initialized = False
 
-    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: PlannerInput) -> AbstractTrajectory:
         """Inherited, see superclass."""
         # Ego current state
-        ego_state, observations = current_input[0].history.current_state
+        ego_state, observations = current_input.history.current_state
 
         if not self._initialized:
             self._initialize_ego_path(ego_state)
@@ -76,10 +77,10 @@ class IDMPlanner(AbstractIDMPlanner):
         occupancy_map, unique_observations = self._construct_occupancy_map(ego_state, observations)
 
         # Traffic light handling
-        traffic_light_data = current_input[0].traffic_light_data
+        traffic_light_data = current_input.traffic_light_data
         self._annotate_occupancy_map(traffic_light_data, occupancy_map)
 
-        return [self._get_planned_trajectory(ego_state, occupancy_map, unique_observations)]
+        return self._get_planned_trajectory(ego_state, occupancy_map, unique_observations)
 
     def _initialize_ego_path(self, ego_state: EgoState) -> None:
         """

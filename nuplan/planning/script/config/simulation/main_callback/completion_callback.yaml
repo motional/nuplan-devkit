@@ -3,4 +3,4 @@ completion_callback:
   _convert_: 'all'
 
   output_dir: ${output_dir}
-  challenge_name: ${experiment_name}
+  challenge_name: ${job_name}

@@ -134,6 +134,8 @@ class BaseTab:
         elif scatter_sign == 'diamond':
             renderer = scatter_figure.diamond
         elif scatter_sign == 'plus':
+            renderer = scatter_figure.plus
+        elif scatter_sign == 'square':
             renderer = scatter_figure.square
         elif scatter_sign == 'triangle':
             renderer = scatter_figure.triangle

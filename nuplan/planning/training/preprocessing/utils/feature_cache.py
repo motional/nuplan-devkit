@@ -75,7 +75,6 @@ class FeatureCachePickle(FeatureCache):
     def store_computed_feature_to_folder(self, feature_file: pathlib.Path, feature: AbstractModelFeature) -> bool:
         """Inherited, see superclass."""
         serializable_dict = feature.serialize()
-        # TODO: Add profiling results for gzip compressor.
         # Use compresslevel = 1 to compress the size but also has fast write and read.
         with gzip.open(self.with_extension(feature_file), 'wb', compresslevel=1) as f:
             pickle.dump(serializable_dict, f)

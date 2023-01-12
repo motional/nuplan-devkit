@@ -19,7 +19,6 @@ class TestRunSubmissionPlanner(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     'planner=simple_planner',
                 ],
             )

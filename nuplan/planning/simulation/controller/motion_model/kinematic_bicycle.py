@@ -66,10 +66,10 @@ class KinematicBicycleModel(AbstractMotionModel):
         accel = state.dynamic_car_state.rear_axle_acceleration_2d.x
         steering_angle = state.tire_steering_angle
 
-        ideal_accel = (ideal_dynamic_state.rear_axle_acceleration_2d.x,)
+        ideal_accel_x = ideal_dynamic_state.rear_axle_acceleration_2d.x
         ideal_steering_angle = dt_control * ideal_dynamic_state.tire_steering_rate + steering_angle
 
-        updated_accel = dt_control / (dt_control + self._accel_time_constant) * (ideal_accel - accel) + accel
+        updated_accel_x = dt_control / (dt_control + self._accel_time_constant) * (ideal_accel_x - accel) + accel
         updated_steering_angle = (
             dt_control / (dt_control + self._steering_angle_time_constant) * (ideal_steering_angle - steering_angle)
             + steering_angle
@@ -79,7 +79,7 @@ class KinematicBicycleModel(AbstractMotionModel):
         dynamic_state = DynamicCarState.build_from_rear_axle(
             rear_axle_to_center_dist=state.car_footprint.rear_axle_to_center_dist,
             rear_axle_velocity_2d=state.dynamic_car_state.rear_axle_velocity_2d,
-            rear_axle_acceleration_2d=StateVector2D(updated_accel, 0),
+            rear_axle_acceleration_2d=StateVector2D(updated_accel_x, 0),
             tire_steering_rate=updated_steering_rate,
         )
         propagating_state = EgoState(

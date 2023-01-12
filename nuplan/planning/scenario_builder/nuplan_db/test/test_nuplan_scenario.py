@@ -45,7 +45,6 @@ class TestNuPlanScenario(unittest.TestCase):
                 scenario_name="scenario_name", scenario_duration=20, extraction_offset=1, subsample_ratio=0.5
             ),
             ego_vehicle_parameters=get_pacifica_parameters(),
-            ground_truth_predictions=TrajectorySampling(num_poses=10, time_horizon=5, interval_length=None),
         )
 
     def _get_sampled_lidarpc_tokens_in_time_window_patch(
@@ -271,6 +270,7 @@ class TestNuPlanScenario(unittest.TestCase):
         download_file_patch_fxn = self._get_download_file_if_necessary_patch(
             expected_data_root="data_root/", expected_log_file_load_path="data_root/log_name.db"
         )
+        ground_truth_predictions = TrajectorySampling(num_poses=10, time_horizon=5, interval_length=None)
 
         for iter_val in [0, 2, 3]:
 
@@ -335,7 +335,7 @@ class TestNuPlanScenario(unittest.TestCase):
                 """
                 self.assertEqual("data_root/log_name.db", log_file)
                 self.assertEqual(iter_val * 1e6, start_time)
-                self.assertEqual((iter_val + 5) * 1e6, end_time)
+                self.assertEqual((iter_val + 5.5) * 1e6, end_time)
                 self.assertEqual(2, len(agents_tokens))
 
                 # tokens can be provided in any order
@@ -376,7 +376,7 @@ class TestNuPlanScenario(unittest.TestCase):
                 interpolate_future_waypoints_patch,
             ):
                 scenario = self._make_test_scenario()
-                agents = scenario.get_tracked_objects_at_iteration(iter_val)
+                agents = scenario.get_tracked_objects_at_iteration(iter_val, ground_truth_predictions)
                 objects = agents.tracked_objects.tracked_objects
                 self.assertEqual(4, len(objects))
 
@@ -418,6 +418,7 @@ class TestNuPlanScenario(unittest.TestCase):
         download_file_patch_fxn = self._get_download_file_if_necessary_patch(
             expected_data_root="data_root/", expected_log_file_load_path="data_root/log_name.db"
         )
+        ground_truth_predictions = TrajectorySampling(num_poses=10, time_horizon=5, interval_length=None)
 
         for iter_val in [3, 4]:
 
@@ -486,7 +487,7 @@ class TestNuPlanScenario(unittest.TestCase):
                 The patch for get_future_waypoints_for_agents_from_db that validates the arguments and generates fake data.
                 """
                 self.assertEqual("data_root/log_name.db", log_file)
-                self.assertEqual(end_time - start_time, 5 * 1e6)
+                self.assertEqual(end_time - start_time, 5.5 * 1e6)
                 self.assertEqual(2, len(agents_tokens))
 
                 # tokens can be provided in any order
@@ -527,7 +528,12 @@ class TestNuPlanScenario(unittest.TestCase):
                 interpolate_future_waypoints_patch,
             ):
                 scenario = self._make_test_scenario()
-                agents = scenario.get_tracked_objects_within_time_window_at_iteration(iter_val, 2, 2)
+                agents = scenario.get_tracked_objects_within_time_window_at_iteration(
+                    iter_val,
+                    2,
+                    2,
+                    future_trajectory_sampling=ground_truth_predictions,
+                )
                 objects = agents.tracked_objects.tracked_objects
                 self.assertEqual(20, len(objects))
 

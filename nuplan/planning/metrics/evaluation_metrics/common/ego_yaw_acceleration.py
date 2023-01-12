@@ -33,6 +33,7 @@ class EgoYawAccelerationStatistics(WithinBoundMetricBase):
             statistic_unit_name='radians_per_second_squared',
             extract_function=extract_ego_yaw_rate,
             extract_function_params={'deriv_order': 2, 'poly_order': 3},
+            min_within_bound_threshold=-self._max_abs_yaw_accel,
             max_within_bound_threshold=self._max_abs_yaw_accel,
         )
         return metric_statistics

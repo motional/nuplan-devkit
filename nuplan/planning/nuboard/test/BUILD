@@ -11,6 +11,7 @@ py_test(
     name = "test_nuboard",
     size = "medium",
     srcs = ["test_nuboard.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/planning/nuboard",

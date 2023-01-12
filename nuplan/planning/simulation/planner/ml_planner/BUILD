@@ -30,6 +30,7 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:convert",
+        "//nuplan/planning/metrics/utils:state_extractors",
     ],
 )
 

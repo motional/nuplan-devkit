@@ -7,31 +7,12 @@ py_test(
     name = "test_agent_processing",
     size = "small",
     srcs = ["test_agent_processing.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
-        requirement_torch("torch"),
-    ],
-)
-
-py_test(
-    name = "test_torch_math",
-    size = "small",
-    srcs = ["test_torch_math.py"],
-    deps = [
-        "//nuplan/planning/training/preprocessing/utils:torch_math",
-        requirement_torch("torch"),
-    ],
-)
-
-py_test(
-    name = "test_torch_geometry",
-    size = "small",
-    srcs = ["test_torch_geometry.py"],
-    deps = [
-        "//nuplan/planning/training/preprocessing/utils:torch_geometry",
         requirement_torch("torch"),
     ],
 )

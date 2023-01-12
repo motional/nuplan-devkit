@@ -9,7 +9,6 @@ from omegaconf import DictConfig
 from torch.utils.data.sampler import WeightedRandomSampler
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import DEFAULT_SCENARIO_NAME
 from nuplan.planning.training.data_augmentation.abstract_data_augmentation import AbstractAugmentor
 from nuplan.planning.training.data_loader.distributed_sampler_wrapper import DistributedSamplerWrapper
 from nuplan.planning.training.data_loader.scenario_dataset import ScenarioDataset
@@ -68,10 +67,12 @@ def distributed_weighted_sampler_init(
             w > 0 for w in scenario_sampling_weights.values()
         ), "All scenario sampling weights must be positive when sampling without replacement."
 
+    default_scenario_sampling_weight = 1.0
+
     scenario_sampling_weights_per_idx = [
         scenario_sampling_weights[scenario.scenario_type]
         if scenario.scenario_type in scenario_sampling_weights
-        else scenario_sampling_weights[DEFAULT_SCENARIO_NAME]
+        else default_scenario_sampling_weight
         for scenario in scenarios
     ]
 

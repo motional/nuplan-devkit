@@ -132,7 +132,7 @@ def setup_history(scene: Dict[str, Any], scenario: MockAbstractScenario) -> Simu
             iteration=SimulationIteration(ego_states[index].time_point, 0), history=history_buffer
         )
         planner = SimplePlanner(horizon_seconds=10.0, sampling_time=1, acceleration=[0.0, 0.0])
-        trajectories.append(planner.compute_single_trajectory(planner_input))
+        trajectories.append(planner.compute_planner_trajectory(planner_input))
 
     # Create simulation histories
     history = SimulationHistory(map_api, scenario.get_mission_goal())

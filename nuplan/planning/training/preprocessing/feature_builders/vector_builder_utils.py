@@ -246,7 +246,7 @@ def lane_segment_coords_from_lane_segment_vector(coords: List[List[List[float]]]
     :param coords: lane segment coordinates in vector form.
     :return: lane segment coordinates as LaneSegmentCoords.
     """
-    return LaneSegmentCoords([(Point2D(start[0], start[1]), Point2D(end[0], end[1])) for start, end in coords])
+    return LaneSegmentCoords([(Point2D(*start), Point2D(*end)) for start, end in coords])
 
 
 def prune_route_by_connectivity(route_roadblock_ids: List[str], roadblock_ids: Set[str]) -> List[str]:

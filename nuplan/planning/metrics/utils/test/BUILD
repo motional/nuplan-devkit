@@ -18,6 +18,7 @@ py_test(
     size = "small",
     srcs = ["test_route_extractor.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:car_footprint",
         "//nuplan/common/actor_state:state_representation",

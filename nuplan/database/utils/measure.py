@@ -326,3 +326,19 @@ def long_lat_dist_decomposition(
     lat_dist = np.linalg.norm(dist_vector - (long_dist * unit_long_vector))
 
     return long_dist, lat_dist  # type: ignore
+
+
+def get_euclidean_distance(x1: float, y1: float, x2: float, y2: float) -> float:
+    """
+    Gets the straight line distance between two points (generally used for finding the distance between two UTM
+    coordinates).
+    :param x1: The x-coordinate of the first point.
+    :param y1: The y-coordinate of the first point.
+    :param x2: The x-coordinate of the second point.
+    :param y2: The y-coordinate of the second point.
+    :return: The straight line distance between (x1, y1) and (x2, y2).
+    """
+    dx = x1 - x2
+    dy = y1 - y2
+
+    return math.sqrt(dx * dx + dy * dy)

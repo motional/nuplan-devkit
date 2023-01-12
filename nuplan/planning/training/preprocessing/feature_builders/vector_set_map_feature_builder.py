@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple, Type
 import torch
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.geometry.torch_geometry import vector_set_coordinates_to_local_frame
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
 from nuplan.planning.training.preprocessing.feature_builders.scriptable_feature_builder import ScriptableFeatureBuilder
@@ -16,7 +17,6 @@ from nuplan.planning.training.preprocessing.feature_builders.vector_builder_util
 )
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import AbstractModelFeature, FeatureDataType
 from nuplan.planning.training.preprocessing.features.vector_set_map import VectorSetMap
-from nuplan.planning.training.preprocessing.utils.torch_geometry import vector_set_coordinates_to_local_frame
 from nuplan.planning.training.preprocessing.utils.vector_preprocessing import convert_feature_layer_to_fixed_size
 
 

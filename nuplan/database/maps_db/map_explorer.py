@@ -2,7 +2,6 @@ import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cv2
-import descartes
 import matplotlib.gridspec as gridspec
 import numpy as np
 import numpy.typing as npt
@@ -166,7 +165,6 @@ class NuPlanMapExplorer:
         else:
             raise ValueError("{} is not a valid layer".format(layer_name))
 
-        first_time = True
         for i in range(len(records)):
             polygons = records['geometry'][i]
 
@@ -175,16 +173,8 @@ class NuPlanMapExplorer:
                 if fid not in tokens:
                     continue
 
-            if first_time:
-                label = layer_name
-                first_time = False
-            else:
-                label = None
-            ax.add_patch(
-                descartes.PolygonPatch(
-                    polygons, fc=self.color_map[layer_name], ec=self.color_map[layer_name], alpha=alpha, label=label
-                )
-            )
+            xs, ys = polygons.exterior.xy
+            ax.fill(xs, ys, alpha=alpha, fc=self.color_map[layer_name], ec='none')
 
     def _render_line_layer(self, ax: Axes, layer_name: str, alpha: float, tokens: Optional[List[str]] = None) -> None:
         """

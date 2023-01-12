@@ -8,21 +8,19 @@ import warnings
 from functools import lru_cache
 from typing import Any, List, Sequence, Tuple, Type
 
+import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pyogrio
 import rasterio
 
-from nuplan.common.utils.helpers import suppress_geopandas_warning
+from nuplan.common.utils.s3_utils import get_s3_client
 from nuplan.database.common.blob_store.creator import BlobStoreCreator
 from nuplan.database.common.blob_store.local_store import LocalStore
 from nuplan.database.maps_db import layer_dataset_ops
 from nuplan.database.maps_db.imapsdb import IMapsDB
 from nuplan.database.maps_db.layer import MapLayer
 from nuplan.database.maps_db.metadata import MapLayerMeta
-
-suppress_geopandas_warning()
-import geopandas as gpd  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -200,11 +198,14 @@ class GPKGMapsDB(IMapsDB):
         """
         if isinstance(self._blob_store, LocalStore):
             return
+
         s3_bucket = self._blob_store._remote._bucket
         s3_key = os.path.join(self._blob_store._remote._prefix, self._get_gpkg_file_path(location))
-        map_file_size = self._blob_store._remote._client.head_object(Bucket=s3_bucket, Key=s3_key).get(
-            'ContentLength', 0
-        )
+
+        # Create a new S3 session for the request.
+        # In a multiprocess context, using the pickled / unpickled client can lead to authentication failures.
+        client = get_s3_client()
+        map_file_size = client.head_object(Bucket=s3_bucket, Key=s3_key).get('ContentLength', 0)
 
         # Wait if file not downloaded.
         for _ in range(self._max_attempts):
