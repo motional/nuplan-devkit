@@ -64,9 +64,9 @@ yamllint==1.26.3 \
     # via -r tox/requirements_yamllint.txt
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==62.3.3 \
-    --hash=sha256:d1746e7fd520e83bbe210d02fff1aa1a425ad671c7a9da7d246ec2401a087198 \
-    --hash=sha256:e7d11f3db616cda0751372244c2ba798e8e56a28e096ec4529010b803485f3fe
+setuptools==65.5.1 \
+    --hash=sha256:d0b9a8433464d5800cbe05094acf5c6d52a91bfac9b52bcfc4d41382be5d5d31 \
+    --hash=sha256:e197a19aa8ec9722928f2206f8de752def0e4c9fc6953527360d1c36d94ddb2f
     # via
     #   ruyaml
     #   yamllint
