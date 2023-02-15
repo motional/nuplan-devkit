@@ -138,6 +138,14 @@ class VectorMap(AbstractModelFeature):
         """
         return 2 * cls._lane_coord_dim
 
+    def get_lane_coords(self, sample_idx: int) -> FeatureDataType:
+        """
+        Retrieve lane coordinates at given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: lane coordinate features.
+        """
+        return self.coords[sample_idx]
+
     @classmethod
     def collate(cls, batch: List[VectorMap]) -> VectorMap:
         """Implemented. See interface."""

@@ -20,7 +20,6 @@ class TestRunSimulation(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'observation=box_observation',
                     'ego_controller=log_play_back_controller',

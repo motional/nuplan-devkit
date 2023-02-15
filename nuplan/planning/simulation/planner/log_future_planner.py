@@ -45,13 +45,12 @@ class LogFuturePlanner(AbstractPlanner):
         """Inherited, see superclass."""
         return DetectionsTracks  # type: ignore
 
-    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: PlannerInput) -> AbstractTrajectory:
         """Inherited, see superclass."""
-        iteration = current_input[0].iteration
-        current_state = self._scenario.get_ego_state_at_iteration(iteration.index)
+        current_state = self._scenario.get_ego_state_at_iteration(current_input.iteration.index)
         try:
             states = self._scenario.get_ego_future_trajectory(
-                iteration.index, self._future_time_horizon, self._num_poses
+                current_input.iteration.index, self._future_time_horizon, self._num_poses
             )
             self._trajectory = InterpolatedTrajectory(list(itertools.chain([current_state], states)))
         except AssertionError:
@@ -59,4 +58,4 @@ class LogFuturePlanner(AbstractPlanner):
             if self._trajectory is None:
                 raise RuntimeError("Future ego trajectory cannot be retrieved from the scenario!")
 
-        return [self._trajectory]
+        return self._trajectory

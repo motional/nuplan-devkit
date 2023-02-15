@@ -1,11 +1,20 @@
 load("@rules_python//python:defs.bzl", "py_library")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "__init__",
     srcs = ["__init__.py"],
+)
+
+py_library(
+    name = "torch_geometry",
+    srcs = ["torch_geometry.py"],
+    deps = [
+        requirement_torch("torch"),
+    ],
 )
 
 py_library(
@@ -25,6 +34,7 @@ py_library(
     srcs = ["convert.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
+        requirement("numpy"),
     ],
 )
 

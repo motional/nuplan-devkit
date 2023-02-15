@@ -5,7 +5,6 @@ import hydra
 import pytorch_lightning as pl
 from omegaconf import DictConfig
 
-from nuplan.planning.script.builders.planner_builder import build_planners
 from nuplan.planning.script.utils import set_default_path
 from nuplan.submission.submission_planner import SubmissionPlanner
 
@@ -35,19 +34,9 @@ def main(cfg: DictConfig) -> None:
     # Fix random seed
     pl.seed_everything(cfg.seed, workers=True)
 
-    # Here is where you need to initialize your planner. You can use hydra (as in the given example), calling
-    # build_planners(cfg.planner, None), and passing your planner configuration file as an argument, or you can
-    # manually instantiate the planner. To do so you will have to edit the BUILD file as well, including your new
-    # target.
-    # For example, to instantiate SimplePlanner directly,
-    #   - add `from nuplan.planning.simulation.planner.simple_planner import SimplePlanner` to the top of this file
-    #   - instantiate it as planner = SimplePlanner({args})
-    #   - update ./BUILD to add "//nuplan/planning/simulation/planner:simple_planner" to the deps of this file
-    planners = build_planners(cfg.planner, None)
-
-    assert len(planners) == 1, f"Required to have a single planner, but got {len(planners)}!"
-    planner = planners[0]
-    submission_planner = SubmissionPlanner(planner=planner)
+    # Here is where you need to initialize your planner. You have to use hydra (as in the given example),
+    # passing your planner configuration file as an argument
+    submission_planner = SubmissionPlanner(planner_config=cfg.planner)
     submission_planner.serve()
 
 

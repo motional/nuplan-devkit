@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from typing import List
 
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
@@ -10,7 +9,7 @@ class AbstractRunner(metaclass=ABCMeta):
     """Interface for a generic runner."""
 
     @abstractmethod
-    def run(self) -> List[RunnerReport]:
+    def run(self) -> RunnerReport:
         """
         Run through all runners with simulation history.
         :return A list of runner reports.
@@ -19,7 +18,7 @@ class AbstractRunner(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def scenarios(self) -> List[AbstractScenario]:
+    def scenario(self) -> AbstractScenario:
         """
         :return: Get a list of scenarios.
         """

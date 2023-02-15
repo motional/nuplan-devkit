@@ -16,13 +16,13 @@ class DetectionTracksChallengeStub(object):
         """
         self.InitializePlanner = channel.unary_unary(
                 '/challenge_protocol.DetectionTracksChallenge/InitializePlanner',
-                request_serializer=challenge__pb2.MultiPlannerInitializationLight.SerializeToString,
-                response_deserializer=challenge__pb2.PlannerInitializationResponse.FromString,
+                request_serializer=challenge__pb2.PlannerInitializationLight.SerializeToString,
+                response_deserializer=challenge__pb2.Empty.FromString,
                 )
         self.ComputeTrajectory = channel.unary_unary(
                 '/challenge_protocol.DetectionTracksChallenge/ComputeTrajectory',
-                request_serializer=challenge__pb2.MultiPlannerInput.SerializeToString,
-                response_deserializer=challenge__pb2.MultiTrajectory.FromString,
+                request_serializer=challenge__pb2.PlannerInput.SerializeToString,
+                response_deserializer=challenge__pb2.Trajectory.FromString,
                 )
 
 
@@ -46,13 +46,13 @@ def add_DetectionTracksChallengeServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'InitializePlanner': grpc.unary_unary_rpc_method_handler(
                     servicer.InitializePlanner,
-                    request_deserializer=challenge__pb2.MultiPlannerInitializationLight.FromString,
-                    response_serializer=challenge__pb2.PlannerInitializationResponse.SerializeToString,
+                    request_deserializer=challenge__pb2.PlannerInitializationLight.FromString,
+                    response_serializer=challenge__pb2.Empty.SerializeToString,
             ),
             'ComputeTrajectory': grpc.unary_unary_rpc_method_handler(
                     servicer.ComputeTrajectory,
-                    request_deserializer=challenge__pb2.MultiPlannerInput.FromString,
-                    response_serializer=challenge__pb2.MultiTrajectory.SerializeToString,
+                    request_deserializer=challenge__pb2.PlannerInput.FromString,
+                    response_serializer=challenge__pb2.Trajectory.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -76,8 +76,8 @@ class DetectionTracksChallenge(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/challenge_protocol.DetectionTracksChallenge/InitializePlanner',
-            challenge__pb2.MultiPlannerInitializationLight.SerializeToString,
-            challenge__pb2.PlannerInitializationResponse.FromString,
+            challenge__pb2.PlannerInitializationLight.SerializeToString,
+            challenge__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -93,7 +93,7 @@ class DetectionTracksChallenge(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/challenge_protocol.DetectionTracksChallenge/ComputeTrajectory',
-            challenge__pb2.MultiPlannerInput.SerializeToString,
-            challenge__pb2.MultiTrajectory.FromString,
+            challenge__pb2.PlannerInput.SerializeToString,
+            challenge__pb2.Trajectory.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

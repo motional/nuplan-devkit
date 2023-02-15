@@ -21,6 +21,7 @@ from nuplan.planning.simulation.observation.observation_type import DetectionsTr
 from nuplan.planning.simulation.planner.abstract_planner import PlannerInput
 from nuplan.planning.simulation.planner.simple_planner import SimplePlanner
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
+from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 
 def get_num_samples(num_samples: Optional[int], time_horizon: float, database_interval: float) -> int:
@@ -116,24 +117,26 @@ class MockAbstractScenario(AbstractScenario):
         time_step: float = 0.5,
         number_of_future_iterations: int = 10,
         number_of_past_iterations: int = 0,
-        fixed_velocity: StateVector2D = StateVector2D(x=1.0, y=0.0),
+        initial_velocity: StateVector2D = StateVector2D(x=1.0, y=0.0),
+        fixed_acceleration: StateVector2D = StateVector2D(x=0.0, y=0.0),
         number_of_detections: int = 10,
         initial_ego_state: StateSE2 = StateSE2(x=0.0, y=0.0, heading=0.0),
         mission_goal: StateSE2 = StateSE2(10, 0, 0),
         tracked_object_types: List[TrackedObjectType] = [TrackedObjectType.VEHICLE],
     ):
         """
-        Create mocked scenario where ego just goes straight with fixed velocity [m/s]
+        Create mocked scenario where ego starts with an initial velocity [m/s] and has a constant acceleration
+            throughout (0 m/s^2 by default). The ego does not turn.
         :param initial_time_us: initial time from start point of scenario [us]
         :param time_step: time step in [s]
         :param number_of_future_iterations: number of iterations in the future
         :param number_of_past_iterations: number of iterations in the past
-        :param fixed_velocity: [m/s] fixed velocity
+        :param initial_velocity: [m/s] velocity assigned to the ego at iteration 0
+        :param fixed_acceleration: [m/s^2] constant ego acceleration throughout scenario
         :param number_of_detections: number of detections in the scenario
         :param initial_ego_state: Initial state of ego
         :param mission_goal: Dummy mission goal
-        :param tracked_object_types: FIXME
-
+        :param tracked_object_types: Types of tracked objects to mock
         """
         self._initial_time_us = initial_time_us
         self._time_step = time_step
@@ -143,8 +146,6 @@ class MockAbstractScenario(AbstractScenario):
         self._total_iterations = number_of_past_iterations + number_of_future_iterations + 1
         self._tracked_object_types = tracked_object_types
 
-        # Create dummy ego trajectory
-        acceleration = StateVector2D(0.0, 0.0)
         start_time_us = max(TimePoint(int(number_of_past_iterations * time_step * 1e6)), initial_time_us)
         time_horizon = self._total_iterations * time_step
 
@@ -155,9 +156,9 @@ class MockAbstractScenario(AbstractScenario):
                 EgoState.build_from_rear_axle(
                     StateSE2(x=initial_ego_state.x, y=initial_ego_state.y, heading=initial_ego_state.heading),
                     time_point=start_time_us,
-                    rear_axle_velocity_2d=fixed_velocity,
+                    rear_axle_velocity_2d=initial_velocity,
                     tire_steering_angle=0.0,
-                    rear_axle_acceleration_2d=acceleration,
+                    rear_axle_acceleration_2d=fixed_acceleration,
                     vehicle_parameters=self.ego_vehicle_parameters,
                 )
             ],
@@ -166,8 +167,10 @@ class MockAbstractScenario(AbstractScenario):
         )
 
         planner_input = PlannerInput(iteration=SimulationIteration(start_time_us, 0), history=history_buffer)
-        planner = SimplePlanner(horizon_seconds=time_horizon, sampling_time=time_step, acceleration=acceleration.array)
-        self._ego_states = planner.compute_trajectory([planner_input])[0].get_sampled_trajectory()
+        planner = SimplePlanner(
+            horizon_seconds=time_horizon, sampling_time=time_step, acceleration=fixed_acceleration.array
+        )
+        self._ego_states = planner.compute_trajectory(planner_input).get_sampled_trajectory()
 
         self._tracked_objects = [
             DetectionsTracks(
@@ -253,7 +256,11 @@ class MockAbstractScenario(AbstractScenario):
         """Implemented. See interface."""
         return self._mission_goal
 
-    def get_tracked_objects_at_iteration(self, iteration: int) -> DetectionsTracks:
+    def get_tracked_objects_at_iteration(
+        self,
+        iteration: int,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
+    ) -> DetectionsTracks:
         """Implemented. See interface."""
         return self._tracked_objects[self._current_iteration + iteration]
 
@@ -263,6 +270,7 @@ class MockAbstractScenario(AbstractScenario):
         past_time_horizon: float,
         future_time_horizon: float,
         filter_track_tokens: Optional[Set[str]] = None,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> DetectionsTracks:
         """Implemented. See interface."""
         raise NotImplementedError
@@ -323,7 +331,13 @@ class MockAbstractScenario(AbstractScenario):
         ego_states = [self._ego_states[self._current_iteration + iteration - idx] for idx in reversed(indices)]
         return ego_states
 
-    def get_past_tracked_objects(self, iteration: int, num_samples: int, time_horizon: float) -> List[DetectionsTracks]:
+    def get_past_tracked_objects(
+        self,
+        iteration: int,
+        num_samples: int,
+        time_horizon: float,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
+    ) -> List[DetectionsTracks]:
         """Implemented. See interface."""
         indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
         assert self._current_iteration + iteration >= indices[-1], (
@@ -342,7 +356,11 @@ class MockAbstractScenario(AbstractScenario):
         return _sensors
 
     def get_future_tracked_objects(
-        self, iteration: int, num_samples: int, time_horizon: float
+        self,
+        iteration: int,
+        num_samples: int,
+        time_horizon: float,
+        future_trajectory_sampling: Optional[TrajectorySampling] = None,
     ) -> List[DetectionsTracks]:
         """Implemented. See interface."""
         indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)

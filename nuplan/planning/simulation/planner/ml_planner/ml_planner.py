@@ -61,10 +61,10 @@ class MLPlanner(AbstractPlanner):
 
         return cast(npt.NDArray[np.float32], trajectory)
 
-    def initialize(self, initialization: List[PlannerInitialization]) -> None:
+    def initialize(self, initialization: PlannerInitialization) -> None:
         """Inherited, see superclass."""
         self._model_loader.initialize()
-        self._initialization = initialization[0]
+        self._initialization = initialization
 
     def name(self) -> str:
         """Inherited, see superclass."""
@@ -74,17 +74,17 @@ class MLPlanner(AbstractPlanner):
         """Inherited, see superclass."""
         return DetectionsTracks  # type: ignore
 
-    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: PlannerInput) -> AbstractTrajectory:
         """
         Infer relative trajectory poses from model and convert to absolute agent states wrapped in a trajectory.
         Inherited, see superclass.
         """
         # Extract history
-        history = current_input[0].history
+        history = current_input.history
 
         # Construct input features
         start_time = time.perf_counter()
-        features = self._model_loader.build_features(current_input[0], self._initialization)
+        features = self._model_loader.build_features(current_input, self._initialization)
         self._feature_building_runtimes.append(time.perf_counter() - start_time)
 
         # Infer model
@@ -93,13 +93,12 @@ class MLPlanner(AbstractPlanner):
         self._inference_runtimes.append(time.perf_counter() - start_time)
 
         # Convert relative poses to absolute states and wrap in a trajectory object.
-        anchor_ego_state = history.ego_states[-1]
         states = transform_predictions_to_states(
-            predictions, anchor_ego_state, self._future_horizon, self._step_interval
+            predictions, history.ego_states, self._future_horizon, self._step_interval
         )
         trajectory = InterpolatedTrajectory(states)
 
-        return [trajectory]
+        return trajectory
 
     def generate_planner_report(self, clear_stats: bool = True) -> PlannerReport:
         """Inherited, see superclass."""

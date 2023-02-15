@@ -29,10 +29,6 @@ class ILQRTracker(AbstractTracker):
 
         self._ilqr_solver = ilqr_solver
 
-    def initialize(self) -> None:
-        """Inherited, see superclass."""
-        pass
-
     def track_trajectory(
         self,
         current_iteration: SimulationIteration,

@@ -6,6 +6,7 @@ py_test(
     name = "test_ego_centric_ml_agents",
     size = "small",
     srcs = ["test_ego_centric_ml_agents.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",

@@ -6,7 +6,7 @@ from nuplan.planning.simulation.callback.multi_callback import MultiCallback
 from nuplan.planning.simulation.controller.perfect_tracking import PerfectTrackingController
 from nuplan.planning.simulation.observation.tracks_observation import TracksObservation
 from nuplan.planning.simulation.planner.simple_planner import SimplePlanner
-from nuplan.planning.simulation.runner.simulations_runner import SimulationsRunner
+from nuplan.planning.simulation.runner.simulations_runner import SimulationRunner
 from nuplan.planning.simulation.simulation import Simulation
 from nuplan.planning.simulation.simulation_setup import SimulationSetup
 from nuplan.planning.simulation.simulation_time_controller.step_simulation_time_controller import (
@@ -74,7 +74,7 @@ class TestSimulation(unittest.TestCase):
             callback=MultiCallback([callback]),
             simulation_history_buffer_duration=self.simulation_history_buffer_duration,
         )
-        runner = SimulationsRunner([stepper], planner)
+        runner = SimulationRunner(stepper, planner)
         runner.run()
 
         # Make sure callback was called

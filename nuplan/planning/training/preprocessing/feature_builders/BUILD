@@ -84,13 +84,13 @@ py_library(
     srcs = ["vector_map_feature_builder.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/geometry:torch_geometry",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/training/preprocessing/feature_builders:scriptable_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
         "//nuplan/planning/training/preprocessing/features:vector_map",
-        "//nuplan/planning/training/preprocessing/utils:torch_geometry",
     ],
 )
 
@@ -99,13 +99,13 @@ py_library(
     srcs = ["vector_set_map_feature_builder.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/geometry:torch_geometry",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/training/preprocessing/feature_builders:scriptable_feature_builder",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
         "//nuplan/planning/training/preprocessing/features:vector_set_map",
-        "//nuplan/planning/training/preprocessing/utils:torch_geometry",
         "//nuplan/planning/training/preprocessing/utils:vector_preprocessing",
     ],
 )

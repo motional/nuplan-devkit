@@ -1,0 +1,9 @@
+log_future_planner:
+  _target_: nuplan.planning.simulation.predictor.log_future_predictor.LogFuturePredictor
+  _convert_: 'all'
+  # Parameters for predicted trajectories
+  future_trajectory_sampling:
+    _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+    _convert_: 'all'
+    num_poses: 16      # number of poses in a trajectory
+    time_horizon: 8.0  # [s] time horizon of future poses

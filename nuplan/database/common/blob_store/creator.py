@@ -12,12 +12,10 @@ from nuplan.database.common.blob_store.s3_store import S3Store
 
 logger = logging.getLogger(__name__)
 
-RemoteConfig = NamedTuple(
-    'RemoteConfig', [('http_root_url', Optional[str]), ('s3_root_url', Optional[str]), ('s3_profile', Optional[str])]
-)
+RemoteConfig = NamedTuple("RemoteConfig", [("http_root_url", Optional[str]), ("s3_root_url", Optional[str])])
 
-NUPLAN_DATA_STORE = os.getenv('NUPLAN_DATA_STORE', 'local')
-NUPLAN_CACHE_FROM_S3 = os.getenv('NUPLAN_CACHE_FROM_S3', 'true').lower() == "true"
+NUPLAN_DATA_STORE = os.getenv("NUPLAN_DATA_STORE", "local")
+NUPLAN_CACHE_FROM_S3 = os.getenv("NUPLAN_CACHE_FROM_S3", "true").lower() == "true"
 
 
 class BlobStoreCreator:
@@ -33,9 +31,8 @@ class BlobStoreCreator:
         :return: Blob storage created.
         """
         conf = RemoteConfig(
-            http_root_url=os.getenv('NUPLAN_DATA_ROOT_HTTP_URL', ''),
-            s3_root_url=os.getenv('NUPLAN_DATA_ROOT_S3_URL', ''),
-            s3_profile=os.getenv('NUPLAN_S3_PROFILE', ''),
+            http_root_url=os.getenv("NUPLAN_DATA_ROOT_HTTP_URL", ""),
+            s3_root_url=os.getenv("NUPLAN_DATA_ROOT_S3_URL", ""),
         )
 
         return cls.create(data_root, conf, verbose)
@@ -50,9 +47,8 @@ class BlobStoreCreator:
         :return: Blob storage created.
         """
         conf = RemoteConfig(
-            http_root_url=os.getenv('NUPLAN_MAPS_ROOT_HTTP_URL', ''),
-            s3_root_url=os.getenv('NUPLAN_MAPS_ROOT_S3_URL', ''),
-            s3_profile=os.getenv('NUPLAN_S3_PROFILE', ''),
+            http_root_url=os.getenv("NUPLAN_MAPS_ROOT_HTTP_URL", ""),
+            s3_root_url=os.getenv("NUPLAN_MAPS_ROOT_S3_URL", ""),
         )
 
         return cls.create(map_root, conf, verbose)
@@ -72,27 +68,24 @@ class BlobStoreCreator:
             if not conf.http_root_url:
                 raise ValueError("HTTP root url to be specified if using http storage.")
             requests.get(conf.http_root_url, timeout=2.0)
-            logger.debug(f'Using HTTP blob store {conf.http_root_url} WITH local disk cache at {data_root}')
+            logger.debug(f"Using HTTP blob store {conf.http_root_url} WITH local disk cache at {data_root}")
             # Always use a cache with the HTTPStore to avoid overwhelming the data server.
             return CacheStore(data_root, HttpStore(conf.http_root_url))
         elif NUPLAN_DATA_STORE == "local":
-            logger.debug(f'Using local disk store at {data_root} with no remote store')
+            logger.debug(f"Using local disk store at {data_root} with no remote store")
             return LocalStore(data_root)
         # Default to S3 if environment variable is empty or not set.
         elif NUPLAN_DATA_STORE == "s3":
-            if not conf.s3_root_url or not conf.s3_profile:
-                raise ValueError(
-                    "S3 root url and profile to be specified if using s3 storage. "
-                    f"s3_root_url: {conf.s3_root_url}, s3_profile: {conf.s3_profile}"
-                )
-            store = S3Store(conf.s3_root_url, conf.s3_profile, show_progress=verbose)
+            if not conf.s3_root_url:
+                raise ValueError("S3 root url to be specified if using s3 storage. " f"s3_root_url: {conf.s3_root_url}")
+            store = S3Store(conf.s3_root_url, show_progress=verbose)
             # We don't want to cache on disk for training (there's too much data), but users
             # can set this environment variable if they want to cache data when working locally.
             if NUPLAN_CACHE_FROM_S3:
-                logger.debug(f'Using s3 blob store for {conf.s3_root_url} WITH local disk cache at {data_root}')
+                logger.debug(f"Using s3 blob store for {conf.s3_root_url} WITH local disk cache at {data_root}")
                 return CacheStore(data_root, store)
             else:
-                logger.debug(f'Using s3 blob store for {conf.s3_root_url} WITHOUT local disk cache')
+                logger.debug(f"Using s3 blob store for {conf.s3_root_url} WITHOUT local disk cache")
                 return store
         else:
             raise ValueError(

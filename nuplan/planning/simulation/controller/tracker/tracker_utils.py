@@ -3,7 +3,9 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 
+from nuplan.common.actor_state.state_representation import TimePoint
 from nuplan.common.geometry.compute import principal_value
+from nuplan.planning.simulation.trajectory.abstract_trajectory import AbstractTrajectory
 
 DoubleMatrix = npt.NDArray[np.float64]
 
@@ -232,26 +234,20 @@ def compute_steering_angle_feedback(
     return float(-k_lateral_error * (lateral_error + lookahead_distance * heading_error))
 
 
-def complete_kinematic_state_and_inputs_from_poses(
+def get_velocity_curvature_profiles_with_derivatives_from_poses(
     discretization_time: float,
-    wheel_base: float,
     poses: DoubleMatrix,
     jerk_penalty: float,
     curvature_rate_penalty: float,
-) -> Tuple[DoubleMatrix, DoubleMatrix]:
+) -> Tuple[DoubleMatrix, DoubleMatrix, DoubleMatrix, DoubleMatrix]:
     """
-    Main function for joint estimation of velocity, acceleration, steering angle, and steering rate given poses
-    sampled at discretization_time and the vehicle wheelbase parameter for curvature -> steering angle conversion.
-    One caveat is that we can only determine the first N-1 kinematic states and N-2 kinematic inputs given
-    N-1 displacement/difference values, so we need to extrapolate to match the length of poses provided.
-    This is handled by repeating the last input and extrapolating the motion model for the last state.
+    Main function for joint estimation of velocity, acceleration, curvature, and curvature rate given N poses
+    sampled at discretization_time.  This is done by solving two least squares problems with the given penalty weights.
     :param discretization_time: [s] Time discretization used for integration.
-    :param wheel_base: [m] The wheelbase length for the kinematic bicycle model being used.
-    :param poses: <np.ndarray: num_poses, 3> A trajectory of poses (x, y, heading).
+    :param poses: <np.ndarray: num_poses, 3> A trajectory of N poses (x, y, heading).
     :param jerk_penalty: A regularization parameter used to penalize acceleration differences.  Should be positive.
     :param curvature_rate_penalty: A regularization parameter used to penalize curvature_rate.  Should be positive.
-    :return: kinematic_states (x, y, heading, velocity, steering_angle) and corresponding
-            kinematic_inputs (acceleration, steering_rate).
+    :return: Profiles for velocity (N-1), acceleration (N-2), curvature (N-1), and curvature rate (N-2).
     """
     xy_displacements, heading_displacements = _get_xy_heading_displacements_from_poses(poses)
 
@@ -285,6 +281,42 @@ def complete_kinematic_state_and_inputs_from_poses(
         discretization_time=discretization_time,
     )
 
+    return velocity_profile, acceleration_profile, curvature_profile, curvature_rate_profile
+
+
+def complete_kinematic_state_and_inputs_from_poses(
+    discretization_time: float,
+    wheel_base: float,
+    poses: DoubleMatrix,
+    jerk_penalty: float,
+    curvature_rate_penalty: float,
+) -> Tuple[DoubleMatrix, DoubleMatrix]:
+    """
+    Main function for joint estimation of velocity, acceleration, steering angle, and steering rate given poses
+    sampled at discretization_time and the vehicle wheelbase parameter for curvature -> steering angle conversion.
+    One caveat is that we can only determine the first N-1 kinematic states and N-2 kinematic inputs given
+    N-1 displacement/difference values, so we need to extrapolate to match the length of poses provided.
+    This is handled by repeating the last input and extrapolating the motion model for the last state.
+    :param discretization_time: [s] Time discretization used for integration.
+    :param wheel_base: [m] The wheelbase length for the kinematic bicycle model being used.
+    :param poses: <np.ndarray: num_poses, 3> A trajectory of poses (x, y, heading).
+    :param jerk_penalty: A regularization parameter used to penalize acceleration differences.  Should be positive.
+    :param curvature_rate_penalty: A regularization parameter used to penalize curvature_rate.  Should be positive.
+    :return: kinematic_states (x, y, heading, velocity, steering_angle) and corresponding
+            kinematic_inputs (acceleration, steering_rate).
+    """
+    (
+        velocity_profile,
+        acceleration_profile,
+        curvature_profile,
+        curvature_rate_profile,
+    ) = get_velocity_curvature_profiles_with_derivatives_from_poses(
+        discretization_time=discretization_time,
+        poses=poses,
+        jerk_penalty=jerk_penalty,
+        curvature_rate_penalty=curvature_rate_penalty,
+    )
+
     # Convert to steering angle given the wheelbase parameter.  At this point, we don't need to worry about curvature.
     steering_angle_profile, steering_rate_profile = _convert_curvature_profile_to_steering_profile(
         curvature_profile=curvature_profile,
@@ -309,3 +341,42 @@ def complete_kinematic_state_and_inputs_from_poses(
     kinematic_inputs: DoubleMatrix = np.column_stack((acceleration_profile, steering_rate_profile))
 
     return kinematic_states, kinematic_inputs
+
+
+def get_interpolated_reference_trajectory_poses(
+    trajectory: AbstractTrajectory,
+    discretization_time: float,
+) -> Tuple[DoubleMatrix, DoubleMatrix]:
+    """
+    Resamples the reference trajectory at discretization_time resolution.
+    It will return N times and poses, where N is a function of the trajectory duration and the discretization time.
+    :param trajectory: The full trajectory from which we perform pose interpolation.
+    :param discretization_time: [s] The discretization time for resampling the trajectory.
+    :return An array of times in seconds (N) and an array of associated poses (N,3), sampled at the discretization time.
+    """
+    start_time_point = trajectory.start_time
+    end_time_point = trajectory.end_time
+
+    delta_time_point = TimePoint(int(discretization_time * 1e6))
+    current_time_point = start_time_point
+
+    times_s = []
+    poses_interp = []
+
+    while current_time_point <= end_time_point:
+
+        state = trajectory.get_state_at_time(current_time_point)
+
+        times_s.append(current_time_point.time_s)
+
+        poses_interp.append(
+            [
+                state.rear_axle.x,
+                state.rear_axle.y,
+                state.rear_axle.heading,
+            ]
+        )
+
+        current_time_point += delta_time_point
+
+    return np.array(times_s), np.array(poses_interp)

@@ -6,6 +6,7 @@ import numpy as np
 import numpy.testing as np_test
 
 from nuplan.common.geometry.compute import principal_value
+from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.simulation.controller.tracker.tracker_utils import (
     DoubleMatrix,
     _convert_curvature_profile_to_steering_profile,
@@ -16,7 +17,10 @@ from nuplan.planning.simulation.controller.tracker.tracker_utils import (
     _make_banded_difference_matrix,
     complete_kinematic_state_and_inputs_from_poses,
     compute_steering_angle_feedback,
+    get_interpolated_reference_trajectory_poses,
+    get_velocity_curvature_profiles_with_derivatives_from_poses,
 )
+from nuplan.planning.simulation.trajectory.interpolated_trajectory import InterpolatedTrajectory
 
 
 def _make_input_profiles(key_prefix: str, magnitude: float, length: int) -> Dict[str, DoubleMatrix]:
@@ -353,6 +357,41 @@ class TestTrackerUtils(unittest.TestCase):
             )
             self.assertEqual(-np.sign(heading_error), np.sign(steering_angle_heading_error))
 
+    def test_get_velocity_curvature_profiles_with_derivatives_from_poses(self) -> None:
+        """
+        Test the joint estimation of velocity and curvature, along with their derivatives.
+        Since there is overlap with complete_kinematic_state_and_inputs_from_poses,
+        we just test for one given input profile and leave the extensive testing for that function.
+        """
+        test_input_profile = self.input_profiles["accel_cosine_curv_rate_cosine"]
+        (
+            velocity_profile,
+            acceleration_profile,
+            curvature_profile,
+            curvature_rate_profile,
+        ) = get_velocity_curvature_profiles_with_derivatives_from_poses(
+            discretization_time=self.test_discretization_time,
+            poses=test_input_profile["poses"],
+            jerk_penalty=self.least_squares_penalty,
+            curvature_rate_penalty=self.least_squares_penalty,
+        )
+        # Check that the fit is close to the expected, given zero noise and non-zero velocity.
+        self.assert_allclose(velocity_profile, test_input_profile["velocity"])
+        self.assert_allclose(acceleration_profile, test_input_profile["acceleration"])
+        self.assert_allclose(curvature_profile, test_input_profile["curvature"])
+        self.assert_allclose(curvature_rate_profile, test_input_profile["curvature_rate"])
+
+        # Check that the integrated values are consistent with their derivatives.
+        self.assert_allclose(
+            np.diff(velocity_profile) / self.test_discretization_time,
+            acceleration_profile,
+        )
+
+        self.assert_allclose(
+            np.diff(curvature_profile) / self.test_discretization_time,
+            curvature_rate_profile,
+        )
+
     def test_complete_kinematic_state_and_inputs_from_poses(self) -> None:
         """
         Test that the joint estimation of kinematic states and inputs are consistent with expectations.
@@ -376,7 +415,6 @@ class TestTrackerUtils(unittest.TestCase):
             self.assert_allclose(velocity_fit, velocity_profile)
 
             acceleration_fit = kinematic_inputs[:-1, 0]
-
             self.assert_allclose(acceleration_fit, acceleration_profile)
 
             steering_angle_expected, steering_rate_expected = _convert_curvature_profile_to_steering_profile(
@@ -394,6 +432,30 @@ class TestTrackerUtils(unittest.TestCase):
             if np.all(moving_mask > 0.0):
                 steering_rate_fit = kinematic_inputs[:-1, 1]
                 self.assert_allclose(steering_rate_fit, steering_rate_expected)
+
+    def test_get_interpolated_reference_trajectory_poses(self) -> None:
+        """
+        Test that we can interpolate a trajectory with constant discretization time and extract poses.
+        """
+        scenario = MockAbstractScenario()
+        trajectory = InterpolatedTrajectory(list(scenario.get_expert_ego_trajectory()))
+
+        expected_num_steps = 1 + int(
+            (trajectory.end_time.time_s - trajectory.start_time.time_s) / self.test_discretization_time
+        )
+
+        times_s, poses = get_interpolated_reference_trajectory_poses(trajectory, self.test_discretization_time)
+
+        # Assert pose trajectory has expected shape.
+        self.assertEqual(times_s.shape, (expected_num_steps,))
+        self.assertEqual(poses.shape, (expected_num_steps, 3))
+
+        # Assert all timestamps are within bounds.
+        self.assertTrue(np.all(times_s >= trajectory.start_time.time_s))
+        self.assertTrue(np.all(times_s <= trajectory.end_time.time_s))
+
+        # Assert that the timestamp spacing matches the requested discretization time.
+        self.assert_allclose(np.diff(times_s), self.test_discretization_time)
 
 
 if __name__ == "__main__":

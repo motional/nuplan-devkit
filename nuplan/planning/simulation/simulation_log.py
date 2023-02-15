@@ -37,6 +37,8 @@ class SimulationLog:
     def save_to_file(self) -> None:
         """Dump simulation log into file."""
         serialization_type = self.simulation_log_type(self.file_path)
+        self.file_path.parent.mkdir(parents=True, exist_ok=True)
+
         if serialization_type == "pickle":
             self._dump_to_pickle()
         elif serialization_type == "msgpack":

@@ -34,6 +34,7 @@ py_test(
     name = "test_dataloader_ray",
     size = "small",
     srcs = ["test_dataloader_ray.py"],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_dataloader",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
@@ -46,6 +47,7 @@ py_test(
     name = "test_dataloader_sequential",
     size = "small",
     srcs = ["test_dataloader_sequential.py"],
+    tags = ["integration"],
     deps = [
         ":skeleton_test_dataloader",
         "//nuplan/planning/training/experiments:cache_metadata_entry",
@@ -61,5 +63,24 @@ py_test(
     deps = [
         "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
         requirement_torch("torch"),
+    ],
+)
+
+py_test(
+    name = "test_distributed_weighted_sampler_init",
+    size = "small",
+    srcs = ["test_distributed_weighted_sampler_init.py"],
+    tags = ["integration"],
+    deps = [
+        "//nuplan/planning/scenario_builder/cache:cached_scenario",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_utils",
+        "//nuplan/planning/training/data_loader:datamodule",
+        "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
+        "//nuplan/planning/training/data_loader:scenario_dataset",
+        "//nuplan/planning/training/experiments:cache_metadata_entry",
+        "//nuplan/planning/utils/multithreading:worker_utils",
+        requirement("omegaconf"),
+        requirement_torch("torch"),
+        requirement_torch("pytorch-lightning"),
     ],
 )

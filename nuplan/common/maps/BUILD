@@ -17,7 +17,6 @@ py_library(
     name = "maps_datatypes",
     srcs = ["maps_datatypes.py"],
     deps = [
-        "//nuplan/common/utils:helpers",
         requirement("geopandas"),
     ],
 )

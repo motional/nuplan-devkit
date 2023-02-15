@@ -21,7 +21,6 @@ class TestTrain(SkeletonTestTrain):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'log_config=false',
                     'py_func=train',
@@ -49,7 +48,6 @@ class TestTrain(SkeletonTestTrain):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'log_config=false',
                     'py_func=train',

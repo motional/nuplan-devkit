@@ -74,7 +74,7 @@ class TestPlannerTutorialHydra(unittest.TestCase):
             main_simulation(cfg)
 
         # test nuboard
-        results_dir = list(list(Path(self.tmp_dir.name).iterdir())[0].iterdir())[0]  # get the child dir 2 levels in
+        results_dir = Path(cfg.output_dir)
         simulation_file = [str(file) for file in results_dir.iterdir() if file.is_file() and file.suffix == '.nuboard'][
             0
         ]

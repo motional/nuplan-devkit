@@ -6,6 +6,7 @@ py_test(
     name = "test_agents_feature_builder",
     size = "medium",
     srcs = ["test_agents_feature_builder.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
@@ -21,6 +22,7 @@ py_test(
     name = "test_generic_agents_feature_builder",
     size = "medium",
     srcs = ["test_generic_agents_feature_builder.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
@@ -48,6 +50,7 @@ py_test(
     name = "test_vector_map_feature_builder",
     size = "medium",
     srcs = ["test_vector_map_feature_builder.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
@@ -62,6 +65,7 @@ py_test(
     name = "test_vector_set_map_feature_builder",
     size = "medium",
     srcs = ["test_vector_set_map_feature_builder.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",

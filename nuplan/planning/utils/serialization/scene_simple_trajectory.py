@@ -63,6 +63,10 @@ class SceneSimpleTrajectory(AbstractTrajectory):
         """
         return self._state_at_time[time_point]
 
+    def get_state_at_times(self, time_points: List[TimePoint]) -> List[Any]:
+        """Inherited, see superclass."""
+        raise NotImplementedError
+
     def get_sampled_trajectory(self) -> List[Any]:
         """
         Get the sampled states along the trajectory.

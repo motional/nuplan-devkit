@@ -18,6 +18,7 @@ py_test(
     size = "large",
     srcs = ["test_nuplan_map.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -36,6 +37,7 @@ py_test(
     size = "large",
     srcs = ["test_baseline_path.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -55,6 +57,7 @@ py_test(
     size = "large",
     srcs = ["test_polygon_map_object.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -72,6 +75,7 @@ py_test(
     size = "large",
     srcs = ["test_intersection.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -89,6 +93,7 @@ py_test(
     size = "large",
     srcs = ["test_lane.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -106,6 +111,7 @@ py_test(
     size = "large",
     srcs = ["test_lane_connector.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -123,6 +129,7 @@ py_test(
     size = "large",
     srcs = ["test_roadblock.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -140,6 +147,7 @@ py_test(
     size = "large",
     srcs = ["test_roadblock_connector.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -157,6 +165,7 @@ py_test(
     size = "large",
     srcs = ["test_stop_line.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
@@ -174,6 +183,7 @@ py_test(
     size = "large",
     srcs = ["test_utils.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",

@@ -1,4 +1,4 @@
-from typing import List, Optional, Type, cast
+from typing import Dict, List, Optional, Type, cast
 
 from hydra._internal.utils import _locate
 from hydra.utils import instantiate
@@ -19,6 +19,8 @@ def _build_planner(planner_cfg: DictConfig, scenario: Optional[AbstractScenario]
     :param scenario: scenario
     :return AbstractPlanner
     """
+    # Remove the thread_safe element given that it's used here
+    config = planner_cfg.copy()
     if is_target_type(planner_cfg, MLPlanner):
         # Build model and feature builders needed to run an ML model in simulation
         torch_module_wrapper = build_torch_module_wrapper(planner_cfg.model_config)
@@ -27,7 +29,6 @@ def _build_planner(planner_cfg: DictConfig, scenario: Optional[AbstractScenario]
         ).model
 
         # Remove config elements that are redundant to MLPlanner
-        config = planner_cfg.copy()
         OmegaConf.set_struct(config, False)
         config.pop('model_config')
         config.pop('checkpoint_path')
@@ -35,25 +36,39 @@ def _build_planner(planner_cfg: DictConfig, scenario: Optional[AbstractScenario]
 
         planner: AbstractPlanner = instantiate(config, model=model)
     else:
-        planner_cls: Type[AbstractPlanner] = _locate(planner_cfg._target_)
+        planner_cls: Type[AbstractPlanner] = _locate(config._target_)
 
         if planner_cls.requires_scenario:
             assert scenario is not None, (
-                "Scenario was not provided to build the planner. " f"Planner {planner_cfg} can not be build!"
+                "Scenario was not provided to build the planner. " f"Planner {config} can not be build!"
             )
-            planner = cast(AbstractPlanner, instantiate(planner_cfg, scenario=scenario))
+            planner = cast(AbstractPlanner, instantiate(config, scenario=scenario))
         else:
-            planner = cast(AbstractPlanner, instantiate(planner_cfg))
+            planner = cast(AbstractPlanner, instantiate(config))
 
     return planner
 
 
-def build_planners(planner_cfg: DictConfig, scenario: Optional[AbstractScenario]) -> List[AbstractPlanner]:
+def build_planners(
+    planners_cfg: DictConfig, scenario: AbstractScenario, cache: Dict[str, AbstractPlanner] = dict()
+) -> List[AbstractPlanner]:
     """
     Instantiate multiple planners by calling build_planner
-    :param planner_cfg: config of a planner
+    :param planners_cfg: planners config
     :param scenario: scenario
     :return planners: List of AbstractPlanners
     """
-    planners: List[AbstractPlanner] = [_build_planner(planner, scenario) for planner in planner_cfg.values()]
+    planners = []
+    for name in planners_cfg:
+        config = planners_cfg[name].copy()
+        thread_safe = config.thread_safe
+        # Remove the thread_safe element given that it's used here
+        OmegaConf.set_struct(config, False)
+        config.pop('thread_safe')
+        OmegaConf.set_struct(config, True)
+        # Build the planner making sure to keep only 1 instance if it's non-thread-safe
+        planner = cache.get(name, _build_planner(config, scenario))
+        planners.append(planner)
+        if not thread_safe and name not in cache:
+            cache[name] = planner
     return planners

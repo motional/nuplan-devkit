@@ -104,12 +104,13 @@ def s3_download(prefix: str, local_path_name: str, filters: Optional[List[str]] 
     :param local_path_name: The local destination
     :param filters: Keywords to filter paths, if empty no filtering is performed.
     """
-    s3_client = boto3.client(
-        's3',
-        aws_access_key_id=os.getenv("NUPLAN_SERVER_AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY"),
-        region_name='us-east-1',
-    )
+    args = {
+        "region_name": "us-east-1",
+    }
+    if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE") is None and os.getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") is None:
+        args["aws_access_key_id"] = os.environ["NUPLAN_SERVER_AWS_ACCESS_KEY_ID"]
+        args["aws_secret_access_key"] = os.environ["NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY"]
+    s3_client = boto3.client('s3', **args)
     s3_bucket = os.getenv("NUPLAN_SERVER_S3_ROOT_URL")
 
     assert s3_bucket, "S3 bucket not specified!"

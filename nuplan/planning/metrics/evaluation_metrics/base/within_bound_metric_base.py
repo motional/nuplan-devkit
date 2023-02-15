@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import numpy.typing as npt
 
 from nuplan.planning.metrics.evaluation_metrics.base.metric_base import MetricBase
 from nuplan.planning.metrics.metric_result import MetricStatistics, MetricStatisticsType, Statistic, TimeSeries
@@ -51,7 +52,7 @@ class WithinBoundMetricBase(MetricBase):
         :param min_within_bound_threshold: Minimum threshold to check if value is within bound
         :param max_within_bound_threshold: Maximum threshold to check if value is within bound.
         """
-        ego_pose_values = time_series.values
+        ego_pose_values: npt.NDArray[np.float32] = np.array(time_series.values)
         if not min_within_bound_threshold and not max_within_bound_threshold:
             return None
 
@@ -63,13 +64,12 @@ class WithinBoundMetricBase(MetricBase):
         if max_within_bound_threshold is None:
             max_within_bound_threshold = float(np.inf)
 
-        abs_ego_pose_value = np.abs(ego_pose_values)
-        abs_ego_pose_value_within_bound = (abs_ego_pose_value > min_within_bound_threshold) & (
-            abs_ego_pose_value < max_within_bound_threshold
+        ego_pose_value_within_bound = (ego_pose_values > min_within_bound_threshold) & (
+            ego_pose_values < max_within_bound_threshold
         )
 
         # Return true if all abs values within the bound
-        return bool(np.all(abs_ego_pose_value_within_bound))
+        return bool(np.all(ego_pose_value_within_bound))
 
     def _compute_statistics(
         self,

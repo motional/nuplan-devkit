@@ -7,6 +7,7 @@ py_test(
     name = "test_scenario_scoring_callback",
     size = "small",
     srcs = ["test_scenario_scoring_callback.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder:abstract_scenario",
@@ -29,12 +30,16 @@ py_test(
     name = "test_visualization_utils",
     size = "small",
     srcs = ["test_visualization_utils.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/training/callbacks/utils:visualization_utils",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
         "//nuplan/planning/training/preprocessing/features:agents",
+        "//nuplan/planning/training/preprocessing/features:generic_agents",
         "//nuplan/planning/training/preprocessing/features:raster",
         "//nuplan/planning/training/preprocessing/features:trajectory",
         "//nuplan/planning/training/preprocessing/features:vector_map",
+        "//nuplan/planning/training/preprocessing/features:vector_set_map",
     ],
 )
 
@@ -42,6 +47,7 @@ py_test(
     name = "test_stepwise_augmentation_scheduler",
     size = "small",
     srcs = ["test_stepwise_augmentation_scheduler.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/training/callbacks:stepwise_augmentation_scheduler",
         "//nuplan/planning/training/data_augmentation:abstract_data_augmentation",

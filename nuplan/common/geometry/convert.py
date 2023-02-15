@@ -60,9 +60,9 @@ def relative_to_absolute_poses(origin_pose: StateSE2, relative_poses: List[State
     relative_transforms: npt.NDArray[np.float64] = np.array([matrix_from_pose(pose) for pose in relative_poses])
     origin_transform = matrix_from_pose(origin_pose)
     absolute_transforms: npt.NDArray[np.float32] = origin_transform @ relative_transforms
-    relative_poses = [pose_from_matrix(transform_matrix) for transform_matrix in absolute_transforms]
+    absolute_poses = [pose_from_matrix(transform_matrix) for transform_matrix in absolute_transforms]
 
-    return relative_poses
+    return absolute_poses
 
 
 def numpy_array_to_absolute_velocity(
@@ -92,3 +92,13 @@ def numpy_array_to_absolute_pose(origin_absolute_state: StateSE2, poses: npt.NDA
     assert poses.shape[1] == 3, f"Expected poses shape of (*, 3), got {poses.shape}"
     relative_states = [StateSE2.deserialize(pose) for pose in poses]
     return relative_to_absolute_poses(origin_absolute_state, relative_states)
+
+
+def vector_2d_from_magnitude_angle(magnitude: float, angle: float) -> StateVector2D:
+    """
+    Projects magnitude and angle into a vector of x-y components.
+    :param magnitude: The magnitude of the vector.
+    :param angle: The angle of the vector.
+    :return: A state vector.
+    """
+    return StateVector2D(np.cos(angle) * magnitude, np.sin(angle) * magnitude)

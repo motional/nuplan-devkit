@@ -8,6 +8,9 @@ py_test(
     srcs = ["test_interpolated_trajectory.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/utils:helpers",
+        "//nuplan/common/utils:interpolatable_state",
+        "//nuplan/common/utils:split_state",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
     ],
 )

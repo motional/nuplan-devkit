@@ -23,12 +23,6 @@ class TestModelBuild(unittest.TestCase):
         main_path = os.path.dirname(os.path.realpath(__file__))
         self.config_path = os.path.join(main_path, '../config/training/')
 
-        # TODO: Investigate pkg in hydra
-        # Since we are not using the default config in this test, we need to specify the Hydra search path in the
-        # compose API override, otherwise the Jenkins build fails because bazel cannot find the simulation config file.
-        common_dir = 'file://' + os.path.join(main_path, '..', 'config', 'common')
-        experiment_dir = 'file://' + os.path.join(main_path, '..', 'experiments')
-        self.search_path = f'hydra.searchpath=[{common_dir}, {experiment_dir}]'
         self.group = tempfile.TemporaryDirectory()
         self.cache_path = os.path.join(self.group.name, 'cache_path')
 
@@ -41,7 +35,6 @@ class TestModelBuild(unittest.TestCase):
                 cfg = compose(
                     config_name=CONFIG_NAME,
                     overrides=[
-                        self.search_path,
                         '+training=training_raster_model',
                         f'model={model_name}',
                         f'group={self.group.name}',

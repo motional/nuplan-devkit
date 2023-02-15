@@ -10,6 +10,7 @@ py_test(
     data = [
         "//nuplan/planning/script:yaml",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",

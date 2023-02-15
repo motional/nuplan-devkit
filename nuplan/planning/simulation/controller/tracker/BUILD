@@ -23,13 +23,11 @@ py_library(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/database/utils:measure",
-        "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/simulation/controller:utils",
         "//nuplan/planning/simulation/controller/tracker:abstract_tracker",
+        "//nuplan/planning/simulation/controller/tracker:tracker_utils",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/simulation/trajectory:abstract_trajectory",
-        requirement("sympy"),
-        requirement("control"),
+        requirement("numpy"),
     ],
 )
 
@@ -37,7 +35,10 @@ py_library(
     name = "tracker_utils",
     srcs = ["tracker_utils.py"],
     deps = [
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:compute",
+        "//nuplan/planning/simulation/trajectory:abstract_trajectory",
+        requirement("numpy"),
     ],
 )
 

@@ -56,6 +56,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
@@ -77,6 +78,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
@@ -97,6 +99,7 @@ py_test(
     srcs = ["test_profile_idm_observation.py"],
     data = [
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/nuplan_db/test:nuplan_scenario_test_utils",
         "//nuplan/planning/simulation/history:simulation_history_buffer",

@@ -19,7 +19,6 @@ class TestTrainRasterModel(SkeletonTestTrain):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'py_func=train',
                     '+training=training_raster_model',

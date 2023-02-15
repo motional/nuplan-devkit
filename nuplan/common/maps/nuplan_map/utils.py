@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple, Union, cast
 
+import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -10,11 +11,7 @@ from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.maps.abstract_map import AbstractMap, MapObject
 from nuplan.common.maps.abstract_map_objects import Lane, LaneConnector, RoadBlockGraphEdgeMapObject
 from nuplan.common.maps.maps_datatypes import RasterLayer, SemanticMapLayer, VectorLayer
-from nuplan.common.utils.helpers import suppress_geopandas_warning
 from nuplan.database.maps_db.layer import MapLayer
-
-suppress_geopandas_warning()
-import geopandas as gpd  # noqa: E402
 
 
 def raster_layer_from_map_layer(map_layer: MapLayer) -> RasterLayer:
@@ -26,7 +23,6 @@ def raster_layer_from_map_layer(map_layer: MapLayer) -> RasterLayer:
     return RasterLayer(map_layer.data, map_layer.precision, map_layer.transform_matrix)
 
 
-# TODO: Move to vector_utils
 def split_blp_lane_segments(nodes: List[StateSE2], lane_seg_num: int) -> List[List[List[float]]]:
     """
     Split baseline path points into series of lane segment coordinate vectors.
@@ -45,7 +41,6 @@ def split_blp_lane_segments(nodes: List[StateSE2], lane_seg_num: int) -> List[Li
     return obj_coords
 
 
-# TODO: Move to vector_utils
 def connect_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[Tuple[int, int]]:
     """
     Add connection info for neighboring segments in baseline path.
@@ -61,7 +56,6 @@ def connect_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> Lis
     return obj_conns
 
 
-# TODO: Move to vector_utils
 def group_blp_lane_segments(start_lane_seg_idx: int, lane_seg_num: int) -> List[List[int]]:
     """
     Collect lane segment indices across lane/lane connector baseline path.
@@ -89,25 +83,21 @@ def trim_lane_nodes(point: Point2D, radius: float, lane_nodes: List[StateSE2]) -
     :param lane_nodes: The list of lane nodes to be filtered.
     :return obj_groupings: Data recording lane-segment indices associated with given lane/lane connector.
     """
-    start_index = -1
+    radius_squared = radius**2
     # Trim from the front end of lane/lane connector
-    for index in range(len(lane_nodes)):
-        node = lane_nodes[index]
-        if np.linalg.norm([node.x - point.x, node.y - point.y]) <= radius:
+    for index, node in enumerate(lane_nodes):
+        if (node.x - point.x) ** 2 + (node.y - point.y) ** 2 <= radius_squared:
             start_index = index
             break
-    # The lane/lane connector is completely trimmed
-    if start_index == -1:
+    else:
         return []
     # Trim from the other end of lane/lane connector
-    for index in range(len(lane_nodes) - 1, -1, -1):
-        node = lane_nodes[index]
-        if np.linalg.norm([node.x - point.x, node.y - point.y]) <= radius:
-            end_index = index + 1
+    for index, node in enumerate(lane_nodes[::-1]):
+        if (node.x - point.x) ** 2 + (node.y - point.y) ** 2 <= radius_squared:
+            end_index = len(lane_nodes) - index
             break
-    trimmed_nodes = lane_nodes[start_index:end_index]
 
-    return trimmed_nodes
+    return lane_nodes[start_index:end_index]
 
 
 def build_lane_segments_from_blps_with_trim(
@@ -156,7 +146,6 @@ def build_lane_segments_from_blps_with_trim(
     return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
 
 
-# TODO: Move to vector_utils
 def build_lane_segments_from_blps(
     map_obj: MapObject, start_lane_seg_idx: int
 ) -> Tuple[List[List[List[float]]], List[Tuple[int, int]], List[List[int]], List[str], List[str], Tuple[int, int]]:
@@ -193,7 +182,6 @@ def build_lane_segments_from_blps(
     return obj_coords, obj_conns, obj_groupings, obj_lane_ids, obj_roadblock_ids, obj_cross_blp_conn
 
 
-# TODO: Move to vector_utils
 def connect_trimmed_lane_conn_predecessor(
     lane_coords: Tuple[List[List[List[float]]]],
     lane_conn: LaneConnector,
@@ -235,7 +223,6 @@ def connect_trimmed_lane_conn_predecessor(
     return lane_seg_pred_conns
 
 
-# TODO: Move to vector_utils
 def connect_trimmed_lane_conn_successor(
     lane_coords: Tuple[List[List[List[float]]]],
     lane_conn: LaneConnector,
@@ -277,7 +264,6 @@ def connect_trimmed_lane_conn_successor(
     return lane_seg_suc_conns
 
 
-# TODO: Move to vector_utils
 def connect_lane_conn_predecessor(
     lane_conn: LaneConnector, cross_blp_conns: Dict[str, Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -304,7 +290,6 @@ def connect_lane_conn_predecessor(
     return lane_seg_pred_conns
 
 
-# TODO: Move to vector_utils
 def connect_lane_conn_successor(
     lane_conn: LaneConnector, cross_blp_conns: Dict[str, Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -358,7 +343,6 @@ def extract_roadblock_objects(map_api: AbstractMap, point: Point2D) -> List[Road
         return cast(List[RoadBlockGraphEdgeMapObject], roadblock_conns)
 
 
-# TODO: Update nuplan scenario to use route roadblock ids from db once available (@christopher.eriksen: PAC-2679)
 def get_roadblock_ids_from_trajectory(map_api: AbstractMap, ego_states: List[EgoState]) -> List[str]:
     """
     Extract ids of roadblocks and roadblock connectors containing points in specified trajectory.

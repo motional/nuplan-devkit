@@ -8,6 +8,8 @@ defaults:
   # Worker that is used to run simulations
   - worker: ray_distributed
 
+distribute_by_scenario: true
+
 selected_simulation_metrics: null
 
 # Sets verbosity level, in particular determines if progress bars are shown or not.

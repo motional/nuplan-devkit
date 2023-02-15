@@ -2,7 +2,7 @@ import math
 import unittest
 from copy import deepcopy
 from sys import maxsize
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import numpy as np
 from pyquaternion import Quaternion
@@ -12,7 +12,7 @@ from nuplan.common.actor_state.static_object import StaticObject
 from nuplan.database.nuplan_db_orm.category import Category
 from nuplan.database.nuplan_db_orm.lidar_box import LidarBox
 from nuplan.database.nuplan_db_orm.log import Log
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_lidar_box
+from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_lidar_box, get_test_nuplan_lidar_box_vehicle
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.geometry import quaternion_yaw
 
@@ -22,6 +22,7 @@ class TestLidarBox(unittest.TestCase):
 
     def setUp(self) -> None:
         """Sets up for the test cases"""
+        self.lidar_box_vehicle = get_test_nuplan_lidar_box_vehicle()
         self.lidar_box = get_test_nuplan_lidar_box()
 
     @patch('nuplan.database.nuplan_db_orm.lidar_box.inspect', autospec=True)
@@ -379,17 +380,15 @@ class TestLidarBox(unittest.TestCase):
         predicted_trajectory_mock.return_value.probability = 1.0
 
         # Call the method under test
-        result = self.lidar_box.tracked_object(future_waypoints)
+        result = self.lidar_box_vehicle.tracked_object(future_waypoints)
 
         # Assertions
         predicted_trajectory_mock.assert_called_once_with(1.0, future_waypoints)
         self.assertIsInstance(result, Agent)
 
-    @patch('nuplan.database.nuplan_db_orm.lidar_box.AGENT_TYPES', autospec=True)
-    def test_tracked_object_is_static_object(self, agent_types_mock: MagicMock) -> None:
+    def test_tracked_object_is_static_object(self) -> None:
         """Tests the tracked_object method"""
         # Setup
-        agent_types_mock.return_value = 'unknown'
         future_waypoints = Mock()
 
         # Call the method under test

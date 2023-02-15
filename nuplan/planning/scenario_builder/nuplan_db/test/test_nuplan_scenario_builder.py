@@ -90,7 +90,6 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
-                ground_truth_predictions=None,
             )
 
             scenario_filter = ScenarioFilter(
@@ -104,6 +103,10 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 remove_invalid_goals=False,
                 shuffle=False,
                 timestamp_threshold_s=None,
+                ego_displacement_minimum_m=None,
+                ego_start_speed_threshold=None,
+                ego_stop_speed_threshold=None,
+                speed_noise_tolerance=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -157,7 +160,6 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
-                ground_truth_predictions=None,
             )
 
             scenario_filter = ScenarioFilter(
@@ -171,6 +173,10 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 remove_invalid_goals=False,
                 shuffle=False,
                 timestamp_threshold_s=None,
+                ego_displacement_minimum_m=None,
+                ego_start_speed_threshold=None,
+                ego_stop_speed_threshold=None,
+                speed_noise_tolerance=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -228,7 +234,6 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
-                ground_truth_predictions=None,
             )
 
             scenario_filter = ScenarioFilter(
@@ -242,6 +247,10 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 remove_invalid_goals=False,
                 shuffle=False,
                 timestamp_threshold_s=None,
+                ego_displacement_minimum_m=None,
+                ego_start_speed_threshold=None,
+                ego_stop_speed_threshold=None,
+                speed_noise_tolerance=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -294,7 +303,6 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
-                ground_truth_predictions=None,
             )
 
             scenario_filter = ScenarioFilter(
@@ -308,6 +316,10 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 remove_invalid_goals=False,
                 shuffle=False,
                 timestamp_threshold_s=None,
+                ego_displacement_minimum_m=None,
+                ego_start_speed_threshold=None,
+                ego_stop_speed_threshold=None,
+                speed_noise_tolerance=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())

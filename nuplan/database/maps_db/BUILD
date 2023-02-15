@@ -25,8 +25,8 @@ py_library(
     name = "imapsdb",
     srcs = ["imapsdb.py"],
     deps = [
-        "//nuplan/common/utils:helpers",
         "//nuplan/database/maps_db:layer",
+        requirement("geopandas"),
     ],
 )
 
@@ -39,7 +39,6 @@ py_library(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
-        "//nuplan/common/utils:helpers",
         "//nuplan/database/maps_db:metadata",
         requirement("opencv-python"),
         requirement("geopandas"),
@@ -50,7 +49,7 @@ py_library(
     name = "gpkg_mapsdb",
     srcs = ["gpkg_mapsdb.py"],
     deps = [
-        "//nuplan/common/utils:helpers",
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/database/common/blob_store:creator",
         "//nuplan/database/maps_db:imapsdb",
         "//nuplan/database/maps_db:layer",
@@ -69,7 +68,6 @@ py_library(
     deps = [
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/common/maps/nuplan_map",
-        "//nuplan/common/utils:helpers",
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:layer_dataset_ops",
     ],

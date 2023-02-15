@@ -18,6 +18,7 @@ py_test(
     name = "test_drivable_area_compliance",
     srcs = ["test_drivable_area_compliance.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:drivable_area_compliance",
@@ -31,6 +32,7 @@ py_test(
     name = "test_ego_acceleration",
     srcs = ["test_ego_acceleration.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_acceleration",
@@ -43,6 +45,7 @@ py_test(
     name = "test_ego_is_comfortable",
     srcs = ["test_ego_is_comfortable.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_is_comfortable",
@@ -61,6 +64,7 @@ py_test(
     name = "test_ego_jerk",
     srcs = ["test_ego_jerk.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_jerk",
@@ -73,6 +77,7 @@ py_test(
     name = "test_ego_lat_acceleration",
     srcs = ["test_ego_lat_acceleration.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lat_acceleration",
@@ -85,6 +90,7 @@ py_test(
     name = "test_ego_lat_jerk",
     srcs = ["test_ego_lat_jerk.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lat_jerk",
@@ -97,6 +103,7 @@ py_test(
     name = "test_ego_lon_acceleration",
     srcs = ["test_ego_lon_acceleration.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lon_acceleration",
@@ -109,6 +116,7 @@ py_test(
     name = "test_ego_lon_jerk",
     srcs = ["test_ego_lon_jerk.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lon_jerk",
@@ -121,6 +129,7 @@ py_test(
     name = "test_ego_yaw_acceleration",
     srcs = ["test_ego_yaw_acceleration.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_yaw_acceleration",
@@ -133,6 +142,7 @@ py_test(
     name = "test_ego_yaw_rate",
     srcs = ["test_ego_yaw_rate.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_yaw_rate",
@@ -145,6 +155,7 @@ py_test(
     name = "test_speed_limit_compliance",
     srcs = ["test_speed_limit_compliance.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
@@ -158,6 +169,7 @@ py_test(
     name = "test_time_to_collision_within_bound",
     srcs = ["test_time_to_collision_within_bound.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
@@ -172,6 +184,7 @@ py_test(
     name = "test_ego_mean_speed",
     srcs = ["test_ego_mean_speed.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_mean_speed",
@@ -186,6 +199,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_expert_l2_error",
@@ -200,6 +214,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_expert_l2_error_with_yaw",
@@ -214,6 +229,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_progress_along_expert_route",
@@ -228,6 +244,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_lane_change",
@@ -242,6 +259,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics:metric_result",
@@ -258,6 +276,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:ego_is_making_progress",
@@ -273,6 +292,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
@@ -287,6 +307,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
@@ -302,6 +323,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
@@ -316,6 +338,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_heading_error_within_bound",
@@ -330,6 +353,7 @@ py_test(
     data = [
         ":test_json",
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:planner_expert_average_l2_error_within_bound",
@@ -342,6 +366,7 @@ py_test(
     name = "test_driving_direction_compliance",
     srcs = ["test_driving_direction_compliance.py"],
     data = [":test_json"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/utils/testing:nuplan_test",
         "//nuplan/planning/metrics/evaluation_metrics/common:driving_direction_compliance",

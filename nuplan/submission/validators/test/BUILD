@@ -35,6 +35,7 @@ py_test(
     name = "test_submission_computes_trajectory_validator",
     size = "small",
     srcs = ["test_submission_computes_trajectory_validator.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/submission/validators:base_submission_validator",
         "//nuplan/submission/validators:submission_computes_trajectory_validator",

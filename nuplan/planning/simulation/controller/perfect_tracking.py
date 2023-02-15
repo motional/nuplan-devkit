@@ -18,10 +18,6 @@ class PerfectTrackingController(AbstractEgoController):
         self.scenario = scenario
         self.current_state = None  # set to None to allow lazily loading of the scenario's initial ego state
 
-    def initialize(self) -> None:
-        """Inherited, see superclass."""
-        pass
-
     def reset(self) -> None:
         """Inherited, see superclass."""
         self.current_state = None

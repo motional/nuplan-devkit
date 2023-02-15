@@ -20,6 +20,7 @@ py_test(
     name = "test_nuplan_scenario",
     size = "small",
     srcs = ["test_nuplan_scenario.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:agent",
         "//nuplan/common/actor_state:oriented_box",
@@ -47,6 +48,7 @@ py_test(
     srcs = ["test_nuplan_scenario_builder.py"],
     data = [
     ],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
@@ -62,8 +64,11 @@ py_test(
     srcs = ["test_nuplan_scenario_filter_utils.py"],
     data = [
     ],
+    tags = [],
     deps = [
+        "//nuplan/common/actor_state:state_representation",
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_filter_utils",
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
     ],
 )

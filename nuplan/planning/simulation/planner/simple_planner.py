@@ -54,14 +54,14 @@ class SimplePlanner(AbstractPlanner):
         """Inherited, see superclass."""
         return DetectionsTracks  # type: ignore
 
-    def compute_planner_trajectory(self, current_input: List[PlannerInput]) -> List[AbstractTrajectory]:
+    def compute_planner_trajectory(self, current_input: PlannerInput) -> AbstractTrajectory:
         """
         Implement a trajectory that goes straight.
         Inherited, see superclass.
         """
         # Extract iteration and history
-        iteration = current_input[0].iteration
-        history = current_input[0].history
+        iteration = current_input.iteration
+        history = current_input.history
 
         ego_state = history.ego_states[-1]
         state = EgoState(
@@ -98,4 +98,4 @@ class SimplePlanner(AbstractPlanner):
             state = self.motion_model.propagate_state(state, state.dynamic_car_state, self.sampling_time)
             trajectory.append(state)
 
-        return [InterpolatedTrajectory(trajectory)]
+        return InterpolatedTrajectory(trajectory)

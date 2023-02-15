@@ -25,6 +25,7 @@ py_test(
 py_test(
     name = "test_kinematic_agent_augmentation",
     srcs = ["test_kinematic_agent_augmentation.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/training/data_augmentation:kinematic_agent_augmentation",
         "//nuplan/planning/training/preprocessing/features:agents",

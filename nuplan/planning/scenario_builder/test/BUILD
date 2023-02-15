@@ -23,6 +23,7 @@ py_library(
         "//nuplan/planning/simulation/observation:observation_type",
         "//nuplan/planning/simulation/planner:simple_planner",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
+        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
     ],
 )
 

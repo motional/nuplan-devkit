@@ -37,10 +37,10 @@ To be able to run your planner, the basic requirement is that it needs to inheri
 
 Once you can run your planner, to be able to submit your planner for remote execution you will have to package it in a Docker container. Here are the steps:
 
-1. [Dockerfile.submission](https://github.com/motional/nuplan-devkit/blob/master/Dockerfile.submission) is the starting point. You might not need to edit it directly, however, feel free to change it as you see fit.  If you need to edit the system dependencies you can do so by adding apt targets as needed in Dockerfile.submission.
-1. To add additional pip requirements you may need, please append them to [requirements_submission.txt](https://github.com/motional/nuplan-devkit/blob/master/requirements_submission.txt).
-1. You can copy checkpoints and other files inside of your container, as long as they are in the same directory or in a subdirectory from the Dockerfile. To do so follow the example present in the Dockerfile.
-1. [run_submission_planner.py](https://github.com/motional/nuplan-devkit/blob/master/nuplan/submission/run_submission_planner.py) is where your planner is instantiated. This is done through [hydra](https://hydra.cc/docs/intro/), which allows you to pass any arguments required to instantiate your planner from the a config file. 
+1. [Dockerfile.submission](https://github.com/motional/nuplan-devkit/blob/master/Dockerfile.submission) is the starting point. You might not need to edit it directly, however, feel free to change it as you see fit.  If you need to edit the system dependencies you can do so by adding apt targets as needed in Dockerfile.submission. By default, anything under the `nuplan_devkit/nuplan` directory will be present in the Docker image at the absolute path `/nuplan_devkit/nuplan`.
+2. To add additional pip requirements you may need, please append them to [requirements_submission.txt](https://github.com/motional/nuplan-devkit/blob/master/requirements_submission.txt).
+3. You can copy checkpoints and other files inside your container, as long as they are in the same directory or in a subdirectory from `Dockerfile.submission`. To do so follow the example present in `Dockerfile.submission`.
+4. [run_submission_planner.py](https://github.com/motional/nuplan-devkit/blob/master/nuplan/submission/run_submission_planner.py) is where your planner is instantiated. This is done through [hydra](https://hydra.cc/docs/intro/), which allows you to pass any arguments required to instantiate your planner from a config file.
    - For reference, see the [SimplePlanner hydra config](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/script/config/simulation/planner/simple_planner.yaml). For example, if you want to instantiate `SimplePlanner` but modify `max_velocity`, you could make a config file `simple_planner2.yaml` in `nuplan/planning/script/config/simulation/planner` containing:
         ```yaml
         simple_planner2:
@@ -52,8 +52,8 @@ Once you can run your planner, to be able to submit your planner for remote exec
             max_velocity: 7.0  # modified
             steering_angle: 0.0
         ```
-        and then set `planner=simple_planner2` in [`entrypoint_submission.sh`](https://github.com/motional/nuplan-devkit/blob/master/nuplan/entrypoint_submission.sh).
-    - If you run into problems using hydra, you can instantiate the planner manually in [run_submission_planner.py](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/script/run_submission_planner.py). See the includeded comments for pointers.
+        and then set `planner=simple_planner2` in [`entrypoint_submission.sh`](https://github.com/motional/nuplan-devkit/blob/master/nuplan/entrypoint_submission.sh). More examples are resent in the other [tutorials](https://github.com/motional/nuplan-devkit/tree/master/tutorials).
+    - If you run into problems using hydra, you can instantiate the planner manually in [run_submission_planner.py](https://github.com/motional/nuplan-devkit/blob/master/nuplan/planning/script/run_submission_planner.py). See the included comments for pointers.
 
 
 At this point, you need to make sure that you can generate a valid Docker image from the Dockerfile you edited.
@@ -67,7 +67,8 @@ docker build --network host -f Dockerfile.submission . -t nuplan-evalservice-ser
 Once you created the docker image, you need to test its behavior in the sever-client architecture, to make sure everything works fine. To do so you can use docker-compose which should take care of everything for you.
 
 `docker-compose.yml` mounts the dataset and maps to the submission and simulation containers, as well as writing results from the simulation locally on your machine.
-By default, they mount inside the containers the directories where `$NUPLAN_DATA_ROOT`, `$NUPLAN_MAPS_ROOT` and `$NUPLAN_EXP_ROOT` point to.
+By default, they mount inside the containers the directories where `$NUPLAN_DATA_ROOT`, `$NUPLAN_MAPS_ROOT` and `$NUPLAN_EXP_ROOT` point to, so you need to make sure these are set.
+The following command will create both the submission and the simulation images, and will start the simulation (check the entrypoint files for details).
 
 **Checkpoint** Run the simulation by running the command below:
 

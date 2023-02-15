@@ -1,4 +1,5 @@
 import math
+from typing import List
 
 import torch
 
@@ -41,10 +42,10 @@ def _torch_savgol_filter(
     #   and the output of torch.nn.functional.conv1d will be [-a, -b, -c, -d])
     #
     # So they cancel out.
-    x = torch.arange(-pos, window_length - pos, dtype=torch.float32)
+    x = torch.arange(-pos, window_length - pos, dtype=torch.float64)
     order = torch.arange(poly_order + 1).reshape(-1, 1)
 
-    yy = torch.zeros(poly_order + 1)
+    yy = torch.zeros(poly_order + 1, dtype=torch.float64)
     A = x**order
     yy[deriv_order] = math.factorial(deriv_order) / (delta**deriv_order)
 
@@ -114,3 +115,46 @@ def approximate_derivatives_tensor(
     )
 
     return derivative
+
+
+def unwrap(angles: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """
+    This unwraps a signal p by changing elements which have an absolute difference from their
+    predecessor of more than Pi to their period-complementary values.
+    It is meant to mimic numpy.unwrap (https://numpy.org/doc/stable/reference/generated/numpy.unwrap.html)
+    :param angles: The tensor to unwrap.
+    :param dim: Axis where the unwrap operation is performed.
+    :return: Unwrapped tensor.
+    """
+    pi = torch.tensor(math.pi, dtype=torch.float64)
+    angle_diff = torch.diff(angles, dim=dim)
+
+    # Insert a single 0 at the front of the dimension corresponding to 'dim'.
+    # This could be  written a bit more succintly using pure python, but
+    #   torchscript doesn't support many of the constructs:
+    #
+    # * Itertools.chain() can't be scripted.
+    # * Multiple generator expressions can't be scripted.
+    # * sum() gets translated to aten::sum, which doesn't support Tuple.
+    nn_functional_pad_args = [(0, 0) for _ in range(len(angles.shape))]
+    nn_functional_pad_args[dim] = (1, 0)
+
+    # Counter-intuitively, torch.nn.functional.pad reverses the indexes.
+    #   e.g.:
+    # >> x = torch.zeros((3, 3, 3), dtype=torch.float32)
+    # >> torch.nn.functional.pad(x, (0, 0, 0, 0, 1, 0)).shape
+    # torch.Size([4, 3, 3])
+    # >> torch.nn.functional.pad(x, (1, 0, 0, 0, 0, 0)).shape
+    # torch.Size([3, 3, 4])
+    pad_arg: List[int] = []
+    for value in nn_functional_pad_args[::-1]:
+        pad_arg.append(value[0])
+        pad_arg.append(value[1])
+
+    dphi = torch.nn.functional.pad(angle_diff, pad_arg)
+
+    dphi_m = ((dphi + pi) % (2.0 * pi)) - pi
+    dphi_m[(dphi_m == -pi) & (dphi > 0)] = pi
+    phi_adj = dphi_m - dphi
+    phi_adj[dphi.abs() < pi] = 0
+    return angles + phi_adj.cumsum(dim)

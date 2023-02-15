@@ -8,6 +8,8 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
 from nuplan.common.actor_state.tracked_objects import TrackedObjects
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
+from nuplan.common.geometry.torch_geometry import global_state_se2_tensor_to_local
+from nuplan.common.utils.torch_math import approximate_derivatives_tensor, unwrap
 from nuplan.planning.metrics.utils.state_extractors import approximate_derivatives
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import FeatureDataType
 from nuplan.planning.training.preprocessing.features.agents import AgentFeatureIndex, EgoFeatureIndex
@@ -16,8 +18,6 @@ from nuplan.planning.training.preprocessing.features.generic_agents import (
     GenericEgoFeatureIndex,
 )
 from nuplan.planning.training.preprocessing.features.trajectory_utils import convert_absolute_to_relative_poses
-from nuplan.planning.training.preprocessing.utils.torch_geometry import global_state_se2_tensor_to_local
-from nuplan.planning.training.preprocessing.utils.torch_math import approximate_derivatives_tensor
 
 
 class EgoInternalIndex:
@@ -754,16 +754,18 @@ def compute_yaw_rate_from_state_tensors(
     if len(time_stamps.shape) != 1:
         raise ValueError(f"Unexpected timestamps shape: {time_stamps.shape}")
 
-    time_stamps_s = (time_stamps - int(torch.min(time_stamps).item())).float() * 1e-6
+    time_stamps_s = (time_stamps - int(torch.min(time_stamps).item())).double() * 1e-6
 
     yaws: List[torch.Tensor] = []
     for agent_state in agent_states:
         _validate_agent_internal_shape(agent_state)
-        yaws.append(agent_state[:, AgentInternalIndex.heading()].squeeze())
+        yaws.append(agent_state[:, AgentInternalIndex.heading()].squeeze().double())
 
     # Convert to agent x frame
     yaws_tensor = torch.vstack(yaws)
     yaws_tensor = yaws_tensor.transpose(0, 1)
+    # Remove [-pi, pi] yaw bounds to make the signal smooth
+    yaws_tensor = unwrap(yaws_tensor, dim=-1)
 
     yaw_rate_horizon = approximate_derivatives_tensor(yaws_tensor, time_stamps_s, window_length=3)
 

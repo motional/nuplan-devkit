@@ -22,7 +22,6 @@ class TestRunMetricAggregator(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     '+simulation=open_loop_boxes',
                     'experiment_name=simulation_metric_aggregator_test',
@@ -36,7 +35,6 @@ class TestRunMetricAggregator(SkeletonTestSimulation):
             cfg = compose(
                 config_name=METRIC_AGGREGATOR_CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     f'output_dir={exp_output_dir}',
                     "scenario_metric_paths=[]",
                     "metric_aggregator=[default_weighted_average]",

@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, Type
 import torch
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
+from nuplan.common.geometry.torch_geometry import coordinates_to_local_frame
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
 from nuplan.planning.training.preprocessing.feature_builders.scriptable_feature_builder import ScriptableFeatureBuilder
@@ -20,7 +21,6 @@ from nuplan.planning.training.preprocessing.feature_builders.vector_builder_util
 )
 from nuplan.planning.training.preprocessing.features.abstract_model_feature import AbstractModelFeature
 from nuplan.planning.training.preprocessing.features.vector_map import VectorMap
-from nuplan.planning.training.preprocessing.utils.torch_geometry import coordinates_to_local_frame
 
 
 def _accumulate_connections(
@@ -36,12 +36,14 @@ def _accumulate_connections(
     # Get the connections of each scale.
     multi_scale_connections: Dict[int, torch.Tensor] = {}
     for scale in scales:
+        scale_hop_neighbors = f"{scale}_hop_neighbors"
+
         scale_connections: List[List[int]] = []
         for node_idx, neighbor_dict in node_idx_to_neighbor_dict.items():
-            for n_hop_neighbor in neighbor_dict[f"{scale}_hop_neighbors"]:
+            for n_hop_neighbor in neighbor_dict[scale_hop_neighbors]:
                 scale_connections.append([node_idx, n_hop_neighbor])
 
-        # if cannot find n-hop neighbors, return empty connection with size [0,2]
+        # if cannot find n-hop neighbors, return empty conqnection with size [0,2]
         if len(scale_connections) == 0:
             multi_scale_connections[scale] = torch.empty((0, 2), dtype=torch.int64)
         else:
@@ -81,12 +83,15 @@ def _generate_multi_scale_connections(connections: torch.Tensor, scales: List[in
 
     # Find the neighbors up to max(scales) hops away for each node.
     for scale in range(2, max(scales) + 1):
+        scale_hop_neighbors = f"{scale}_hop_neighbors"
+        prev_scale_hop_neighbors = f"{scale - 1}_hop_neighbors"
+
         for neighbor_dict in node_idx_to_neighbor_dict.values():
             empty: Dict[int, int] = {}
-            neighbor_dict[f"{scale}_hop_neighbors"] = empty
-            for n_hop_neighbor in neighbor_dict[f"{scale - 1}_hop_neighbors"]:
+            neighbor_dict[scale_hop_neighbors] = empty
+            for n_hop_neighbor in neighbor_dict[prev_scale_hop_neighbors]:
                 for n_plus_1_hop_neighbor in node_idx_to_neighbor_dict[n_hop_neighbor]["1_hop_neighbors"]:
-                    neighbor_dict[f"{scale}_hop_neighbors"][n_plus_1_hop_neighbor] = dummy_value
+                    neighbor_dict[scale_hop_neighbors][n_plus_1_hop_neighbor] = dummy_value
 
     return _accumulate_connections(node_idx_to_neighbor_dict, scales)
 

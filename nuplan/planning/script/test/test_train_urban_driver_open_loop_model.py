@@ -19,7 +19,6 @@ class TestTrainUrbanDriverOpenLoopModel(SkeletonTestTrain):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'py_func=train',
                     '+training=training_urban_driver_open_loop_model',

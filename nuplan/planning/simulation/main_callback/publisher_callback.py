@@ -1,5 +1,4 @@
 import logging
-import os
 import pathlib
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -59,11 +58,7 @@ class PublisherCallback(AbstractMainCallback):
         """
         self._s3_client = s3_client
         if self._s3_client is None:
-            self._s3_client = get_s3_client(
-                'nuplan',
-                aws_access_key_id=os.getenv("NUPLAN_SERVER_AWS_ACCESS_KEY_ID"),
-                aws_secret_access_key=os.getenv("NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY"),
-            )
+            self._s3_client = get_s3_client()
         self._s3_bucket = s3_bucket.strip('s3://') if s3_bucket.startswith('s3://') else s3_bucket
         self._remote_prefix: List[str] = remote_prefix or ['/']
 

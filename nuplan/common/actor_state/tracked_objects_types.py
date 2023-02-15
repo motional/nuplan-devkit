@@ -54,7 +54,6 @@ AGENT_TYPES: Set[TrackedObjectType] = {
     TrackedObjectType.VEHICLE,
     TrackedObjectType.PEDESTRIAN,
     TrackedObjectType.BICYCLE,
-    TrackedObjectType.GENERIC_OBJECT,
     TrackedObjectType.EGO,
 }
 
@@ -62,4 +61,5 @@ STATIC_OBJECT_TYPES: Set[TrackedObjectType] = {
     TrackedObjectType.CZONE_SIGN,
     TrackedObjectType.BARRIER,
     TrackedObjectType.TRAFFIC_CONE,
+    TrackedObjectType.GENERIC_OBJECT,
 }

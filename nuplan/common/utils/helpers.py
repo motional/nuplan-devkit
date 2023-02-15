@@ -1,9 +1,14 @@
+import functools
+import hashlib
 import logging
+import os
 import time
-import warnings
+import uuid
 from typing import Any, Callable, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
+
+GenericCallable = Callable[[Any], Any]
 
 
 def try_n_times(
@@ -75,11 +80,39 @@ def keep_trying(
     raise TimeoutError(f"Timeout on function call {fn}({args}{kwargs}) catching {errors}")
 
 
-def suppress_geopandas_warning() -> None:
+@functools.cache
+def get_unique_job_id() -> str:
     """
-    Filters warning message about incompatible PyGEOS verions. The underlying cause is a pip packaging error that will
-    hopefully be fixed in the future, and available workarounds complicate installation. Must run before geopandas import.
-    It's possible for the error to still appear if geopandas is imported elsewhere, but this covers the main case when
-    running simulations.
+    In the cluster, it generates a hash from the unique job ID called NUPLAN_JOB_ID.
+    Locally, it generates a hash from a UUID.
+
+    Note that the returned value is cached as soon as the function is called the first time.
+    After that, it is going to return always the same value.
+    If a new value is needed, use get_unique_job_id.cache_clear() first.
     """
-    warnings.filterwarnings('ignore', '.*The Shapely GEOS version .* is incompatible with the GEOS version PyGEOS.*')
+    global_job_id_str = os.environ.get("NUPLAN_JOB_ID", str(uuid.uuid4())).encode("utf-8")
+    return hashlib.sha256(global_job_id_str).hexdigest()
+
+
+def static_vars(**kwargs: Any) -> GenericCallable:
+    """
+    Decorator to assign static variables to functions
+    """
+
+    def decorate(func: GenericCallable) -> GenericCallable:
+        for key, value in kwargs.items():
+            setattr(func, key, value)
+        return func
+
+    return decorate
+
+
+@functools.lru_cache(maxsize=None)
+@static_vars(id=-1)
+def get_unique_incremental_track_id(_: str) -> int:
+    """
+    Generate a unique ID (increasing number)
+    :return int Unique ID
+    """
+    get_unique_incremental_track_id.id += 1  # type: ignore
+    return get_unique_incremental_track_id.id  # type: ignore

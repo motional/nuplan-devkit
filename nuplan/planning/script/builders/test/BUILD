@@ -16,6 +16,7 @@ py_test(
     name = "test_builder_utils",
     size = "medium",
     srcs = ["test_builder_utils.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/script/builders/utils:utils_config",
         "//nuplan/planning/utils/multithreading:worker_utils",
@@ -26,6 +27,7 @@ py_test(
     name = "test_scenario_builder",
     size = "medium",
     srcs = ["test_scenario_builder.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/script/builders:scenario_builder",
         "//nuplan/planning/training/experiments:cache_metadata_entry",

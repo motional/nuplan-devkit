@@ -21,6 +21,7 @@ py_test(
     name = "test_collate",
     size = "medium",
     srcs = ["test_collate.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/training/modeling:types",
@@ -35,6 +36,7 @@ py_test(
     name = "test_collate_dataloader",
     size = "medium",
     srcs = ["test_collate_dataloader.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
@@ -59,6 +61,7 @@ py_test(
     name = "test_feature_preprocessor",
     size = "medium",
     srcs = ["test_feature_preprocessor.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
@@ -78,6 +81,7 @@ py_test(
     name = "test_utils_cache",
     size = "medium",
     srcs = ["test_utils_cache.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/database/common/blob_store/test:mock_s3_store",
         "//nuplan/planning/training/preprocessing/features:abstract_model_feature",

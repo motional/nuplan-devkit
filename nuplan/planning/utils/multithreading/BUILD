@@ -9,6 +9,7 @@ py_library(
     srcs = ["ray_execution.py"],
     deps = [
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("ray"),
         requirement("tqdm"),
     ],
 )
@@ -18,6 +19,8 @@ py_library(
     srcs = ["worker_utils.py"],
     deps = [
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("numpy"),
+        requirement("psutil"),
     ],
 )
 
@@ -46,6 +49,7 @@ py_library(
         "//nuplan/planning/utils/multithreading:worker_pool",
         requirement("ray"),
         requirement_torch("torch"),
+        requirement("psutil"),
     ],
 )
 
@@ -54,5 +58,6 @@ py_library(
     srcs = ["worker_sequential.py"],
     deps = [
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("tqdm"),
     ],
 )

@@ -19,13 +19,6 @@ class AbstractEgoController(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def initialize(self) -> None:
-        """
-        Initializes the controller.
-        """
-        pass
-
-    @abc.abstractmethod
     def reset(self) -> None:
         """
         Reset the observation (all internal states should be reseted, if any).

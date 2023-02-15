@@ -222,6 +222,7 @@ class TypeEmbedding(nn.Module):
         self,
         batch_size: int,
         agents_len: int,
+        agent_features: List[str],
         map_features: List[str],
         map_features_len: Dict[str, int],
         device: torch.device,
@@ -234,6 +235,7 @@ class TypeEmbedding(nn.Module):
         - then we have map features (polylines)
         :param batch_size: number of samples in batch.
         :param agents_len: number of agents.
+        :param agent_features: list of agent feature types.
         :param map_features: list of map feature types.
         :param map_features_len: number of map features per type.
         :param device: desired device of tensors to supply to torch.
@@ -241,10 +243,10 @@ class TypeEmbedding(nn.Module):
         """
         with torch.no_grad():
 
-            total_len = 1 + agents_len + sum(map_features_len.values())
-
+            total_agents_len = agents_len * len(agent_features)
+            total_len = 1 + total_agents_len + sum(map_features_len.values())
             agents_start_idx = 1
-            map_start_idx = agents_start_idx + agents_len
+            map_start_idx = agents_start_idx + total_agents_len
 
             indices = torch.full(
                 (batch_size, total_len),
@@ -255,9 +257,13 @@ class TypeEmbedding(nn.Module):
 
             # ego
             indices[:, 0].fill_(self._feature_types["EGO"])
-            # vehicle only other agent type supported
-            indices[:, agents_start_idx:map_start_idx].fill_(self._feature_types["VEHICLE"])
 
+            # other agents
+            for feature_name in agent_features:
+                indices[:, agents_start_idx : agents_start_idx + agents_len].fill_(self._feature_types[feature_name])
+                agents_start_idx += agents_len
+
+            # map features
             for feature_name in map_features:
                 feature_len = map_features_len[feature_name]
                 indices[:, map_start_idx : map_start_idx + feature_len].fill_(self._feature_types[feature_name])

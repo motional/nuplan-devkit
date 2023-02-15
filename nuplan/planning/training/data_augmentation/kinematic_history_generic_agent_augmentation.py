@@ -54,11 +54,11 @@ class KinematicHistoryGenericAgentAugmentor(AbstractAugmentor):
         self._random_offset_generator = UniformNoise(low, high) if use_uniform_noise else GaussianNoise(mean, std)
         self._augment_prob = augment_prob
 
-    def safety_check(self, ego: npt.NDArray[np.float32], agents: npt.NDArray[np.float32]) -> bool:
+    def safety_check(self, ego: npt.NDArray[np.float32], all_agents: List[npt.NDArray[np.float32]]) -> bool:
         """
         Check if the augmented trajectory violates any safety check (going backwards, collision with other agents).
         :param ego: Perturbed ego feature tensor to be validated.
-        :param agents: List of agent features to validate against.
+        :param all_agents: List of agent features to validate against.
         :return: Bool reflecting feature validity.
         """
         # Check if ego goes backward after the perturbation
@@ -66,9 +66,10 @@ class KinematicHistoryGenericAgentAugmentor(AbstractAugmentor):
             return False
 
         # Check if there is collision between ego and other agents
-        dist_to_the_closest_agent = np.min(np.linalg.norm(np.array(agents)[:, :, :2] - ego[-1, :2], axis=1))
-        if dist_to_the_closest_agent < 2.5:
-            return False
+        for agents in all_agents:
+            dist_to_the_closest_agent = np.min(np.linalg.norm(np.array(agents)[:, :, :2] - ego[-1, :2], axis=1))
+            if dist_to_the_closest_agent < 2.5:
+                return False
         return True
 
     def augment(
@@ -117,9 +118,9 @@ class KinematicHistoryGenericAgentAugmentor(AbstractAugmentor):
                 ]
             )
             ego_perturb = ego_perturb.T
-            agents: npt.NDArray[np.float32] = np.concatenate(
-                [agent_features[batch_idx] for agent_features in features['generic_agents'].agents.values()], axis=0
-            )
+            agents: List[npt.NDArray[np.float32]] = [
+                agent_features[batch_idx] for agent_features in features['generic_agents'].agents.values()
+            ]
 
             if self.safety_check(ego_perturb, agents):
                 features["generic_agents"].ego[batch_idx] = np.float32(ego_perturb)

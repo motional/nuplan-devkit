@@ -9,7 +9,7 @@ from urllib import parse
 
 import botocore
 import urllib3
-from botocore.exceptions import BotoCoreError
+from botocore.exceptions import BotoCoreError, NoCredentialsError
 from tqdm import tqdm
 
 from nuplan.common.utils.s3_utils import get_s3_client
@@ -130,6 +130,8 @@ class S3Store(BlobStore):
                 urllib3.exceptions.SSLError,
                 KeyError,
                 BotoCoreError,
+                # This can be a transient issue when using IAM auth in a multi-threaded environment
+                NoCredentialsError,
             ) as e:
                 if isinstance(e, KeyError):
                     logger.warning(f"Caught KeyError: {e}. Retrying S3 read.")

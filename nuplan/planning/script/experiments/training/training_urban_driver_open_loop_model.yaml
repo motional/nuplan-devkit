@@ -1,12 +1,12 @@
 # @package _global_
-experiment_name: training_urban_driver_open_loop_model
+job_name: urban_driver_open_loop_model
 py_func: train
 objective_aggregate_mode: mean
 
 defaults:
   - override /data_augmentation:
-      - kinematic_history_agent_augmentation
-      - agent_dropout_augmentation
+      - kinematic_history_generic_agent_augmentation
+      - generic_agent_dropout_augmentation
   - override /objective:
       - trajectory_weight_decay_imitation_objective
   - override /splitter: nuplan

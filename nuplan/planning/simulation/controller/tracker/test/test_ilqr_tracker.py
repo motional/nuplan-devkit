@@ -58,8 +58,6 @@ class TestILQRTracker(unittest.TestCase):
             ilqr_solver=ILQRSolver(solver_params=solver_params, warm_start_params=warm_start_params),
         )
 
-        self.tracker.initialize()
-
         self.discretization_time_us = int(1e6 * self.tracker._ilqr_solver._solver_params.discretization_time)
 
     def test_track_trajectory(self) -> None:

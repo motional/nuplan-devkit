@@ -9,6 +9,8 @@ from nuplan.common.actor_state.scene_object import SceneObjectMetadata
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
+from nuplan.common.actor_state.waypoint import Waypoint
+from nuplan.planning.simulation.trajectory.predicted_trajectory import PredictedTrajectory
 
 
 def get_sample_pose() -> StateSE2:
@@ -78,4 +80,7 @@ def get_sample_agent(token: str = 'test', agent_type: TrackedObjectType = Tracke
         get_sample_oriented_box(),
         metadata=SceneObjectMetadata(timestamp_us=10, track_token=token, track_id=None, token=token),
         velocity=StateVector2D(0.0, 0.0),
+        predictions=[
+            PredictedTrajectory(1.0, [Waypoint(time_point=TimePoint(10), oriented_box=get_sample_oriented_box())])
+        ],
     )

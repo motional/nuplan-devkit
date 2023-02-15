@@ -48,6 +48,7 @@ py_test(
 py_test(
     name = "test_metric_summary_callback",
     srcs = ["test_metric_summary_callback.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/metrics:metric_dataframe",
         "//nuplan/planning/metrics:metric_engine",

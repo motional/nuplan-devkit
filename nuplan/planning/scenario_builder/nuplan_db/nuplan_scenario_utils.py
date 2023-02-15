@@ -115,13 +115,12 @@ def download_file_if_necessary(data_root: str, potentially_remote_path: str, ver
     # Behavior seems to be different on our cluster vs locally regarding downloaded file paths.
     #
     # Use the underlying stores manually.
-    blob_store = BlobStoreCreator.create_nuplandb(data_root, verbose=verbose)
+    os.makedirs(data_root, exist_ok=True)
     local_store = LocalStore(data_root)
 
-    # Only trigger the download if we have not already acquired the file.
-    download_path_name = os.path.join(data_root, download_name)
-
     if not local_store.exists(download_name):
+        blob_store = BlobStoreCreator.create_nuplandb(data_root, verbose=verbose)
+
         # If we have no matches, download the file.
         logger.info("DB path not found. Downloading to %s..." % download_name)
         start_time = time.time()
@@ -129,7 +128,7 @@ def download_file_if_necessary(data_root: str, potentially_remote_path: str, ver
         local_store.put(download_name, content)
         logger.info("Downloading db file took %.2f seconds." % (time.time() - start_time))
 
-    return download_path_name
+    return os.path.join(data_root, download_name)
 
 
 def _process_future_trajectories_for_windowed_agents(
@@ -143,7 +142,7 @@ def _process_future_trajectories_for_windowed_agents(
     :param log_file: The log file to query.
     :param tracked_objects: The tracked objects to parse.
     :param agent_indexes: A mapping of [timestamp, [track_token, tracked_object_idx]]
-    :param future_trajectory_sampling: The future trajectory sampling to use
+    :param future_trajectory_sampling: The future trajectory sampling to use for future waypoints.
     :return: The tracked objects with predicted trajectories included.
     """
     agent_future_trajectories: Dict[int, Dict[str, List[Waypoint]]] = {}
@@ -154,7 +153,9 @@ def _process_future_trajectories_for_windowed_agents(
             agent_future_trajectories[timestamp][token] = []
 
     for timestamp_time in agent_future_trajectories:
-        end_time = timestamp_time + (1e6 * future_trajectory_sampling.time_horizon)
+        end_time = timestamp_time + int(
+            1e6 * (future_trajectory_sampling.time_horizon + future_trajectory_sampling.interval_length)
+        )
 
         # TODO: This is somewhat inefficient because the resampling should happen in SQL layer
 
@@ -228,13 +229,14 @@ def extract_tracked_objects_within_time_window(
 
 
 def extract_tracked_objects(
-    token: str, log_file: str, future_trajectory_sampling: Optional[TrajectorySampling] = None
+    token: str,
+    log_file: str,
+    future_trajectory_sampling: Optional[TrajectorySampling] = None,
 ) -> TrackedObjects:
     """
     Extracts all boxes from a lidarpc.
     :param lidar_pc: Input lidarpc.
-    :param future_trajectory_sampling: Sampling parameters for future predictions, if not provided, no future poses
-    are extracted
+    :param future_trajectory_sampling: If provided, the future trajectory sampling to use for future waypoints.
     :return: Tracked objects contained in the lidarpc.
     """
     tracked_objects: List[TrackedObject] = []
@@ -249,7 +251,9 @@ def extract_tracked_objects(
 
     if future_trajectory_sampling and len(tracked_objects) > 0:
         timestamp_time = get_lidarpc_token_timestamp_from_db(log_file, token)
-        end_time = timestamp_time + (1e6 * future_trajectory_sampling.time_horizon)
+        end_time = timestamp_time + int(
+            1e6 * (future_trajectory_sampling.time_horizon + future_trajectory_sampling.interval_length)
+        )
 
         # TODO: This is somewhat inefficient because the resampling should happen in SQL layer
         for track_token, waypoint in get_future_waypoints_for_agents_from_db(

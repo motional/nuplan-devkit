@@ -805,8 +805,8 @@ class TestLoadBoxes(unittest.TestCase):
         )
 
         self.assertSetEqual({"pedestrian", "vehicle"}, set(boxes.keys()))
-        self.assertEqual(len(boxes["pedestrian"]), 12)
-        self.assertEqual(len(boxes["vehicle"]), 20)
+        self.assertEqual(len(boxes["pedestrian"]), 70)
+        self.assertEqual(len(boxes["vehicle"]), 29)
 
 
 class TestGetFutureEgoTrajectory(unittest.TestCase):

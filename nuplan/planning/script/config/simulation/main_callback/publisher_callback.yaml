@@ -11,7 +11,7 @@ publisher_callback:
     metrics:
         upload: True
         save_path: ${output_dir}/${metric_dir}             # Path of a folder in which the metrics are saved
-        remote_path: ${experiment_name}/${metric_dir}             # Path of a folder in which the metrics are saved
+        remote_path: ${job_name}/${metric_dir}             # Path of a folder in which the metrics are saved
     aggregator_metric:
         upload: True
         save_path: ${output_dir}/${aggregator_metric_dir}  # Path of a folder in which the aggregated metrics are saved
@@ -19,11 +19,11 @@ publisher_callback:
     simulation:
         upload: False
         save_path: ${output_dir}/simulation_log             # Path of a folder in which the simulation output is saved
-        remote_path: ${experiment_name}/simulation_log             # Path of a folder in which the simulation output is saved
+        remote_path: ${job_name}/simulation_log             # Path of a folder in which the simulation output is saved
     runner_report:
         upload: True
         save_path: ${output_dir}/runner_report.parquet             # Path of a folder in which the simulation output is saved
-        remote_path: ${experiment_name}            # Path of a folder in which the simulation output is saved
+        remote_path: ${job_name}            # Path of a folder in which the simulation output is saved
     passed:
         upload: True
         save_path: ${output_dir}/validation-results/passed.txt             # Path of a folder in which the validation result is saved
@@ -39,4 +39,4 @@ publisher_callback:
     submission_logs:
         upload: True
         save_path: /tmp/submission.log            # Path of a folder in which the validation result is saved
-        remote_path: ${experiment_name}/submission.log            # Path of a folder in which the simulation output is saved
+        remote_path: ${job_name}/submission.log            # Path of a folder in which the simulation output is saved

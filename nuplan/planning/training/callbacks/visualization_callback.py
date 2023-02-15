@@ -109,7 +109,7 @@ class VisualizationCallback(pl.Callback):
         :param targets: tensor of model targets
         :param predictions: tensor of model predictions
         :param batch_idx: index of total batches to visualize
-        :param training_step: global trainign step
+        :param training_step: global training step
         :param prefix: prefix to add to the log tag
         """
         if 'trajectory' not in targets or 'trajectory' not in predictions:
@@ -117,7 +117,9 @@ class VisualizationCallback(pl.Callback):
 
         if 'raster' in features:
             image_batch = self._get_images_from_raster_features(features, targets, predictions)
-        elif 'vector_map' in features and 'agents' in features:
+        elif ('vector_map' in features or 'vector_set_map' in features) and (
+            'agents' in features or 'generic_agents' in features
+        ):
             image_batch = self._get_images_from_vector_features(features, targets, predictions)
         else:
             return
@@ -172,10 +174,12 @@ class VisualizationCallback(pl.Callback):
         :return: list of raster images
         """
         images = list()
+        vector_map_feature = 'vector_map' if 'vector_map' in features else 'vector_set_map'
+        agents_feature = 'agents' if 'agents' in features else 'generic_agents'
 
         for vector_map, agents, target_trajectory, predicted_trajectory in zip(
-            features['vector_map'].unpack(),
-            features['agents'].unpack(),
+            features[vector_map_feature].unpack(),
+            features[agents_feature].unpack(),
             targets['trajectory'].unpack(),
             predictions['trajectory'].unpack(),
         ):

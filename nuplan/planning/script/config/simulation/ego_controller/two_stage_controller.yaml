@@ -2,5 +2,5 @@ _target_: nuplan.planning.simulation.controller.two_stage_controller.TwoStageCon
 _convert_: 'all'
 
 defaults:
-  - tracker: ilqr_tracker
+  - tracker: lqr_tracker
   - motion_model: kinematic_bicycle_model

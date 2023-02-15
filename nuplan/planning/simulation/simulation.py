@@ -47,8 +47,13 @@ class Simulation:
         self._history = SimulationHistory(self._scenario.map_api, self._scenario.get_mission_goal())
 
         # Rolling window of past states
-        self._simulation_history_buffer_duration = simulation_history_buffer_duration
-        self._history_buffer_size = int(simulation_history_buffer_duration // self._scenario.database_interval + 1)
+        # We add self._scenario.database_interval to the buffer duration here to solve a numerical issue where
+        # the duration could be close to the set duration e.g set to 2s but gets 1.99s
+        self._simulation_history_buffer_duration = simulation_history_buffer_duration + self._scenario.database_interval
+
+        # The + 1 here is to account for duration. For example, 20 steps at 0.1s starting at 0s will have a duration
+        # of 1.9s. At 21 steps the duration will achieve the target 2s duration.
+        self._history_buffer_size = int(self._simulation_history_buffer_duration / self._scenario.database_interval) + 1
         self._history_buffer: Optional[SimulationHistoryBuffer] = None
 
         # Flag that keeps track whether simulation is still running
@@ -99,9 +104,6 @@ class Simulation:
 
         # Initialize observations
         self._observations.initialize()
-
-        # Initialize controller
-        self._ego_controller.initialize()
 
         # Add the current state into the history buffer
         self._history_buffer.append(self._ego_controller.get_state(), self._observations.get_observation())

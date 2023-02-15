@@ -160,7 +160,7 @@ class AngularInterpolator:
 
         self.interpolator = interp1d(states, _angular_states, axis=0)
 
-    def interpolate(self, sampled_state: float) -> npt.NDArray[np.float64]:
+    def interpolate(self, sampled_state: Union[float, List[float]]) -> npt.NDArray[np.float64]:
         """
         Interpolates a single state
         :param sampled_state: The state at which to perform interpolation

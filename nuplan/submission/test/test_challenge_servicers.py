@@ -2,6 +2,7 @@ import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call, patch
 
+from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
 from nuplan.submission.challenge_pb2 import PlannerInput as SerializedPlannerInput
 from nuplan.submission.challenge_pb2 import SimulationHistoryBuffer as SerializedHistoryBuffer
 from nuplan.submission.challenge_pb2 import SimulationIteration as SerializedSimulationIteration
@@ -14,50 +15,48 @@ class TestDetectionTracksChallengeServicer(TestCase):
     @patch("nuplan.submission.challenge_servicers.MapManager", return_value="map")
     def setUp(self, mock_map_manager: Mock) -> None:
         """Sets variables for testing"""
-        mock_planner = Mock(consume_batched_inputs=False)
+        mock_planner_cfg = {'planner1': Mock()}
 
-        self.servicer = DetectionTracksChallengeServicer(mock_planner, mock_map_manager)
+        self.servicer = DetectionTracksChallengeServicer(mock_planner_cfg, mock_map_manager)
 
     @patch("nuplan.submission.challenge_servicers.MapManager", return_value="map")
     def test_initialization(self, mock_map_manager: Mock) -> None:
         """Tests that the class is initialized as intended."""
-        mock_planner = Mock()
+        mock_planner_cfg = Mock()
 
-        mock_servicer = DetectionTracksChallengeServicer(mock_planner, mock_map_manager)
+        mock_servicer = DetectionTracksChallengeServicer(mock_planner_cfg, mock_map_manager)
 
-        self.assertEqual(mock_servicer.planner, mock_planner)
+        self.assertEqual(mock_servicer.planner, None)
+        self.assertEqual(mock_servicer._planner_config, mock_planner_cfg)
         self.assertEqual(mock_servicer.map_manager, mock_map_manager)
 
     @patch("nuplan.submission.challenge_servicers.MapManager")
     @patch("nuplan.submission.challenge_servicers.PlannerInitialization", autospec=True)
     @patch("nuplan.submission.challenge_servicers.se2_from_proto_se2")
+    @patch("nuplan.submission.challenge_servicers.build_planners")
     def test_InitializePlanner(
-        self, mock_s2_conversion: Mock, mock_planner_initialization: Mock, mock_map_manager: Mock
+        self, builder: Mock, mock_s2_conversion: Mock, mock_planner_initialization: Mock, mock_map_manager: Mock
     ) -> None:
         """Tests the client call to InitializePlanner."""
-        initialization_1 = Mock()
-        initialization_2 = Mock()
-        mock_input = Mock(planner_initializations=[initialization_1, initialization_2])
+        mock_input = Mock()
         mock_context = Mock()
         mock_map_api = Mock()
         mock_planner_initialization.return_value = "planner_initialization"
         mock_map_manager.return_value = mock_map_api
+        builder.return_value = [Mock()]
 
         self.servicer.InitializePlanner(mock_input, mock_context)
 
         calls = [
-            call(initialization_1.mission_goal),
-            call(initialization_2.mission_goal),
+            call(mock_input.mission_goal),
         ]
         mock_s2_conversion.assert_has_calls(calls)
         map_calls = [
-            call(initialization_1.map_name),
-            call().initialize_all_layers(),
-            call(initialization_2.map_name),
+            call(mock_input.map_name),
             call().initialize_all_layers(),
         ]
         self.servicer.map_manager.get_map.assert_has_calls(map_calls)
-        self.servicer.planner.initialize.assert_called_once_with(["planner_initialization"] * 2)
+        self.servicer.planner.initialize.assert_called_once_with("planner_initialization")
 
     def test_ComputeTrajectory_uninitialized(self) -> None:
         """Tests the client call to ComputeTrajectory fails if the planner wasn't initialized."""
@@ -66,13 +65,14 @@ class TestDetectionTracksChallengeServicer(TestCase):
             self.servicer.ComputeTrajectory(Mock(), Mock())
 
     @patch("nuplan.submission.challenge_servicers.proto_traj_from_inter_traj")
-    @patch("nuplan.submission.challenge_servicers.chpb.MultiTrajectory")
-    def test_ComputeTrajectory(self, multi_trajectory_mock: Mock, proto_traj_from_inter_traj: Mock) -> None:
-        """Tests the client call to ComputeTrajectory fails if the planner wasn't initialized."""
+    def test_ComputeTrajectory(self, proto_traj_from_inter_traj: Mock) -> None:
+        """Tests the client call to ComputeTrajectory."""
         # Call setup
         mock_context = Mock()
-        self.servicer.planner.compute_trajectory.return_value = ["trajectory"]
-        self.servicer.simulation_history_buffers = ["buffer_1"]
+        self.servicer.planner = Mock(spec=AbstractPlanner)
+        self.servicer.planner.compute_trajectory.return_value = "trajectory"
+        self.servicer.simulation_history_buffer = "buffer_1"
+        self.servicer._initialized = True
 
         history_buffer = MagicMock(ego_states=["ego_state_1"], observations=["observation_1"])
         simulation_iteration = MagicMock(time_us=123, index=234)
@@ -80,16 +80,15 @@ class TestDetectionTracksChallengeServicer(TestCase):
             simulation_history_buffer=history_buffer, simulation_iteration=simulation_iteration
         )
 
-        with patch.object(self.servicer, '_build_planner_inputs', autospec=True) as build_planner_inputs:
+        with patch.object(self.servicer, '_build_planner_input', autospec=True) as build_planner_input:
             # Function call
             result = self.servicer.ComputeTrajectory(mock_serialized_input, mock_context)
 
             # Post call checks
-            build_planner_inputs.assert_called_with(mock_serialized_input.planner_inputs)
-            self.servicer.planner.compute_trajectory.assert_called_with(build_planner_inputs.return_value)
-            proto_traj_from_inter_traj.assert_called_with(self.servicer.planner.compute_trajectory.return_value[0])
-            multi_trajectory_mock.assert_called_once_with(trajectories=[proto_traj_from_inter_traj.return_value])
-            self.assertEqual(multi_trajectory_mock.return_value, result)
+            build_planner_input.assert_called_with(mock_serialized_input, "buffer_1")
+            self.servicer.planner.compute_trajectory.assert_called_with(build_planner_input.return_value)
+            proto_traj_from_inter_traj.assert_called_with(self.servicer.planner.compute_trajectory.return_value)
+            self.assertEqual(proto_traj_from_inter_traj.return_value, result)
 
     @patch("nuplan.submission.challenge_servicers.SimulationIteration", autospec=True)
     @patch("nuplan.submission.challenge_servicers.TimePoint", autospec=True)
@@ -120,7 +119,7 @@ class TestDetectionTracksChallengeServicer(TestCase):
 
         with patch.object(self.servicer, '_extract_simulation_iteration', autospec=True) as extract_iteration:
             # Function call
-            result = self.servicer._build_planner_input(mock_message, buffer, 0)
+            result = self.servicer._build_planner_input(mock_message, buffer)
 
             # Post call checks
             extract_iteration.assert_called_with(mock_message)
@@ -146,7 +145,7 @@ class TestDetectionTracksChallengeServicer(TestCase):
         with patch.object(self.servicer, '_extract_simulation_iteration', autospec=True):
             # Function call
             self.servicer.simulation_history_buffers = [mock_serialized_buffer]
-            result = self.servicer._build_planner_input(mock_message, None, 0)
+            result = self.servicer._build_planner_input(mock_message, None)
 
             # Post call checks
             buffer.initialize_from_list.assert_called_once_with(
@@ -154,19 +153,6 @@ class TestDetectionTracksChallengeServicer(TestCase):
             )
 
             self.assertEqual(planner_input.return_value, result)
-
-    def test__build_planner_inputs(self) -> None:
-        """Tests that planner inputs are correctly built in batch"""
-        planner_inputs = [1, 2]
-        self.servicer.simulation_history_buffers = ["buffer_1", "buffer_2"]
-        calls = [call(1, "buffer_1", 0), call(2, "buffer_2", 1)]
-        with patch.object(self.servicer, '_build_planner_input', autospec=True) as build_planner_input:
-            build_planner_input.side_effect = ["planner_input_1", "planner_input_2"]
-
-            result = self.servicer._build_planner_inputs(planner_inputs)
-            build_planner_input.assert_has_calls(calls)
-
-            self.assertEqual(["planner_input_1", "planner_input_2"], result)
 
 
 if __name__ == '__main__':

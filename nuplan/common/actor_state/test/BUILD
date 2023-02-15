@@ -17,6 +17,8 @@ py_library(
         "//nuplan/common/actor_state:oriented_box",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects_types",
+        "//nuplan/common/actor_state:waypoint",
+        "//nuplan/planning/simulation/trajectory:predicted_trajectory",
     ],
 )
 

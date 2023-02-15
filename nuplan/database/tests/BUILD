@@ -25,6 +25,7 @@ py_test(
     name = "test_nuplan",
     size = "small",
     srcs = ["test_nuplan.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/database/nuplan_db_orm:nuplandb",
         "//nuplan/database/tests:nuplan_db_test_utils",

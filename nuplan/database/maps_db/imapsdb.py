@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Sequence
 
-from nuplan.common.utils.helpers import suppress_geopandas_warning
-from nuplan.database.maps_db.layer import MapLayer
+import geopandas as gpd
 
-suppress_geopandas_warning()
-import geopandas as gpd  # noqa: E402
+from nuplan.database.maps_db.layer import MapLayer
 
 
 class IMapsDB(ABC):

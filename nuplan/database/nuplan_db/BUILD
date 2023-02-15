@@ -32,6 +32,7 @@ py_library(
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/actor_state:waypoint",
         "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/utils:helpers",
         "//nuplan/database/utils/label:utils",
         requirement("pyquaternion"),
     ],

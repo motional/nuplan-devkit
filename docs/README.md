@@ -31,11 +31,14 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 ## Planning challenges
-#### The nuPlan Planning Competition has been postponed to January 2023.
+#### The nuPlan Planning Competition is live!
+#### The challenge will be presented as part of the [New Advances On Autonomous Driving](https://opendrivelab.com/event/cvpr23_ADworkshop) workshop at CVPR 2023
 #### The nuPlan Dataset v1.1 has been released. Please download the latest dataset from the nuPlan [page](https://www.nuscenes.org/nuplan#download).
 ______________________________________________________________________
 
 ## Changelog
+- February 15th 2023
+  * v1.1 Devkit: The official nuPlan Challenge Release. Optimized training caching, simulation improvements, shapely 2.0 update. 
 - Oct 13th 2022
   * v1.1 Dataset: Full nuPlan dataset - improved route plan, traffic light status, mission goal and more!
   * v1.0 Devkit: Update to nuplan-v1.1 dataset, metrics improvements, route plan fixes, documentation, IDMPlanner

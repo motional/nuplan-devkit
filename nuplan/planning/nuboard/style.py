@@ -35,6 +35,7 @@ base_tab_style: Dict[str, Any] = {
 
 simulation_tile_style: Dict[str, Any] = {
     "figure_sizes": (500, 500),
+    "render_figure_sizes": (1500, 1500),
     "figure_margins": [5, 40, 0, 30],
     "figure_title_text_font_size": "10pt",
     "video_button_margins": [5, 40, 5, 35],  # Top, right, bottom, left
@@ -70,6 +71,7 @@ simulation_map_layer_color: Dict[SemanticMapLayer, Any] = {
     SemanticMapLayer.INTERSECTION: {"fill_color": "#7C8691", "fill_color_alpha": 0.5, "line_color": "#2d3ea7"},
     SemanticMapLayer.STOP_LINE: {"fill_color": "#FF0101", "fill_color_alpha": 0.5, "line_color": "#FF0101"},
     SemanticMapLayer.CROSSWALK: {"fill_color": "#B5B5B5", "fill_color_alpha": 0.3, "line_color": "#B5B5B5"},
+    SemanticMapLayer.ROADBLOCK: {"fill_color": "#0000C0", "fill_color_alpha": 0.2, "line_color": "#0000C0"},
     SemanticMapLayer.BASELINE_PATHS: {"line_color": "#CBCBCB", "line_color_alpha": 1.0},
     SemanticMapLayer.LANE_CONNECTOR: {"line_color": "#CBCBCB", "line_color_alpha": 1.0},
 }

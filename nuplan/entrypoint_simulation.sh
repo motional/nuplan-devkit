@@ -6,31 +6,21 @@ if [[ -z "${NUPLAN_PLANNER}" ]]; then
   export NUPLAN_PLANNER="[remote_planner]"
 fi
 
-mkdir ~/.aws
-touch ~/.aws/credentials
-cat << EOF > ~/.aws/credentials
-[default]
-aws_access_key_id=$AWS_ACCESS_KEY_ID
-aws_secret_access_key=$AWS_SECRET_ACCESS_KEY
-[nuplan]
-aws_access_key_id=$NUPLAN_SERVER_AWS_ACCESS_KEY_ID
-aws_secret_access_key=$NUPLAN_SERVER_AWS_SECRET_ACCESS_KEY
-EOF
 
 if [[ -n "${SCENARIO_FILTER_ID}" ]]; then
   # Override for API submission
   export CONTESTANT_ID="${APPLICANT_ID}"
 
-  [ -d "/mnt/data" ] && cp -r /mnt/data/nuplan-v1.0/maps/* "${NUPLAN_MAPS_ROOT}"
+  [ -d "/mnt/data" ] && cp -r /mnt/data/nuplan-v1.1/maps/* "${NUPLAN_MAPS_ROOT}"
 
   NUPLAN_CHALLENGE=`echo $NUPLAN_CHALLENGE | sed 's/\(.*\)_.*/\1/'`
 
-  aws --profile nuplan s3 cp s3://"${NUPLAN_SERVER_S3_ROOT_URL}"/"${CONTESTANT_ID}"/"${SUBMISSION_ID}"/submission_metadata.json /tmp/submission_metadata.json
+  aws s3 cp s3://"${NUPLAN_SERVER_S3_ROOT_URL}"/"${CONTESTANT_ID}"/"${SUBMISSION_ID}"/submission_metadata.json /tmp/submission_metadata.json
   PHASE_NAME=`cat /tmp/submission_metadata.json | grep phase_name | sed 's/.*: "\(.*\)".*/\1/'`
   PHASE_SPLIT=`cat /tmp/submission_metadata.json | grep phase_split | sed 's/.*: "\(.*\).*"/\1/'`
 
-  aws --profile nuplan s3 cp s3://"${NUPLAN_SERVER_S3_ROOT_URL}"/"${S3_TOKEN_DIR}"/"${PHASE_NAME}"_scenarios/"${PHASE_NAME}"_tokens_"${SCENARIO_FILTER_ID}".txt /nuplan_devkit/
-  aws --profile nuplan s3 cp s3://"${NUPLAN_SERVER_S3_ROOT_URL}"/"${S3_TOKEN_DIR}"/"${PHASE_NAME}"_scenarios/"${PHASE_NAME}"_logs_"${SCENARIO_FILTER_ID}".txt /nuplan_devkit/
+  aws s3 cp s3://"${NUPLAN_SERVER_S3_ROOT_URL}"/"${S3_TOKEN_DIR}"/"${PHASE_NAME}"_scenarios/"${PHASE_NAME}"_tokens_"${SCENARIO_FILTER_ID}".txt /nuplan_devkit/
+  aws s3 cp s3://"${NUPLAN_SERVER_S3_ROOT_URL}"/"${S3_TOKEN_DIR}"/"${PHASE_NAME}"_scenarios/"${PHASE_NAME}"_logs_"${SCENARIO_FILTER_ID}".txt /nuplan_devkit/
   while IFS= read -r line; do tokens+="\"$line\","; done < /nuplan_devkit/"${PHASE_NAME}"_tokens_"${SCENARIO_FILTER_ID}".txt
   tokens=$(echo $tokens | sed 's/\(.*\),/\1/')
   while IFS= read -r line; do logs+="${NUPLAN_DATA_ROOT_S3_URL}/splits/${PHASE_SPLIT}/$line.db,"; done < /nuplan_devkit/"${PHASE_NAME}"_logs_"${SCENARIO_FILTER_ID}".txt

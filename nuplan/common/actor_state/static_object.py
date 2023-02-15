@@ -19,4 +19,5 @@ class StaticObject(SceneObject):
 
         # TODO: these fields can be removed once we check how they are accessed
         self.predictions = None
+        self.past_trajectory = None
         self.velocity = StateVector2D(0.0, 0.0)

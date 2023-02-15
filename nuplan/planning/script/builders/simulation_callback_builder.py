@@ -28,11 +28,11 @@ def build_callbacks_worker(cfg: DictConfig) -> Optional[WorkerPool]:
     if not is_target_type(cfg.worker, Sequential) or cfg.disable_callback_parallelization:
         return None
 
-    if cfg.number_of_cpus_used_for_one_simulation not in [None, 1]:
-        raise ValueError("Expected `number_of_cpus_used_for_one_simulation` to be set to 1 with Sequential worker.")
+    if cfg.number_of_cpus_allocated_per_simulation not in [None, 1]:
+        raise ValueError("Expected `number_of_cpus_allocated_per_simulation` to be set to 1 with Sequential worker.")
 
     max_workers = min(
-        WorkerResources.current_node_cpu_count() - (cfg.number_of_cpus_used_for_one_simulation or 1),
+        WorkerResources.current_node_cpu_count() - (cfg.number_of_cpus_allocated_per_simulation or 1),
         cfg.max_callback_workers,
     )
     callbacks_worker_pool = SingleMachineParallelExecutor(use_process_pool=True, max_workers=max_workers)
@@ -58,7 +58,6 @@ def build_simulation_callbacks(
             tensorboard = torch.utils.tensorboard.SummaryWriter(log_dir=output_dir)
             callback = instantiate(config, writer=tensorboard)
         elif is_target_type(config, SimulationLogCallback) or is_target_type(config, MetricCallback):
-            # TODO PAC-3470: Have a property on each class that says whether or not it is stateful
             # SimulationLogCallback and MetricCallback store state (futures) from each runner, so they are initialized
             # in the simulation builder
             continue

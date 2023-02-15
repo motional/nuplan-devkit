@@ -266,7 +266,7 @@ class TestBox3D(unittest.TestCase):
 
         box_orig = Box3D.make_random()
         box_copy = box_orig.copy()
-        box_orig.payload = 'testing'
+        box_orig.payload = {'abc': 'def'}
         self.assertNotEqual(box_orig, box_copy)
 
     def test_translate(self) -> None:

@@ -1,5 +1,5 @@
 # @package _global_
-experiment_name: remote_closed_loop_nonreactive_agents
+job_name: remote_closed_loop_nonreactive_agents
 
 defaults:
   - override /observation: box_observation

@@ -16,6 +16,7 @@ from nuplan.common.actor_state.tracked_objects_types import AGENT_TYPES, Tracked
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType, Transform
+from nuplan.common.utils.helpers import get_unique_incremental_track_id
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
 from nuplan.database.nuplan_db.query_session import execute_many, execute_one
 from nuplan.database.utils.label.utils import local2agent_type, raw_mapping
@@ -45,7 +46,7 @@ def _parse_tracked_object_row(row: sqlite3.Row) -> TrackedObject:
             metadata=SceneObjectMetadata(
                 token=row["token"].hex(),
                 track_token=row["track_token"].hex(),
-                track_id=None,
+                track_id=get_unique_incremental_track_id(str(row["track_token"].hex())),
                 timestamp_us=row["timestamp"],
                 category_name=category_name,
             ),
@@ -57,7 +58,7 @@ def _parse_tracked_object_row(row: sqlite3.Row) -> TrackedObject:
             metadata=SceneObjectMetadata(
                 token=row["token"].hex(),
                 track_token=row["track_token"].hex(),
-                track_id=None,
+                track_id=get_unique_incremental_track_id(str(row["track_token"].hex())),
                 timestamp_us=row["timestamp"],
                 category_name=category_name,
             ),
@@ -114,7 +115,7 @@ def get_lidarpc_token_timestamp_from_db(log_file: str, token: str) -> Optional[i
     Get the timestamp associated with an individual lidar_pc token.
     :param log_file: The db file to query.
     :param token: The token for which to grab the timestamp.
-    :return: The timestamp associated with the token. Returns -1 if token is not found.
+    :return: The timestamp associated with the token, if found.
     """
     query = """
     SELECT timestamp

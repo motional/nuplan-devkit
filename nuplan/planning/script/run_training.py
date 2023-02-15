@@ -10,6 +10,7 @@ from nuplan.planning.script.builders.folder_builder import build_training_experi
 from nuplan.planning.script.builders.logging_builder import build_logger
 from nuplan.planning.script.builders.utils.utils_config import update_config_for_training
 from nuplan.planning.script.builders.worker_pool_builder import build_worker
+from nuplan.planning.script.profiler_context_manager import ProfilerContextManager
 from nuplan.planning.script.utils import set_default_path
 from nuplan.planning.training.experiments.caching import cache_data
 from nuplan.planning.training.experiments.training import TrainingEngine, build_training_engine
@@ -54,23 +55,29 @@ def main(cfg: DictConfig) -> Optional[TrainingEngine]:
 
     if cfg.py_func == 'train':
         # Build training engine
-        engine = build_training_engine(cfg, worker)
+        with ProfilerContextManager(cfg.output_dir, cfg.enable_profiling, "build_training_engine"):
+            engine = build_training_engine(cfg, worker)
 
         # Run training
         logger.info('Starting training...')
-        engine.trainer.fit(model=engine.model, datamodule=engine.datamodule)
+        with ProfilerContextManager(cfg.output_dir, cfg.enable_profiling, "training"):
+            engine.trainer.fit(model=engine.model, datamodule=engine.datamodule)
         return engine
     elif cfg.py_func == 'test':
         # Build training engine
-        engine = build_training_engine(cfg, worker)
+        with ProfilerContextManager(cfg.output_dir, cfg.enable_profiling, "build_training_engine"):
+            engine = build_training_engine(cfg, worker)
 
         # Test model
         logger.info('Starting testing...')
-        engine.trainer.test(model=engine.model, datamodule=engine.datamodule)
+        with ProfilerContextManager(cfg.output_dir, cfg.enable_profiling, "testing"):
+            engine.trainer.test(model=engine.model, datamodule=engine.datamodule)
         return engine
     elif cfg.py_func == 'cache':
         # Precompute and cache all features
-        cache_data(cfg=cfg, worker=worker)
+        logger.info('Starting caching...')
+        with ProfilerContextManager(cfg.output_dir, cfg.enable_profiling, "caching"):
+            cache_data(cfg=cfg, worker=worker)
         return None
     else:
         raise NameError(f'Function {cfg.py_func} does not exist')

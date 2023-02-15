@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import numpy as np
 import torch
@@ -227,7 +227,37 @@ class GenericAgents(AbstractModelFeature):
         self._validate_agent_query(agent_type, sample_idx)
         return self.num_agents_in_sample(agent_type, sample_idx) > 0
 
-    def get_flatten_agents_features_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+    def agent_processing_by_type(
+        self, processing_function: Callable[[str, int], FeatureDataType], sample_idx: int
+    ) -> FeatureDataType:
+        """
+        Apply agent processing functions across all agent types in features for given batch sample.
+        :param processing_function: function to apply across agent types
+        :param sample_idx: the batch index of interest.
+        :return Processed agent feature across agent types.
+        """
+        agents: List[FeatureDataType] = []
+        for agent_type in self.agents.keys():
+            if self.has_agents(agent_type, sample_idx):
+                agents.append(processing_function(agent_type, sample_idx))
+        if len(agents) == 0:
+            if isinstance(self.ego[sample_idx], torch.Tensor):
+                return torch.empty(
+                    (0, len(self.agents.keys()) * self.num_frames * GenericAgentFeatureIndex.dim()),
+                    dtype=self.ego[sample_idx].dtype,
+                    device=self.ego[sample_idx].device,
+                )
+            else:
+                return np.empty(
+                    (0, len(self.agents.keys()) * self.num_frames * GenericAgentFeatureIndex.dim()),
+                    dtype=self.ego[sample_idx].dtype,
+                )
+        elif isinstance(agents[0], torch.Tensor):
+            return torch.cat(agents, dim=0)
+        else:
+            return np.concatenate(agents, axis=0)
+
+    def get_flatten_agents_features_by_type_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
         """
         Flatten agents' features of specified type by stacking the agents' states along the num_frame dimension
         <np.ndarray: num_frames, num_agents, 8>] -> <np.ndarray: num_agents, num_frames x 8>].
@@ -254,6 +284,16 @@ class GenericAgents(AbstractModelFeature):
         axes = (1, 0) if isinstance(data, torch.Tensor) else (1, 0, 2)
         return data.transpose(*axes).reshape(data.shape[1], -1)
 
+    def get_flatten_agents_features_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Flatten agents' features of all types by stacking the agents' states along the num_frame dimension
+        <np.ndarray: num_frames, num_agents, 8>] -> <np.ndarray: num_agents, num_frames x 8>].
+
+        :param sample_idx: the batch index of interest.
+        :return: <FeatureDataType: num_types, num_agents, num_frames x 8>] agent feature.
+        """
+        return self.agent_processing_by_type(self.get_flatten_agents_features_by_type_in_sample, sample_idx)
+
     def get_present_ego_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
         Return the present ego in the given sample index.
@@ -263,7 +303,7 @@ class GenericAgents(AbstractModelFeature):
         self._validate_ego_query(sample_idx)
         return self.ego[sample_idx][-1]
 
-    def get_present_agents_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+    def get_present_agents_by_type_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
         """
         Return the present agents of specified type in the given sample index.
         :param agent_type: agent feature type.
@@ -276,6 +316,15 @@ class GenericAgents(AbstractModelFeature):
             raise RuntimeError("Feature is empty!")
         return self.agents[agent_type][sample_idx][-1]
 
+    def get_present_agents_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Return the present agents of all types in the given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: <FeatureDataType: num_types, num_agents, 8>. all agents at sample index.
+        :raise RuntimeError if feature at given sample index is empty.
+        """
+        return self.agent_processing_by_type(self.get_present_agents_by_type_in_sample, sample_idx)
+
     def get_ego_agents_center_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
         Return ego center in the given sample index.
@@ -285,7 +334,7 @@ class GenericAgents(AbstractModelFeature):
         self._validate_ego_query(sample_idx)
         return self.get_present_ego_in_sample(sample_idx)[: GenericEgoFeatureIndex.y() + 1]
 
-    def get_agents_centers_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+    def get_agents_centers_by_type_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
         """
         Returns all agents of specified type's centers in the given sample index.
         :param agent_type: agent feature type.
@@ -296,11 +345,21 @@ class GenericAgents(AbstractModelFeature):
         self._validate_agent_query(agent_type, sample_idx)
         if self.agents[agent_type][sample_idx].size == 0:
             raise RuntimeError("Feature is empty!")
-        return self.get_present_agents_in_sample(agent_type, sample_idx)[:, : GenericAgentFeatureIndex.y() + 1]
+        return self.get_present_agents_by_type_in_sample(agent_type, sample_idx)[:, : GenericAgentFeatureIndex.y() + 1]
 
-    def get_agents_length_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+    def get_agents_centers_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
-        Returns all agents of specified type's length the given sample index.
+        Returns all agents of all types' centers in the given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: <FeatureDataType: num_types, num_agents, 2>.
+            (x, y) positions of the agents' centers at the sample index.
+        :raise RuntimeError if feature at given sample index is empty.
+        """
+        return self.agent_processing_by_type(self.get_agents_centers_by_type_in_sample, sample_idx)
+
+    def get_agents_length_by_type_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents of specified type's length at the given sample index.
         :param agent_type: agent feature type.
         :param sample_idx: the batch index of interest.
         :return: <FeatureDataType: num_agents>. lengths of all the agents at the sample index.
@@ -309,11 +368,20 @@ class GenericAgents(AbstractModelFeature):
         self._validate_agent_query(agent_type, sample_idx)
         if self.agents[agent_type][sample_idx].size == 0:
             raise RuntimeError("Feature is empty!")
-        return self.get_present_agents_in_sample(agent_type, sample_idx)[:, GenericAgentFeatureIndex.length()]
+        return self.get_present_agents_by_type_in_sample(agent_type, sample_idx)[:, GenericAgentFeatureIndex.length()]
 
-    def get_agents_width_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+    def get_agents_length_in_sample(self, sample_idx: int) -> FeatureDataType:
         """
-        Returns all agents of specifid type's width in the given sample index.
+        Returns all agents of all types' length at the given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: <FeatureDataType: num_types, num_agents>. lengths of all the agents at the sample index.
+        :raise RuntimeError if feature at given sample index is empty.
+        """
+        return self.agent_processing_by_type(self.get_agents_length_by_type_in_sample, sample_idx)
+
+    def get_agents_width_by_type_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents of specified type's width in the given sample index.
         :param agent_type: agent feature type.
         :param sample_idx: the batch index of interest.
         :return: <FeatureDataType: num_agents>. width of all the agents at the sample index.
@@ -322,9 +390,18 @@ class GenericAgents(AbstractModelFeature):
         self._validate_agent_query(agent_type, sample_idx)
         if self.agents[agent_type][sample_idx].size == 0:
             raise RuntimeError("Feature is empty!")
-        return self.get_present_agents_in_sample(agent_type, sample_idx)[:, GenericAgentFeatureIndex.width()]
+        return self.get_present_agents_by_type_in_sample(agent_type, sample_idx)[:, GenericAgentFeatureIndex.width()]
 
-    def get_agent_corners_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
+    def get_agents_width_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents of all types' width in the given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: <FeatureDataType: num_types, num_agents>. width of all the agents at the sample index.
+        :raise RuntimeError if feature at given sample index is empty
+        """
+        return self.agent_processing_by_type(self.get_agents_width_by_type_in_sample, sample_idx)
+
+    def get_agent_corners_by_type_in_sample(self, agent_type: str, sample_idx: int) -> FeatureDataType:
         """
         Returns all agents of specified type's corners in the given sample index.
         :param agent_type: agent feature type.
@@ -335,8 +412,8 @@ class GenericAgents(AbstractModelFeature):
         self._validate_agent_query(agent_type, sample_idx)
         if self.agents[agent_type][sample_idx].size == 0:
             raise RuntimeError("Feature is empty!")
-        widths = self.get_agents_width_in_sample(agent_type, sample_idx)
-        lengths = self.get_agents_length_in_sample(agent_type, sample_idx)
+        widths = self.get_agents_width_by_type_in_sample(agent_type, sample_idx)
+        lengths = self.get_agents_length_by_type_in_sample(agent_type, sample_idx)
 
         half_widths = widths / 2.0
         half_lengths = lengths / 2.0
@@ -354,6 +431,16 @@ class GenericAgents(AbstractModelFeature):
                 for half_width, half_length in zip(half_widths, half_lengths)
             ]
         )
+
+    def get_agent_corners_in_sample(self, sample_idx: int) -> FeatureDataType:
+        """
+        Returns all agents of all types' corners in the given sample index.
+        :param sample_idx: the batch index of interest.
+        :return: <FeatureDataType: num_types, num_agents, 4, 3>.
+            (x, y, 1) positions of all the agents' corners at the sample index.
+        :raise RuntimeError if feature at given sample index is empty.
+        """
+        return self.agent_processing_by_type(self.get_agent_corners_by_type_in_sample, sample_idx)
 
 
 class GenericEgoFeatureIndex:

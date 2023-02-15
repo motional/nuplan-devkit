@@ -1,7 +1,7 @@
 import unittest
 
 from nuplan.planning.metrics.evaluation_metrics.base.violation_metric_base import ViolationMetricBase
-from nuplan.planning.metrics.metric_result import MetricStatisticsType, MetricViolation
+from nuplan.planning.metrics.metric_result import MetricViolation
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 
 
@@ -53,9 +53,10 @@ class TestViolationMetricBase(unittest.TestCase):
         self.assertEqual(aggregated_metrics.metric_category, self.violation_metric_base.category)
 
         statistics = aggregated_metrics.statistics
-        self.assertAlmostEqual(123.23, statistics[MetricStatisticsType.MAX].value, 2)
-        self.assertEqual(len(self.violation_metric_1), statistics[MetricStatisticsType.COUNT].value)
-        self.assertAlmostEqual(13.357, statistics[MetricStatisticsType.MEAN].value, 3)
+        self.assertEqual(len(self.violation_metric_1), statistics[0].value)
+        self.assertAlmostEqual(statistics[1].value, 123.23, 2)
+        self.assertAlmostEqual(statistics[2].value, 12.23, 3)
+        self.assertAlmostEqual(statistics[3].value, 13.357, 3)
 
     def test_failure_on_mixed_metrics(self) -> None:
         """Checks that the aggregation fails when called on MetricViolations from different metrics."""
@@ -67,7 +68,8 @@ class TestViolationMetricBase(unittest.TestCase):
     def test_empty_statistics_on_empty_violations(self) -> None:
         """Checks that for an empty list of MetricViolations we get a MetricStatistics with zero violations."""
         empty_statistics = self.violation_metric_base.aggregate_metric_violations([], self.mock_abstract_scenario)[0]
-        assert empty_statistics.statistics[MetricStatisticsType.COUNT].value == 0
+        # Always true for zero violation
+        self.assertTrue(empty_statistics.statistics[0].value)
 
 
 if __name__ == '__main__':

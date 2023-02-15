@@ -94,7 +94,7 @@ class PlannerExpertAverageL2ErrorStatistics(MetricBase):
             future_horizon_frame = int(curr_frame + max(self.comparison_horizon))
             # Interpolate planner proposed trajectory at the same timepoints where expert states are available
             planner_interpolated_traj = list(
-                curr_ego_planned_traj.get_state_at_time(TimePoint(timestamp))
+                curr_ego_planned_traj.get_state_at_time(TimePoint(int(timestamp)))
                 for timestamp in expert_timestamps_sampled[curr_frame : future_horizon_frame + 1]
                 if timestamp <= curr_ego_planned_traj.end_time.time_us
             )

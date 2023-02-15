@@ -17,7 +17,6 @@ class TestRunSequentialWorker(SkeletonTestSimulation):
             cfg = compose(
                 config_name=CONFIG_NAME,
                 overrides=[
-                    self.search_path,
                     *self.default_overrides,
                     'worker=sequential',
                     """selected_simulation_metrics='[ego_acceleration_statistics, ego_jerk_statistics]'""",

@@ -25,6 +25,7 @@ py_test(
     name = "test_raster_building",
     size = "medium",
     srcs = ["test_raster_building.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder:scenario_filter",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
@@ -39,6 +40,16 @@ py_test(
     size = "medium",
     srcs = ["test_trajectory.py"],
     deps = [
+        "//nuplan/planning/training/preprocessing/features:trajectory",
+    ],
+)
+
+py_test(
+    name = "test_trajectories",
+    size = "medium",
+    srcs = ["test_trajectories.py"],
+    deps = [
+        "//nuplan/planning/training/preprocessing/features:trajectories",
         "//nuplan/planning/training/preprocessing/features:trajectory",
     ],
 )

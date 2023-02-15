@@ -50,6 +50,7 @@ class EgoLatAccelerationStatistics(WithinBoundMetricBase):
             statistic_unit_name='meters_per_second_squared',
             extract_function=extract_ego_acceleration,
             extract_function_params={'acceleration_coordinate': 'y'},
+            min_within_bound_threshold=-self._max_abs_lat_accel,
             max_within_bound_threshold=self._max_abs_lat_accel,
         )
         return metric_statistics

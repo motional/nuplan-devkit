@@ -3,11 +3,13 @@ import unittest
 
 import torch
 
-from nuplan.planning.training.preprocessing.utils.torch_geometry import (
+from nuplan.common.geometry.torch_geometry import (
     coordinates_to_local_frame,
     global_state_se2_tensor_to_local,
     state_se2_tensor_to_transform_matrix,
+    state_se2_tensor_to_transform_matrix_batch,
     transform_matrix_to_state_se2_tensor,
+    transform_matrix_to_state_se2_tensor_batch,
     vector_set_coordinates_to_local_frame,
 )
 
@@ -51,6 +53,51 @@ class TestTorchGeometry(unittest.TestCase):
         scripted = torch.jit.script(to_script)
 
         test_input = torch.tensor([1, 2, 3], dtype=torch.float32)
+
+        py_result = to_script.forward(test_input)
+        script_result = scripted.forward(test_input)
+
+        torch.testing.assert_allclose(py_result, script_result)
+
+    def test_transform_matrix_batch_conversion_functionality(self) -> None:
+        """
+        Test the numerical accuracy of the transform matrix conversion utilities.
+        """
+        initial_state = torch.tensor([[5, 6, math.pi / 2]], dtype=torch.float32)
+
+        expected_xform_matrix = torch.tensor([[[0, -1, 5], [1, 0, 6], [0, 0, 1]]], dtype=torch.float32)
+
+        xform_matrix = state_se2_tensor_to_transform_matrix_batch(initial_state, precision=torch.float32)
+
+        torch.testing.assert_allclose(expected_xform_matrix, xform_matrix)
+
+        reverted = transform_matrix_to_state_se2_tensor_batch(xform_matrix)
+
+        torch.testing.assert_allclose(initial_state, reverted)
+
+        with self.assertRaises(ValueError):
+            # We only accept Nx3x3, not 3x3 tensors.
+            misshaped_tensor = torch.tensor([1, 2, 3], dtype=torch.float32)
+            state_se2_tensor_to_transform_matrix_batch(misshaped_tensor)
+
+    def test_transform_matrix_batch_scriptability(self) -> None:
+        """
+        Tests that the transform matrix conversion utilities script properly.
+        """
+
+        class tmp_module(torch.nn.Module):
+            def __init__(self) -> None:
+                super().__init__()
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                xform = state_se2_tensor_to_transform_matrix_batch(x)
+                result = transform_matrix_to_state_se2_tensor_batch(xform)
+                return result
+
+        to_script = tmp_module()
+        scripted = torch.jit.script(to_script)
+
+        test_input = torch.tensor([[1, 2, 3]], dtype=torch.float32)
 
         py_result = to_script.forward(test_input)
         script_result = scripted.forward(test_input)

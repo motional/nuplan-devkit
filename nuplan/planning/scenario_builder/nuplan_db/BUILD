@@ -39,7 +39,6 @@ py_library(
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/scenario_builder:abstract_scenario_builder",
         "//nuplan/planning/scenario_builder:scenario_filter",
-        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/utils/multithreading:worker_utils",
         requirement("pyogrio"),
     ],
@@ -54,8 +53,8 @@ py_library(
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/utils:s3_utils",
         "//nuplan/database/nuplan_db:nuplan_scenario_queries",
-        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
         "//nuplan/planning/utils/multithreading:worker_utils",
+        requirement("numpy"),
     ],
 )
 

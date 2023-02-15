@@ -2,13 +2,18 @@ import unittest
 from typing import Any, Callable, Dict, List
 from unittest.mock import Mock, patch
 
+from nuplan.common.actor_state.state_representation import StateVector2D
 from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
+    filter_ego_starts,
+    filter_ego_stops,
+    filter_non_stationary_ego,
     filter_scenarios_by_timestamp,
     filter_total_num_scenarios,
 )
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import DEFAULT_SCENARIO_NAME
+from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool
 
 
@@ -265,6 +270,47 @@ class TestNuPlanScenarioFilterUtils(unittest.TestCase):
                 len(final_scenario_dict['lane_following_without_lead']),
                 len(mock_nuplan_scenario_dict['lane_following_without_lead']) - 1,
             )
+
+    def test_filter_non_stationary_ego(self) -> None:
+        """Test filter_non_stationary_ego with 0.5m displacement threshold"""
+        stationary_ego_pudo_scenario = MockAbstractScenario(initial_velocity=StateVector2D(x=0.01, y=0.0))
+        mobile_ego_pudo_scenario = MockAbstractScenario()
+        scenario_dict = {"on_pickup_dropoff": [stationary_ego_pudo_scenario, mobile_ego_pudo_scenario]}
+        filtered_scenario_dict = filter_non_stationary_ego(scenario_dict, minimum_threshold=0.5)
+        self.assertEqual(filtered_scenario_dict["on_pickup_dropoff"], [mobile_ego_pudo_scenario])
+
+    def test_filter_ego_starts(self) -> None:
+        """Test filter_ego_starts with 0.1 m/s speed threshold"""
+        slow_acceleration_scenario = MockAbstractScenario(
+            initial_velocity=StateVector2D(x=0.0, y=0.0), fixed_acceleration=StateVector2D(x=0.01, y=0.0), time_step=1
+        )
+        fast_acceleration_scenario = MockAbstractScenario(
+            initial_velocity=StateVector2D(x=0.0, y=0.0), fixed_acceleration=StateVector2D(x=1, y=0.0), time_step=1
+        )
+        scenario_dict = {"on_pickup_dropoff": [slow_acceleration_scenario, fast_acceleration_scenario]}
+        filtered_scenario_dict = filter_ego_starts(scenario_dict, speed_threshold=0.1, speed_noise_tolerance=0.1)
+        self.assertEqual(filtered_scenario_dict["on_pickup_dropoff"], [fast_acceleration_scenario])
+
+    def test_filter_ego_stops(self) -> None:
+        """Test filter_ego_stops with 0.1 m/s speed threshold"""
+        slow_deceleration_scenario = MockAbstractScenario(
+            initial_velocity=StateVector2D(x=1.0, y=0.0), fixed_acceleration=StateVector2D(x=-0.01, y=0.0), time_step=1
+        )
+        fast_deceleration_scenario = MockAbstractScenario(
+            initial_velocity=StateVector2D(x=1.0, y=0.0), fixed_acceleration=StateVector2D(x=-1 / 9, y=0.0), time_step=1
+        )
+        scenario_dict = {"on_pickup_dropoff": [slow_deceleration_scenario, fast_deceleration_scenario]}
+        filtered_scenario_dict = filter_ego_stops(scenario_dict, speed_threshold=0.1, speed_noise_tolerance=0.1)
+        self.assertEqual(filtered_scenario_dict["on_pickup_dropoff"], [fast_deceleration_scenario])
+
+    def test_ego_startstop_noise_tolerance(self) -> None:
+        """Test filter_ego_starts with ego barely crossing speed threshold and noise tolerance higher than threshold"""
+        fast_enough_acceleration_scenario = MockAbstractScenario(
+            initial_velocity=StateVector2D(x=0.0, y=0.0), fixed_acceleration=StateVector2D(x=0.11, y=0.0), time_step=1
+        )
+        scenario_dict = {"on_pickup_dropoff": [fast_enough_acceleration_scenario]}
+        filtered_scenario_dict = filter_ego_starts(scenario_dict, speed_threshold=1, speed_noise_tolerance=2)
+        self.assertEqual(filtered_scenario_dict["on_pickup_dropoff"], [])
 
 
 if __name__ == '__main__':

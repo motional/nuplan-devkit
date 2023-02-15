@@ -2,7 +2,7 @@ import logging
 import lzma
 import pathlib
 import pickle
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import msgpack
 import ujson as json
@@ -69,7 +69,7 @@ def _dump_to_file(file: pathlib.Path, scene_to_save: Any, serialization_type: st
 def convert_sample_to_scene(
     map_name: str,
     database_interval: float,
-    traffic_light_status: List[TrafficLightStatusData],
+    traffic_light_status: Generator[TrafficLightStatusData, None, None],
     mission_goal: Optional[StateSE2],
     expert_trajectory: List[EgoState],
     data: SimulationHistorySample,
@@ -217,12 +217,16 @@ class SerializationCallback(AbstractCallback):
         scenario_directory = self._get_scenario_folder(planner.name(), setup.scenario)
 
         scenario = setup.scenario
+
+        # Cache expert trajectory to prevent repeating the same query to the database
+        expert_trajectory = list(scenario.get_expert_ego_trajectory())
+
         scenes = [
             convert_sample_to_scene(
                 map_name=scenario.map_api.map_name,
                 database_interval=scenario.database_interval,
                 traffic_light_status=scenario.get_traffic_light_status_at_iteration(index),
-                expert_trajectory=scenario.get_expert_ego_trajectory(),
+                expert_trajectory=expert_trajectory,
                 mission_goal=scenario.get_mission_goal(),
                 data=sample,
                 colors=TrajectoryColors(),

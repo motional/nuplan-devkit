@@ -28,12 +28,12 @@ class Trajectories(AbstractModelFeature):
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> Trajectories:
         """Implemented. See interface."""
-        return Trajectories(trajectories=data["trajectories"])
+        return Trajectories(trajectories=[Trajectory.deserialize(trajectory) for trajectory in data["trajectories"]])
 
     @property
     def number_of_trajectories(self) -> int:
         """
-        :return: number of trajectories in this feature
+        :return: number of trajectories in this feature.
         """
         return len(self.trajectories)
 

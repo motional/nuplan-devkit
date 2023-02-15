@@ -6,6 +6,7 @@ py_test(
     name = "test_agents_imitation_objective",
     size = "small",
     srcs = ["test_agents_imitation_objective.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/training/modeling/objectives:agents_imitation_objective",
@@ -17,6 +18,7 @@ py_test(
     name = "test_trajectory_weight_decay_imitation_objective",
     size = "small",
     srcs = ["test_trajectory_weight_decay_imitation_objective.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",
@@ -29,6 +31,7 @@ py_test(
     name = "test_imitation_objective",
     size = "small",
     srcs = ["test_imitation_objective.py"],
+    tags = ["integration"],
     deps = [
         "//nuplan/planning/scenario_builder/cache:cached_scenario",
         "//nuplan/planning/training/data_loader:distributed_sampler_wrapper",

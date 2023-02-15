@@ -7,6 +7,7 @@ py_library(
     srcs = ["torch_module_wrapper.py"],
     deps = [
         "//nuplan/planning/simulation/trajectory:trajectory_sampling",
+        "//nuplan/planning/training/modeling:types",
         "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
         "//nuplan/planning/training/preprocessing/target_builders:abstract_target_builder",
     ],
