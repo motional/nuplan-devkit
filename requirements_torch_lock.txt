@@ -51,8 +51,8 @@ fsspec[http]==2022.5.0 \
     --hash=sha256:2c198c50eb541a80bbd03540b07602c4a957366f3fb416a1f270d34bd4ff0926 \
     --hash=sha256:7a5459c75c44e760fbe6a3ccb1f37e81e023cde7da8ba20401258d877ec483b4
     # via pytorch-lightning
-future==0.18.1 \
-    --hash=sha256:858e38522e8fd0d3ce8f0c1feaf0603358e366d5403209674c7b617fa0c24093
+future==0.18.3 \
+    --hash=sha256:34a17436ed1e96697a86f9de3d15a3b0be01d8bc8de9c1dffd59fb8234ed5307
     # via
     #   -r requirements_torch.txt
     #   pytorch-lightning
