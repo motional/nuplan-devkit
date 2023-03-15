@@ -4,6 +4,7 @@ x-nuplan-volumes: &x-nuplan-volumes
   volumes:
     - "$NUPLAN_DATA_ROOT:/data/sets/nuplan:rw"
     - "$NUPLAN_EXP_ROOT:/data/exp/nuplan:rw"
+    - "$NUPLAN_MAPS_ROOT:/data/sets/nuplan/maps:rw"
 
 
 x-nuplan-maps: &x-nuplan-maps
