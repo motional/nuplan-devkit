@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.simulation.main_callback.abstract_main_callback import AbstractMainCallback
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,8 @@ class CompletionCallback(AbstractMainCallback):
         :param path: The location where to create the file.
         :param filename: The name of the file to be created.
         """
-        path.mkdir(parents=True, exist_ok=True)
+        if not is_s3_path(path):
+            path.mkdir(parents=True, exist_ok=True)
         logger.info(f'Writing file {path/filename}')
         with (path / filename).open('w'):
             # Writes an empty file.

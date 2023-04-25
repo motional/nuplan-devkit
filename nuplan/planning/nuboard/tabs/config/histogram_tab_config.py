@@ -175,28 +175,26 @@ class HistogramTabFigureStyleConfig:
 class HistogramTabScenarioTypeMultiChoiceConfig:
     """Config for the histogram tab scenario type multi choice tag."""
 
-    option_limit: ClassVar[int] = 10
     name: ClassVar[str] = 'histogram_scenario_type_multi_choice'
     css_classes: ClassVar[List[str]] = ['scenario-type-multi-choice']
 
     @classmethod
     def get_config(cls) -> Dict[str, Any]:
         """Get configs as a dict."""
-        return {'option_limit': cls.option_limit, 'name': cls.name, 'css_classes': cls.css_classes}
+        return {'name': cls.name, 'css_classes': cls.css_classes}
 
 
 @dataclass(frozen=True)
 class HistogramTabMetricNameMultiChoiceConfig:
     """Config for the histogram tab metric name multi choice tag."""
 
-    option_limit: ClassVar[int] = 10
     name: ClassVar[str] = 'histogram_metric_name_multi_choice'
     css_classes: ClassVar[List[str]] = ['metric-name-multi-choice']
 
     @classmethod
     def get_config(cls) -> Dict[str, Any]:
         """Get configs as a dict."""
-        return {'option_limit': cls.option_limit, 'name': cls.name, 'css_classes': cls.css_classes}
+        return {'name': cls.name, 'css_classes': cls.css_classes}
 
 
 @dataclass(frozen=True)

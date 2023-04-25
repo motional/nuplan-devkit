@@ -1,6 +1,6 @@
 import unittest
 
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_db
+from nuplan.database.tests.test_utils_nuplan_db import get_test_nuplan_db
 
 
 class TestNuplan(unittest.TestCase):

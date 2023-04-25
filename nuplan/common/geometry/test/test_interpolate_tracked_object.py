@@ -3,7 +3,7 @@ from typing import Any, Dict
 import pytest
 
 from nuplan.common.geometry.interpolate_tracked_object import interpolate_tracks
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.utils.serialization.from_scene import from_scene_to_tracked_objects_with_predictions
 
 

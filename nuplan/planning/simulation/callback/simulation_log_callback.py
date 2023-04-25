@@ -3,6 +3,7 @@ import pathlib
 from concurrent.futures import Future
 from typing import List, Optional, Union
 
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
@@ -82,7 +83,9 @@ class SimulationLogCallback(AbstractCallback):
         :param planner: planner before initialization
         """
         scenario_directory = self._get_scenario_folder(planner.name(), setup.scenario)
-        scenario_directory.mkdir(exist_ok=True, parents=True)
+
+        if not is_s3_path(scenario_directory):
+            scenario_directory.mkdir(exist_ok=True, parents=True)
 
     def on_initialization_end(self, setup: SimulationSetup, planner: AbstractPlanner) -> None:
         """Inherited, see superclass."""
@@ -123,8 +126,7 @@ class SimulationLogCallback(AbstractCallback):
         scenario_directory = self._get_scenario_folder(planner.name(), setup.scenario)
 
         scenario = setup.scenario
-        file_name = scenario_directory / scenario.scenario_name
-        file_name = file_name.with_suffix(self._file_suffix)
+        file_name = scenario_directory / (scenario.scenario_name + self._file_suffix)
         if self._pool is not None:
             self._futures = []
             self._futures.append(

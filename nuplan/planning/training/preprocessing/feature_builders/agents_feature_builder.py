@@ -5,6 +5,7 @@ import torch
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import TimePoint
 from nuplan.common.actor_state.tracked_objects import TrackedObjects
+from nuplan.common.actor_state.tracked_objects_types import TrackedObjectType
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks
@@ -29,15 +30,22 @@ from nuplan.planning.training.preprocessing.utils.agents_preprocessing import (
 class AgentsFeatureBuilder(ScriptableFeatureBuilder):
     """Builder for constructing agent features during training and simulation."""
 
-    def __init__(self, trajectory_sampling: TrajectorySampling) -> None:
+    def __init__(
+        self, trajectory_sampling: TrajectorySampling, object_type: TrackedObjectType = TrackedObjectType.VEHICLE
+    ) -> None:
         """
         Initializes AgentsFeatureBuilder.
         :param trajectory_sampling: Parameters of the sampled trajectory of every agent
+        :param object_type: Type of agents (TrackedObjectType.VEHICLE, TrackedObjectType.PEDESTRIAN) set to TrackedObjectType.VEHICLE by default
         """
         super().__init__()
+        if object_type not in [TrackedObjectType.VEHICLE, TrackedObjectType.PEDESTRIAN]:
+            raise ValueError(
+                f"The model's been tested just for vehicles and pedestrians types, but the provided object_type is {object_type}."
+            )
         self.num_past_poses = trajectory_sampling.num_poses
         self.past_time_horizon = trajectory_sampling.time_horizon
-
+        self.object_type = object_type
         self._agents_states_dim = Agents.agents_states_dim()
 
     @torch.jit.unused
@@ -165,7 +173,9 @@ class AgentsFeatureBuilder(ScriptableFeatureBuilder):
         """
         past_ego_states_tensor = sampled_past_ego_states_to_tensor(past_ego_states)
         past_time_stamps_tensor = sampled_past_timestamps_to_tensor(past_time_stamps)
-        past_tracked_objects_tensor_list = sampled_tracked_objects_to_tensor_list(past_tracked_objects)
+        past_tracked_objects_tensor_list = sampled_tracked_objects_to_tensor_list(
+            past_tracked_objects=past_tracked_objects, object_type=self.object_type
+        )
 
         return (
             {

@@ -3,6 +3,8 @@ from typing import List, Union
 
 import mock
 
+from nuplan.common.utils.test_utils.interface_validation import assert_class_properly_implements_interface
+from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder import NuPlanScenarioBuilder
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
     GetScenariosFromDbFileParams,
@@ -48,6 +50,12 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
     Tests scenario filtering and construction functionality.
     """
 
+    def test_nuplan_scenario_builder_implements_abstract_scenario_builder(self) -> None:
+        """
+        Tests that the NuPlanScenarioBuilder implements the AbstractScenarioBuilder interface.
+        """
+        assert_class_properly_implements_interface(AbstractScenarioBuilder, NuPlanScenarioBuilder)
+
     def test_get_scenarios_no_filters(self) -> None:
         """
         Tests that the get_scenarios() method functions properly
@@ -61,6 +69,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             self.assertIsNone(params.filter_tokens)
             self.assertIsNone(params.filter_types)
             self.assertIsNone(params.filter_map_names)
+            self.assertFalse(params.include_cameras)
 
             m1 = MockNuPlanScenario(token="a", scenario_type="type1")
             m2 = MockNuPlanScenario(token="b", scenario_type="type1")
@@ -84,12 +93,14 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             scenario_builder = NuPlanScenarioBuilder(
                 data_root="foo",
                 map_root="bar",
+                sensor_root="qux",
                 db_files=None,
                 map_version="baz",
                 max_workers=None,
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
+                include_cameras=False,
             )
 
             scenario_filter = ScenarioFilter(
@@ -107,6 +118,8 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 ego_start_speed_threshold=None,
                 ego_stop_speed_threshold=None,
                 speed_noise_tolerance=None,
+                token_set_path=None,
+                fraction_in_token_set_threshold=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -129,6 +142,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             self.assertEqual(params.filter_tokens, ["a", "b", "c", "d", "e", "f"])
             self.assertEqual(params.filter_types, ["type1", "type2", "type3"])
             self.assertEqual(params.filter_map_names, ["map1", "map2"])
+            self.assertTrue(params.include_cameras)
 
             self.assertTrue(params.log_file_absolute_path in ["filename1", "filename2"])
 
@@ -154,12 +168,14 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             scenario_builder = NuPlanScenarioBuilder(
                 data_root="foo",
                 map_root="bar",
+                sensor_root="qux",
                 db_files=None,
                 map_version="baz",
                 max_workers=None,
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
+                include_cameras=True,
             )
 
             scenario_filter = ScenarioFilter(
@@ -177,6 +193,8 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 ego_start_speed_threshold=None,
                 ego_stop_speed_threshold=None,
                 speed_noise_tolerance=None,
+                token_set_path=None,
+                fraction_in_token_set_threshold=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -203,6 +221,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             self.assertEqual(params.filter_tokens, ["a", "b", "c", "d", "e", "f"])
             self.assertEqual(params.filter_types, ["type1", "type2", "type3"])
             self.assertEqual(params.filter_map_names, ["map1", "map2"])
+            self.assertEqual(params.include_cameras, False)
 
             self.assertTrue(params.log_file_absolute_path in ["filename1", "filename2"])
 
@@ -228,12 +247,14 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             scenario_builder = NuPlanScenarioBuilder(
                 data_root="foo",
                 map_root="bar",
+                sensor_root="qux",
                 db_files=None,
                 map_version="baz",
                 max_workers=None,
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
+                include_cameras=False,
             )
 
             scenario_filter = ScenarioFilter(
@@ -251,6 +272,8 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 ego_start_speed_threshold=None,
                 ego_stop_speed_threshold=None,
                 speed_noise_tolerance=None,
+                token_set_path=None,
+                fraction_in_token_set_threshold=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())
@@ -272,6 +295,7 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             self.assertEqual(params.filter_tokens, ["a", "b", "c", "d", "e", "f"])
             self.assertEqual(params.filter_types, ["type1", "type2", "type3"])
             self.assertEqual(params.filter_map_names, ["map1", "map2"])
+            self.assertFalse(params.include_cameras)
 
             self.assertTrue(params.log_file_absolute_path in ["filename1", "filename2"])
 
@@ -297,12 +321,14 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
             scenario_builder = NuPlanScenarioBuilder(
                 data_root="foo",
                 map_root="bar",
+                sensor_root="qux",
                 db_files=None,
                 map_version="baz",
                 max_workers=None,
                 verbose=False,
                 scenario_mapping=None,
                 vehicle_parameters=None,
+                include_cameras=False,
             )
 
             scenario_filter = ScenarioFilter(
@@ -320,6 +346,8 @@ class TestNuPlanScenarioBuilder(unittest.TestCase):
                 ego_start_speed_threshold=None,
                 ego_stop_speed_threshold=None,
                 speed_noise_tolerance=None,
+                token_set_path=None,
+                fraction_in_token_set_threshold=None,
             )
 
             result = scenario_builder.get_scenarios(scenario_filter, Sequential())

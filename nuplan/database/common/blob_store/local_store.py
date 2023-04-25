@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import os
+from pathlib import Path
 from typing import BinaryIO, Tuple, Type
 
 from nuplan.database.common.blob_store.blob_store import BlobStore, BlobStoreKeyNotFound
@@ -71,6 +72,11 @@ class LocalStore(BlobStore):
         :param key: Blob path or token.
         :param value: Data to save.
         """
-        path = os.path.join(self._root_dir, key)
+        if not os.access(self._root_dir, os.W_OK):
+            raise RuntimeError(f"No write access to {self._root_dir}")
+
+        path = Path(self._root_dir) / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+
         with open(path, 'wb') as f:
             f.write(value.read())

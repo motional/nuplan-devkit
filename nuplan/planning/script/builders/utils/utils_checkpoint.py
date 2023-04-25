@@ -3,14 +3,14 @@ from datetime import datetime
 from typing import Optional
 
 
-def find_last_checkpoint_in_dir(group_dir: pathlib.Path, experiment_time: pathlib.Path) -> Optional[pathlib.Path]:
+def find_last_checkpoint_in_dir(group_dir: pathlib.Path, experiment_uid: pathlib.Path) -> Optional[pathlib.Path]:
     """
     Extract last checkpoint from a experiment
-    :param group_dir: defined by ${group}/${experiment} from hydra
-    :param experiment_time: date time which will be used as ${group}/${experiment}/${experiment_time}
+    :param group_dir: defined by ${group}/${experiment_name}/${job_name} from hydra
+    :param experiment_uid: date time which will be used as ${group}/${experiment_name}/${job_name}/${experiment_uid}
     return checkpoint dir if existent, otherwise None
     """
-    last_checkpoint_dir = group_dir / experiment_time / 'checkpoints'
+    last_checkpoint_dir = group_dir / experiment_uid / 'checkpoints'
 
     if not last_checkpoint_dir.exists():
         return None

@@ -241,6 +241,10 @@
   font-size: 12px;
 }
 
+.bk .frame-control-button button {
+  font-size: 12px;
+}
+
 .scalar-scenario-type-select {
   width: auto !important;
   background: #fff;

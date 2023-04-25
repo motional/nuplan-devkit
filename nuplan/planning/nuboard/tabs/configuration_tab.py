@@ -1,6 +1,7 @@
 import base64
 import io
 import logging
+import pathlib
 import pickle
 from pathlib import Path
 from typing import Any, List
@@ -56,6 +57,10 @@ class ConfigurationTab:
                 experiment_file_path_stem = file_path.current_path
             else:
                 experiment_file_path_stem = file_path.metric_main_path
+
+            if isinstance(experiment_file_path_stem, str):
+                experiment_file_path_stem = pathlib.Path(experiment_file_path_stem)
+
             experiment_file_path_stem = "/".join(
                 [experiment_file_path_stem.parts[-2], experiment_file_path_stem.parts[-1]]
             )

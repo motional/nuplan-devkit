@@ -55,7 +55,7 @@ def build_metrics_engines(cfg: DictConfig, scenarios: List[AbstractScenario]) ->
         if scenario.scenario_type in metric_engines:
             continue
         # Metrics
-        metric_engine = MetricsEngine(main_save_path=main_save_path, timestamp=cfg.experiment_time)
+        metric_engine = MetricsEngine(main_save_path=main_save_path)
 
         # TODO: Add scope checks
         scenario_type = scenario.scenario_type

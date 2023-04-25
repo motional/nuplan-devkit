@@ -290,7 +290,6 @@ py_library(
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/database/utils/label",
         "//nuplan/database/utils/pointclouds:lidar",
-        requirement("geopandas"),
     ],
 )
 

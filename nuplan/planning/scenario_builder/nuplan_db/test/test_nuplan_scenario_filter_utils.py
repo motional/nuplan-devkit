@@ -1,4 +1,7 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Any, Callable, Dict, List
 from unittest.mock import Mock, patch
 
@@ -6,14 +9,17 @@ from nuplan.common.actor_state.state_representation import StateVector2D
 from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
+    filter_ego_has_route,
     filter_ego_starts,
     filter_ego_stops,
+    filter_fraction_lidarpc_tokens_in_set,
     filter_non_stationary_ego,
     filter_scenarios_by_timestamp,
     filter_total_num_scenarios,
 )
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import DEFAULT_SCENARIO_NAME
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
+from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import LaneSegmentRoadBlockIDs
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool
 
 
@@ -271,6 +277,44 @@ class TestNuPlanScenarioFilterUtils(unittest.TestCase):
                 len(mock_nuplan_scenario_dict['lane_following_without_lead']) - 1,
             )
 
+    def test_filter_fraction_lidarpc_tokens_in_set(self) -> None:
+        """
+        Test filter_fraction_lidarpc_tokens_in_set with fractional thresholds {0, 0.5, 1}.
+        """
+        alphabet = ["a", "b", "c", "d", "e", "f"]
+        mock_nuplan_scenarios = []
+        for start_letter in range(4):
+            mock_nuplan_scenario = Mock(NuPlanScenario)
+            mock_nuplan_scenario.get_scenario_tokens.return_value = set(alphabet[start_letter : start_letter + 3])
+            mock_nuplan_scenarios.append(mock_nuplan_scenario)
+
+        (
+            full_intersection_scenario,
+            two_intersection_scenario,
+            one_intersection_scenario,
+            no_intersection_scenario,
+        ) = mock_nuplan_scenarios
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_json_path = Path(tmp_dir) / "tmp_token_set.json"
+            json.dump(["a", "b", "c"], open(tmp_json_path, "w"))
+
+            scenario_dict = {"on_pickup_dropoff": [no_intersection_scenario, one_intersection_scenario]}
+            self.assertEqual(
+                filter_fraction_lidarpc_tokens_in_set(scenario_dict, tmp_json_path, 0),
+                {"on_pickup_dropoff": [one_intersection_scenario]},
+            )
+            scenario_dict["on_pickup_dropoff"] = [one_intersection_scenario, two_intersection_scenario]
+            self.assertEqual(
+                filter_fraction_lidarpc_tokens_in_set(scenario_dict, tmp_json_path, 0.5),
+                {"on_pickup_dropoff": [two_intersection_scenario]},
+            )
+            scenario_dict["on_pickup_dropoff"] = [two_intersection_scenario, full_intersection_scenario]
+            self.assertEqual(
+                filter_fraction_lidarpc_tokens_in_set(scenario_dict, tmp_json_path, 1),
+                {"on_pickup_dropoff": [full_intersection_scenario]},
+            )
+
     def test_filter_non_stationary_ego(self) -> None:
         """Test filter_non_stationary_ego with 0.5m displacement threshold"""
         stationary_ego_pudo_scenario = MockAbstractScenario(initial_velocity=StateVector2D(x=0.01, y=0.0))
@@ -311,6 +355,24 @@ class TestNuPlanScenarioFilterUtils(unittest.TestCase):
         scenario_dict = {"on_pickup_dropoff": [fast_enough_acceleration_scenario]}
         filtered_scenario_dict = filter_ego_starts(scenario_dict, speed_threshold=1, speed_noise_tolerance=2)
         self.assertEqual(filtered_scenario_dict["on_pickup_dropoff"], [])
+
+    def test_filter_ego_has_route(self) -> None:
+        """
+        Test filter_ego_has_route with one route roadblock in the VectorMap (True case),
+        and with no route-intersecting roadblocks (False case).
+        """
+        map_radius = 35  # Arbitrary for this test; chosen to match default urban driver feature map radius.
+        scenario = MockAbstractScenario()
+        scenario_dict = {"on_pickup_dropoff": [scenario]}
+        with patch(
+            'nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils.get_neighbor_vector_map'
+        ) as get_neighbor_vector_map:
+            get_neighbor_vector_map.return_value = (None, None, None, None, LaneSegmentRoadBlockIDs(['a', 'b', 'c']))
+            with patch.object(scenario, 'get_route_roadblock_ids') as get_route_roadblock_ids:
+                get_route_roadblock_ids.return_value = ['d', 'e', 'a']
+                self.assertEqual(filter_ego_has_route(scenario_dict, map_radius)["on_pickup_dropoff"], [scenario])
+                get_route_roadblock_ids.return_value = ['d', 'e', 'f']
+                self.assertEqual(filter_ego_has_route(scenario_dict, map_radius)["on_pickup_dropoff"], [])
 
 
 if __name__ == '__main__':

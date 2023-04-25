@@ -6,4 +6,3 @@ simple_planner:
   acceleration: [0.0, 0.0] # x (longitudinal), y (lateral)
   max_velocity: 5.0
   steering_angle: 0.0
-  thread_safe: true

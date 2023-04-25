@@ -86,6 +86,8 @@ class SkeletonTestDataloader(unittest.TestCase):
             ego_start_speed_threshold=None,
             ego_stop_speed_threshold=None,
             speed_noise_tolerance=None,
+            token_set_path=None,
+            fraction_in_token_set_threshold=None,
         )
 
         self.augmentors = [

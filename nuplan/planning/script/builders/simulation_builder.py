@@ -1,14 +1,16 @@
 import logging
-from typing import Dict, List, Optional
+import os
+from typing import List, Optional
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
+from nuplan.common.utils.distributed_scenario_filter import DistributedMode, DistributedScenarioFilter
+from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_builder import NuPlanScenarioBuilder
 from nuplan.planning.script.builders.metric_builder import build_metrics_engines
 from nuplan.planning.script.builders.observation_builder import build_observations
 from nuplan.planning.script.builders.planner_builder import build_planners
-from nuplan.planning.script.builders.scenario_filter_builder import build_scenario_filter
+from nuplan.planning.script.builders.utils.utils_type import is_target_type
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
 from nuplan.planning.simulation.callback.metric_callback import MetricCallback
 from nuplan.planning.simulation.callback.multi_callback import MultiCallback
@@ -28,7 +30,6 @@ logger = logging.getLogger(__name__)
 
 def build_simulations(
     cfg: DictConfig,
-    scenario_builder: AbstractScenarioBuilder,
     worker: WorkerPool,
     callbacks: List[AbstractCallback],
     callbacks_worker: Optional[WorkerPool] = None,
@@ -37,9 +38,9 @@ def build_simulations(
     """
     Build simulations.
     :param cfg: DictConfig. Configuration that is used to run the experiment.
-    :param scenario_builder: Scenario builder used to extract scenarios.
     :param callbacks: Callbacks for simulation.
     :param worker: Worker for job execution.
+    :param callbacks_worker: worker pool to use for callbacks from sim
     :param pre_built_planners: List of pre-built planners to run in simulation.
     :return A dict of simulation engines with challenge names.
     """
@@ -49,10 +50,24 @@ def build_simulations(
     simulations = list()
 
     # Retrieve scenarios
-    scenario_filter = build_scenario_filter(cfg.scenario_filter)
     logger.info('Extracting scenarios...')
-    scenarios = scenario_builder.get_scenarios(scenario_filter, worker)
-    logger.info('Extracting scenarios %d...DONE!', len(scenarios))
+
+    # Only allow simulation with NuPlanScenarioBuilder except when the NUPLAN_SIMULATION_ALLOW_ANY_BUILDER environment variable is set to a non-zero value.
+    if not int(os.environ.get("NUPLAN_SIMULATION_ALLOW_ANY_BUILDER", "0")) and not is_target_type(
+        cfg.scenario_builder, NuPlanScenarioBuilder
+    ):
+        raise ValueError(f"Simulation framework only runs with NuPlanScenarioBuilder. Got {cfg.scenario_builder}")
+
+    scenario_filter = DistributedScenarioFilter(
+        cfg=cfg,
+        worker=worker,
+        node_rank=int(os.environ.get("NODE_RANK", 0)),
+        num_nodes=int(os.environ.get("NUM_NODES", 1)),
+        synchronization_path=cfg.output_dir,
+        timeout_seconds=cfg.distributed_timeout_seconds,
+        distributed_mode=DistributedMode[cfg.distributed_mode],
+    )
+    scenarios = scenario_filter.get_scenarios()
 
     metric_engines_map = {}
     if cfg.run_metric:
@@ -62,10 +77,7 @@ def build_simulations(
     else:
         logger.info('Metric engine is disable')
 
-    logger.info('Building simulations from %s scenarios...', len(scenarios))
-
-    # Cache used to keep a single instance of non-thread-safe planners
-    planners_cache: Dict[str, AbstractPlanner] = dict()
+    logger.info('Building simulations from %d scenarios...', len(scenarios))
 
     # Build a metric metadata file
     for scenario in scenarios:
@@ -75,7 +87,7 @@ def build_simulations(
             if 'planner' not in cfg.keys():
                 raise KeyError('Planner not specified in config. Please specify a planner using "planner" field.')
 
-            planners = build_planners(cfg.planner, scenario, planners_cache)
+            planners = build_planners(cfg.planner, scenario)
         else:
             planners = pre_built_planners
 

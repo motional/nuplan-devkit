@@ -3,7 +3,7 @@ from typing import Any, Dict
 import numpy as np
 import pytest
 
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.evaluation_metrics.common.drivable_area_compliance import DrivableAreaComplianceStatistics
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
 from nuplan.planning.metrics.utils.testing_utils import build_mock_history_scenario_test, metric_statistic_test

@@ -10,7 +10,7 @@ py_library(
 
 py_test(
     name = "test_base_tab",
-    size = "medium",
+    size = "small",
     srcs = ["test_base_tab.py"],
     deps = [
         "//nuplan/planning/metrics:metric_engine",
@@ -29,7 +29,7 @@ py_test(
 
 py_test(
     name = "test_nuboard_file",
-    size = "medium",
+    size = "small",
     srcs = ["test_nuboard_file.py"],
     deps = [
         "//nuplan/planning/nuboard/base:data_class",
@@ -49,5 +49,6 @@ py_test(
         "//nuplan/planning/nuboard/utils/test:utils",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         requirement("bokeh"),
+        requirement("hypothesis"),
     ],
 )

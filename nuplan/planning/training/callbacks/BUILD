@@ -13,6 +13,7 @@ py_library(
     name = "profile_callback",
     srcs = ["profile_callback.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         requirement("pyinstrument"),
         requirement_torch("pytorch-lightning"),
     ],
@@ -36,6 +37,7 @@ py_library(
     name = "scenario_scoring_callback",
     srcs = ["scenario_scoring_callback.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/training/callbacks/utils:scene_converter",
         "//nuplan/planning/training/data_loader:scenario_dataset",
         "//nuplan/planning/training/modeling:types",

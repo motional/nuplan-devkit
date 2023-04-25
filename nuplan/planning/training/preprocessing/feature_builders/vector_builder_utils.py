@@ -8,7 +8,12 @@ import numpy as np
 
 from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.maps.abstract_map import AbstractMap, MapObject
-from nuplan.common.maps.maps_datatypes import SemanticMapLayer, TrafficLightStatusData, TrafficLightStatusType
+from nuplan.common.maps.maps_datatypes import (
+    SemanticMapLayer,
+    TrafficLightStatusData,
+    TrafficLightStatuses,
+    TrafficLightStatusType,
+)
 from nuplan.common.maps.nuplan_map.utils import (
     build_lane_segments_from_blps_with_trim,
     connect_trimmed_lane_conn_predecessor,
@@ -571,8 +576,8 @@ def get_neighbor_vector_set_map(
     point: Point2D,
     radius: float,
     route_roadblock_ids: List[str],
-    traffic_light_status_data: List[TrafficLightStatusData],
-) -> Tuple[Dict[str, MapObjectPolylines], Dict[str, LaneSegmentTrafficLightData]]:
+    traffic_light_statuses_over_time: List[TrafficLightStatuses],
+) -> Tuple[Dict[str, MapObjectPolylines], List[Dict[str, LaneSegmentTrafficLightData]]]:
     """
     Extract neighbor vector set map information around ego vehicle.
     :param map_api: map to perform extraction on.
@@ -580,7 +585,7 @@ def get_neighbor_vector_set_map(
     :param point: [m] x, y coordinates in global frame.
     :param radius: [m] floating number about vector map query range.
     :param route_roadblock_ids: List of ids of roadblocks/roadblock connectors (lane groups) within goal route.
-    :param traffic_light_status_data: A list of all available data at the current time step.
+    :param traffic_light_statuses_over_time: A list of available traffic light statuses data, indexed by time step.
     :return:
         coords: Dictionary mapping feature name to polyline vector sets.
         traffic_light_data: Dictionary mapping feature name to traffic light info corresponding to map elements
@@ -588,8 +593,8 @@ def get_neighbor_vector_set_map(
     :raise ValueError: if provided feature_name is not a valid VectorFeatureLayer.
     """
     coords: Dict[str, MapObjectPolylines] = {}
-    traffic_light_data: Dict[str, LaneSegmentTrafficLightData] = {}
     feature_layers: List[VectorFeatureLayer] = []
+    traffic_light_data_over_time: List[Dict[str, LaneSegmentTrafficLightData]] = []
 
     for feature_name in map_features:
         try:
@@ -597,23 +602,27 @@ def get_neighbor_vector_set_map(
         except KeyError:
             raise ValueError(f"Object representation for layer: {feature_name} is unavailable")
 
-    # extract lanes
+    # extract lanes and traffic light
     if VectorFeatureLayer.LANE in feature_layers:
         lanes_mid, lanes_left, lanes_right, lane_ids = get_lane_polylines(map_api, point, radius)
 
         # lane baseline paths
         coords[VectorFeatureLayer.LANE.name] = lanes_mid
 
-        # lane traffic light data
-        traffic_light_data[VectorFeatureLayer.LANE.name] = get_traffic_light_encoding(
-            lane_ids, traffic_light_status_data
-        )
-
         # lane boundaries
         if VectorFeatureLayer.LEFT_BOUNDARY in feature_layers:
             coords[VectorFeatureLayer.LEFT_BOUNDARY.name] = MapObjectPolylines(lanes_left.polylines)
         if VectorFeatureLayer.RIGHT_BOUNDARY in feature_layers:
             coords[VectorFeatureLayer.RIGHT_BOUNDARY.name] = MapObjectPolylines(lanes_right.polylines)
+
+        # extract traffic light
+        for traffic_lights in traffic_light_statuses_over_time:
+            # lane traffic light data
+            traffic_light_data_at_t: Dict[str, LaneSegmentTrafficLightData] = {}
+            traffic_light_data_at_t[VectorFeatureLayer.LANE.name] = get_traffic_light_encoding(
+                lane_ids, traffic_lights.traffic_lights
+            )
+            traffic_light_data_over_time.append(traffic_light_data_at_t)
 
     # extract route
     if VectorFeatureLayer.ROUTE_LANES in feature_layers:
@@ -629,4 +638,4 @@ def get_neighbor_vector_set_map(
             )
             coords[feature_layer.name] = polygons
 
-    return coords, traffic_light_data
+    return coords, traffic_light_data_over_time

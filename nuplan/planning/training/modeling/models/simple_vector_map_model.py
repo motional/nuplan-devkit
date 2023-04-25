@@ -174,15 +174,18 @@ class VectorMapSimpleMLP(ScriptableTorchModuleWrapper):
 
             # Use reshape() throughout insead of view() because incoming tensors may not be contiguous
             #  (e.g. if being called from torchscript)
-            sample_vectormap_feature = self.vectormap_mlp(
-                vector_map_coords[sample_idx].reshape(-1, self._vector_map_flatten_lane_coord_dim)
-            )
+            vectormap_coords = vector_map_coords[sample_idx].reshape(-1, self._vector_map_flatten_lane_coord_dim)
 
             # Handle the case of zero-length vector map features.
-            if sample_vectormap_feature.shape[0] > 0:
-                vector_map_feature.append(torch.max(sample_vectormap_feature, dim=0).values)
-            else:
-                vector_map_feature.append(torch.zeros_like(ego_feature[-1]))
+            if vectormap_coords.numel() == 0:
+                vectormap_coords = torch.zeros(
+                    (1, self._vector_map_flatten_lane_coord_dim),
+                    dtype=vectormap_coords.dtype,
+                    device=vectormap_coords.device,
+                )
+
+            sample_vectormap_feature = self.vectormap_mlp(vectormap_coords)
+            vector_map_feature.append(torch.max(sample_vectormap_feature, dim=0).values)
 
             this_agents_feature = ego_agents_agents[sample_idx]
 

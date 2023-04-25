@@ -23,8 +23,8 @@ from nuplan.common.maps.nuplan_map.utils import (
     group_blp_lane_segments,
     split_blp_lane_segments,
 )
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 
 maps_db = get_test_maps_db()
 map_factory = NuPlanMapFactory(maps_db)

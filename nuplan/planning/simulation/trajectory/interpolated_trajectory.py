@@ -69,10 +69,8 @@ class InterpolatedTrajectory(AbstractTrajectory):
         end_time = self.end_time
 
         assert start_time <= time_point <= end_time, (
-            f"Interpolation time not in trajectory time window! "
-            f"{start_time.time_s - start_time.time_s} "
-            f"<= {time_point.time_s - start_time.time_s} "
-            f"<= {end_time.time_s - start_time.time_s}"
+            f"Interpolation time {time_point=} not in trajectory time window! \n"
+            f"{start_time.time_us=} <= {time_point.time_us=} <= {end_time.time_us=}"
         )
 
         linear_states = list(self._function_interp_linear(time_point.time_us))

@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass
 from typing import Optional, cast
 
+PROXIMITY_ABS_TOL = 1e-10
+
 
 @dataclass
 class TrajectorySampling:
@@ -35,14 +37,16 @@ class TrajectorySampling:
             self.time_horizon = self.num_poses * self.interval_length
         elif self.time_horizon and self.interval_length and not self.num_poses:
             remainder = math.fmod(self.time_horizon, self.interval_length)
-            if not math.isclose(remainder, 0) and not math.isclose(remainder, self.interval_length):
+            is_close_to_zero = math.isclose(remainder, 0, abs_tol=PROXIMITY_ABS_TOL)
+            is_close_to_interval_length = math.isclose(remainder, self.interval_length, abs_tol=PROXIMITY_ABS_TOL)
+            if not is_close_to_zero and not is_close_to_interval_length:
                 raise ValueError(
                     "The time horizon must be a multiple of interval length! "
                     f"time_horizon = {self.time_horizon}, interval = {self.interval_length} and is {remainder}"
                 )
             self.num_poses = int(self.time_horizon / self.interval_length)
         elif self.num_poses and self.time_horizon and self.interval_length:
-            if self.num_poses != self.time_horizon / self.interval_length:
+            if not math.isclose(self.num_poses, self.time_horizon / self.interval_length, abs_tol=PROXIMITY_ABS_TOL):
                 raise ValueError(
                     "Not valid initialization of sampling class!"
                     f"time_horizon = {self.time_horizon}, "

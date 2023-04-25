@@ -9,7 +9,7 @@ py_test(
     srcs = ["test_tutorial_utils.py"],
     tags = ["integration"],
     deps = [
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         "//tutorials/utils:tutorial_utils",
         requirement("IPython"),
     ],

@@ -12,6 +12,7 @@ py_library(
     name = "simulation_log",
     srcs = ["simulation_log.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/history:simulation_history",
         "//nuplan/planning/simulation/planner:abstract_planner",

@@ -3,9 +3,9 @@ from typing import Any, Generator, List, Optional, Set, Tuple, Type
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimePoint
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
-from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, Transform
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatuses, Transform
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
+from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, SensorChannel, Sensors
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 
@@ -117,7 +117,7 @@ class CachedScenario(AbstractScenario):
             "CachedScenario does not implement get_tracked_objects_within_time_window_at_iteration."
         )
 
-    def get_sensors_at_iteration(self, iteration: int) -> Sensors:
+    def get_sensors_at_iteration(self, iteration: int, channels: Optional[List[SensorChannel]] = None) -> Sensors:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_sensors_at_iteration.")
 
@@ -128,6 +128,18 @@ class CachedScenario(AbstractScenario):
     def get_traffic_light_status_at_iteration(self, iteration: int) -> Generator[TrafficLightStatusData, None, None]:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_traffic_light_status_at_iteration.")
+
+    def get_past_traffic_light_status_history(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[TrafficLightStatuses, None, None]:
+        """Inherited, see superclass."""
+        raise NotImplementedError("CachedScenario does not implement get_past_traffic_light_status_history.")
+
+    def get_future_traffic_light_status_history(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[TrafficLightStatuses, None, None]:
+        """Inherited, see superclass."""
+        raise NotImplementedError("CachedScenario does not implement get_future_traffic_light_status_history.")
 
     def get_future_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
@@ -154,7 +166,11 @@ class CachedScenario(AbstractScenario):
         raise NotImplementedError("CachedScenario does not implement get_ego_past_trajectory.")
 
     def get_past_sensors(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        channels: Optional[List[SensorChannel]] = None,
     ) -> Generator[Sensors, None, None]:
         """Inherited, see superclass."""
         raise NotImplementedError("CachedScenario does not implement get_past_sensors.")

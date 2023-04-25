@@ -6,6 +6,7 @@ from typing import Any, List, Optional, cast
 
 import pandas as pd
 
+from nuplan.common.utils.io_utils import safe_path_to_string
 from nuplan.database.common.blob_store.s3_store import S3Store
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
 
@@ -55,7 +56,7 @@ def save_cache_metadata(cache_metadata_entries: List[CacheMetadataEntry], cache_
     cache_name = cache_path.name
     using_s3_cache_path = str(cache_path).startswith('s3:/')
     # Convert s3 path into proper string format
-    sanitized_cache_path = sanitize_s3_path(cache_path) if using_s3_cache_path else str(cache_path)
+    sanitized_cache_path = safe_path_to_string(cache_path)
 
     cache_metadata_storage_path = os.path.join(
         sanitized_cache_path, 'metadata', f'{cache_name}_metadata_node_{node_id}.csv'
@@ -63,6 +64,7 @@ def save_cache_metadata(cache_metadata_entries: List[CacheMetadataEntry], cache_
     if not using_s3_cache_path:
         Path(cache_metadata_storage_path).parent.mkdir(parents=True, exist_ok=True)
     logger.info(f'Using cache_metadata_storage_path: {cache_metadata_storage_path}')
+    # The following to_csv function handles both local and s3 paths (via s3fs).
     pd.DataFrame(cache_metadata_entries_dicts).to_csv(cache_metadata_storage_path, index=False)
 
 
@@ -76,7 +78,7 @@ def _read_metadata_from_s3(inputs: List[ReadMetadataFromS3Input]) -> List[CacheM
     if len(inputs) == 0:
         return outputs
 
-    sanitized_cache_path = sanitize_s3_path(inputs[0].cache_path)
+    sanitized_cache_path = safe_path_to_string(inputs[0].cache_path)
     s3_store = S3Store(sanitized_cache_path)
 
     for input_value in inputs:
@@ -104,15 +106,6 @@ def read_cache_metadata(
 
     result = worker_map(worker, _read_metadata_from_s3, parallel_inputs)
     return cast(List[CacheMetadataEntry], result)
-
-
-def sanitize_s3_path(s3_path: Path) -> str:
-    """
-    Sanitizes s3 paths from Path objects to string.
-    :param s3_path: Path object of s3 path
-    :return: s3 path with the correct format as a string.
-    """
-    return f's3://{str(s3_path).lstrip("s3:/")}'
 
 
 def extract_field_from_cache_metadata_entries(

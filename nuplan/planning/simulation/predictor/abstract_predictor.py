@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import time
 from abc import abstractmethod
@@ -41,14 +43,14 @@ class AbstractPredictor(abc.ABC):
     # This can be set to true only for oracle predictors.
     requires_scenario: bool = False
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> Type['AbstractPredictor']:  # type: ignore
+    def __new__(cls, *args: Any, **kwargs: Any) -> AbstractPredictor:
         """
         Define attributes needed by all predictors, take care when overriding.
         :param cls: class being constructed.
         :param args: arguments to constructor.
         :param kwargs: keyword arguments to constructor.
         """
-        instance: Type['AbstractPredictor'] = super().__new__(cls)  # type: ignore
+        instance: AbstractPredictor = super().__new__(cls)
         instance._compute_predictions_runtimes = []
         return instance
 

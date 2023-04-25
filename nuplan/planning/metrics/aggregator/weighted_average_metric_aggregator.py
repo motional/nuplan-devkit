@@ -10,6 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas
 
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.metrics.aggregator.abstract_metric_aggregator import AbstractMetricAggregator
 from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 
@@ -50,7 +51,7 @@ class WeightedAverageMetricAggregator(AbstractMetricAggregator):
 
         self._challenge_name = challenge_name
 
-        if not self._aggregator_save_path.exists():
+        if not is_s3_path(self._aggregator_save_path):
             self._aggregator_save_path.mkdir(exist_ok=True, parents=True)
         self._aggregator_type = 'weighted_average'
         self._multiple_metrics = multiple_metrics

@@ -32,7 +32,7 @@ class SimulationRunner(AbstractRunner):
         """
         Initialize the simulations manager
         :param simulation: Simulation which will be executed
-        :param planner: which should be used to compute the desired ego's trajectory
+        :param planner: to be used to compute the desired ego's trajectory
         """
         self._simulation = simulation
         self._planner = planner
@@ -42,13 +42,13 @@ class SimulationRunner(AbstractRunner):
         Initialize the planner
         """
         # Execute specific callback
-        self._simulation.callback.on_initialization_start(self._simulation.setup, self._planner)
+        self._simulation.callback.on_initialization_start(self._simulation.setup, self.planner)
 
         # Initialize Planner
         self.planner.initialize(self._simulation.initialize())
 
         # Execute specific callback
-        self._simulation.callback.on_initialization_end(self._simulation.setup, self._planner)
+        self._simulation.callback.on_initialization_end(self._simulation.setup, self.planner)
 
     @property
     def planner(self) -> AbstractPlanner:
@@ -100,7 +100,7 @@ class SimulationRunner(AbstractRunner):
 
         while self.simulation.is_simulation_running():
             # Execute specific callback
-            self.simulation.callback.on_step_start(self.simulation.setup, self._planner)
+            self.simulation.callback.on_step_start(self.simulation.setup, self.planner)
 
             # Perform step
             planner_input = self._simulation.get_planner_input()

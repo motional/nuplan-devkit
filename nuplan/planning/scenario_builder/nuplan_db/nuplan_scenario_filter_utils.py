@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 import os
@@ -8,10 +9,11 @@ from collections import defaultdict
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union, cast
+from typing import Callable, Dict, List, Optional, Set, Union, cast
 
 import numpy as np
 
+from nuplan.common.actor_state.state_representation import Point2D
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir
 from nuplan.database.nuplan_db.nuplan_scenario_queries import get_scenarios_from_db
@@ -21,6 +23,7 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import (
     ScenarioMapping,
     download_file_if_necessary,
 )
+from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import get_neighbor_vector_map
 from nuplan.planning.utils.multithreading.worker_utils import WorkerPool, worker_map
 
 logger = logging.getLogger(__name__)
@@ -70,7 +73,7 @@ class GetScenariosFromDbFileParams:
     data_root: str
 
     # The absolute path log file to query
-    # e.g. /data/sets/nuplan-v1.1/mini/2021.10.11.08.31.07_veh-50_01750_01948.db
+    # e.g. /data/sets/nuplan-v1.1/splits/mini/2021.10.11.08.31.07_veh-50_01750_01948.db
     log_file_absolute_path: str
 
     # Whether to expand multi-sample scenarios to multiple single-sample scenarios
@@ -97,8 +100,14 @@ class GetScenariosFromDbFileParams:
     # If provided, the map names on which to filter (e.g. "[us-nv-las-vegas-strip, us-ma-boston]")
     filter_map_names: Optional[List[str]]
 
+    # The root directory for sensor blobs (e.g. "/data/sets/nuplan/nuplan-v1.1/sensor_blobs")
+    sensor_root: str
+
     # If provided, whether to remove scenarios without a valid mission goal.
     remove_invalid_goals: bool = False
+
+    # If provided, the scenario will contain camera data on the anchor lidar_pc.
+    include_cameras: bool = False
 
     # Verbosity, provides download progression
     verbose: bool = False
@@ -168,6 +177,7 @@ def get_scenarios_from_db_file(params: GetScenariosFromDbFileParams) -> Scenario
         params.filter_types,
         params.filter_map_names,
         not params.remove_invalid_goals,
+        params.include_cameras,
     ):
         scenario_type = row["scenario_type"]
 
@@ -183,16 +193,17 @@ def get_scenarios_from_db_file(params: GetScenariosFromDbFileParams) -> Scenario
 
         scenario_dict[scenario_type].append(
             NuPlanScenario(
-                params.data_root,
-                params.log_file_absolute_path,
-                row["token"].hex(),
-                row["timestamp"],
-                scenario_type,
-                params.map_root,
-                params.map_version,
-                row["map_name"],
-                extraction_info,
-                params.vehicle_parameters,
+                data_root=params.data_root,
+                log_file_load_path=params.log_file_absolute_path,
+                initial_lidar_token=row["token"].hex(),
+                initial_lidar_timestamp=row["timestamp"],
+                scenario_type=scenario_type,
+                map_root=params.map_root,
+                map_version=params.map_version,
+                map_name=row["map_name"],
+                scenario_extraction_info=extraction_info,
+                ego_vehicle_parameters=params.vehicle_parameters,
+                sensor_root=params.sensor_root,
             )
         )
 
@@ -395,6 +406,56 @@ def filter_invalid_goals(scenario_dict: ScenarioDict, worker: WorkerPool) -> Sce
     return scenario_dict
 
 
+def filter_fraction_lidarpc_tokens_in_set(
+    scenario_dict: ScenarioDict, token_set_path: Path, fraction_threshold: float
+) -> ScenarioDict:
+    """
+    Filter out all scenarios from a nuplan ScenarioDict for whom the fraction of the scenario's lidarpc tokens
+        in token_set is less than or equal to fraction_threshold (strictly less for fraction_threshold=1).
+    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type.
+    :param token_set_path: a path to List of lidarpc tokens from a Nuplan DB, stored as json.
+    :param fraction_threshold: a float in [0, 1].
+    :return: a Dictionary with the same structure as scenario dict, but in which all individual scenarios
+        for whom the fraction of its tokens that are contained in token set is <= fraction_threshold
+        (or < fraction_threshold if fraction_threshold is 1)
+    """
+    if not 0 <= fraction_threshold <= 1:
+        raise ValueError("Fraction_threshold must be in [0,1].")
+
+    with open(token_set_path, "r") as token_file:
+        token_list = json.load(token_file)
+        if type(token_list) != list or type(token_list[0]) != str:
+            raise ValueError("token_set_path does not point to a json-formatted list of strings.")
+        token_set = set(token_list)
+
+    def _are_lidarpc_tokens_in_set(scenario: NuPlanScenario, token_set: Set[str], fraction_threshold: float) -> bool:
+        """
+        For a single scenario, report whether (True/False) the fraction of the scenario's lidarpc tokens
+            in token_set is greater than fraction_threshold (greater than or equal to for fraction_threshold=1).
+        :param scenario: a valid NuplanScenario instance.
+        :param token_set: a Pyton Set of lidarpc tokens from a Nuplan DB.
+        :param fraction_threshold: a Python float in [0, 1].
+        :return: True if strictly more than fraction_threshold fraction of the lidarpc tokens in scenario belong to
+            token_set (strictly equal if fraction_threshold is 1)
+        """
+        scenario_tokens = set(scenario.get_scenario_tokens())
+
+        if fraction_threshold == 1:
+            return scenario_tokens == token_set
+
+        return len(scenario_tokens.intersection(token_set)) / len(scenario_tokens) > fraction_threshold
+
+    for scenario_type in scenario_dict:
+        scenario_dict[scenario_type] = list(
+            filter(
+                lambda scenario: _are_lidarpc_tokens_in_set(scenario, token_set, fraction_threshold),
+                scenario_dict[scenario_type],
+            )
+        )
+
+    return scenario_dict
+
+
 def _is_non_stationary(scenario: NuPlanScenario, minimum_threshold: float) -> bool:
     """
     Determines whether the ego cumulatively moves at least minimum_threshold meters over the course of a given scenario
@@ -531,6 +592,37 @@ def filter_ego_stops(scenario_dict: ScenarioDict, speed_threshold: float, speed_
                 ),
                 scenario_dict[scenario_type],
             )
+        )
+    return scenario_dict
+
+
+def _ego_has_route(scenario: NuPlanScenario, map_radius: float) -> bool:
+    """
+    Determines the presence of an on-route lane segment in a VectorMap built from
+    the given scenario within map_radius meters of the ego.
+    :param scenario: A NuPlan scenario.
+    :param map_radius: the radius of the VectorMap built around the ego's position
+    to check for on-route lane segments.
+    :return: True if there is at least one on-route lane segment in the VectorMap.
+    """
+    ego_state = scenario.initial_ego_state
+    ego_coords = Point2D(ego_state.rear_axle.x, ego_state.rear_axle.y)
+    _, _, _, _, lane_seg_roadblock_ids = get_neighbor_vector_map(scenario.map_api, ego_coords, map_radius)
+    map_lane_roadblock_ids = set(lane_seg_roadblock_ids.roadblock_ids)
+    return len(map_lane_roadblock_ids.intersection(scenario.get_route_roadblock_ids())) > 0
+
+
+def filter_ego_has_route(scenario_dict: ScenarioDict, map_radius: float) -> ScenarioDict:
+    """
+    Rid a scenario dictionary of the scenarios that don't have an on-route lane segment within map_radius meters of the ego.
+    Uses a VectorMap to gather lane segments.
+    :param scenario_dict: Dictionary that holds a list of scenarios for each scenario type.
+    :param map_radius: How far out from ego to check for on-route lane segments.
+    :return: Filtered scenario dictionary.
+    """
+    for scenario_type in scenario_dict:
+        scenario_dict[scenario_type] = list(
+            filter(lambda scenario: _ego_has_route(scenario, map_radius), scenario_dict[scenario_type])
         )
     return scenario_dict
 

@@ -78,3 +78,16 @@ class SimulationHistory:
         :return An List of ego_states.
         """
         return [sample.ego_state for sample in self.data]
+
+    @property
+    def interval_seconds(self) -> float:
+        """
+        Return the interval between SimulationHistorySamples.
+        :return The interval in seconds.
+        """
+        if not self.data or len(self.data) < 1:
+            raise ValueError("Data is empty!")
+        elif len(self.data) < 2:
+            raise ValueError("Can't calculate the interval of a single-iteration simulation.")
+
+        return float(self.data[1].iteration.time_s - self.data[0].iteration.time_s)  # float cast is for mypy

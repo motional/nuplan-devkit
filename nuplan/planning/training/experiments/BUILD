@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -22,18 +23,15 @@ py_library(
     name = "caching",
     srcs = ["caching.py"],
     deps = [
-        "//nuplan/common/utils:file_backed_barrier",
-        "//nuplan/common/utils:helpers",
-        "//nuplan/common/utils:s3_utils",
-        "//nuplan/database/common/blob_store:s3_store",
+        ":cache_metadata_entry",
+        "//nuplan/common/utils:distributed_scenario_filter",
         "//nuplan/planning/scenario_builder:abstract_scenario",
-        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_filter_utils",
+        "//nuplan/planning/scenario_builder:abstract_scenario_builder",
         "//nuplan/planning/script/builders:model_builder",
         "//nuplan/planning/script/builders:scenario_building_builder",
         "//nuplan/planning/script/builders:scenario_filter_builder",
         "//nuplan/planning/training/preprocessing:feature_preprocessor",
         "//nuplan/planning/utils/multithreading:worker_pool",
-        "//nuplan/planning/utils/multithreading:worker_sequential",
         "//nuplan/planning/utils/multithreading:worker_utils",
     ],
 )
@@ -42,7 +40,9 @@ py_library(
     name = "cache_metadata_entry",
     srcs = ["cache_metadata_entry.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
         "//nuplan/database/common/blob_store:s3_store",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("s3fs"),
     ],
 )

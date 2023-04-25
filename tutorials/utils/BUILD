@@ -9,6 +9,7 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/maps/nuplan_map:map_factory",
+        "//nuplan/database/nuplan_db:nuplan_db_utils",
         "//nuplan/database/nuplan_db:nuplan_scenario_queries",
         "//nuplan/database/nuplan_db_orm:nuplandb",
         "//nuplan/database/nuplan_db_orm:nuplandb_wrapper",
@@ -33,5 +34,6 @@ py_library(
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
         requirement("bokeh"),
         requirement("ipywidgets"),
+        requirement("nest_asyncio"),
     ],
 )

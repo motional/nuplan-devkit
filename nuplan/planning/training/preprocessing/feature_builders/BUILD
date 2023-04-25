@@ -23,6 +23,7 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects",
+        "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/scenario_builder:scenario_utils",
         "//nuplan/planning/simulation/observation:observation_type",
@@ -100,6 +101,7 @@ py_library(
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:torch_geometry",
+        "//nuplan/common/maps:maps_datatypes",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/training/preprocessing/feature_builders:scriptable_feature_builder",

@@ -36,7 +36,10 @@ class TestDbCliQueries(unittest.TestCase):
             db_file_path.unlink()
 
         generation_parameters = DBGenerationParameters(
-            num_lidar_pcs=50,
+            num_lidars=1,
+            num_cameras=2,
+            num_sensor_data_per_sensor=50,
+            num_lidarpc_per_image_ratio=2,
             num_scenes=10,
             num_traffic_lights_per_lidar_pc=5,
             num_agents_per_lidar_pc=3,
@@ -45,7 +48,7 @@ class TestDbCliQueries(unittest.TestCase):
                 5: ["first_tag"],
                 6: ["first_tag", "second_tag"],
             },
-            file_path=db_file_path,
+            file_path=str(db_file_path),
         )
 
         generate_minimal_nuplan_db(generation_parameters)
@@ -83,6 +86,8 @@ class TestDbCliQueries(unittest.TestCase):
             "scene",
             "track",
             "traffic_light_status",
+            "camera",
+            "image",
         ]
 
         self.assertEqual(len(expected_tables), len(db_description.tables))

@@ -15,7 +15,7 @@ from nuplan.common.maps.abstract_map_objects import (
     RoadBlockGraphEdgeMapObject,
     StopLine,
 )
-from nuplan.common.maps.maps_datatypes import SemanticMapLayer, VectorLayer
+from nuplan.common.maps.maps_datatypes import LaneConnectorType, SemanticMapLayer, VectorLayer
 from nuplan.common.maps.nuplan_map.polyline_map_object import NuPlanPolylineMapObject
 from nuplan.common.maps.nuplan_map.stop_line import NuPlanStopLine
 from nuplan.common.maps.nuplan_map.utils import get_row_with_value
@@ -92,6 +92,11 @@ class NuPlanLaneConnector(LaneConnector):
                 self._map_data,
             )
         ]
+
+    @cached_property
+    def parallel_edges(self) -> List[LaneGraphEdgeMapObject]:
+        """Inherited from superclass"""
+        raise NotImplementedError
 
     @cached_property
     def baseline_path(self) -> PolylineMapObject:
@@ -185,6 +190,10 @@ class NuPlanLaneConnector(LaneConnector):
         distances = [distance_to_stop_line(stop_line) for stop_line in candidate_stop_lines]
 
         return [candidate_stop_lines[np.argmin(distances)]]
+
+    def turn_type(self) -> LaneConnectorType:
+        """Inherited from superclass"""
+        raise NotImplementedError
 
     def get_width_left_right(
         self, point: Point2D, include_outside: bool = False

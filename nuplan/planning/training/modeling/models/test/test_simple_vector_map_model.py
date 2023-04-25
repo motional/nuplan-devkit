@@ -16,6 +16,29 @@ from nuplan.planning.training.preprocessing.features.trajectory import Trajector
 from nuplan.planning.training.preprocessing.features.vector_map import VectorMap
 
 
+def _create_empty_vector_map_for_test(device: torch.device) -> VectorMap:
+    """
+    Helper function to create a dummy empty vector map solely for testing purposes.
+    :param device: The device on which to place the constructed vector map.
+    :return: A VectorMap with batch size 1 but otherwise empty features.
+    """
+    coords = [torch.zeros(size=(0, 2, 2), dtype=torch.float32, device=device)]
+    lane_groupings = [[torch.zeros(size=(0,), dtype=torch.float32, device=device)]]
+    multi_scale_connections = {1: [torch.zeros(size=(0, 2), dtype=torch.float32, device=device)]}
+    on_route_status = [
+        torch.zeros(size=(0, VectorMap.on_route_status_encoding_dim()), dtype=torch.float32, device=device)
+    ]
+    traffic_light_data = [torch.zeros(size=(0, 4), dtype=torch.float32, device=device)]
+
+    return VectorMap(
+        coords=coords,
+        lane_groupings=lane_groupings,
+        multi_scale_connections=multi_scale_connections,
+        on_route_status=on_route_status,
+        traffic_light_data=traffic_light_data,
+    )
+
+
 class TestVectorMapSimpleMLP(unittest.TestCase):
     """Test graph attention layer."""
 
@@ -137,6 +160,14 @@ class TestVectorMapSimpleMLP(unittest.TestCase):
         os.environ["WORLD_SIZE"] = "1"
         torch.distributed.init_process_group(backend="gloo")
 
+    def _assert_valid_gradients_for_model(self, model: torch.nn.Module) -> None:
+        """
+        Validates that trainable parameters in a model have gradients after a backprop operation.
+        :param model: The model with parameters to update following a forward/backward pass.
+        """
+        all_gradients_computed = all(param.grad is not None for param in model.parameters() if param.requires_grad)
+        self.assertTrue(all_gradients_computed)
+
     def test_can_train_distributed(self) -> None:
         """
         Tests that the model can train with DDP.
@@ -161,6 +192,7 @@ class TestVectorMapSimpleMLP(unittest.TestCase):
                 predictions = ddp_model.forward(input_features)
                 self._assert_valid_output(predictions)
                 self._perform_backprop_step(optimizer, loss_function, predictions)
+                self._assert_valid_gradients_for_model(ddp_model)
 
     def test_scripts_properly(self) -> None:
         """
@@ -197,6 +229,29 @@ class TestVectorMapSimpleMLP(unittest.TestCase):
         self.assertEqual(0, len(py_list_list_tensors))
 
         torch.testing.assert_allclose(py_tensors["trajectory"], scripted_tensors["trajectory"])
+
+    def test_can_train_with_empty_vector_map(self) -> None:
+        """In case of zero length vector map features, model training should not crash."""
+        device = torch.device("cpu")
+
+        # Overwrite the default test features with an empty VectorMap.
+        test_features = self._build_input_features(device=device, include_agents=True)
+        test_features["vector_map"] = _create_empty_vector_map_for_test(device=device)
+
+        # Confirm the vector map is invalid.
+        self.assertFalse(test_features["vector_map"].is_valid)
+
+        # Setup model and optimizer to test how the empty vector map is processed.
+        model = self._build_model().to(device)
+        optimizer = torch.optim.RMSprop(model.parameters())
+        loss_function = torch.nn.MSELoss()
+
+        # Run a forward and backward pass to test backprop works.
+        predictions = model.forward(test_features)
+        self._assert_valid_output(predictions)
+        self._perform_backprop_step(optimizer, loss_function, predictions)
+
+        self._assert_valid_gradients_for_model(model)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas
 
+from nuplan.common.utils.io_utils import safe_path_to_string
+
 
 @dataclass
 class MetricStatisticsDataFrame:
@@ -37,10 +39,11 @@ class MetricStatisticsDataFrame:
     @classmethod
     def load_parquet(cls, parquet_path: Path) -> MetricStatisticsDataFrame:
         """
-        Load a parquet file to this class
+        Load a parquet file to this class.
+        The path can be local or s3.
         :param parquet_path: A path to a parquet file.
         """
-        data_frame = pandas.read_parquet(path=parquet_path)
+        data_frame = pandas.read_parquet(path=safe_path_to_string(parquet_path))
         try:
             # Check if any rows.
             if not len(data_frame):

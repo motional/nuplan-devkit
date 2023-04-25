@@ -4,4 +4,3 @@ ml_planner:
 
   model_config: ???  # Dictionary key from existing planner model config (e.g. raster_model)
   checkpoint_path: ???  # Path to trained model checkpoint
-  thread_safe: true

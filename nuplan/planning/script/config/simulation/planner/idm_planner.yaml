@@ -9,4 +9,3 @@ idm_planner:
   planned_trajectory_samples: 16  # Number of trajectory samples to generate
   planned_trajectory_sample_interval: 0.5  # The sampling time interval between samples [s]
   occupancy_map_radius: 40        # The range around the ego to add objects to be considered [m]
-  thread_safe: true

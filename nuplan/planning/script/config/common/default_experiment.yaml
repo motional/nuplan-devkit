@@ -6,8 +6,8 @@ job_name: ???                                       # Job name, as defined in th
 
 # Directory structure
 date_format: '%Y.%m.%d.%H.%M.%S'
-experiment_time: ${now:${date_format}}              # Current time of an experiment
-experiment: ${experiment_name}/${job_name}/${experiment_time}      # Unique name of the experiment
+experiment_uid: ${now:${date_format}}              # Unique Id of the experiment, default to timestamp
+experiment: ${experiment_name}/${job_name}/${experiment_uid}      # Unique name of the experiment
 output_dir: ${group}/${experiment}                  # Output directory to save all training artifacts
 metric_dir: metrics                                 # Metric dir name to save metric results.
 aggregator_metric_dir: aggregator_metric            # Aggregator metric dir name to save aggregated metrics.

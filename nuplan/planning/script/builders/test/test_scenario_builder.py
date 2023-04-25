@@ -141,15 +141,16 @@ class TestScenarioBuilder(unittest.TestCase):
 
         return mock_expand_s3_dir
 
-    def _get_mock_fail_to_get_cache_metadata_paths(self) -> Callable[[str], List[str]]:
+    def _get_mock_fail_to_get_cache_metadata_paths(self) -> Callable[[Path, str], List[str]]:
         """
         Gets mock get_cache_metadata_paths function.
         """
 
-        def mock_fail_to_get_cache_metadata_paths(cache_path: str) -> List[str]:
+        def mock_fail_to_get_cache_metadata_paths(s3_key: Path, s3_bucket: str) -> List[str]:
             """
             Mock function for get_cache_metadata_paths.
-            :param cache_path: S3 cache path.
+            :param s3_key: S3 cache key.
+            :param s3_bucket: S3 cache bucket.
             :return: List of mock s3 metadata file paths fetched from s3 cache path provided.
             """
             return []

@@ -3,7 +3,7 @@ from typing import Any, Dict
 import numpy as np
 import pytest
 
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.evaluation_metrics.common.ego_lane_change import EgoLaneChangeStatistics
 from nuplan.planning.metrics.evaluation_metrics.common.no_ego_at_fault_collisions import (
     CollisionType,

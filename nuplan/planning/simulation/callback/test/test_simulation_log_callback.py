@@ -196,7 +196,7 @@ class TestSimulationLogCallback(unittest.TestCase):
                 ego_state=state_0,
                 trajectory=InterpolatedTrajectory(trajectory=[state_0, state_1]),
                 observation=DetectionsTracks(TrackedObjects()),
-                traffic_light_status=scenario.get_traffic_light_status_at_iteration(0),
+                traffic_light_status=list(scenario.get_traffic_light_status_at_iteration(0)),
             )
         )
         history.add_sample(
@@ -205,7 +205,7 @@ class TestSimulationLogCallback(unittest.TestCase):
                 ego_state=state_1,
                 trajectory=InterpolatedTrajectory(trajectory=[state_0, state_1]),
                 observation=DetectionsTracks(TrackedObjects()),
-                traffic_light_status=scenario.get_traffic_light_status_at_iteration(0),
+                traffic_light_status=list(scenario.get_traffic_light_status_at_iteration(0)),
             )
         )
 

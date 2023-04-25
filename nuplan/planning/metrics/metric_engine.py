@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
-import pickle
 import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from nuplan.common.utils.io_utils import save_object_as_pickle
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_file import MetricFile, MetricFileKey
 from nuplan.planning.metrics.metric_result import MetricStatistics
@@ -16,7 +17,7 @@ from nuplan.planning.simulation.history.simulation_history import SimulationHist
 logger = logging.getLogger(__name__)
 
 
-JSON_FILE_EXTENSION = '.pickle.temp'
+JSON_FILE_EXTENSION = ".pickle.temp"
 
 
 def construct_dataframe(
@@ -33,12 +34,12 @@ def construct_dataframe(
     """
     # Construct all column header names.
     statistic_columns = {
-        'log_name': log_name,
-        'scenario_name': scenario_name,
-        'scenario_type': scenario_type,
-        'planner_name': planner_name,
-        'metric_computator': metric_statistics.metric_computator,
-        'metric_statistics_name': metric_statistics.name,
+        "log_name": log_name,
+        "scenario_name": scenario_name,
+        "scenario_type": scenario_type,
+        "planner_name": planner_name,
+        "metric_computator": metric_statistics.metric_computator,
+        "metric_statistics_name": metric_statistics.name,
     }
 
     statistic_columns.update(metric_statistics.serialize_dataframe())
@@ -48,17 +49,14 @@ def construct_dataframe(
 class MetricsEngine:
     """The metrics engine aggregates and manages the instantiated metrics for a scenario."""
 
-    def __init__(
-        self, main_save_path: Path, timestamp: int, metrics: Optional[List[AbstractMetricBuilder]] = None
-    ) -> None:
+    def __init__(self, main_save_path: Path, metrics: Optional[List[AbstractMetricBuilder]] = None) -> None:
         """
         Initializer for MetricsEngine class
-        :param timestamp: Simulation timestamp
         :param metrics: Metric objects.
         """
         self._main_save_path = main_save_path
-        self._main_save_path.mkdir(parents=True, exist_ok=True)
-        self._timestamp = timestamp
+        if not is_s3_path(self._main_save_path):
+            self._main_save_path.mkdir(parents=True, exist_ok=True)
 
         if metrics is None:
             self._metrics: List[AbstractMetricBuilder] = []
@@ -96,8 +94,7 @@ class MetricsEngine:
                     dataframes.append(dataframe)
 
             if len(dataframes):
-                with open(save_path, 'wb') as f:
-                    pickle.dump(dataframes, f, protocol=pickle.HIGHEST_PROTOCOL)
+                save_object_as_pickle(save_path, dataframes)
 
     def compute_metric_results(
         self, history: SimulationHistory, scenario: AbstractScenario
@@ -115,11 +112,11 @@ class MetricsEngine:
                 metric_results[metric.name] = metric.compute(history, scenario=scenario)
                 end_time = time.perf_counter()
                 elapsed_time = end_time - start_time
-                logger.debug(f'Metric: {metric.name} running time: {elapsed_time:.2f} seconds.')
+                logger.debug(f"Metric: {metric.name} running time: {elapsed_time:.2f} seconds.")
             except (NotImplementedError, Exception) as e:
                 # Catch any error when computing a metric.
-                logger.error(f'Running {metric.name} with error: {e}')
-                raise RuntimeError(f'Metric Engine failed with: {e}')
+                logger.error(f"Running {metric.name} with error: {e}")
+                raise RuntimeError(f"Metric Engine failed with: {e}")
 
         return metric_results
 
@@ -144,7 +141,7 @@ class MetricsEngine:
                 planner_name=planner_name,
             )
             metric_file = MetricFile(key=metric_file_key, metric_statistics=metric_statistics_results)
-            metric_file_name = scenario.scenario_type + '_' + scenario.scenario_name + '_' + planner_name
+            metric_file_name = scenario.scenario_type + "_" + scenario.scenario_name + "_" + planner_name
             metric_files[metric_file_name].append(metric_file)
 
         return metric_files

@@ -8,6 +8,8 @@ py_library(
     name = "folder_builder",
     srcs = ["folder_builder.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/nuboard/base:data_class",
     ],
 )
@@ -110,11 +112,14 @@ py_library(
     name = "simulation_builder",
     srcs = ["simulation_builder.py"],
     deps = [
+        "//nuplan/common/utils:distributed_scenario_filter",
         "//nuplan/planning/scenario_builder:abstract_scenario_builder",
+        "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script/builders:metric_builder",
         "//nuplan/planning/script/builders:observation_builder",
         "//nuplan/planning/script/builders:planner_builder",
         "//nuplan/planning/script/builders:scenario_filter_builder",
+        "//nuplan/planning/script/builders/utils:utils_type",
         "//nuplan/planning/simulation/callback:abstract_callback",
         "//nuplan/planning/simulation/callback:metric_callback",
         "//nuplan/planning/simulation/callback:multi_callback",
@@ -235,6 +240,7 @@ py_library(
     name = "metric_aggregator_builder",
     srcs = ["metric_aggregator_builder.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/metrics/aggregator:abstract_metric_aggregator",
         "//nuplan/planning/metrics/aggregator:weighted_average_metric_aggregator",
     ],

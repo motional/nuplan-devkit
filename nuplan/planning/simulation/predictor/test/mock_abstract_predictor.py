@@ -20,14 +20,17 @@ def get_mock_predictor_initialization() -> PredictorInitialization:
     return PredictorInitialization(MockAbstractMap())
 
 
-def get_mock_predictor_input() -> PredictorInput:
+def get_mock_predictor_input(buffer_size: int = 1) -> PredictorInput:
     """
     Returns a mock PredictorInput for testing.
     :return: PredictorInput.
     """
     scenario = MockAbstractScenario()
     history_buffer = SimulationHistoryBuffer.initialize_from_list(
-        1, [scenario.initial_ego_state], [scenario.initial_tracked_objects]
+        buffer_size,
+        [scenario.initial_ego_state for _ in range(buffer_size)],
+        [scenario.initial_tracked_objects for _ in range(buffer_size)],
+        0.5,
     )
     return PredictorInput(
         iteration=SimulationIteration(TimePoint(0), 0), history=history_buffer, traffic_light_data=None

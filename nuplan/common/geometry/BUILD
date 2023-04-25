@@ -25,7 +25,9 @@ py_library(
         "//nuplan/common/actor_state:oriented_box",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
+        requirement("numpy"),
         requirement("scipy"),
+        requirement("shapely"),
     ],
 )
 

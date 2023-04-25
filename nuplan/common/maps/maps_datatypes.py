@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import geopandas as gpd
 import numpy as np
@@ -39,12 +39,23 @@ class SemanticMapLayer(IntEnum):
     PUDO = 16
     ROADBLOCK = 17
     ROADBLOCK_CONNECTOR = 18
-    PRECEDENCE_AREA = 19
 
     @classmethod
     def deserialize(cls, layer: str) -> SemanticMapLayer:
         """Deserialize the type when loading from a string."""
         return SemanticMapLayer.__members__[layer]
+
+
+class LaneConnectorType(IntEnum):
+    """
+    Enum for LaneConnectorType.
+    """
+
+    STRAIGHT = 0
+    LEFT = 1
+    RIGHT = 2
+    UTURN = 3
+    UNKNOWN = 4
 
 
 class StopLineType(IntEnum):
@@ -157,3 +168,12 @@ class TrafficLightStatusData:
             lane_connector_id=data['lane_connector_id'],
             timestamp=data['timestamp'],
         )
+
+
+@dataclass
+class TrafficLightStatuses:
+    """
+    Collection of TrafficLightStatusData at a time step.
+    """
+
+    traffic_lights: List[TrafficLightStatusData]

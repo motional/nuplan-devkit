@@ -71,3 +71,12 @@ max_callback_workers: 4
 # Disable callback parallelization when using the Sequential worker. By default, when running with the sequential worker,
 # on_simulation_end callbacks are not submitted to a parallel worker.
 disable_callback_parallelization: true
+
+# Distributed processing mode. If multi-node simulation is enable, this parameter selects how the scenarios distributed
+# to each node. The modes are:
+#  - SCENARIO_BASED: Works in two stages, first getting a list of all, scenarios to process, then breaking up that
+#                    list and distributing across the workers
+#  - LOG_FILE_BASED: Works in a single stage, breaking up the scenarios based on what log file they are in and
+#                    distributing the number of log files evenly across all workers
+#  - SINGLE_NODE: Does no distribution, processes all scenarios in config
+distributed_mode: 'SINGLE_NODE'

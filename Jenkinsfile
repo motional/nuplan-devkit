@@ -49,7 +49,7 @@ pipeline{
     BAZEL_OPTS = "--local_cpu_resources=8 --jobs=8 --remote_cache=http://bazel-cache.ci.motional.com:80 --remote_upload_local_results=true"
 
     NUPLAN_DATA_ROOT         = "/data/sets/nuplan"
-    NUPLAN_DB_FILES          = "/data/sets/nuplan/nuplan-v1.1/mini"
+    NUPLAN_DB_FILES          = "/data/sets/nuplan/nuplan-v1.1/splits/mini"
     NUPLAN_MAPS_ROOT         = "/data/sets/nuplan/maps"
     NUPLAN_MAP_VERSION       = "nuplan-maps-v1.0"
     NUPLAN_EXP_ROOT          = "/tmp/exp/nuplan"

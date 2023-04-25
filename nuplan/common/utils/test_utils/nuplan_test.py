@@ -6,7 +6,7 @@ from typing import Any, List, Optional
 
 import pytest
 
-NUPLAN_TEST_PLUGIN = "nuplan.common.utils.testing.plugin"
+NUPLAN_TEST_PLUGIN = "nuplan.common.utils.test_utils.plugin"
 
 
 def parametrize_filebased(abspath: Optional[str], filename: str, relpath: Optional[str]) -> Any:

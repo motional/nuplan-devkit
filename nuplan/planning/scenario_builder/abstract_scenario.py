@@ -7,8 +7,8 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, TimeDuration, TimePoint
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters
 from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, Transform
-from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
+from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatuses, Transform
+from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, SensorChannel, Sensors
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 
@@ -129,7 +129,7 @@ class AbstractScenario(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_mission_goal(self) -> StateSE2:
+    def get_mission_goal(self) -> Optional[StateSE2]:
         """
         Goal far into future (in generally more than 100m far beyond scenario length).
         :return: StateSE2 for the final state.
@@ -198,10 +198,11 @@ class AbstractScenario(abc.ABC):
         return self.get_tracked_objects_at_iteration(0)
 
     @abc.abstractmethod
-    def get_sensors_at_iteration(self, iteration: int) -> Sensors:
+    def get_sensors_at_iteration(self, iteration: int, channels: Optional[List[SensorChannel]] = None) -> Sensors:
         """
         Return sensor from iteration
         :param iteration: within scenario 0 <= iteration < number_of_iterations
+        :param channels: The sensor channels to return.
         :return: Sensors.
         """
         pass
@@ -237,6 +238,34 @@ class AbstractScenario(abc.ABC):
         Get traffic light status at an iteration.
         :param iteration: within scenario 0 <= iteration < number_of_iterations
         :return traffic light status at the iteration.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_past_traffic_light_status_history(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[TrafficLightStatuses, None, None]:
+        """
+        Gets past traffic light status.
+
+        :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
+        :param time_horizon [s]: the desired horizon to the past.
+        :param num_samples: number of entries in the future, if None it will be deduced from the DB.
+        :return: Generator object for traffic light history to the past.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_future_traffic_light_status_history(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[TrafficLightStatuses, None, None]:
+        """
+        Gets future traffic light status.
+
+        :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations.
+        :param time_horizon [s]: the desired horizon to the future.
+        :param num_samples: number of entries in the future, if None it will be deduced from the DB.
+        :return: Generator object for traffic light history to the future.
         """
         pass
 
@@ -315,13 +344,18 @@ class AbstractScenario(abc.ABC):
 
     @abc.abstractmethod
     def get_past_sensors(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        channels: Optional[List[SensorChannel]] = None,
     ) -> Generator[Sensors, None, None]:
         """
         Find past sensors
         :param iteration: iteration within scenario 0 <= scenario_iteration < get_number_of_iterations
+        :param time_horizon: [s] the desired horizon to the future
         :param num_samples: number of entries in the future
-        :param time_horizon [s]: the desired horizon to the future
+        :param channels: The sensor channels to return.
         :return: the past sensors with the best matching entries to the desired time_horizon/num_samples
         timestamp (best matching to the database)
         """

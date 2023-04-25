@@ -24,7 +24,7 @@ class TestTransform(unittest.TestCase):
         """Tests rotation of 2D point"""
         # Setup
         point = Point2D(1, 0)
-        rotation_matrix = np.array([[0, 1], [-1, 0]], dtype=np.float32)  # type: npt.NDArray[np.float32]
+        rotation_matrix: npt.NDArray[np.float32] = np.array([[0, 1], [-1, 0]], dtype=np.float32)
         # Function call
         result = rotate_2d(point, rotation_matrix)
 
@@ -35,7 +35,7 @@ class TestTransform(unittest.TestCase):
         """Tests translate"""
         # Setup
         pose = StateSE2(3, 5, np.pi / 4)
-        translation = np.array([1, 2], dtype=np.float32)  # type: npt.NDArray[np.float32]
+        translation: npt.NDArray[np.float32] = np.array([1, 2], dtype=np.float32)
 
         # Function call
         result = translate(pose, translation)
@@ -47,7 +47,7 @@ class TestTransform(unittest.TestCase):
         """Tests rotation of SE2 pose by rotation matrix"""
         # Setup
         pose = StateSE2(1, 2, np.pi / 4)
-        rotation_matrix = np.array([[0, 1], [-1, 0]], dtype=np.float32)  # type: npt.NDArray[np.float32]
+        rotation_matrix: npt.NDArray[np.float32] = np.array([[0, 1], [-1, 0]], dtype=np.float32)
         # Function call
         result = rotate(pose, rotation_matrix)
 
@@ -74,9 +74,7 @@ class TestTransform(unittest.TestCase):
         """Tests transformation of SE2 pose"""
         # Setup
         pose = StateSE2(1, 2, 0)
-        transform_matrix = np.array(
-            [[-3, -2, 5], [0, -1, 4], [0, 0, 1]], dtype=np.float32
-        )  # type: npt.NDArray[np.float32]
+        transform_matrix: npt.NDArray[np.float32] = np.array([[-3, -2, 5], [0, -1, 4], [0, 0, 1]], dtype=np.float32)
 
         # Function call
         result = transform(pose, transform_matrix)

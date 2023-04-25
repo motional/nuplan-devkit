@@ -280,7 +280,6 @@ class TestLaneGCN(unittest.TestCase):
             return int(port)
 
     def _init_distributed_process_group(self) -> None:
-        # TODO: factor out this to be shared with all models
         """
         Sets up the torch distributed processing server.
         :param port: The port to use for the gloo server.

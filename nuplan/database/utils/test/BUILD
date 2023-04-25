@@ -46,3 +46,14 @@ py_test(
         requirement("Pillow"),
     ],
 )
+
+py_test(
+    name = "test_image",
+    size = "small",
+    srcs = ["test_image.py"],
+    deps = [
+        "//nuplan/database/utils:image",
+        requirement("opencv-python"),
+        requirement("Pillow"),
+    ],
+)

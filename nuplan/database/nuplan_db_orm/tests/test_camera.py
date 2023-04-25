@@ -3,7 +3,7 @@ from unittest.mock import Mock, PropertyMock, patch
 
 import numpy as np
 
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_camera
+from nuplan.database.tests.test_utils_nuplan_db import get_test_nuplan_camera
 
 
 class TestCamera(unittest.TestCase):

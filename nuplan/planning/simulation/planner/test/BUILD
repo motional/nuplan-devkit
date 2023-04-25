@@ -23,6 +23,7 @@ py_test(
         "//nuplan/planning/simulation/history:simulation_history_buffer",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/simulation/planner:log_future_planner",
+        "//nuplan/planning/simulation/planner:planner_report",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )

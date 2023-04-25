@@ -30,14 +30,23 @@ ______________________________________________________________________
 </div>
 
 ______________________________________________________________________
+## Sensor Data Release
+#### IMPORTANT: The file structure has changed! Please check [Dataset Setup](https://github.com/motional/nuplan-devkit/blob/master/docs/dataset_setup.md) page for the updated file structure.
+- The nuPlan sensor data for the v1.1 dataset has been released. Please download the latest dataset from the nuPlan [page](https://www.nuscenes.org/nuplan#download).
+- Due to the size of the sensor data, it will be released gradually. This first set of sensor data are the blobs corresponding to nuPlan mini.
+- A short tutorial for the sensor data is provided `nuplan_sensor_data_tutorial.ipynb` to get you started.
+______________________________________________________________________
 ## Planning challenges
-#### The nuPlan Planning Competition is live!
-#### The challenge will be presented as part of the [New Advances On Autonomous Driving](https://opendrivelab.com/event/cvpr23_ADworkshop) workshop at CVPR 2023
-#### The nuPlan Dataset v1.1 has been released. Please download the latest dataset from the nuPlan [page](https://www.nuscenes.org/nuplan#download).
+#### IMPORTANT: The Planning Challenge will be using devkit version 1.2 from now on. Submissions generated from version v1.1 should remain compatible. However, please double-check by submitting to the warm-up phase.
+- The nuPlan Planning Competition is live!
+- The challenge will be presented as part of the [New Advances On Autonomous Driving](https://opendrivelab.com/event/cvpr23_ADworkshop) workshop at CVPR 2023
+- The nuPlan Dataset v1.1 has been released. Please download the latest dataset from the nuPlan [page](https://www.nuscenes.org/nuplan#download).
 ______________________________________________________________________
 
 ## Changelog
-- February 15th 2023
+- April 25th 2023
+  * v1.2 Devkit: The nuPlan sensor data have been released! Improved feature caching and nuBoard dashboard functionality. Changed dataset file structure, data interfaces now allow retrieval of sensor data. Pinned several packages including hydra, numpy and sqlalchemy.
+- January 20th 2023
   * v1.1 Devkit: The official nuPlan Challenge Release. Optimized training caching, simulation improvements, shapely 2.0 update. 
 - Oct 13th 2022
   * v1.1 Dataset: Full nuPlan dataset - improved route plan, traffic light status, mission goal and more!

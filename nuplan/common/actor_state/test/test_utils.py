@@ -70,17 +70,47 @@ def get_sample_ego_state(center: Optional[StateSE2] = None, time_us: Optional[in
     )
 
 
-def get_sample_agent(token: str = 'test', agent_type: TrackedObjectType = TrackedObjectType.VEHICLE) -> Agent:
+def get_sample_agent(
+    token: str = 'test',
+    agent_type: TrackedObjectType = TrackedObjectType.VEHICLE,
+    num_past_states: Optional[int] = 1,
+    num_future_states: Optional[int] = 1,
+) -> Agent:
     """
     Creates a sample Agent, the token and agent type can be specified for various testing purposes.
-    :return: A sample Agent
+    :param token: The unique token to assign to the agent.
+    :param agent_type: Classification of the agent.
+    :param num_past_states: How many states to generate in the past trajectory. With None, that will be assigned to
+    the past_trajectory otherwise the current state + num_past_states will be added.
+    :param num_future_states: How many states to generate in the future trajectory. If `None` is passed, `None` will
+    be assigned to the predictions; otherwise the current state + num_future_states will be added.
+    :return: A sample Agent.
     """
+    initial_timestamp = 10
+    sample_oriented_box = get_sample_oriented_box()
     return Agent(
         agent_type,
-        get_sample_oriented_box(),
-        metadata=SceneObjectMetadata(timestamp_us=10, track_token=token, track_id=None, token=token),
+        sample_oriented_box,
+        metadata=SceneObjectMetadata(timestamp_us=initial_timestamp, track_token=token, track_id=None, token=token),
         velocity=StateVector2D(0.0, 0.0),
         predictions=[
-            PredictedTrajectory(1.0, [Waypoint(time_point=TimePoint(10), oriented_box=get_sample_oriented_box())])
-        ],
+            PredictedTrajectory(
+                1.0,
+                [
+                    Waypoint(time_point=TimePoint(initial_timestamp + i * 5), oriented_box=sample_oriented_box)
+                    for i in range(num_future_states + 1)
+                ],
+            )
+        ]
+        if num_future_states is not None
+        else None,
+        past_trajectory=PredictedTrajectory(
+            1.0,
+            [
+                Waypoint(time_point=TimePoint(initial_timestamp - i * 5), oriented_box=sample_oriented_box)
+                for i in reversed(range(num_past_states + 1))
+            ],
+        )
+        if num_past_states is not None
+        else None,
     )

@@ -10,10 +10,10 @@ def sample_indices_with_time_horizon(num_samples: int, time_horizon: float, time
     :param time_interval: [s] time interval of sequence to sample from.
     :return: sampled indices that access the temporal sequence.
     """
-    if time_horizon <= 0 or time_interval <= 0 or time_horizon < time_interval:
+    if time_horizon <= 0.0 or time_interval <= 0.0 or time_horizon < time_interval:
         raise ValueError(
-            f'Time horizon {time_horizon} must be smaller than target time interval {time_interval}'
-            'and both must be positive'
+            f'Time horizon {time_horizon} must be greater or equal than target time interval {time_interval}'
+            ' and both must be positive.'
         )
 
     # Compute step size and number of intervals to sample from

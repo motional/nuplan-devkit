@@ -19,3 +19,9 @@ port_number: 5006
 simulation_path: null
 resource_prefix: null
 profiler_path: null
+async_scenario_rendering: True                     # Setting this to True will improve UX by showing the scenario canvas as early as possible and then drawing individual plots as their data become available
+
+# Maximum frames to render in the scenario tab per second, must be between 1-60.
+#   Use lower values when running nuBoard in the cloud to prevent frame queues due to latency. The rule of thumb
+#   is to match the frame rate with the expected latency, e.g 5Hz for 200ms round-trip latency:
+scenario_rendering_frame_rate_cap_hz: 60

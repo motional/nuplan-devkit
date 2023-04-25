@@ -24,8 +24,8 @@ py_test(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/common/utils/test_utils:nuplan_test",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         "//nuplan/planning/metrics/utils:route_extractor",
     ],
 )

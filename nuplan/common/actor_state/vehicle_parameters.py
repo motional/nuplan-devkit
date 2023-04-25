@@ -124,7 +124,7 @@ class VehicleParameters(BoxParameters):
 
 def get_pacifica_parameters() -> VehicleParameters:
     """
-    :return VehicleParameters containing parameters of Pacifica Vehicle
+    :return VehicleParameters containing parameters of Pacifica Vehicle.
     """
     return VehicleParameters(
         vehicle_name="pacifica",

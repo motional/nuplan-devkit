@@ -70,7 +70,7 @@ class TestMetricRunner(unittest.TestCase):
             planner=planner,
         )
 
-        self.metric_engine = MetricsEngine(metrics=[], main_save_path=save_path / 'metrics', timestamp=0)
+        self.metric_engine = MetricsEngine(metrics=[], main_save_path=save_path / 'metrics')
         self.metric_callback = MetricCallback(metric_engine=self.metric_engine)
         self.metric_runner = MetricRunner(simulation_log=self.simulation_log, metric_callback=self.metric_callback)
 

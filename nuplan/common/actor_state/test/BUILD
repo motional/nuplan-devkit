@@ -14,6 +14,7 @@ py_library(
         "//nuplan/common/actor_state:agent",
         "//nuplan/common/actor_state:car_footprint",
         "//nuplan/common/actor_state:ego_state",
+        "//nuplan/common/actor_state:ego_temporal_state",
         "//nuplan/common/actor_state:oriented_box",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:tracked_objects_types",

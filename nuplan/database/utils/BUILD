@@ -39,3 +39,13 @@ py_library(
         requirement("matplotlib"),
     ],
 )
+
+py_library(
+    name = "image",
+    srcs = ["image.py"],
+    deps = [
+        requirement("opencv-python"),
+        requirement("numpy"),
+        requirement("Pillow"),
+    ],
+)

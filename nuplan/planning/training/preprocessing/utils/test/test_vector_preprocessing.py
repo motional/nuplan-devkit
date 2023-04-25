@@ -74,7 +74,7 @@ class TestVectorPreprocessing(unittest.TestCase):
         """
         coords: List[torch.Tensor] = [torch.tensor([[0.0, 0.0]])]
         traffic_light_data: List[torch.Tensor] = [
-            torch.tensor([LaneSegmentTrafficLightData.encode(TrafficLightStatusType.UNKNOWN)])
+            [torch.tensor([LaneSegmentTrafficLightData.encode(TrafficLightStatusType.UNKNOWN)])]
         ]
 
         coords_tensor, tl_data_tensor, avails_tensor = convert_feature_layer_to_fixed_size(
@@ -91,7 +91,7 @@ class TestVectorPreprocessing(unittest.TestCase):
 
         self.assertEqual(coords_tensor.shape, (self.max_elements, self.max_points, 2))
         self.assertEqual(
-            tl_data_tensor.shape, (self.max_elements, self.max_points, LaneSegmentTrafficLightData.encoding_dim())
+            tl_data_tensor[0].shape, (self.max_elements, self.max_points, LaneSegmentTrafficLightData.encoding_dim())
         )
         self.assertEqual(avails_tensor.shape, (self.max_elements, self.max_points))
 
@@ -125,7 +125,7 @@ class TestVectorPreprocessing(unittest.TestCase):
             def forward(
                 self,
                 coords: List[torch.Tensor],
-                traffic_light_data: Optional[List[torch.Tensor]],
+                traffic_light_data: Optional[List[List[torch.Tensor]]],
                 max_elements: int,
                 max_points: int,
                 traffic_light_encoding_dim: int,
@@ -141,7 +141,7 @@ class TestVectorPreprocessing(unittest.TestCase):
 
         test_coords: List[torch.Tensor] = [torch.tensor([[0.0, 0.0]])]
         test_traffic_light_data: List[torch.Tensor] = [
-            torch.tensor([LaneSegmentTrafficLightData.encode(TrafficLightStatusType.UNKNOWN)])
+            [torch.tensor([LaneSegmentTrafficLightData.encode(TrafficLightStatusType.UNKNOWN)])]
         ]
 
         py_result_coords, py_script_result_tl_data, py_script_result_avails = to_script.forward(

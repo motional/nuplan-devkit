@@ -12,6 +12,11 @@ py_test(
         "//nuplan/common/actor_state:static_object",
         "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/common/actor_state:waypoint",
+        "//nuplan/common/utils:helpers",
+        "//nuplan/database/nuplan_db:camera",
+        "//nuplan/database/nuplan_db:image",
+        "//nuplan/database/nuplan_db:lidar_pc",
+        "//nuplan/database/nuplan_db:nuplan_db_utils",
         "//nuplan/database/nuplan_db:nuplan_scenario_queries",
     ],
 )
@@ -32,5 +37,14 @@ py_library(
     srcs = ["minimal_db_test_utils.py"],
     deps = [
         "//nuplan/database/common:data_types",
+    ],
+)
+
+py_test(
+    name = "test_nuplan_db_utils",
+    size = "small",
+    srcs = ["test_nuplan_db_utils.py"],
+    deps = [
+        "//nuplan/database/nuplan_db:nuplan_db_utils",
     ],
 )

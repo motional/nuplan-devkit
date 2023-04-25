@@ -33,7 +33,7 @@ class TestMetricEngine(unittest.TestCase):
         ego_jerk = EgoJerkStatistics(name=self.metric_names[1], category='Dynamics', max_abs_mag_jerk=10.0)
 
         self.planner_name = 'planner'
-        self.metric_engine = MetricsEngine(metrics=[ego_acceleration_metric], main_save_path=Path(''), timestamp=0)
+        self.metric_engine = MetricsEngine(metrics=[ego_acceleration_metric], main_save_path=Path(''))
         self.metric_engine.add_metric(ego_jerk)
         self.history = self.setup_history()
 

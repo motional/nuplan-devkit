@@ -1,12 +1,19 @@
 import logging
 import pathlib
-import pickle
 import time
 from collections import defaultdict
 from typing import List
 
 import pandas
 
+from nuplan.common.utils.io_utils import (
+    delete_file,
+    list_files_in_directory,
+    path_exists,
+    read_pickle,
+    safe_path_to_string,
+)
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.metrics.metric_engine import JSON_FILE_EXTENSION
 from nuplan.planning.simulation.main_callback.abstract_main_callback import AbstractMainCallback
 
@@ -21,12 +28,13 @@ class MetricFileCallback(AbstractMainCallback):
     ):
         """
         Constructor of MetricFileCallback.
+        Output path can be local or s3.
         :param metric_file_output_path: Path to save integrated metric files.
         :param scenario_metric_paths: A list of paths with scenario metric files.
         :param delete_scenario_metric_files: Set True to delete scenario metric files.
         """
         self._metric_file_output_path = pathlib.Path(metric_file_output_path)
-        if not self._metric_file_output_path.exists():
+        if not is_s3_path(self._metric_file_output_path):
             self._metric_file_output_path.mkdir(exist_ok=True, parents=True)
 
         self._scenario_metric_paths = [
@@ -43,26 +51,27 @@ class MetricFileCallback(AbstractMainCallback):
 
         # Stop if no metric path exists
         for scenario_metric_path in self._scenario_metric_paths:
-            if not scenario_metric_path.exists():
+            # If it's an dir in S3, path_exists will be False but there may be files
+            if not is_s3_path(scenario_metric_path) and not path_exists(scenario_metric_path):
                 continue
 
-            for scenario_metric_file in scenario_metric_path.iterdir():
+            for scenario_metric_file in list_files_in_directory(scenario_metric_path):
                 if not scenario_metric_file.name.endswith(JSON_FILE_EXTENSION):
                     continue
-                with open(scenario_metric_file, "rb") as f:
-                    json_dataframe = pickle.load(f)
-                    for dataframe in json_dataframe:
-                        pandas_dataframe = pandas.DataFrame(dataframe)
-                        metrics[dataframe['metric_statistics_name']].append(pandas_dataframe)
+
+                json_dataframe = read_pickle(scenario_metric_file)
+                for dataframe in json_dataframe:
+                    pandas_dataframe = pandas.DataFrame(dataframe)
+                    metrics[dataframe['metric_statistics_name']].append(pandas_dataframe)
 
                 # Delete the temp file
                 if self._delete_scenario_metric_files:
-                    scenario_metric_file.unlink(missing_ok=True)
+                    delete_file(scenario_metric_file)
 
         for metric_statistics_name, dataframe in metrics.items():
             save_path = self._metric_file_output_path / (metric_statistics_name + '.parquet')
             concat_pandas = pandas.concat([*dataframe], ignore_index=True)
-            concat_pandas.to_parquet(save_path)
+            concat_pandas.to_parquet(safe_path_to_string(save_path))
 
         end_time = time.perf_counter()
         elapsed_time_s = end_time - start_time

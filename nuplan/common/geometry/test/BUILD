@@ -9,12 +9,16 @@ py_library(
     srcs = ["__init__.py"],
 )
 
-py_library(
+py_test(
     name = "test_compute",
+    size = "small",
     srcs = ["test_compute.py"],
     deps = [
+        "//nuplan/common/actor_state:oriented_box",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:compute",
+        requirement("numpy"),
+        requirement("shapely"),
     ],
 )
 
@@ -28,21 +32,25 @@ py_test(
     ],
 )
 
-py_library(
+py_test(
     name = "test_convert",
+    size = "small",
     srcs = ["test_convert.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:convert",
+        requirement("numpy"),
     ],
 )
 
-py_library(
+py_test(
     name = "test_transform",
+    size = "small",
     srcs = ["test_transform.py"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/geometry:transform",
+        requirement("numpy"),
     ],
 )
 
@@ -61,7 +69,7 @@ py_test(
     ],
     deps = [
         "//nuplan/common/geometry:interpolate_tracked_object",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/planning/utils/serialization:from_scene",
         requirement("pytest"),
     ],

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -uox pipefail
+
 export PYTHONUNBUFFERED=1
 
 if [[ -z "${NUPLAN_PLANNER}" ]]; then
@@ -48,7 +50,7 @@ else
          worker=sequential \
          scenario_builder=nuplan_challenge \
          scenario_filter=nuplan_challenge_scenarios \
-         scenario_builder.db_files=/data/sets/nuplan/nuplan-v1.1/mini/2021.07.16.20.45.29_veh-35_01095_01486.db \
+         scenario_builder.db_files=/data/sets/nuplan/nuplan-v1.1/splits/mini/2021.07.16.20.45.29_veh-35_01095_01486.db \
          scenario_filter.limit_total_scenarios=1 \
          contestant_id="${CONTESTANT_ID}" \
          submission_id="${SUBMISSION_ID}"

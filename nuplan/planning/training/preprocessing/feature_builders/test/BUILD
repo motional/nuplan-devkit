@@ -1,4 +1,6 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
+load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,12 +11,14 @@ py_test(
     tags = ["integration"],
     deps = [
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:tracked_objects_types",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",
         "//nuplan/planning/simulation/planner:abstract_planner",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/training/preprocessing/feature_builders:agents_feature_builder",
         "//nuplan/planning/training/preprocessing/features:agents",
         "//nuplan/planning/training/preprocessing/utils:agents_preprocessing",
+        requirement("hypothesis"),
     ],
 )
 
@@ -62,6 +66,25 @@ py_test(
 )
 
 py_test(
+    name = "test_vector_map_feature_builder_lane_metadata",
+    size = "medium",
+    srcs = ["test_vector_map_feature_builder_lane_metadata.py"],
+    deps = [
+        "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state/test:test_utils",
+        "//nuplan/common/maps:abstract_map",
+        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/common/utils/test_utils:function_validation",
+        "//nuplan/common/utils/test_utils:patch",
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_builder_utils",
+        "//nuplan/planning/training/preprocessing/feature_builders:vector_map_feature_builder",
+        "//nuplan/planning/training/preprocessing/features:vector_map",
+        requirement("numpy"),
+    ],
+)
+
+py_test(
     name = "test_vector_set_map_feature_builder",
     size = "medium",
     srcs = ["test_vector_set_map_feature_builder.py"],
@@ -74,5 +97,22 @@ py_test(
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/training/preprocessing/feature_builders:vector_set_map_feature_builder",
         "//nuplan/planning/training/preprocessing/features:vector_set_map",
+    ],
+)
+
+py_library(
+    name = "mock_feature_utils",
+    srcs = ["mock_feature_utils.py"],
+    deps = [
+        "//nuplan/planning/scenario_builder:abstract_scenario",
+        "//nuplan/planning/simulation/planner:abstract_planner",
+        "//nuplan/planning/simulation/trajectory:trajectory_sampling",
+        "//nuplan/planning/training/modeling:torch_module_wrapper",
+        "//nuplan/planning/training/modeling:types",
+        "//nuplan/planning/training/preprocessing/feature_builders:abstract_feature_builder",
+        "//nuplan/planning/training/preprocessing/features:abstract_model_feature",
+        "//nuplan/planning/training/preprocessing/features:trajectory",
+        "//nuplan/planning/training/preprocessing/target_builders:abstract_target_builder",
+        requirement_torch("torch"),
     ],
 )

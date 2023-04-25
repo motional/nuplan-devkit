@@ -8,6 +8,7 @@ import pandas
 import pyarrow
 import pyarrow.parquet as pq
 
+from nuplan.common.utils.io_utils import safe_path_to_string
 from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 
 
@@ -54,11 +55,12 @@ class AbstractMetricAggregator(metaclass=ABCMeta):
     @staticmethod
     def _save_parquet(dataframe: pandas.DataFrame, save_path: Path) -> None:
         """
-        Save dataframe to a parquet file
-        :param dataframe: Pandas dataframe
+        Save dataframe to a parquet file.
+        The path can be local or s3.
+        :param dataframe: Pandas dataframe.
         :param save_path: Path to save the dataframe.
         """
-        dataframe.to_parquet(str(save_path))
+        dataframe.to_parquet(safe_path_to_string(save_path))
 
     @abstractmethod
     def read_parquet(self) -> None:

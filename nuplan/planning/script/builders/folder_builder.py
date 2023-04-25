@@ -1,9 +1,12 @@
 import logging
+import os
 import pathlib
 import time
 
 from omegaconf import DictConfig
 
+from nuplan.common.utils.io_utils import path_exists, safe_path_to_string
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.nuboard.base.data_class import NuBoardFile
 
 logger = logging.getLogger(__name__)
@@ -30,13 +33,15 @@ def build_simulation_experiment_folder(cfg: DictConfig) -> str:
 
     main_exp_folder = pathlib.Path(cfg.output_dir)
     logger.info(f'\n\n\tFolder where all results are stored: {main_exp_folder}\n')
-    main_exp_folder.mkdir(parents=True, exist_ok=True)
+
+    if not is_s3_path(main_exp_folder):
+        main_exp_folder.mkdir(parents=True, exist_ok=True)
 
     # simulation_log_main_path should be the main path contains all folders example, 'metric' and 'simulation'.
     if 'simulation_log_main_path' in cfg and cfg.simulation_log_main_path is not None:
         exp_folder = pathlib.Path(cfg.simulation_log_main_path)
         logger.info(f'\n\n\tUsing previous simulation logs: {exp_folder}\n')
-        if not exp_folder.exists():
+        if not path_exists(exp_folder):
             raise FileNotFoundError(f'{exp_folder} does not exist.')
     else:
         exp_folder = main_exp_folder
@@ -46,20 +51,22 @@ def build_simulation_experiment_folder(cfg: DictConfig) -> str:
     else:
         simulation_folder = None
 
-    # Build nuboard event file.
-    nuboard_filename = main_exp_folder / (f'nuboard_{int(time.time())}' + NuBoardFile.extension())
-    nuboard_file = NuBoardFile(
-        simulation_main_path=str(exp_folder),
-        simulation_folder=simulation_folder,
-        metric_main_path=str(main_exp_folder),
-        metric_folder=cfg.metric_dir,
-        aggregator_metric_folder=cfg.aggregator_metric_dir,
-    )
-
     metric_main_path = main_exp_folder / cfg.metric_dir
-    metric_main_path.mkdir(parents=True, exist_ok=True)
+    if not is_s3_path(metric_main_path):
+        metric_main_path.mkdir(parents=True, exist_ok=True)
 
-    nuboard_file.save_nuboard_file(nuboard_filename)
+    # Only build one nuboard event file on master node
+    if int(os.environ.get('NODE_RANK', 0)) == 0:
+        nuboard_filename = main_exp_folder / (f'nuboard_{int(time.time())}' + NuBoardFile.extension())
+        nuboard_file = NuBoardFile(
+            simulation_main_path=safe_path_to_string(exp_folder),
+            simulation_folder=simulation_folder,
+            metric_main_path=safe_path_to_string(exp_folder),
+            metric_folder=cfg.metric_dir,
+            aggregator_metric_folder=cfg.aggregator_metric_dir,
+        )
+        nuboard_file.save_nuboard_file(nuboard_filename)
+
     logger.info('Building experiment folders...DONE!')
 
     return exp_folder.name

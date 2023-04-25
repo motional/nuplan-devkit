@@ -8,8 +8,8 @@ from nuplan.common.maps.abstract_map import SemanticMapLayer
 from nuplan.common.maps.abstract_map_objects import LaneConnector, PolylineMapObject
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.common.maps.test_utils import add_map_objects_to_scene, add_polyline_to_scene
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 
 maps_db = get_test_maps_db()
 map_factory = NuPlanMapFactory(maps_db)

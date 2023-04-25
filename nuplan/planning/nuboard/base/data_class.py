@@ -5,6 +5,7 @@ import pickle
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from nuplan.common.utils.io_utils import save_object_as_pickle
 from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 
 
@@ -72,8 +73,7 @@ class NuBoardFile:
         Save NuBoardFile data class to a file.
         :param filename: The saved file path.
         """
-        with open(filename, "wb") as file:
-            pickle.dump(self.serialize(), file)
+        save_object_as_pickle(filename, self.serialize())
 
     @classmethod
     def load_nuboard_file(cls, filename: pathlib.Path) -> NuBoardFile:

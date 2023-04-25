@@ -252,7 +252,7 @@ class IDMAgent:
                     self._clamp_progress(progress + self.velocity * sampling_time * (step + 1))
                     for step in range(num_samples)
                 ]
-                future_poses = [self._path.get_state_at_progress(progress) for progress in progress_samples]
+                future_poses = self._path.get_state_at_progresses(progress_samples)
                 time_stamps = [TimePoint(int(1e6 * sampling_time * (step + 1))) for step in range(num_samples)]
                 init_way_point = [Waypoint(TimePoint(0), box, self._velocity_to_global_frame(init_pose.heading))]
                 waypoints = [

@@ -12,7 +12,7 @@ from nuplan.common.actor_state.static_object import StaticObject
 from nuplan.database.nuplan_db_orm.category import Category
 from nuplan.database.nuplan_db_orm.lidar_box import LidarBox
 from nuplan.database.nuplan_db_orm.log import Log
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_lidar_box, get_test_nuplan_lidar_box_vehicle
+from nuplan.database.tests.test_utils_nuplan_db import get_test_nuplan_lidar_box, get_test_nuplan_lidar_box_vehicle
 from nuplan.database.utils.boxes.box3d import Box3D
 from nuplan.database.utils.geometry import quaternion_yaw
 

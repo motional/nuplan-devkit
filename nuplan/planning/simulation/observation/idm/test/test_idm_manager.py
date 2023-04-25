@@ -6,8 +6,8 @@ import pytest
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusType
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 from nuplan.planning.simulation.observation.idm.idm_policy import IDMPolicy
 from nuplan.planning.simulation.observation.idm.test.utils import build_idm_manager
 from nuplan.planning.utils.serialization.from_scene import to_agent_state_from_scene

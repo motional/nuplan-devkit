@@ -1,10 +1,11 @@
+aioboto3
+aiofiles
 bokeh==2.4.3  # Used in the nuBoard dashboard
 boto3==1.24.59  # Used in s3_store.py to download data from S3.
 cachetools  # Used widely
 casadi  # Used for optimization solving
 control==0.9.1  # Used for LQR controller synthesis
 coverage  # Used in computing code coverage
-descartes  # Used in map_explorer.py
 docker  # To run remote submissions
 Fiona  # Used in GpkgMapsDB.py
 geopandas>=0.12.1  # Used to read maps
@@ -12,12 +13,15 @@ grpcio==1.43.0  # Used for communication with submission container
 grpcio-tools==1.43.0  # Used for communication with submission container
 guppy3==3.1.2
 hydra-core==1.1.0rc1  # Used for configs
+hypothesis
 joblib
 jupyter  # Used to show the notebook
 jupyterlab
 matplotlib  # Used for rendering
 mock
-numpy>=1.21.1  # Used widely, only from this version numpy.typing.NDArray is supported
+moto
+nest_asyncio  # Used to nest event loops when running nuBoard/jupyter
+numpy==1.23.4
 opencv-python<=4.5.1.48  # Used widely
 pandas    # Used widely
 Pillow    # Used widely to render images
@@ -33,12 +37,12 @@ ray # Used widely
 requests  # Used in BlobStore classes
 retry
 rtree # Used in occupancy maps
-s3fs
+s3fs # Used by pandas to read from/write to s3
 scipy  # Used widely
 selenium # Used in bokeh export png
 setuptools==59.5.0  # Used in setup.py, pinned to not break pytorch
-shapely>=2.0.0 # Used widely
-SQLAlchemy>=1.4.27  # older versions don't work with some table definitions
+Shapely>=2.0.0  # Used widely
+SQLAlchemy==1.4.27  # older versions don't work with some table definitions
 sympy  # Use for symbolic algebra
 testbook  # Used in testing jupyter notebooks
 tornado  # Used in nuboard.py

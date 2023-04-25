@@ -8,8 +8,8 @@ py_library(
 )
 
 py_library(
-    name = "nuplan_db_test_utils",
-    srcs = ["nuplan_db_test_utils.py"],
+    name = "test_utils_nuplan_db",
+    srcs = ["test_utils_nuplan_db.py"],
     deps = [
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:imapsdb",
@@ -28,6 +28,6 @@ py_test(
     tags = ["integration"],
     deps = [
         "//nuplan/database/nuplan_db_orm:nuplandb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )

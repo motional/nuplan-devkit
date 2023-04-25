@@ -5,7 +5,7 @@ from typing import Dict, List, Set, cast
 
 from omegaconf import DictConfig
 
-from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir, get_cache_metadata_paths
+from nuplan.common.utils.s3_utils import check_s3_path_exists, expand_s3_dir, get_cache_metadata_paths, split_s3_path
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.cache.cached_scenario import CachedScenario
 from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
@@ -35,10 +35,11 @@ def get_s3_scenario_cache(
     assert check_s3_path_exists(cache_path), 'Remote cache {cache_path} does not exist!'
 
     # Get metadata files from s3 cache path provided
-    metadata_files = get_cache_metadata_paths(cache_path)
+    s3_bucket, s3_key = split_s3_path(cache_path)
+    metadata_files = get_cache_metadata_paths(s3_key, s3_bucket)
     if len(metadata_files) > 0:
         logger.info("Reading s3 directory from metadata.")
-        cache_metadata_entries = read_cache_metadata(cache_path, metadata_files, worker)
+        cache_metadata_entries = read_cache_metadata(Path(cache_path), metadata_files, worker)
         s3_filenames = extract_field_from_cache_metadata_entries(cache_metadata_entries, 'file_name')
     else:  # If cache does not have any metadata csv files, fetch files directly from s3
         logger.warning("Not using metadata! This will be slow...")
@@ -74,7 +75,7 @@ def get_local_scenario_cache(cache_path: str, feature_names: Set[str]) -> List[P
     assert cache_dir.exists(), f'Local cache {cache_dir} does not exist!'
     assert any(cache_dir.iterdir()), f'No files found in the local cache {cache_dir}!'
 
-    candidate_scenario_dirs = [path for log_dir in cache_dir.iterdir() for path in log_dir.iterdir()]
+    candidate_scenario_dirs = {x.parent for x in cache_dir.rglob("*.gz")}
 
     # Keep only dir paths that contains all required feature names
     scenario_cache_paths = [

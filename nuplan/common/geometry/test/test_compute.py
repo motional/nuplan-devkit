@@ -1,3 +1,4 @@
+import math
 import unittest
 from unittest.mock import Mock, patch
 
@@ -22,7 +23,7 @@ from nuplan.common.geometry.compute import (
 class TestCompute(unittest.TestCase):
     """Tests for compute functions"""
 
-    @patch("nuplan.common.geometry.compute.get_pacifica_parameters")
+    @patch("nuplan.common.geometry.compute.get_pacifica_parameters", autospec=True)
     def test_signed_lateral_distance(self, mock_pacifica: Mock) -> None:
         """Tests signed lateral distance of ego to polygon"""
         # Setup
@@ -56,7 +57,7 @@ class TestCompute(unittest.TestCase):
         self.assertAlmostEqual(result_0, 1)
         self.assertAlmostEqual(result_1, -1)
 
-    @patch("nuplan.common.geometry.compute.get_pacifica_parameters")
+    @patch("nuplan.common.geometry.compute.get_pacifica_parameters", autospec=True)
     def test_signed_longitudinal_distance(self, mock_pacifica: Mock) -> None:
         """Tests signed longitudinal distance of ego to polygon"""
         # Setup
@@ -150,7 +151,7 @@ class TestCompute(unittest.TestCase):
         self.assertEqual(l2_euclidean_corners_distance(box1, box2), l2_euclidean_corners_distance(box1, box3))
         self.assertEqual(10.0, l2_euclidean_corners_distance(box1, box4))
         self.assertEqual(10.0, l2_euclidean_corners_distance(box1, box1_rot))
-        self.assertEqual(10.931588394648887, l2_euclidean_corners_distance(box1, box5))
+        self.assertTrue(math.isclose(10.931588394648887, l2_euclidean_corners_distance(box1, box5)))
 
     def test_se2_box_distances(self) -> None:
         """Tests computation of distances between SE2 poses using OrientedBox"""
@@ -159,14 +160,22 @@ class TestCompute(unittest.TestCase):
         query = StateSE2(0, 0, 0)
         targets = [StateSE2(0, 0, 0), StateSE2(0, 0, np.pi), StateSE2(2, 0, 0)]
 
+        # The 180 degree rotation in the second box is canceled because consider_flipped
+        # is True, so for the second target we compare the same box.
         self.assertEqual([0, 0, 4.0], se2_box_distances(query, targets, box_dimension))
+
+        # The second box is rotated 180 degrees, causing each pair of corners to have a
+        # distance of 5 from each other -- with the given dimensions, the corners are
+        #   ( 2,  1.5), (-2,  1.5), (-2, -1.5), ( 2, -1.5)
+        # for the query box. The rotation shifts the second target box to be
+        #   (-2, -1.5), ( 2, -1.5), ( 2,  1.5), (-2,  1.5)
+        self.assertEqual([0, 10.0, 4.0], se2_box_distances(query, targets, box_dimension, consider_flipped=False))
 
 
 class TestAngularInterpolator(unittest.TestCase):
     """Tests AngularInterpolator class"""
 
-    @patch("nuplan.common.geometry.compute.np.unwrap", Mock)
-    @patch("nuplan.common.geometry.compute.interp1d")
+    @patch("nuplan.common.geometry.compute.interp1d", autospec=True)
     def setUp(self, mock_interp: Mock) -> None:
         """Sets up variables for testing"""
         interpolator = Mock(return_value="interpolated")
@@ -175,8 +184,8 @@ class TestAngularInterpolator(unittest.TestCase):
         self.angular_states = [[11], [22], [33], [44]]
         self.interpolator = AngularInterpolator(self.states, self.angular_states)
 
-    @patch("nuplan.common.geometry.compute.np.unwrap")
-    @patch("nuplan.common.geometry.compute.interp1d")
+    @patch("nuplan.common.geometry.compute.np.unwrap", autospec=True)
+    @patch("nuplan.common.geometry.compute.interp1d", autospec=True)
     def test_initialization(self, mock_interp: Mock, unwrap: Mock) -> None:
         """Tests interpolation for angular states."""
         # Function call

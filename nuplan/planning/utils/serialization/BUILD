@@ -12,8 +12,11 @@ py_library(
     srcs = ["from_scene.py"],
     deps = [
         ":scene_simple_trajectory",
+        "//nuplan/common/actor_state:agent",
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
+        "//nuplan/common/actor_state:static_object",
+        "//nuplan/common/actor_state:tracked_objects",
         "//nuplan/common/actor_state:vehicle_parameters",
         "//nuplan/common/geometry:transform",
         "//nuplan/database/utils/boxes:box3d",

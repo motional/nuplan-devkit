@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 import pytest
 
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.evaluation_metrics.common.ego_progress_along_expert_route import (
     EgoProgressAlongExpertRouteStatistics,
 )

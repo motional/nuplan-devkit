@@ -44,6 +44,6 @@ class EgoTrajectoryTargetBuilder(AbstractTargetBuilder):
         )
 
         if len(trajectory_relative_poses) != self._num_future_poses:
-            raise RuntimeError(f'Expected {self._num_future_poses} num poses but got {len(trajectory_absolute_states)}')
+            raise RuntimeError(f'Expected {self._num_future_poses} num poses but got {len(trajectory_relative_poses)}')
 
         return Trajectory(data=trajectory_relative_poses)

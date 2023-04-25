@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.simulation.main_callback.abstract_main_callback import AbstractMainCallback
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,8 @@ class ValidationCallback(AbstractMainCallback):
             filename = 'failed.txt'
         logger.info("Validation filename: %s" % filename)
         validation_dir = self.output_dir / self._validation_dir_name
-        validation_dir.mkdir(parents=True, exist_ok=True)
+        if not is_s3_path(validation_dir):
+            validation_dir.mkdir(parents=True, exist_ok=True)
 
         with (validation_dir / filename).open('w'):
             pass

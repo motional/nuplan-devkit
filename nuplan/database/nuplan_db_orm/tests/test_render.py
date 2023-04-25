@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from nuplan.database.nuplan_db_orm.rendering_utils import lidar_pc_closest_image, render_lidar_box
-from nuplan.database.tests.nuplan_db_test_utils import (
+from nuplan.database.tests.test_utils_nuplan_db import (
     get_test_nuplan_db,
     get_test_nuplan_lidar_box,
     get_test_nuplan_lidarpc_with_blob,

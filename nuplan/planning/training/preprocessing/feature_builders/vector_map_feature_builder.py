@@ -141,7 +141,7 @@ class VectorMapFeatureBuilder(ScriptableFeatureBuilder):
             on_route_status = get_on_route_status(scenario.get_route_roadblock_ids(), lane_seg_roadblock_ids)
 
             # get traffic light status
-            traffic_light_data = scenario.get_traffic_light_status_at_iteration(0)
+            traffic_light_data = list(scenario.get_traffic_light_status_at_iteration(0))
             traffic_light_data = get_traffic_light_encoding(lane_seg_lane_ids, traffic_light_data)
 
             tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(

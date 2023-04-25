@@ -59,11 +59,9 @@ class SimplePlanner(AbstractPlanner):
         Implement a trajectory that goes straight.
         Inherited, see superclass.
         """
-        # Extract iteration and history
-        iteration = current_input.iteration
+        # Extract current state
         history = current_input.history
-
-        ego_state = history.ego_states[-1]
+        ego_state, _ = history.current_state
         state = EgoState(
             car_footprint=ego_state.car_footprint,
             dynamic_car_state=DynamicCarState.build_from_rear_axle(
@@ -76,11 +74,7 @@ class SimplePlanner(AbstractPlanner):
             time_point=ego_state.time_point,
         )
         trajectory: List[EgoState] = [state]
-        for _ in np.arange(
-            iteration.time_us + self.sampling_time.time_us,
-            iteration.time_us + self.horizon_seconds.time_us,
-            self.sampling_time.time_us,
-        ):
+        for _ in range(int(self.horizon_seconds.time_us / self.sampling_time.time_us)):
             if state.dynamic_car_state.speed > self.max_velocity:
                 accel = self.max_velocity - state.dynamic_car_state.speed
                 state = EgoState.build_from_rear_axle(

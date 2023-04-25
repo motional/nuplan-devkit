@@ -1,7 +1,7 @@
 import unittest
 
 from nuplan.common.actor_state.state_representation import Point2D
-from nuplan.common.maps.maps_datatypes import SemanticMapLayer
+from nuplan.common.maps.maps_datatypes import SemanticMapLayer, TrafficLightStatuses
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario
 from nuplan.planning.training.preprocessing.feature_builders.vector_builder_utils import (
     LaneOnRouteStatusData,
@@ -37,10 +37,28 @@ class TestVectorUtils(unittest.TestCase):
         self.ego_coords = Point2D(ego_state.rear_axle.x, ego_state.rear_axle.y)
         self.map_api = scenario.map_api
         self.route_roadblock_ids = scenario.get_route_roadblock_ids()
-        self.traffic_light_data = scenario.get_traffic_light_status_at_iteration(0)
+        self.traffic_light_data = list(scenario.get_traffic_light_status_at_iteration(0))
 
         self.radius = 35
         self.map_features = ['LANE', 'LEFT_BOUNDARY', 'RIGHT_BOUNDARY', 'STOP_LINE', 'CROSSWALK', 'ROUTE_LANES']
+
+        # traffic light data over time
+        self._num_past_poses = 1
+        self._past_time_horizon = 1.0
+        self._num_future_poses = 5
+        self._future_time_horizon = 5.0
+        current_tl = [TrafficLightStatuses(list(scenario.get_traffic_light_status_at_iteration(iteration=0)))]
+        past_tl = scenario.get_past_traffic_light_status_history(
+            iteration=0, num_samples=self._num_past_poses, time_horizon=self._past_time_horizon
+        )
+        future_tl = scenario.get_future_traffic_light_status_history(
+            iteration=0, num_samples=self._num_future_poses, time_horizon=self._future_time_horizon
+        )
+        past_tl_list = list(past_tl)
+        future_tl_list = list(future_tl)
+        self.traffic_light_data_over_time = (
+            past_tl_list + current_tl + future_tl_list
+        )  # List[TrafficLightStatuses], list lengthis num_frames
 
     def test_prune_route_by_connectivity(self) -> None:
         """
@@ -135,7 +153,7 @@ class TestVectorUtils(unittest.TestCase):
             self.ego_coords,
             self.radius,
             self.route_roadblock_ids,
-            self.traffic_light_data,
+            [TrafficLightStatuses(self.traffic_light_data)],
         )
 
         # check coords
@@ -144,8 +162,32 @@ class TestVectorUtils(unittest.TestCase):
             assert type(coords[feature_name]) == MapObjectPolylines
 
         # check traffic light data
-        assert 'LANE' in traffic_light_data
-        assert type(traffic_light_data['LANE']) == LaneSegmentTrafficLightData
+        assert len(traffic_light_data) == 1
+        assert 'LANE' in traffic_light_data[0]
+        assert type(traffic_light_data[0]['LANE']) == LaneSegmentTrafficLightData
+
+    def test_get_neighbor_vector_set_map_for_time_horizon(self) -> None:
+        """
+        Test extracting neighbor vector set map information from map api.
+        """
+        coords, traffic_light_data_list = get_neighbor_vector_set_map(
+            self.map_api,
+            self.map_features,
+            self.ego_coords,
+            self.radius,
+            self.route_roadblock_ids,
+            self.traffic_light_data_over_time,
+        )
+
+        # check coords
+        for feature_name in self.map_features:
+            assert feature_name in coords
+            assert type(coords[feature_name]) == MapObjectPolylines
+
+        # check traffic light data
+        for traffic_light_data in traffic_light_data_list:
+            assert 'LANE' in traffic_light_data
+            assert type(traffic_light_data['LANE']) == LaneSegmentTrafficLightData
 
 
 if __name__ == '__main__':
