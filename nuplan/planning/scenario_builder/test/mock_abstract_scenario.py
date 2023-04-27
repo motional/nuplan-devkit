@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+import uuid
 from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Generator, List, Optional, Set, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -13,11 +16,23 @@ from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_
 from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
 from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
 from nuplan.common.maps.abstract_map_objects import AbstractMapObject
-from nuplan.common.maps.maps_datatypes import RasterLayer, RasterMap, TrafficLightStatusData, Transform
+from nuplan.common.maps.maps_datatypes import (
+    RasterLayer,
+    RasterMap,
+    TrafficLightStatusData,
+    TrafficLightStatuses,
+    TrafficLightStatusType,
+    Transform,
+)
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.scenario_utils import sample_indices_with_time_horizon
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
-from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Sensors
+from nuplan.planning.simulation.observation.observation_type import (
+    DetectionsTracks,
+    LidarChannel,
+    SensorChannel,
+    Sensors,
+)
 from nuplan.planning.simulation.planner.abstract_planner import PlannerInput
 from nuplan.planning.simulation.planner.simple_planner import SimplePlanner
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
@@ -147,7 +162,7 @@ class MockAbstractScenario(AbstractScenario):
         self._tracked_object_types = tracked_object_types
 
         start_time_us = max(TimePoint(int(number_of_past_iterations * time_step * 1e6)), initial_time_us)
-        time_horizon = self._total_iterations * time_step
+        time_horizon = (number_of_past_iterations + number_of_future_iterations) * time_step
 
         # Create a dummy history buffer
         history_buffer = SimulationHistoryBuffer.initialize_from_list(
@@ -176,7 +191,9 @@ class MockAbstractScenario(AbstractScenario):
             DetectionsTracks(
                 TrackedObjects(
                     [
-                        get_sample_agent(token=str(idx + type_idx * number_of_detections), agent_type=agent_type)
+                        get_sample_agent(
+                            token=str(idx + type_idx * number_of_detections), agent_type=agent_type, num_future_states=0
+                        )
                         for idx in range(number_of_detections)
                         for type_idx, agent_type in enumerate(self._tracked_object_types)
                     ]
@@ -185,7 +202,8 @@ class MockAbstractScenario(AbstractScenario):
             for _ in range(self._total_iterations)
         ]
         self._sensors = [
-            Sensors(pointcloud=[np.eye(3) for _ in range(number_of_detections)]) for _ in range(self._total_iterations)
+            Sensors(pointcloud={LidarChannel.MERGED_PC: np.eye(3) for _ in range(number_of_detections)}, images=None)
+            for _ in range(self._total_iterations)
         ]
 
         if len(self._ego_states) != len(self._tracked_objects) or len(self._ego_states) != self._total_iterations:
@@ -197,15 +215,13 @@ class MockAbstractScenario(AbstractScenario):
         # Create mocked map api
         self._map_api = MockAbstractMap()
 
+        # Create a scenario token sufix randomly so different mocks can be distinguished
+        self._token_suffix = str(uuid.uuid4())
+
     @property
     def token(self) -> str:
         """Implemented. See interface."""
-        return "mock_token"
-
-    @property
-    def ego_vehicle_parameters(self) -> VehicleParameters:
-        """Inherited, see superclass."""
-        return get_pacifica_parameters()
+        return f"mock_token_{self._token_suffix}"
 
     @property
     def log_name(self) -> str:
@@ -216,6 +232,11 @@ class MockAbstractScenario(AbstractScenario):
     def scenario_name(self) -> str:
         """Implemented. See interface."""
         return "mock_scenario_name"
+
+    @property
+    def ego_vehicle_parameters(self) -> VehicleParameters:
+        """Inherited, see superclass."""
+        return get_pacifica_parameters()
 
     @property
     def scenario_type(self) -> str:
@@ -275,7 +296,7 @@ class MockAbstractScenario(AbstractScenario):
         """Implemented. See interface."""
         raise NotImplementedError
 
-    def get_sensors_at_iteration(self, iteration: int) -> Sensors:
+    def get_sensors_at_iteration(self, iteration: int, channels: Optional[List[SensorChannel]] = None) -> Sensors:
         """Implemented. See interface."""
         raise NotImplementedError
 
@@ -283,43 +304,80 @@ class MockAbstractScenario(AbstractScenario):
         """Implemented. See interface."""
         return self._ego_states[self._current_iteration + iteration]
 
+    def get_traffic_light_status_at_iteration(self, iteration: int) -> Generator[TrafficLightStatusData, None, None]:
+        """Implemented. see interface."""
+        dummy_data = TrafficLightStatusData(
+            status=TrafficLightStatusType.GREEN,
+            lane_connector_id=1,
+            timestamp=1627066061949808,
+        )
+        yield dummy_data
+
+    def get_past_traffic_light_status_history(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[TrafficLightStatuses, None, None]:
+        """Gets past traffic light status."""
+        dummy_data = TrafficLightStatusData(
+            status=TrafficLightStatusType.GREEN,
+            lane_connector_id=1,
+            timestamp=1627066061949808,
+        )
+        num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
+        for _ in range(num_samples):
+            yield TrafficLightStatuses([dummy_data])
+
+    def get_future_traffic_light_status_history(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[TrafficLightStatuses, None, None]:
+        """Gets future traffic light status."""
+        dummy_data = TrafficLightStatusData(
+            status=TrafficLightStatusType.GREEN,
+            lane_connector_id=1,
+            timestamp=1627066061949808,
+        )
+        num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
+        for _ in range(num_samples):
+            yield TrafficLightStatuses([dummy_data])
+
     def get_future_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[TimePoint]:
+    ) -> Generator[TimePoint, None, None]:
         """Implemented. See interface."""
         ego_states = self.get_ego_future_trajectory(
             iteration=iteration, time_horizon=time_horizon, num_samples=num_samples
         )
-        time_points = [state.time_point for state in ego_states]
-        return time_points
 
-    def get_ego_future_trajectory(
-        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[EgoState]:
-        """Implemented. See interface."""
-        num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
-        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
-        assert self._number_of_future_iterations - iteration >= indices[-1], (
-            f"Requested time horizon of {time_horizon}s is too long! "
-            f"Scenario future has length {(self._number_of_future_iterations - iteration) * self._time_step}s from "
-            f"the iteration {iteration}"
-        )
-        ego_states = [self._ego_states[self._current_iteration + iteration + idx] for idx in indices]
-        return ego_states
+        for state in ego_states:
+            yield state.time_point
 
     def get_past_timestamps(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[TimePoint]:
+    ) -> Generator[TimePoint, None, None]:
         """Implemented. See interface."""
         ego_states = self.get_ego_past_trajectory(
             iteration=iteration, time_horizon=time_horizon, num_samples=num_samples
         )
-        time_points = [state.time_point for state in ego_states]
-        return time_points
+
+        for state in ego_states:
+            yield state.time_point
+
+    def get_ego_future_trajectory(
+        self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
+    ) -> Generator[EgoState, None, None]:
+        """Implemented. See interface."""
+        num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
+        assert self._number_of_future_iterations - iteration >= indices[-1], (
+            f"Requested time horizon of {time_horizon}s is too long! "
+            f"Scenario future has length {(self._number_of_future_iterations - iteration) * self._time_step}s from "
+            f"the iteration {iteration}"
+        )
+        for idx in indices:
+            yield self._ego_states[self._current_iteration + iteration + idx]
 
     def get_ego_past_trajectory(
         self, iteration: int, time_horizon: float, num_samples: Optional[int] = None
-    ) -> List[EgoState]:
+    ) -> Generator[EgoState, None, None]:
         """Implemented. See interface."""
         num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
         indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
@@ -328,40 +386,48 @@ class MockAbstractScenario(AbstractScenario):
             f"Scenario past has length {(self._current_iteration + iteration) * self._time_step}s from "
             f"the iteration {iteration}"
         )
-        ego_states = [self._ego_states[self._current_iteration + iteration - idx] for idx in reversed(indices)]
-        return ego_states
+
+        for idx in reversed(indices):
+            yield self._ego_states[self._current_iteration + iteration - idx]
+
+    def get_past_sensors(
+        self,
+        iteration: int,
+        time_horizon: float,
+        num_samples: Optional[int] = None,
+        channels: Optional[List[SensorChannel]] = None,
+    ) -> Generator[Sensors, None, None]:
+        """Implemented. See interface."""
+        num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
+        for idx in indices:
+            yield self._sensors[self._current_iteration + iteration - idx - 1]
 
     def get_past_tracked_objects(
         self,
         iteration: int,
-        num_samples: int,
         time_horizon: float,
+        num_samples: Optional[int] = None,
         future_trajectory_sampling: Optional[TrajectorySampling] = None,
-    ) -> List[DetectionsTracks]:
+    ) -> Generator[DetectionsTracks, None, None]:
         """Implemented. See interface."""
         indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
-        assert self._current_iteration + iteration >= indices[-1], (
-            f"Requested time horizon of {time_horizon}s is too long! "
-            f"Scenario past has length {(self._current_iteration + iteration) * self._time_step}s from "
-            f"the iteration {iteration}"
-        )
-        detections = [self._tracked_objects[self._current_iteration + iteration - idx] for idx in reversed(indices)]
-        return detections
-
-    def get_past_sensors(self, iteration: int, time_horizon: float, num_samples: Optional[int] = None) -> List[Sensors]:
-        """Implemented. See interface."""
-        num_samples = get_num_samples(num_samples, time_horizon, self.database_interval)
-        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
-        _sensors = [self._sensors[self._current_iteration + iteration - idx - 1] for idx in indices]
-        return _sensors
+        if self._current_iteration + iteration < indices[-1]:
+            raise ValueError(
+                f"Requested time horizon of {time_horizon}s is too long! "
+                f"Scenario past has length {(self._current_iteration + iteration) * self._time_step}s from "
+                f"the iteration {iteration}"
+            )
+        for idx in reversed(indices):
+            yield self._tracked_objects[self._current_iteration + iteration - idx]
 
     def get_future_tracked_objects(
         self,
         iteration: int,
-        num_samples: int,
         time_horizon: float,
+        num_samples: Optional[int] = None,
         future_trajectory_sampling: Optional[TrajectorySampling] = None,
-    ) -> List[DetectionsTracks]:
+    ) -> Generator[DetectionsTracks, None, None]:
         """Implemented. See interface."""
         indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._time_step)
         assert self._number_of_future_iterations - iteration >= indices[-1], (
@@ -369,9 +435,5 @@ class MockAbstractScenario(AbstractScenario):
             f"Scenario future has length {(self._number_of_future_iterations - iteration) * self._time_step}s from "
             f"the iteration {iteration}"
         )
-        detections = [self._tracked_objects[self._current_iteration + iteration + idx] for idx in indices]
-        return detections
-
-    def get_traffic_light_status_at_iteration(self, iteration: int) -> List[TrafficLightStatusData]:
-        """Implemented. see interface."""
-        return []
+        for idx in indices:
+            yield self._tracked_objects[self._current_iteration + iteration + idx]

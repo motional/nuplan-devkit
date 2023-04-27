@@ -15,6 +15,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import PercentFormatter
 from tqdm import tqdm
 
+from nuplan.common.utils.io_utils import safe_path_to_string
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 from nuplan.planning.nuboard.tabs.config.histogram_tab_config import (
     HistogramConstantConfig,
@@ -50,7 +52,10 @@ class MetricSummaryCallback(AbstractMainCallback):
         self._metric_save_path = Path(metric_save_path)
         self._metric_aggregator_save_path = Path(metric_aggregator_save_path)
         self._summary_output_path = Path(summary_output_path)
-        self._summary_output_path.mkdir(parents=True, exist_ok=True)
+
+        if not is_s3_path(self._summary_output_path):
+            self._summary_output_path.mkdir(parents=True, exist_ok=True)
+
         self._pdf_file_name = pdf_file_name
         self._num_bins = num_bins
 
@@ -142,7 +147,7 @@ class MetricSummaryCallback(AbstractMainCallback):
         Save a list of matplotlib plots to a pdf file.
         :param matplotlib_plots: A list of matplotlib plots.
         """
-        file_name = self._summary_output_path / self._pdf_file_name
+        file_name = safe_path_to_string(self._summary_output_path / self._pdf_file_name)
         pp = PdfPages(file_name)
         # Save to pdf
         for fig in matplotlib_plots[::-1]:

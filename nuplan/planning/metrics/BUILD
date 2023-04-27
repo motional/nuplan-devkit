@@ -22,6 +22,8 @@ py_library(
     name = "metric_engine",
     srcs = ["metric_engine.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/metrics:abstract_metric",
         "//nuplan/planning/metrics:metric_file",
         "//nuplan/planning/metrics:metric_result",
@@ -48,7 +50,9 @@ py_library(
     name = "metric_dataframe",
     srcs = ["metric_dataframe.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
         requirement("numpy"),
         requirement("pandas"),
+        requirement("s3fs"),
     ],
 )

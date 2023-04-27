@@ -14,7 +14,7 @@ py_test(
     srcs = ["test_camera.py"],
     tags = ["integration"],
     deps = [
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -33,7 +33,7 @@ py_test(
     srcs = ["test_ego_pose.py"],
     tags = ["integration"],
     deps = [
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -43,7 +43,7 @@ py_test(
     srcs = ["test_image.py"],
     tags = ["integration"],
     deps = [
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -53,7 +53,7 @@ py_test(
     srcs = ["test_lidar.py"],
     tags = ["integration"],
     deps = [
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -65,7 +65,7 @@ py_test(
     deps = [
         "//nuplan/database/nuplan_db_orm:lidar_box",
         "//nuplan/database/nuplan_db_orm:rendering_utils",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         "//nuplan/database/utils:geometry",
     ],
 )
@@ -77,7 +77,7 @@ py_test(
     tags = ["integration"],
     deps = [
         "//nuplan/database/nuplan_db_orm:log",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -98,7 +98,7 @@ py_test(
     tags = ["integration"],
     deps = [
         "//nuplan/database/nuplan_db_orm:rendering_utils",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -118,7 +118,7 @@ py_test(
     srcs = ["test_track.py"],
     tags = ["integration"],
     deps = [
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -143,7 +143,7 @@ py_test(
         "//nuplan/database/nuplan_db_orm:lidar_pc",
         "//nuplan/database/nuplan_db_orm:nuplandb",
         "//nuplan/database/nuplan_db_orm:utils",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/database/utils/pointclouds:lidar",
     ],
@@ -157,7 +157,7 @@ py_test(
     deps = [
         "//nuplan/database/common:db",
         "//nuplan/database/nuplan_db_orm:nuplandb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         requirement("guppy3"),
     ],
 )
@@ -169,7 +169,7 @@ py_test(
     tags = ["integration"],
     deps = [
         "//nuplan/database/nuplan_db_orm:nuplandb_wrapper",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         requirement("guppy3"),
     ],
 )

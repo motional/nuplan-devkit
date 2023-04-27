@@ -23,6 +23,7 @@ py_library(
     name = "data_class",
     srcs = ["data_class.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
         "//nuplan/planning/metrics:metric_dataframe",
     ],
 )
@@ -70,6 +71,7 @@ py_library(
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/nuboard/base:experiment_file_data",
         "//nuplan/planning/nuboard/base:plot_data",
+        "//nuplan/planning/nuboard/tabs/config:scenario_tab_config",
         requirement("selenium"),
     ],
 )

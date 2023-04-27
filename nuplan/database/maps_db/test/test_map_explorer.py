@@ -2,7 +2,7 @@ import unittest
 
 from nuplan.database.maps_db.map_api import NuPlanMapWrapper
 from nuplan.database.maps_db.map_explorer import NuPlanMapExplorer
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 
 
 class TestMapExplorer(unittest.TestCase):

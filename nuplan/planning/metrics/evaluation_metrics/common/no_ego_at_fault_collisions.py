@@ -84,7 +84,7 @@ def _get_collision_type(
     return collision_type
 
 
-def _find_new_collisions(
+def find_new_collisions(
     ego_state: EgoState, observation: DetectionsTracks, collided_track_ids: Set[str]
 ) -> Tuple[Set[str], Dict[str, CollisionData]]:
     """
@@ -117,7 +117,7 @@ def _find_new_collisions(
     return collided_track_ids, collisions_id_data
 
 
-def _classify_at_fault_collisions(
+def classify_at_fault_collisions(
     all_collisions: List[Collisions],
     timestamps_in_common_or_connected_route_objs: List[int],
 ) -> Tuple[List[int], Dict[TrackedObjectType, List[float]]]:
@@ -256,14 +256,14 @@ class EgoAtFaultCollisionStatistics(MetricBase):
             observation = sample.observation
             timestamp = ego_state.time_point.time_us
 
-            collided_track_ids, collisions_id_data = _find_new_collisions(ego_state, observation, collided_track_ids)
+            collided_track_ids, collisions_id_data = find_new_collisions(ego_state, observation, collided_track_ids)
 
             # Update list of collisions
             if len(collisions_id_data):
                 all_collisions.append(Collisions(timestamp, collisions_id_data))
 
         # Save at fault collisions timestamps and a dict of collision energies based on the track types
-        self.timestamps_at_fault_collisions, self.all_at_fault_collisions = _classify_at_fault_collisions(
+        self.timestamps_at_fault_collisions, self.all_at_fault_collisions = classify_at_fault_collisions(
             all_collisions, timestamps_in_common_or_connected_route_objs
         )
 

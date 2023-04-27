@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 import logging
 import random
@@ -7,6 +8,7 @@ from os.path import join
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import nest_asyncio
 import numpy as np
 import numpy.typing as npt
 from bokeh.document.document import Document
@@ -16,10 +18,11 @@ from bokeh.layouts import column
 
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory, get_maps_db
+from nuplan.database.nuplan_db.nuplan_db_utils import get_lidarpc_sensor_data
 from nuplan.database.nuplan_db.nuplan_scenario_queries import (
-    get_lidarpc_token_map_name_from_db,
-    get_lidarpc_token_timestamp_from_db,
     get_lidarpc_tokens_with_scenario_tag_from_db,
+    get_sensor_data_token_timestamp_from_db,
+    get_sensor_token_map_name_from_db,
 )
 from nuplan.planning.nuboard.base.data_class import NuBoardFile, SimulationScenarioKey
 from nuplan.planning.nuboard.base.experiment_file_data import ExperimentFileData
@@ -302,6 +305,7 @@ def visualize_scenarios(
             server.unlisten()
             logging.debug("Shut down bokeh server %s running on port %d", server_uuid, bokeh_port)
 
+    start_event_loop_if_needed()
     show(bokeh_app, notebook_url=notebook_url_callback, port=bokeh_port)
 
 
@@ -332,8 +336,8 @@ def get_default_scenario_from_token(
     :param map_version: The map version to use.
     :return: Instantiated scenario object.
     """
-    timestamp = get_lidarpc_token_timestamp_from_db(log_file_full_path, token)
-    map_name = get_lidarpc_token_map_name_from_db(log_file_full_path, token)
+    timestamp = get_sensor_data_token_timestamp_from_db(log_file_full_path, get_lidarpc_sensor_data(), token)
+    map_name = get_sensor_token_map_name_from_db(log_file_full_path, get_lidarpc_sensor_data(), token)
     return NuPlanScenario(
         data_root=data_root,
         log_file_load_path=log_file_full_path,
@@ -401,3 +405,29 @@ def visualize_nuplan_scenarios(
     display(drop_down)
     display(out)
     drop_down.observe(scenario_dropdown_handler, names='value')
+
+
+def setup_notebook() -> None:
+    """
+    Code that must be run at the start of every tutorial notebook to:
+        - patch the event loop to allow nesting, eg. so we can run asyncio.run from
+          within a notebook.
+    """
+    nest_asyncio.apply()
+
+
+def start_event_loop_if_needed() -> None:
+    """
+    Starts event loop, if there isn't already one running.
+    Should be called before funcitons that require the event loop to be running (or able
+    to be auto-started) to work (eg. bokeh.show).
+    """
+    try:
+        # Gets the running event loop, starting one in the main thread if none has
+        # been created before.
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        # If an event loop was already created and cleaned up, catch the runtime error
+        # and create a new one.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)

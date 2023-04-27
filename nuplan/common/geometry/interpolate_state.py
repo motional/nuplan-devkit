@@ -102,7 +102,7 @@ def interpolate_past_waypoints(
 
     # Extract desired time stamps
     end_timestamp = waypoints[-1].time_us
-    start_timestamp = int(end_timestamp - horizon_len_s * 1e6)
+    start_timestamp = max(int(end_timestamp - horizon_len_s * 1e6), 0)
     target_timestamps, num_future_boxes = _compute_desired_time_steps(
         start_timestamp, end_timestamp, horizon_len_s=horizon_len_s, interval_s=interval_s
     )

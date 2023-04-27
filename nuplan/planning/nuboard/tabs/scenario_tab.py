@@ -98,6 +98,8 @@ class ScenarioTab(BaseTab):
         experiment_file_data: ExperimentFileData,
         vehicle_parameters: VehicleParameters,
         scenario_builder: AbstractScenarioBuilder,
+        async_rendering: bool = True,
+        frame_rate_cap_hz: int = 60,
     ):
         """
         Scenario tab to render metric results about a scenario.
@@ -105,6 +107,8 @@ class ScenarioTab(BaseTab):
         :param experiment_file_data: Experiment file data.
         :param vehicle_parameters: Vehicle parameters.
         :param scenario_builder: nuPlan scenario builder instance.
+        :param async_rendering: When true, will use threads to render SimulationTiles asynchronously.
+        :param frame_rate_cap_hz: Maximum frames to render per second. Internally this value is capped at 60.
         """
         super().__init__(doc=doc, experiment_file_data=experiment_file_data)
         self._number_metrics_per_figure: int = 4
@@ -180,6 +184,8 @@ class ScenarioTab(BaseTab):
             doc=self._doc,
             vehicle_parameters=vehicle_parameters,
             experiment_file_data=experiment_file_data,
+            async_rendering=async_rendering,
+            frame_rate_cap_hz=frame_rate_cap_hz,
         )
 
         self._default_scenario_score_div = Div(

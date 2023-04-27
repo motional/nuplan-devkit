@@ -3,6 +3,8 @@ import time
 from pathlib import Path
 from typing import List
 
+from nuplan.common.utils.io_utils import list_files_in_directory
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.metrics.aggregator.abstract_metric_aggregator import AbstractMetricAggregator
 from nuplan.planning.metrics.metric_dataframe import MetricStatisticsDataFrame
 from nuplan.planning.simulation.main_callback.abstract_main_callback import AbstractMainCallback
@@ -23,7 +25,7 @@ class MetricAggregatorCallback(AbstractMainCallback):
         start_time = time.perf_counter()
 
         # Stop if no metric save path
-        if not self._metric_save_path.exists():
+        if not is_s3_path(self._metric_save_path) and not self._metric_save_path.exists():
             return
 
         # Run a list of metric aggregators
@@ -31,7 +33,13 @@ class MetricAggregatorCallback(AbstractMainCallback):
             # Load metric parquet files
             metric_dataframes = {}
 
-            metrics = self._metric_save_path.rglob("*.parquet")
+            if is_s3_path(self._metric_save_path):
+                metrics = [
+                    path for path in list_files_in_directory(self._metric_save_path) if path.suffix == ".parquet"
+                ]
+            else:
+                metrics = list(self._metric_save_path.rglob("*.parquet"))
+
             if not metric_aggregator.challenge:
                 challenge_metrics = list(metrics)
             else:

@@ -6,8 +6,8 @@ from nuplan.common.actor_state.car_footprint import CarFootprint
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 from nuplan.planning.metrics.utils.route_extractor import extract_corners_route, get_route, get_route_simplified
 
 maps_db = get_test_maps_db()

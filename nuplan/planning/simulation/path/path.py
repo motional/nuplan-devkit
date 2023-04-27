@@ -37,6 +37,17 @@ class AbstractPath(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_state_at_progresses(self, progresses: List[float]) -> List[ProgressStateSE2]:
+        """
+        Get the state of the actor at the specified progresses.
+        :param progresses: Progresses for which to query states.
+        :return: States at the specified progresses.
+
+        :raises Exception: Throws an exception in case a progress is beyond range of a path.
+        """
+        pass
+
+    @abstractmethod
     def get_sampled_path(self) -> List[ProgressStateSE2]:
         """
         Get the sampled states along the trajectory.

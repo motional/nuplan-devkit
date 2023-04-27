@@ -15,7 +15,7 @@ from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_utils import dow
 cli = typer.Typer()
 
 NUPLAN_DATA_ROOT = os.getenv('NUPLAN_DATA_ROOT', "/data/sets/nuplan/")
-NUPLAN_DB_VERSION = f'{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.07.16.20.45.29_veh-35_01095_01486.db'
+NUPLAN_DB_VERSION = f'{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.07.16.20.45.29_veh-35_01095_01486.db'
 
 
 def _ensure_file_downloaded(data_root: str, potentially_remote_path: str) -> str:

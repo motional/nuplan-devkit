@@ -5,17 +5,20 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Type, Union, cast
 
 from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_pacifica_parameters
+from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory, get_maps_db
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
+from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder, RepartitionStrategy
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario import NuPlanScenario
 from nuplan.planning.scenario_builder.nuplan_db.nuplan_scenario_filter_utils import (
     FilterWrapper,
     GetScenariosFromDbFileParams,
     ScenarioDict,
     discover_log_dbs,
+    filter_ego_has_route,
     filter_ego_starts,
     filter_ego_stops,
+    filter_fraction_lidarpc_tokens_in_set,
     filter_non_stationary_ego,
     filter_num_scenarios_per_type,
     filter_scenarios_by_timestamp,
@@ -37,8 +40,10 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         self,
         data_root: str,
         map_root: str,
+        sensor_root: str,
         db_files: Optional[Union[List[str], str]],
         map_version: str,
+        include_cameras: bool = False,
         max_workers: Optional[int] = None,
         verbose: bool = True,
         scenario_mapping: Optional[ScenarioMapping] = None,
@@ -50,11 +55,13 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                           If `db_files` is not None, all downloaded databases will be stored to this data root.
                           E.g.: /data/sets/nuplan
         :param map_root: Local map root for loading (or storing downloaded) the map database.
+        :param sensor_root: Local map root for loading (or storing downloaded) the sensor blobs.
         :param db_files: Path to load the log database(s) from.
                          It can be a local/remote path to a single database, list of databases or dir of databases.
                          If None, all database filenames found under `data_root` will be used.
-                         E.g.: /data/sets/nuplan-v1.1-mini/2021.10.11.08.31.07_veh-50_01750_01948.db
+                         E.g.: /data/sets/nuplan/nuplan-v1.1/splits/mini/2021.10.11.08.31.07_veh-50_01750_01948.db
         :param map_version: Version of map database to load. The map database is passed to each loaded log database.
+        :param include_cameras: If true, make camera data available in scenarios.
         :param max_workers: Maximum number of workers to use when loading the databases concurrently.
                             Only used when the number of databases to load is larger than this parameter.
         :param verbose: Whether to print progress and details during the database loading and scenario building.
@@ -63,8 +70,10 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         """
         self._data_root = data_root
         self._map_root = map_root
+        self._sensor_root = sensor_root
         self._db_files = discover_log_dbs(data_root if db_files is None else db_files)
         self._map_version = map_version
+        self._include_cameras = include_cameras
         self._max_workers = max_workers
         self._verbose = verbose
         self._scenario_mapping = scenario_mapping if scenario_mapping is not None else ScenarioMapping({}, None)
@@ -77,8 +86,10 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         return self.__class__, (
             self._data_root,
             self._map_root,
+            self._sensor_root,
             self._db_files,
             self._map_version,
+            self._include_cameras,
             self._max_workers,
             self._verbose,
             self._scenario_mapping,
@@ -90,7 +101,7 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         """Inherited. See superclass."""
         return cast(Type[AbstractScenario], NuPlanScenario)
 
-    def get_map_factory(self) -> NuPlanMapFactory:
+    def get_map_factory(self) -> AbstractMapFactory:
         """Inherited. See superclass."""
         return NuPlanMapFactory(get_maps_db(self._map_root, self._map_version))
 
@@ -135,6 +146,8 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 filter_types=scenario_filter.scenario_types,
                 filter_map_names=scenario_filter.map_names,
                 remove_invalid_goals=scenario_filter.remove_invalid_goals,
+                sensor_root=self._sensor_root,
+                include_cameras=self._include_cameras,
                 verbose=self._verbose,
             )
             for log_file in self._db_files
@@ -142,7 +155,11 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
         ]
 
         if len(map_parameters) == 0:
-            raise ValueError("No log files found! Make sure they are available in your environment.")
+            logger.warning(
+                "No log files found! This may mean that you need to set your environment, "
+                "or that all of your log files got filtered out on this worker."
+            )
+            return {}
 
         dicts = worker_map(worker, get_scenarios_from_log_file, map_parameters)
 
@@ -208,6 +225,26 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
                 enable=(scenario_filter.ego_stop_speed_threshold is not None),
                 name='filter_ego_stops',
             ),
+            FilterWrapper(
+                fn=partial(
+                    filter_fraction_lidarpc_tokens_in_set,
+                    token_set_path=scenario_filter.token_set_path,
+                    fraction_threshold=scenario_filter.fraction_in_token_set_threshold,
+                ),
+                enable=(
+                    scenario_filter.token_set_path is not None
+                    and scenario_filter.fraction_in_token_set_threshold is not None
+                ),
+                name='filter_fraction_lidarpc_tokens_in_set',
+            ),
+            FilterWrapper(
+                fn=partial(
+                    filter_ego_has_route,
+                    map_radius=scenario_filter.ego_route_radius,
+                ),
+                enable=(scenario_filter.ego_route_radius is not None),
+                name='filter_ego_has_route',
+            ),
         ]
 
         return filters
@@ -223,3 +260,8 @@ class NuPlanScenarioBuilder(AbstractScenarioBuilder):
             scenario_dict = filter_wrapper.run(scenario_dict)
 
         return scenario_dict_to_list(scenario_dict, shuffle=scenario_filter.shuffle)  # type: ignore
+
+    @property
+    def repartition_strategy(self) -> RepartitionStrategy:
+        """Implemented. See interface."""
+        return RepartitionStrategy.REPARTITION_FILE_DISK

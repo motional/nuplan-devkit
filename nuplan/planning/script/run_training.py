@@ -76,6 +76,8 @@ def main(cfg: DictConfig) -> Optional[TrainingEngine]:
     elif cfg.py_func == 'cache':
         # Precompute and cache all features
         logger.info('Starting caching...')
+        if cfg.worker == "ray_distributed" and cfg.worker.use_distributed:
+            raise AssertionError("ray in distributed mode will not work with this job")
         with ProfilerContextManager(cfg.output_dir, cfg.enable_profiling, "caching"):
             cache_data(cfg=cfg, worker=worker)
         return None

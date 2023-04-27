@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import sqlite3
 from dataclasses import dataclass
 from typing import Optional, Set
 
+from nuplan.database.nuplan_db.sensor_data_table_row import SensorDataTableRow
+
 
 @dataclass(frozen=True)
-class LidarPc:
+class LidarPc(SensorDataTableRow):
     """
     A class representing a row in the LidarPC table.
     Each field corresponds to a column in the row.
@@ -19,15 +23,15 @@ class LidarPc:
     filename: Optional[str]
     timestamp: Optional[int]
 
-    @staticmethod
-    def from_db_row(row: sqlite3.Row) -> 'LidarPc':
+    @classmethod
+    def from_db_row(cls, row: sqlite3.Row) -> LidarPc:
         """
         A convenience method to convert a row from the LidarPc table into a row.
         """
-        # sqlite3 library doesn't suppport typing. So ignore for this line.
+        # sqlite3 library doesn't support typing. So ignore for this line.
         keys: Set[str] = set(row.keys())  # type: ignore
 
-        return LidarPc(
+        return cls(
             token=row["token"].hex() if "token" in keys else None,
             next_token=row["next_token"].hex() if "next_token" in keys else None,
             prev_token=row["prev_token"].hex() if "prev_token" in keys else None,

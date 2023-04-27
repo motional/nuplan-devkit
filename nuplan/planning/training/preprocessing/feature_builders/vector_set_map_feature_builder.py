@@ -6,6 +6,7 @@ import torch
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
 from nuplan.common.geometry.torch_geometry import vector_set_coordinates_to_local_frame
+from nuplan.common.maps.maps_datatypes import TrafficLightStatuses
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.planner.abstract_planner import PlannerInitialization, PlannerInput
 from nuplan.planning.training.preprocessing.feature_builders.scriptable_feature_builder import ScriptableFeatureBuilder
@@ -45,22 +46,22 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
         :return: Vector set map data including map element coordinates and traffic light status info.
         """
         super().__init__()
-        self._map_features = map_features
-        self._max_elements = max_elements
-        self._max_points = max_points
-        self._radius = radius
-        self._interpolation_method = interpolation_method
+        self.map_features = map_features
+        self.max_elements = max_elements
+        self.max_points = max_points
+        self.radius = radius
+        self.interpolation_method = interpolation_method
         self._traffic_light_encoding_dim = LaneSegmentTrafficLightData.encoding_dim()
 
         # Sanitize feature building parameters
-        for feature_name in self._map_features:
+        for feature_name in self.map_features:
             try:
                 VectorFeatureLayer[feature_name]
             except KeyError:
                 raise ValueError(f"Object representation for layer: {feature_name} is unavailable!")
-            if feature_name not in self._max_elements:
+            if feature_name not in self.max_elements:
                 raise RuntimeError(f"Max elements unavailable for {feature_name} feature layer!")
-            if feature_name not in self._max_points:
+            if feature_name not in self.max_points:
                 raise RuntimeError(f"Max points unavailable for {feature_name} feature layer!")
 
     @torch.jit.unused
@@ -75,32 +76,43 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
         return "vector_set_map"
 
     @torch.jit.unused
-    def get_features_from_scenario(self, scenario: AbstractScenario) -> VectorSetMap:
-        """Inherited, see superclass."""
+    def get_scriptable_input_from_scenario(
+        self, scenario: AbstractScenario
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, List[torch.Tensor]], Dict[str, List[List[torch.Tensor]]]]:
+        """
+        Extract the input for the scriptable forward method from the scenario object
+        :param scenario: planner input from training
+        :returns: Tensor data + tensor list data to be used in scriptable forward
+        """
         ego_state = scenario.initial_ego_state
         ego_coords = Point2D(ego_state.rear_axle.x, ego_state.rear_axle.y)
         route_roadblock_ids = scenario.get_route_roadblock_ids()
-        traffic_light_data = scenario.get_traffic_light_status_at_iteration(0)
+        traffic_light_data = list(scenario.get_traffic_light_status_at_iteration(0))
 
         coords, traffic_light_data = get_neighbor_vector_set_map(
-            scenario.map_api, self._map_features, ego_coords, self._radius, route_roadblock_ids, traffic_light_data
+            scenario.map_api,
+            self.map_features,
+            ego_coords,
+            self.radius,
+            route_roadblock_ids,
+            [TrafficLightStatuses(traffic_light_data)],
         )
 
-        tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(
-            coords, traffic_light_data, ego_state.rear_axle
+        tensor, list_tensor, list_list_tensor = self._pack_to_feature_tensor_dict(
+            coords, traffic_light_data[0], ego_state.rear_axle
         )
-
-        tensor_data, list_tensor_data, list_list_tensor_data = self.scriptable_forward(
-            tensors, list_tensors, list_list_tensors
-        )
-
-        return self._unpack_feature_from_tensor_dict(tensor_data, list_tensor_data, list_list_tensor_data)
+        return tensor, list_tensor, list_list_tensor
 
     @torch.jit.unused
-    def get_features_from_simulation(
+    def get_scriptable_input_from_simulation(
         self, current_input: PlannerInput, initialization: PlannerInitialization
-    ) -> VectorSetMap:
-        """Inherited, see superclass."""
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, List[torch.Tensor]], Dict[str, List[List[torch.Tensor]]]]:
+        """
+        Extract the input for the scriptable forward method from the simulation objects
+        :param current_input: planner input from sim
+        :param initialization: planner initialization from sim
+        :returns: Tensor data + tensor list data to be used in scriptable forward
+        """
         ego_state = current_input.history.ego_states[-1]
         ego_coords = Point2D(ego_state.rear_axle.x, ego_state.rear_axle.y)
         route_roadblock_ids = initialization.route_roadblock_ids
@@ -112,21 +124,38 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
 
         coords, traffic_light_data = get_neighbor_vector_set_map(
             initialization.map_api,
-            self._map_features,
+            self.map_features,
             ego_coords,
-            self._radius,
+            self.radius,
             route_roadblock_ids,
-            traffic_light_data,
+            [TrafficLightStatuses(traffic_light_data)],
         )
 
-        tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(
-            coords,
-            traffic_light_data,
-            ego_state.rear_axle,
+        tensor, list_tensor, list_list_tensor = self._pack_to_feature_tensor_dict(
+            coords, traffic_light_data[0], ego_state.rear_axle
         )
+        return tensor, list_tensor, list_list_tensor
 
+    @torch.jit.unused
+    def get_features_from_scenario(self, scenario: AbstractScenario) -> VectorSetMap:
+        """Inherited, see superclass."""
+        tensor_data, list_tensor_data, list_list_tensor_data = self.get_scriptable_input_from_scenario(scenario)
         tensor_data, list_tensor_data, list_list_tensor_data = self.scriptable_forward(
-            tensors, list_tensors, list_list_tensors
+            tensor_data, list_tensor_data, list_list_tensor_data
+        )
+
+        return self._unpack_feature_from_tensor_dict(tensor_data, list_tensor_data, list_list_tensor_data)
+
+    @torch.jit.unused
+    def get_features_from_simulation(
+        self, current_input: PlannerInput, initialization: PlannerInitialization
+    ) -> VectorSetMap:
+        """Inherited, see superclass."""
+        tensor_data, list_tensor_data, list_list_tensor_data = self.get_scriptable_input_from_simulation(
+            current_input, initialization
+        )
+        tensor_data, list_tensor_data, list_list_tensor_data = self.scriptable_forward(
+            tensor_data, list_tensor_data, list_list_tensor_data
         )
 
         return self._unpack_feature_from_tensor_dict(tensor_data, list_tensor_data, list_list_tensor_data)
@@ -230,11 +259,11 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
 
         anchor_state = tensor_data["anchor_state"]
 
-        for feature_name in self._map_features:
+        for feature_name in self.map_features:
             if f"coords.{feature_name}" in list_tensor_data:
                 feature_coords = list_tensor_data[f"coords.{feature_name}"]
                 feature_tl_data = (
-                    list_tensor_data[f"traffic_light_data.{feature_name}"]
+                    [list_tensor_data[f"traffic_light_data.{feature_name}"]]
                     if f"traffic_light_data.{feature_name}" in list_tensor_data
                     else None
                 )
@@ -242,10 +271,10 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
                 coords, tl_data, avails = convert_feature_layer_to_fixed_size(
                     feature_coords,
                     feature_tl_data,
-                    self._max_elements[feature_name],
-                    self._max_points[feature_name],
+                    self.max_elements[feature_name],
+                    self.max_points[feature_name],
                     self._traffic_light_encoding_dim,
-                    interpolation=self._interpolation_method  # apply interpolation only for lane features
+                    interpolation=self.interpolation_method  # apply interpolation only for lane features
                     if feature_name
                     in [
                         VectorFeatureLayer.LANE.name,
@@ -262,7 +291,7 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
                 list_tensor_output[f"vector_set_map.availabilities.{feature_name}"] = [avails]
 
                 if tl_data is not None:
-                    list_tensor_output[f"vector_set_map.traffic_light_data.{feature_name}"] = [tl_data]
+                    list_tensor_output[f"vector_set_map.traffic_light_data.{feature_name}"] = [tl_data[0]]
 
         return tensor_output, list_tensor_output, list_list_tensor_output
 
@@ -273,18 +302,17 @@ class VectorSetMapFeatureBuilder(ScriptableFeatureBuilder):
         """
         empty: Dict[str, str] = {}
         max_elements: List[str] = [
-            f"{feature_name}.{feature_max_elements}"
-            for feature_name, feature_max_elements in self._max_elements.items()
+            f"{feature_name}.{feature_max_elements}" for feature_name, feature_max_elements in self.max_elements.items()
         ]
         max_points: List[str] = [
-            f"{feature_name}.{feature_max_points}" for feature_name, feature_max_points in self._max_points.items()
+            f"{feature_name}.{feature_max_points}" for feature_name, feature_max_points in self.max_points.items()
         ]
 
         return {
             "neighbor_vector_set_map": {
-                "radius": str(self._radius),
-                "interpolation_method": self._interpolation_method,
-                "map_features": ",".join(self._map_features),
+                "radius": str(self.radius),
+                "interpolation_method": self.interpolation_method,
+                "map_features": ",".join(self.map_features),
                 "max_elements": ",".join(max_elements),
                 "max_points": ",".join(max_points),
             },

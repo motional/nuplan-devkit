@@ -27,6 +27,7 @@ class NuPlanRoadBlock(RoadBlockGraphEdgeMapObject):
         roadblocks_df: VectorLayer,
         roadblock_connectors_df: VectorLayer,
         stop_lines_df: VectorLayer,
+        intersections_df: VectorLayer,
         lane_connector_polygon_df: VectorLayer,
         map_data: AbstractMap,
     ):
@@ -51,6 +52,7 @@ class NuPlanRoadBlock(RoadBlockGraphEdgeMapObject):
         self._roadblocks_df = roadblocks_df
         self._roadblock_connectors_df = roadblock_connectors_df
         self._stop_lines_df = stop_lines_df
+        self._intersections_df = intersections_df
         self._lane_connector_polygon_df = lane_connector_polygon_df
         self._roadblock = None
         self._map_data = map_data
@@ -72,6 +74,7 @@ class NuPlanRoadBlock(RoadBlockGraphEdgeMapObject):
                 self._roadblocks_df,
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
+                self._intersections_df,
                 self._lane_connector_polygon_df,
                 self._map_data,
             )
@@ -95,6 +98,7 @@ class NuPlanRoadBlock(RoadBlockGraphEdgeMapObject):
                 self._roadblocks_df,
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
+                self._intersections_df,
                 self._lane_connector_polygon_df,
                 self._map_data,
             )

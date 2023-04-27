@@ -118,11 +118,11 @@ class TestGenericAgentsFeatureBuilder(unittest.TestCase):
             mission_goal=StateSE2(0, 0, 0),
         )
 
-        ego_past_states = scenario.get_ego_past_trajectory(iteration=0, num_samples=10, time_horizon=5)
+        ego_past_states = list(scenario.get_ego_past_trajectory(iteration=0, num_samples=10, time_horizon=5))
         ego_initial_state = scenario.initial_ego_state
         ego_history = ego_past_states + [ego_initial_state]
 
-        past_observations = scenario.get_past_tracked_objects(iteration=0, num_samples=10, time_horizon=5)
+        past_observations = list(scenario.get_past_tracked_objects(iteration=0, num_samples=10, time_horizon=5))
         initial_observation = scenario.initial_tracked_objects
         observation_history = past_observations + [initial_observation]
 

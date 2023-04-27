@@ -37,6 +37,8 @@ class NuBoard:
         port_number: int = 5006,
         profiler_path: Optional[Path] = None,
         resource_prefix: Optional[str] = None,
+        async_scenario_rendering: bool = True,
+        scenario_rendering_frame_rate_cap_hz: int = 60,
     ):
         """
         Nuboard main class.
@@ -46,6 +48,11 @@ class NuBoard:
         :param port_number: Bokeh port number.
         :param profiler_path: Path to save the profiler.
         :param resource_prefix: Prefix to the resource path in HTML.
+        :param async_scenario_rendering: Whether to use asynchronous scenario rendering in the scenario tab.
+        :param scenario_rendering_frame_rate_cap_hz: Maximum frames to render in the scenario tab per second.
+            Use lower values when running nuBoard in the cloud to prevent frame queues due to latency. The rule of thumb
+            is to match the frame rate with the expected latency, e.g 5Hz for 200ms round-trip latency.
+            Internally this value is capped at 60.
         """
         self._profiler_path = profiler_path
         self._nuboard_paths = check_nuboard_file_paths(nuboard_paths)
@@ -57,6 +64,13 @@ class NuBoard:
         self._resource_path = Path(__file__).parents[0] / "resource"
         self._profiler_file_name = "nuboard"
         self._profiler: Optional[ProfileCallback] = None
+        self._async_scenario_rendering = async_scenario_rendering
+
+        # We shouldn't render more frequently than 60Hz to reduce frame lag, even on local instances.
+        if scenario_rendering_frame_rate_cap_hz < 1 or scenario_rendering_frame_rate_cap_hz > 60:
+            raise ValueError("scenario_rendering_frame_rate_cap_hz should be between 1 and 60")
+
+        self._scenario_rendering_frame_rate_cap_hz = scenario_rendering_frame_rate_cap_hz
 
     def stop_handler(self, sig: Any, frame: Any) -> None:
         """Helper to handle stop signals."""
@@ -68,6 +82,7 @@ class NuBoard:
     def run(self) -> None:
         """Run nuBoard WebApp."""
         logger.info(f"Opening Bokeh application on http://localhost:{self._port_number}/")
+        logger.info(f"Async rendering is set to: {self._async_scenario_rendering}")
 
         io_loop = IOLoop.current()
 
@@ -117,6 +132,8 @@ class NuBoard:
             scenario_builder=self._scenario_builder,
             doc=self._doc,
             vehicle_parameters=self._vehicle_parameters,
+            async_rendering=self._async_scenario_rendering,
+            frame_rate_cap_hz=self._scenario_rendering_frame_rate_cap_hz,
         )
         configuration_tab = ConfigurationTab(
             experiment_file_data=experiment_file_data, doc=self._doc, tabs=[overview_tab, histogram_tab, scenario_tab]

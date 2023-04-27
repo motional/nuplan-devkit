@@ -26,9 +26,9 @@ def update_config_for_training(cfg: DictConfig) -> None:
     OmegaConf.set_struct(cfg, False)
 
     if cfg.cache.cache_path is None:
-        logger.warning('Parameter cache_path is not set, caching is disabled')
+        logger.warning("Parameter cache_path is not set, caching is disabled")
     else:
-        if not str(cfg.cache.cache_path).startswith('s3://'):
+        if not str(cfg.cache.cache_path).startswith("s3://"):
             if cfg.cache.cleanup_cache and Path(cfg.cache.cache_path).exists():
                 rmtree(cfg.cache.cache_path)
 
@@ -52,8 +52,8 @@ def update_config_for_training(cfg: DictConfig) -> None:
 
     # Log the final configuration after all overrides, interpolations and updates.
     if cfg.log_config:
-        logger.info(f'Creating experiment name [{cfg.experiment}] in group [{cfg.group}] with config...')
-        logger.info('\n' + OmegaConf.to_yaml(cfg))
+        logger.info(f"Creating experiment name [{cfg.experiment}] in group [{cfg.group}] with config...")
+        logger.info("\n" + OmegaConf.to_yaml(cfg))
 
 
 def update_config_for_simulation(cfg: DictConfig) -> None:
@@ -76,8 +76,8 @@ def update_config_for_simulation(cfg: DictConfig) -> None:
 
     # Log the final configuration after all overrides, interpolations and updates.
     if cfg.log_config:
-        logger.info(f'Creating experiment: {cfg.experiment}')
-        logger.info('\n' + OmegaConf.to_yaml(cfg))
+        logger.info(f"Creating experiment: {cfg.experiment}")
+        logger.info("\n" + OmegaConf.to_yaml(cfg))
 
 
 def update_config_for_nuboard(cfg: DictConfig) -> None:
@@ -101,7 +101,7 @@ def update_config_for_nuboard(cfg: DictConfig) -> None:
 
     # Log the final configuration after all overrides, interpolations and updates.
     if cfg.log_config:
-        logger.info('\n' + OmegaConf.to_yaml(cfg))
+        logger.info("\n" + OmegaConf.to_yaml(cfg))
 
 
 def update_distributed_optimizer_config(cfg: DictConfig) -> DictConfig:
@@ -111,12 +111,12 @@ def update_distributed_optimizer_config(cfg: DictConfig) -> DictConfig:
     :return cfg: DictConfig. Updated configuration that is used to run the experiment.
     """
     lr_scale = get_num_gpus_used(cfg)
-    logger.info(f'World size: {lr_scale}')
-    logger.info(f'Learning rate before: {cfg.optimizer.lr}')
+    logger.info(f"World size: {lr_scale}")
+    logger.info(f"Learning rate before: {cfg.optimizer.lr}")
     scaling_method = (
-        'Equal Variance' if cfg.lightning.distributed_training.equal_variance_scaling_strategy else 'Linearly'
+        "Equal Variance" if cfg.lightning.distributed_training.equal_variance_scaling_strategy else "Linearly"
     )
-    logger.info(f'Scaling method: {scaling_method}')
+    logger.info(f"Scaling method: {scaling_method}")
 
     # TODO: support other distributed training strategies like ddp2, dp, etc
     cfg.optimizer.lr = scale_parameter(
@@ -138,9 +138,9 @@ def update_distributed_optimizer_config(cfg: DictConfig) -> DictConfig:
             equal_variance_scaling_strategy=cfg.lightning.distributed_training.equal_variance_scaling_strategy,
             raise_power=True,
         )
-        logger.info(f'Betas after scaling: {cfg.optimizer.betas}')
+        logger.info(f"Betas after scaling: {cfg.optimizer.betas}")
 
-    logger.info(f'Learning rate after scaling: {cfg.optimizer.lr}')
+    logger.info(f"Learning rate after scaling: {cfg.optimizer.lr}")
 
     return cfg
 
@@ -169,7 +169,7 @@ def update_distributed_lr_scheduler_config(cfg: DictConfig, num_train_batches: i
     :param num_train_batches: Number of batches in train dataloader.
     :return cfg: Configuration with the updated lr_scheduler key.
     """
-    logger.info('Updating Learning Rate Scheduler Config...')
+    logger.info("Updating Learning Rate Scheduler Config...")
 
     number_gpus = get_num_gpus_used(cfg)
     # Setup learning rate and momentum schedulers
@@ -190,14 +190,14 @@ def update_distributed_lr_scheduler_config(cfg: DictConfig, num_train_batches: i
             num_train_batches=num_train_batches,
             world_size=number_gpus,
             epochs=cfg.lightning.trainer.params.max_epochs,
-            warm_up_steps=cfg.warm_up_lr_scheduler.lr_lambda.warm_up_steps if 'warm_up_lr_scheduler' in cfg else 0,
+            warm_up_steps=cfg.warm_up_lr_scheduler.lr_lambda.warm_up_steps if "warm_up_lr_scheduler" in cfg else 0,
         )
 
-        logger.info(f'Updating learning rate scheduler config Completed. Using {cfg.lr_scheduler._target_}.')
+        logger.info(f"Updating learning rate scheduler config Completed. Using {cfg.lr_scheduler._target_}.")
 
     else:  # Only updating of OneCycleLR is supported as of right now
         logger.info(
-            f'Updating {cfg.lr_scheduler._target_} in ddp setting is not yet supported. Learning rate scheduler config will not be updated.'
+            f"Updating {cfg.lr_scheduler._target_} in ddp setting is not yet supported. Learning rate scheduler config will not be updated."
         )
 
     return cfg
@@ -232,7 +232,7 @@ def scale_cfg_for_distributed_training(
     OmegaConf.set_struct(cfg, False)
     cfg = update_distributed_optimizer_config(cfg)
     # Update lr_scheduler with yaml file config before building lightning module
-    if 'lr_scheduler' in cfg:
+    if "lr_scheduler" in cfg:
         num_train_samples = int(
             len(datamodule._splitter.get_train_samples(datamodule._all_samples, worker)) * datamodule._train_fraction
         )
@@ -242,7 +242,7 @@ def scale_cfg_for_distributed_training(
         )
 
     OmegaConf.set_struct(cfg, True)
-    logger.info('Optimizer and LR Scheduler configs updated according to ddp strategy.')
+    logger.info("Optimizer and LR Scheduler configs updated according to ddp strategy.")
     return cfg
 
 
@@ -252,27 +252,27 @@ def get_num_gpus_used(cfg: DictConfig) -> int:
     :param cfg: Config with experiment parameters.
     :return num_gpus: Number of gpus used in ddp.
     """
-    num_gpus = os.getenv('WORLD_SIZE', -1)
+    num_gpus = os.getenv("WORLD_SIZE", -1)
 
     if num_gpus == -1:  # if environment variable WORLD_SIZE is not set, find from trainer
-        logger.info('WORLD_SIZE was not set.')
+        logger.info("WORLD_SIZE was not set.")
         trainer_num_gpus = cfg.lightning.trainer.params.gpus
 
-        if isinstance(num_gpus, str):
-            raise RuntimeError('Error, please specify gpus as integer. Received string.')
+        if isinstance(trainer_num_gpus, str):
+            raise RuntimeError("Error, please specify gpus as integer. Received string.")
         trainer_num_gpus = cast(int, trainer_num_gpus)
 
         if trainer_num_gpus == -1:  # if trainer gpus = -1, all gpus are used, so find all available devices
             logger.info(
-                'PytorchLightning Trainer gpus was set to -1, finding number of GPUs used from torch.cuda.device_count().'
+                "PytorchLightning Trainer gpus was set to -1, finding number of GPUs used from torch.cuda.device_count()."
             )
-            cuda_num_gpus = torch.cuda.device_count() * int(os.getenv('NUM_NODES', 1))
+            cuda_num_gpus = torch.cuda.device_count() * int(os.getenv("NUM_NODES", 1))
             num_gpus = cuda_num_gpus
 
         else:  # if trainer gpus is not -1
-            logger.info(f'Trainer gpus was set to {trainer_num_gpus}, using this as the number of gpus.')
+            logger.info(f"Trainer gpus was set to {trainer_num_gpus}, using this as the number of gpus.")
             num_gpus = trainer_num_gpus
 
     num_gpus = int(num_gpus)
-    logger.info(f'Number of gpus found to be in use: {num_gpus}')
+    logger.info(f"Number of gpus found to be in use: {num_gpus}")
     return num_gpus

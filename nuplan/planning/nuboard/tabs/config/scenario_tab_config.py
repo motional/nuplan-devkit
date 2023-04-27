@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, List
+from dataclasses import dataclass, field
+from typing import Any, ClassVar, Dict, List, Tuple
 
 
 @dataclass(frozen=True)
@@ -52,3 +52,21 @@ class ScenarioTabModalQueryButtonConfig:
     def get_config(cls) -> Dict[str, Any]:
         """Get configs as a dict."""
         return {'name': cls.name, 'label': cls.label, 'css_classes': cls.css_classes}
+
+
+@dataclass(frozen=True)
+class ScenarioTabFrameButtonConfig:
+    """Config for scenario tab's frame control buttons."""
+
+    label: str
+    margin: Tuple[int, int, int, int] = field(default_factory=lambda: (5, 19, 5, 35))  # Top, right, bottom, left
+    css_classes: List[str] = field(default_factory=lambda: ["frame-control-button"])
+    width: int = field(default_factory=lambda: 56)
+
+
+# Global config instances
+first_button_config = ScenarioTabFrameButtonConfig(label="first")
+prev_button_config = ScenarioTabFrameButtonConfig(label="prev")
+play_button_config = ScenarioTabFrameButtonConfig(label="play")
+next_button_config = ScenarioTabFrameButtonConfig(label="next")
+last_button_config = ScenarioTabFrameButtonConfig(label="last")

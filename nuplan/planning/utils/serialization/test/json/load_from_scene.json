@@ -1,0 +1,254 @@
+{
+    "camera": {
+        "bearing": 0.49300000000000077,
+        "lookat": [
+            677691.956252,
+            4014865.496885,
+            1.6216
+        ],
+        "pitch": 1.5999999999999834,
+        "scale": 912887.3617644259
+    },
+    "ego": {
+        "acceleration": 0.0,
+        "pose": [
+            677687.457427,
+            4014878.537926,
+            -1.599237
+        ],
+        "prediction": {
+            "color": [
+                0.5,
+                0.5,
+                0.5,
+                1
+            ],
+            "states": []
+        },
+        "speed": 0.0
+    },
+    "map": {
+        "area": "us-nv-las-vegas-track"
+    },
+    "meta": {
+        "version": "3.0.0"
+    },
+    "prediction": [
+        {
+            "color": [
+                1.0,
+                0.0,
+                1.0,
+                1.0
+            ],
+            "id": 0,
+            "modes": [
+                {
+                    "probability": 0.9,
+                    "states": [
+                        {
+                            "pose": [
+                                1.01,
+                                2.01,
+                                0.01
+                            ],
+                            "timestamp": 0.5
+                        },
+                        {
+                            "pose": [
+                                1.02,
+                                2.02,
+                                0.02
+                            ],
+                            "timestamp": 1.0
+                        },
+                        {
+                            "pose": [
+                                1.03,
+                                2.03,
+                                0.03
+                            ],
+                            "timestamp": 1.5
+                        },
+                        {
+                            "pose": [
+                                1.04,
+                                2.04,
+                                0.04
+                            ],
+                            "timestamp": 2.0
+                        },
+                        {
+                            "pose": [
+                                1.05,
+                                2.05,
+                                0.05
+                            ],
+                            "timestamp": 2.5
+                        },
+                        {
+                            "pose": [
+                                1.06,
+                                2.06,
+                                0.06
+                            ],
+                            "timestamp": 3.0
+                        },
+                        {
+                            "pose": [
+                                1.07,
+                                2.07,
+                                0.07
+                            ],
+                            "timestamp": 3.5
+                        },
+                        {
+                            "pose": [
+                                1.08,
+                                2.08,
+                                0.08
+                            ],
+                            "timestamp": 4.0
+                        },
+                        {
+                            "pose": [
+                                1.09,
+                                2.09,
+                                0.09
+                            ],
+                            "timestamp": 4.5
+                        },
+                        {
+                            "pose": [
+                                1.10,
+                                2.10,
+                                0.10
+                            ],
+                            "timestamp": 5
+                        },
+                        {
+                            "pose": [
+                                1.11,
+                                2.11,
+                                0.11
+                            ],
+                            "timestamp": 5.5
+                        },
+                        {
+                            "pose": [
+                                1.12,
+                                2.12,
+                                0.12
+                            ],
+                            "timestamp": 6
+                        },
+                        {
+                            "pose": [
+                                1.13,
+                                2.13,
+                                0.13
+                            ],
+                            "timestamp": 6.5
+                        },
+                        {
+                            "pose": [
+                                1.14,
+                                2.14,
+                                0.14
+                            ],
+                            "timestamp": 7
+                        },
+                        {
+                            "pose": [
+                                1.15,
+                                2.15,
+                                0.15
+                            ],
+                            "timestamp": 7.5
+                        },
+                        {
+                            "pose": [
+                                1.16,
+                                2.16,
+                                0.16
+                            ],
+                            "timestamp": 8
+                        }
+                    ]
+                },
+                {
+                    "probability": 0.1,
+                    "states": [
+                        {
+                            "pose": [
+                                1.00,
+                                2.00,
+                                0.0
+                            ],
+                            "timestamp": 0.5
+                        },
+                        {
+                            "pose": [
+                                1.01,
+                                2.01,
+                                0.01
+                            ],
+                            "timestamp": 1.0
+                        },
+                        {
+                            "pose": [
+                                1.02,
+                                2.02,
+                                0.02
+                            ],
+                            "timestamp": 1.5
+                        },
+                        {
+                            "pose": [
+                                1.03,
+                                2.03,
+                                0.03
+                            ],
+                            "timestamp": 2.0
+                        }
+                    ]
+                }
+            ],
+            "size": [
+                2.0,
+                4.7
+            ]
+        }
+    ],
+    "shapes": {},
+    "trajectory_id": "1",
+    "world": {
+        "barriers": [],
+        "bicycles": [],
+        "constructionzonesigns": [],
+        "genericobjects": [],
+        "pedestrians": [],
+        "trafficcones": [],
+        "vehicles": [
+            {
+                "acceleration": 0.0,
+                "active": true,
+                "box": {
+                    "pose": [
+                        1.0,
+                        2.0,
+                        0
+                    ],
+                    "size": [
+                        2.0,
+                        4.7
+                    ]
+                },
+                "id": 0,
+                "real": true,
+                "speed": 0.7491,
+                "type": "Vehicle"
+            }
+        ]
+    }
+}

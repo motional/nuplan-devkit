@@ -8,6 +8,7 @@ from typing import Any
 
 import msgpack
 
+from nuplan.common.utils.io_utils import save_buffer
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory
 from nuplan.planning.simulation.planner.abstract_planner import AbstractPlanner
@@ -23,21 +24,26 @@ class SimulationLog:
     simulation_history: SimulationHistory
 
     def _dump_to_pickle(self) -> None:
-        """Dump file into compressed pickle"""
-        with lzma.open(self.file_path, "wb", preset=0) as f:
-            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        """
+        Dump file into compressed pickle.
+        """
+        pickle_object = pickle.dumps(self, protocol=pickle.HIGHEST_PROTOCOL)
+        save_buffer(self.file_path, lzma.compress(pickle_object, preset=0))
 
     def _dump_to_msgpack(self) -> None:
-        """Dump file into compressed msgpack"""
+        """
+        Dump file into compressed msgpack.
+        """
         # Serialize to a pickle object
         pickle_object = pickle.dumps(self, protocol=pickle.HIGHEST_PROTOCOL)
-        with lzma.open(self.file_path, "wb", preset=0) as f:
-            f.write(msgpack.packb(pickle_object))
+        msg_packed_bytes = msgpack.packb(pickle_object)
+        save_buffer(self.file_path, lzma.compress(msg_packed_bytes, preset=0))
 
     def save_to_file(self) -> None:
-        """Dump simulation log into file."""
+        """
+        Dump simulation log into file.
+        """
         serialization_type = self.simulation_log_type(self.file_path)
-        self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
         if serialization_type == "pickle":
             self._dump_to_pickle()
@@ -49,24 +55,38 @@ class SimulationLog:
     @staticmethod
     def simulation_log_type(file_path: Path) -> str:
         """
-        Deduce the simulation log type.
+        Deduce the simulation log type based on the last two portions of the suffix.
+        The last suffix must be .xz, since we always dump/load to/from an xz container.
+        If the second to last suffix is ".msgpack", assumes the log is of type "msgpack".
+        If the second to last suffix is ".pkl", assumes the log is of type "pickle."
+        If it's neither, raises a ValueError.
+        Examples:
+        - "/foo/bar/baz.1.2.pkl.xz" -> "pickle"
+        - "/foo/bar/baz/1.2.msgpack.xz" -> "msgpack"
+        - "/foo/bar/baz/1.2.msgpack.pkl.xz" -> "pickle"
+        - "/foo/bar/baz/1.2.msgpack" -> Error
         :param file_path: File path.
-        :return: one from ["msgpack", "pickle", "json"].
+        :return: one from ["msgpack", "pickle"].
         """
-        msg_pack = file_path.suffixes == ['.msgpack', '.xz']
-        msg_pickle = file_path.suffixes == ['.pkl', '.xz']
-        number_of_available_types = int(msg_pack) + int(msg_pickle)
+        # Make sure we have at least 2 suffixes
+        if len(file_path.suffixes) < 2:
+            raise ValueError(f"Inconclusive file type: {file_path}")
 
-        # We can handle only conclusive serialization type
-        if number_of_available_types != 1:
-            raise RuntimeError(f"Inconclusive file type: {file_path}!")
+        # Assert last suffix is .xz
+        last_suffix = file_path.suffixes[-1]
+        if last_suffix != ".xz":
+            raise ValueError(f"Inconclusive file type: {file_path}")
 
-        if msg_pickle:
-            return "pickle"
-        elif msg_pack:
-            return "msgpack"
-        else:
-            raise RuntimeError("Unknown condition!")
+        # Assert we can deduce the type
+        second_to_last_suffix = file_path.suffixes[-2]
+        log_type_mapping = {
+            ".msgpack": "msgpack",
+            ".pkl": "pickle",
+        }
+        if second_to_last_suffix not in log_type_mapping:
+            raise ValueError(f"Inconclusive file type: {file_path}")
+
+        return log_type_mapping[second_to_last_suffix]
 
     @classmethod
     def load_data(cls, file_path: Path) -> Any:

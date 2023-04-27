@@ -36,16 +36,16 @@ class GenericAgentsFeatureBuilder(ScriptableFeatureBuilder):
         :param trajectory_sampling: Parameters of the sampled trajectory of every agent
         """
         super().__init__()
-        self._agent_features = agent_features
-        self._num_past_poses = trajectory_sampling.num_poses
-        self._past_time_horizon = trajectory_sampling.time_horizon
+        self.agent_features = agent_features
+        self.num_past_poses = trajectory_sampling.num_poses
+        self.past_time_horizon = trajectory_sampling.time_horizon
 
         self._agents_states_dim = GenericAgents.agents_states_dim()
 
         # Sanitize feature building parameters
-        if 'EGO' in self._agent_features:
+        if 'EGO' in self.agent_features:
             raise AssertionError("EGO not valid agents feature type!")
-        for feature_name in self._agent_features:
+        for feature_name in self.agent_features:
             if feature_name not in TrackedObjectType._member_names_:
                 raise ValueError(f"Object representation for layer: {feature_name} is unavailable!")
 
@@ -62,50 +62,105 @@ class GenericAgentsFeatureBuilder(ScriptableFeatureBuilder):
         return GenericAgents  # type: ignore
 
     @torch.jit.unused
+    def get_scriptable_input_from_scenario(
+        self, scenario: AbstractScenario
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, List[torch.Tensor]], Dict[str, List[List[torch.Tensor]]]]:
+        """
+        Extract the input for the scriptable forward method from the scenario object
+        :param scenario: planner input from training
+        :returns: Tensor data + tensor list data to be used in scriptable forward
+        """
+        anchor_ego_state = scenario.initial_ego_state
+
+        past_ego_states = scenario.get_ego_past_trajectory(
+            iteration=0, num_samples=self.num_past_poses, time_horizon=self.past_time_horizon
+        )
+        sampled_past_ego_states = list(past_ego_states) + [anchor_ego_state]
+        time_stamps = list(
+            scenario.get_past_timestamps(
+                iteration=0, num_samples=self.num_past_poses, time_horizon=self.past_time_horizon
+            )
+        ) + [scenario.start_time]
+        # Retrieve present/future agent boxes
+        present_tracked_objects = scenario.initial_tracked_objects.tracked_objects
+        past_tracked_objects = [
+            tracked_objects.tracked_objects
+            for tracked_objects in scenario.get_past_tracked_objects(
+                iteration=0, time_horizon=self.past_time_horizon, num_samples=self.num_past_poses
+            )
+        ]
+
+        # Extract and pad features
+        sampled_past_observations = past_tracked_objects + [present_tracked_objects]
+
+        assert len(sampled_past_ego_states) == len(sampled_past_observations), (
+            "Expected the trajectory length of ego and agent to be equal. "
+            f"Got ego: {len(sampled_past_ego_states)} and agent: {len(sampled_past_observations)}"
+        )
+
+        assert len(sampled_past_observations) > 2, (
+            "Trajectory of length of " f"{len(sampled_past_observations)} needs to be at least 3"
+        )
+
+        tensor, list_tensor, list_list_tensor = self._pack_to_feature_tensor_dict(
+            sampled_past_ego_states, time_stamps, sampled_past_observations
+        )
+        return tensor, list_tensor, list_list_tensor
+
+    @torch.jit.unused
+    def get_scriptable_input_from_simulation(
+        self, current_input: PlannerInput
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, List[torch.Tensor]], Dict[str, List[List[torch.Tensor]]]]:
+        """
+        Extract the input for the scriptable forward method from the simulation input
+        :param current_input: planner input from sim
+        :returns: Tensor data + tensor list data to be used in scriptable forward
+        """
+        history = current_input.history
+        assert isinstance(
+            history.observations[0], DetectionsTracks
+        ), f"Expected observation of type DetectionTracks, got {type(history.observations[0])}"
+
+        present_ego_state, present_observation = history.current_state
+
+        past_observations = history.observations[:-1]
+        past_ego_states = history.ego_states[:-1]
+
+        assert history.sample_interval, "SimulationHistoryBuffer sample interval is None"
+
+        indices = sample_indices_with_time_horizon(self.num_past_poses, self.past_time_horizon, history.sample_interval)
+
+        try:
+            sampled_past_observations = [
+                cast(DetectionsTracks, past_observations[-idx]).tracked_objects for idx in reversed(indices)
+            ]
+            sampled_past_ego_states = [past_ego_states[-idx] for idx in reversed(indices)]
+        except IndexError:
+            raise RuntimeError(
+                f"SimulationHistoryBuffer duration: {history.duration} is "
+                f"too short for requested past_time_horizon: {self.past_time_horizon}. "
+                f"Please increase the simulation_buffer_duration in default_simulation.yaml"
+            )
+
+        sampled_past_observations = sampled_past_observations + [
+            cast(DetectionsTracks, present_observation).tracked_objects
+        ]
+        sampled_past_ego_states = sampled_past_ego_states + [present_ego_state]
+        time_stamps = [state.time_point for state in sampled_past_ego_states]
+
+        tensor, list_tensor, list_list_tensor = self._pack_to_feature_tensor_dict(
+            sampled_past_ego_states, time_stamps, sampled_past_observations
+        )
+        return tensor, list_tensor, list_list_tensor
+
+    @torch.jit.unused
     def get_features_from_scenario(self, scenario: AbstractScenario) -> GenericAgents:
         """Inherited, see superclass."""
         # Retrieve present/past ego states and agent boxes
         with torch.no_grad():
-            anchor_ego_state = scenario.initial_ego_state
-
-            past_ego_states = scenario.get_ego_past_trajectory(
-                iteration=0, num_samples=self._num_past_poses, time_horizon=self._past_time_horizon
-            )
-            sampled_past_ego_states = list(past_ego_states) + [anchor_ego_state]
-            time_stamps = list(
-                scenario.get_past_timestamps(
-                    iteration=0, num_samples=self._num_past_poses, time_horizon=self._past_time_horizon
-                )
-            ) + [scenario.start_time]
-            # Retrieve present/future agent boxes
-            present_tracked_objects = scenario.initial_tracked_objects.tracked_objects
-            past_tracked_objects = [
-                tracked_objects.tracked_objects
-                for tracked_objects in scenario.get_past_tracked_objects(
-                    iteration=0, time_horizon=self._past_time_horizon, num_samples=self._num_past_poses
-                )
-            ]
-
-            # Extract and pad features
-            sampled_past_observations = past_tracked_objects + [present_tracked_objects]
-
-            assert len(sampled_past_ego_states) == len(sampled_past_observations), (
-                "Expected the trajectory length of ego and agent to be equal. "
-                f"Got ego: {len(sampled_past_ego_states)} and agent: {len(sampled_past_observations)}"
-            )
-
-            assert len(sampled_past_observations) > 2, (
-                "Trajectory of length of " f"{len(sampled_past_observations)} needs to be at least 3"
-            )
-
-            tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(
-                sampled_past_ego_states, time_stamps, sampled_past_observations
-            )
-
+            tensors, list_tensors, list_list_tensors = self.get_scriptable_input_from_scenario(scenario)
             tensors, list_tensors, list_list_tensors = self.scriptable_forward(tensors, list_tensors, list_list_tensors)
-
             output: GenericAgents = self._unpack_feature_from_tensor_dict(tensors, list_tensors, list_list_tensors)
-
             return output
 
     @torch.jit.unused
@@ -114,48 +169,9 @@ class GenericAgentsFeatureBuilder(ScriptableFeatureBuilder):
     ) -> GenericAgents:
         """Inherited, see superclass."""
         with torch.no_grad():
-            history = current_input.history
-            assert isinstance(
-                history.observations[0], DetectionsTracks
-            ), f"Expected observation of type DetectionTracks, got {type(history.observations[0])}"
-
-            present_ego_state, present_observation = history.current_state
-
-            past_observations = history.observations[:-1]
-            past_ego_states = history.ego_states[:-1]
-
-            assert history.sample_interval, "SimulationHistoryBuffer sample interval is None"
-
-            indices = sample_indices_with_time_horizon(
-                self._num_past_poses, self._past_time_horizon, history.sample_interval
-            )
-
-            try:
-                sampled_past_observations = [
-                    cast(DetectionsTracks, past_observations[-idx]).tracked_objects for idx in reversed(indices)
-                ]
-                sampled_past_ego_states = [past_ego_states[-idx] for idx in reversed(indices)]
-            except IndexError:
-                raise RuntimeError(
-                    f"SimulationHistoryBuffer duration: {history.duration} is "
-                    f"too short for requested past_time_horizon: {self._past_time_horizon}. "
-                    f"Please increase the simulation_buffer_duration in default_simulation.yaml"
-                )
-
-            sampled_past_observations = sampled_past_observations + [
-                cast(DetectionsTracks, present_observation).tracked_objects
-            ]
-            sampled_past_ego_states = sampled_past_ego_states + [present_ego_state]
-            time_stamps = [state.time_point for state in sampled_past_ego_states]
-
-            tensors, list_tensors, list_list_tensors = self._pack_to_feature_tensor_dict(
-                sampled_past_ego_states, time_stamps, sampled_past_observations
-            )
-
+            tensors, list_tensors, list_list_tensors = self.get_scriptable_input_from_simulation(current_input)
             tensors, list_tensors, list_list_tensors = self.scriptable_forward(tensors, list_tensors, list_list_tensors)
-
             output: GenericAgents = self._unpack_feature_from_tensor_dict(tensors, list_tensors, list_list_tensors)
-
             return output
 
     @torch.jit.unused
@@ -176,7 +192,7 @@ class GenericAgentsFeatureBuilder(ScriptableFeatureBuilder):
         past_ego_states_tensor = sampled_past_ego_states_to_tensor(past_ego_states)
         past_time_stamps_tensor = sampled_past_timestamps_to_tensor(past_time_stamps)
 
-        for feature_name in self._agent_features:
+        for feature_name in self.agent_features:
             past_tracked_objects_tensor_list = sampled_tracked_objects_to_tensor_list(
                 past_tracked_objects, TrackedObjectType[feature_name]
             )
@@ -237,7 +253,7 @@ class GenericAgentsFeatureBuilder(ScriptableFeatureBuilder):
         output_list_dict["generic_agents.ego"] = [ego_tensor]
 
         # agent features
-        for feature_name in self._agent_features:
+        for feature_name in self.agent_features:
 
             if f"past_tracked_objects.{feature_name}" in list_tensor_data:
                 agents: List[torch.Tensor] = list_tensor_data[f"past_tracked_objects.{feature_name}"]
@@ -270,18 +286,18 @@ class GenericAgentsFeatureBuilder(ScriptableFeatureBuilder):
         return {
             "past_ego_states": {
                 "iteration": "0",
-                "num_samples": str(self._num_past_poses),
-                "time_horizon": str(self._past_time_horizon),
+                "num_samples": str(self.num_past_poses),
+                "time_horizon": str(self.past_time_horizon),
             },
             "past_time_stamps": {
                 "iteration": "0",
-                "num_samples": str(self._num_past_poses),
-                "time_horizon": str(self._past_time_horizon),
+                "num_samples": str(self.num_past_poses),
+                "time_horizon": str(self.past_time_horizon),
             },
             "past_tracked_objects": {
                 "iteration": "0",
-                "time_horizon": str(self._past_time_horizon),
-                "num_samples": str(self._num_past_poses),
-                "agent_features": ",".join(self._agent_features),
+                "time_horizon": str(self.past_time_horizon),
+                "num_samples": str(self.num_past_poses),
+                "agent_features": ",".join(self.agent_features),
             },
         }

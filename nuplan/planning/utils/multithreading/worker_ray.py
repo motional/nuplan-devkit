@@ -23,6 +23,7 @@ def initialize_ray(
     threads_per_node: Optional[int] = None,
     local_mode: bool = False,
     log_to_driver: bool = True,
+    use_distributed: bool = False,
 ) -> WorkerResources:
     """
     Initialize ray worker.
@@ -35,6 +36,8 @@ def initialize_ray(
             processes on all nodes will be directed to the driver.
     :param local_mode: If true, the code will be executed serially. This
             is useful for debugging.
+    :param use_distributed: If true, and the env vars are available,
+            ray will launch in distributed mode
     :return: created WorkerResources.
     """
     # Env variables which are set through SLURM script
@@ -49,12 +52,12 @@ def initialize_ray(
         logger.info("Not using GPU in ray")
 
     # Find a way in how the ray should be initialized
-    if master_node_ip:
+    if master_node_ip and use_distributed:
         # Connect to ray remotely to node ip
         logger.info(f'Connecting to cluster at: {master_node_ip}!')
         ray.init(address=f'ray://{master_node_ip}:10001', local_mode=local_mode, log_to_driver=log_to_driver)
         number_of_nodes = 1
-    elif env_var_master_node_ip in os.environ:
+    elif env_var_master_node_ip in os.environ and use_distributed:
         # In this way, we started ray on the current machine which generated password and master node ip:
         # It was started with "ray start --head"
         number_of_nodes = int(os.environ[env_var_num_nodes])
@@ -100,6 +103,7 @@ class RayDistributed(WorkerPool):
         log_to_driver: bool = True,
         output_dir: Optional[Union[str, Path]] = None,
         logs_subdir: Optional[str] = 'logs',
+        use_distributed: bool = False,
     ):
         """
         Initialize ray worker.
@@ -111,12 +115,14 @@ class RayDistributed(WorkerPool):
                 processes on all nodes will be directed to the driver.
         :param output_dir: Experiment output directory.
         :param logs_subdir: Subdirectory inside experiment dir to store worker logs.
+        :param use_distributed: Boolean flag to explicitly enable/disable distributed computation
         """
         self._master_node_ip = master_node_ip
         self._threads_per_node = threads_per_node
         self._local_mode = debug_mode
         self._log_to_driver = log_to_driver
         self._log_dir: Optional[Path] = Path(output_dir) / (logs_subdir or '') if output_dir is not None else None
+        self._use_distributed = use_distributed
         super().__init__(self.initialize())
 
     def initialize(self) -> WorkerResources:
@@ -134,6 +140,7 @@ class RayDistributed(WorkerPool):
             threads_per_node=self._threads_per_node,
             local_mode=self._local_mode,
             log_to_driver=self._log_to_driver,
+            use_distributed=self._use_distributed,
         )
 
     def shutdown(self) -> None:

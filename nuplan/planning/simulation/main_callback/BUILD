@@ -28,6 +28,7 @@ py_library(
         "//nuplan/planning/metrics:metric_engine",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
         requirement("pyarrow"),
+        requirement("s3fs"),
     ],
 )
 
@@ -43,6 +44,8 @@ py_library(
     name = "metric_aggregator_callback",
     srcs = ["metric_aggregator_callback.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/metrics:metric_dataframe",
         "//nuplan/planning/metrics/aggregator:abstract_metric_aggregator",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
@@ -63,6 +66,7 @@ py_library(
     name = "validation_callback",
     srcs = ["validation_callback.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
     ],
 )
@@ -71,6 +75,7 @@ py_library(
     name = "completion_callback",
     srcs = ["completion_callback.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/simulation/main_callback:abstract_main_callback",
     ],
 )
@@ -79,6 +84,8 @@ py_library(
     name = "metric_summary_callback",
     srcs = ["metric_summary_callback.py"],
     deps = [
+        "//nuplan/common/utils:io_utils",
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/metrics:metric_dataframe",
         "//nuplan/planning/nuboard/tabs/config:histogram_tab_config",
         "//nuplan/planning/nuboard/utils",

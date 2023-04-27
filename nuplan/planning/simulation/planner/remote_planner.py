@@ -5,8 +5,9 @@ import os
 import pickle
 from typing import List, Optional, Tuple, Type
 
-import docker.errors
 import grpc
+
+import docker.errors
 
 from nuplan.common.utils.helpers import keep_trying, try_n_times
 from nuplan.planning.simulation.observation.observation_type import DetectionsTracks, Observation

@@ -59,7 +59,7 @@ py_test(
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
         "//nuplan/planning/metrics:abstract_metric",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario",

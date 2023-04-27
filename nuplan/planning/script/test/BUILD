@@ -134,6 +134,17 @@ py_test(
 )
 
 py_test(
+    name = "test_run_result_processor",
+    size = "small",
+    srcs = ["test_run_result_processor.py"],
+    data = [
+        "//nuplan/planning/script:run_result_processor_aws",
+    ],
+    tags = [],
+    deps = [],
+)
+
+py_test(
     name = "test_run_parallel_worker",
     size = "small",
     srcs = ["test_run_parallel_worker.py"],
@@ -313,11 +324,13 @@ py_test(
 )
 
 py_test(
-    name = "test_cache",
-    size = "enormous",
-    srcs = ["test_cache.py"],
-    tags = ["manual"],
+    name = "test_cache_nuplandb",
+    size = "medium",
+    srcs = ["test_cache_nuplandb.py"],
+    tags = ["integration"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
+        "//nuplan/common/utils/test_utils:mock_s3_utils",
         "//nuplan/planning/scenario_builder/nuplan_db:nuplan_scenario_builder",
         "//nuplan/planning/script/builders:data_augmentation_builder",
         "//nuplan/planning/script/builders:training_callback_builder",
@@ -327,6 +340,22 @@ py_test(
         "//nuplan/planning/training/callbacks/utils:scenario_scene_converter",
         "//nuplan/planning/training/data_loader:log_splitter",
         "//nuplan/planning/training/modeling/models:raster_model",
+        requirement("hydra-core"),
+    ],
+)
+
+py_test(
+    name = "test_cache_mocked",
+    size = "small",
+    srcs = ["test_cache_mocked.py"],
+    deps = [
+        "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        "//nuplan/planning/script/builders:scenario_builder",
+        "//nuplan/planning/script/test:skeleton_test_train",
+        "//nuplan/planning/training/modeling/models:raster_model",
+        "//nuplan/planning/training/preprocessing/feature_builders/test:mock_feature_utils",
+        requirement_torch("torch"),
+        requirement("hydra-core"),
     ],
 )
 

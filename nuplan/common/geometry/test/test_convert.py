@@ -22,9 +22,9 @@ class TestConvert(unittest.TestCase):
     def test_pose_from_matrix(self) -> None:
         """Tests conversion from 3x3 transformation matrix to a 2D pose"""
         # Setup
-        transform_matrix = np.array(
+        transform_matrix: npt.NDArray[np.float32] = np.array(
             [[np.sqrt(3) / 2, -0.5, 2], [0.5, np.sqrt(3) / 2, 2], [0, 0, 1]], dtype=np.float32
-        )  # type: npt.NDArray[np.float32]
+        )
         expected_pose = StateSE2(2, 2, np.pi / 6)
 
         # Function call
@@ -35,13 +35,21 @@ class TestConvert(unittest.TestCase):
         self.assertAlmostEqual(result.y, expected_pose.y)
         self.assertAlmostEqual(result.heading, expected_pose.heading)
 
+        # Should raise if the transform dimensions are incorrect
+        with self.assertRaises(RuntimeError):
+            bad_matrix: npt.NDArray[np.float32] = np.array(
+                [[np.sqrt(3) / 2, -0.5, 2], [0.5, np.sqrt(3) / 2, 2]], dtype=np.float32
+            )
+
+            _ = pose_from_matrix(transform_matrix=bad_matrix)
+
     def test_matrix_from_pose(self) -> None:
         """Tests conversion from 2D pose to a 3x3 transformation matrix"""
         # Setup
         pose = StateSE2(2, 2, np.pi / 6)
-        expected_transform_matrix = np.array(
+        expected_transform_matrix: npt.NDArray[np.float32] = np.array(
             [[np.sqrt(3) / 2, -0.5, 2], [0.5, np.sqrt(3) / 2, 2], [0, 0, 1]], dtype=np.float32
-        )  # type: npt.NDArray[np.float32]
+        )
 
         # Function call
         result = matrix_from_pose(pose=pose)
@@ -113,7 +121,7 @@ class TestConvert(unittest.TestCase):
     def test_numpy_array_to_absolute_velocity(self, mock_relative_to_absolute_poses: Mock) -> None:
         """Tests conversion from relative numpy velocities to list of absolute velocities"""
         # Setup
-        np_velocities = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=np.float32)  # type: npt.NDArray[np.float32]
+        np_velocities: npt.NDArray[np.float32] = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=np.float32)
         num_velocities = len(np_velocities)
         mock_relative_to_absolute_poses.side_effect = lambda _, r_s: r_s
 

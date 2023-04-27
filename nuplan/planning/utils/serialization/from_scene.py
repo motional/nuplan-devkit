@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List
 
 from nuplan.common.actor_state.agent import Agent
@@ -12,6 +13,8 @@ from nuplan.common.actor_state.vehicle_parameters import VehicleParameters, get_
 from nuplan.common.geometry.transform import translate_longitudinally
 from nuplan.planning.simulation.trajectory.predicted_trajectory import PredictedTrajectory
 from nuplan.planning.utils.serialization.scene_simple_trajectory import SceneSimpleTrajectory
+
+logger = logging.getLogger(__file__)
 
 
 def to_state_from_scene(scene: Dict[str, Any]) -> StateSE2:
@@ -114,6 +117,8 @@ def from_scene_to_tracked_objects(scene: Dict[str, Any]) -> TrackedObjects:
     :param scene: scene["world"] coming from json
     :return List of boxes representing all agents
     """
+    if "world" in scene.keys():
+        raise ValueError("You need to pass only the 'world' field of scene, not the whole dict!")
     tracked_objects: List[TrackedObject] = []
     scene_labels_map = {
         'vehicles': TrackedObjectType.VEHICLE,
@@ -129,11 +134,69 @@ def from_scene_to_tracked_objects(scene: Dict[str, Any]) -> TrackedObjects:
     return TrackedObjects(tracked_objects)
 
 
+def from_scene_to_tracked_objects_with_scene_predictions(scene: Dict[str, Any]) -> TrackedObjects:
+    """
+    Creates tracked objects, loading the predictions directly from the scene json.
+    :param scene: The input scene loaded from the json file.
+    :return: Tracked objects from the scene, with predictions loaded from the scene json.
+    """
+    tracked_objects = from_scene_to_tracked_objects(scene["world"])
+    tracked_objects_map: Dict[str, TrackedObject] = {track.token: track for track in tracked_objects}
+
+    for prediction in scene["prediction"]:
+        prediction_id = str(prediction["id"])
+        if prediction_id not in tracked_objects_map:
+            logger.warning("Json scene file contains prediction not assigned to any track: %s.", prediction_id)
+            continue
+
+        box = tracked_objects_map[prediction_id].box
+        current_state = {
+            "timestamp": tracked_objects_map[prediction_id].metadata.timestamp_s,
+            "pose": list(tracked_objects_map[prediction_id].center),
+        }
+
+        tracked_objects_map[prediction_id].predictions = [
+            PredictedTrajectory(
+                probability=mode["probability"],
+                waypoints=SceneSimpleTrajectory(
+                    _validate_an_unite_predictions(current_state, mode['states']),
+                    width=box.width,
+                    length=box.length,
+                    height=box.height,
+                ).get_sampled_trajectory(),
+            )
+            for mode in prediction["modes"]
+        ]
+
+    return tracked_objects
+
+
+def _validate_an_unite_predictions(
+    current_state: Dict[str, Any], future_states: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """
+    Checks that the states are in a temporally consistent order, then builds the prediction with current_state
+    and the rest of the future states.
+    :param current_state: The current state of the tracked object.
+    :param future_states: Future states of prediction.
+    :return: Prediction containing the current state as first element.
+    """
+    if current_state["timestamp"] >= future_states[0]["timestamp"]:
+        raise ValueError("Timestamp of first state of future states must be larger than the track's timestamp.")
+    for prev_state, state in zip(future_states, future_states[1:]):
+        if prev_state["timestamp"] >= state["timestamp"]:
+            raise ValueError("The predictions states must be in strictly increasing temporal order!")
+    return [current_state] + future_states
+
+
 def from_scene_to_tracked_objects_with_predictions(
     scene: Dict[str, Any], predictions: List[Dict[str, Any]]
 ) -> TrackedObjects:
     """
-    Creates tracked objects with predictions from scene.
+    Creates tracked objects, adding prediction from the given parameter.
+    :param scene: The input scene loaded from the json file.
+    :param predictions: Predictions for the tracked objects in the scene.
+    :return: Tracked objects from the scene, with predictions loaded from the input.
     """
     tracked_objects = from_scene_to_tracked_objects(scene)
 

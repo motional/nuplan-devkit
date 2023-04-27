@@ -13,17 +13,6 @@ py_test(
 )
 
 py_test(
-    name = "test_builder_utils",
-    size = "medium",
-    srcs = ["test_builder_utils.py"],
-    tags = ["integration"],
-    deps = [
-        "//nuplan/planning/script/builders/utils:utils_config",
-        "//nuplan/planning/utils/multithreading:worker_utils",
-    ],
-)
-
-py_test(
     name = "test_scenario_builder",
     size = "medium",
     srcs = ["test_scenario_builder.py"],
@@ -45,5 +34,24 @@ py_test(
     srcs = ["test_lr_scheduler_builder.py"],
     deps = [
         "//nuplan/planning/script/builders:lr_scheduler_builder",
+    ],
+)
+
+py_test(
+    name = "test_simulation_callback_builder",
+    size = "small",
+    srcs = ["test_simulation_callback_builder.py"],
+    tags = [],
+    deps = [
+        "//nuplan/planning/script/builders:simulation_callback_builder",
+        "//nuplan/planning/simulation/callback:metric_callback",
+        "//nuplan/planning/simulation/callback:multi_callback",
+        "//nuplan/planning/simulation/callback:serialization_callback",
+        "//nuplan/planning/simulation/callback:timing_callback",
+        "//nuplan/planning/simulation/callback:visualization_callback",
+        "//nuplan/planning/utils/multithreading:worker_parallel",
+        "//nuplan/planning/utils/multithreading:worker_sequential",
+        requirement("hypothesis"),
+        requirement("omegaconf"),
     ],
 )

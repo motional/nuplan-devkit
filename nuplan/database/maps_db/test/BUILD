@@ -29,7 +29,7 @@ py_test(
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:map_api",
         "//nuplan/database/maps_db:map_explorer",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -42,6 +42,6 @@ py_test(
         "//nuplan/database/maps_db:gpkg_mapsdb",
         "//nuplan/database/maps_db:map_api",
         "//nuplan/database/maps_db:map_explorer",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )

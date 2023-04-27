@@ -27,7 +27,8 @@ class EgoMeanSpeedStatistics(MetricBase):
         :param history: History from a simulation engine
         :return mean of ego speed (m/s).
         """
-        ego_velocities = extract_ego_velocity(history)
+        ego_states = history.extract_ego_state
+        ego_velocities = extract_ego_velocity(ego_states)
         mean_speed = np.mean(ego_velocities)
 
         return mean_speed

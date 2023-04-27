@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
@@ -15,10 +15,9 @@ py_test(
     ],
 )
 
-py_test(
-    name = "test_serialization_callback",
-    size = "medium",
-    srcs = ["test_serialization_callback.py"],
+py_library(
+    name = "skeleton_test_serialization_callback",
+    srcs = ["skeleton_test_serialization_callback.py"],
     deps = [
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
@@ -32,7 +31,35 @@ py_test(
         "//nuplan/planning/simulation/simulation_time_controller:abstract_simulation_time_controller",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+        requirement("hypothesis"),
         requirement("msgpack"),
+    ],
+)
+
+py_test(
+    name = "test_serialization_callback_json",
+    size = "small",
+    srcs = ["test_serialization_callback_json.py"],
+    deps = [
+        "//nuplan/planning/simulation/callback/test:skeleton_test_serialization_callback",
+    ],
+)
+
+py_test(
+    name = "test_serialization_callback_msgpack",
+    size = "small",
+    srcs = ["test_serialization_callback_msgpack.py"],
+    deps = [
+        "//nuplan/planning/simulation/callback/test:skeleton_test_serialization_callback",
+    ],
+)
+
+py_test(
+    name = "test_serialization_callback_pickle",
+    size = "small",
+    srcs = ["test_serialization_callback_pickle.py"],
+    deps = [
+        "//nuplan/planning/simulation/callback/test:skeleton_test_serialization_callback",
     ],
 )
 
@@ -56,6 +83,15 @@ py_test(
         "//nuplan/planning/simulation/simulation_time_controller:abstract_simulation_time_controller",
         "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
         "//nuplan/planning/simulation/trajectory:interpolated_trajectory",
+    ],
+)
+
+py_test(
+    name = "test_simulation_log",
+    size = "small",
+    srcs = ["test_simulation_log.py"],
+    deps = [
+        "//nuplan/planning/simulation:simulation_log",
     ],
 )
 

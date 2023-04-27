@@ -57,6 +57,19 @@ class TestInterpolatedPath(unittest.TestCase):
         self.assertEqual(4, state.y)
         self.assertEqual(1, state.heading)
 
+    def test_get_state_at_progresses(self) -> None:
+        """Check if the interpolated states are calculated correctly given a list of progresses."""
+        states = self.interpolated_path.get_state_at_progresses([0, 5])
+        self.assertEqual(0, states[0].progress)
+        self.assertEqual(0, states[0].x)
+        self.assertEqual(0, states[0].y)
+        self.assertEqual(0, states[0].heading)
+
+        self.assertEqual(5, states[1].progress)
+        self.assertEqual(3, states[1].x)
+        self.assertEqual(4, states[1].y)
+        self.assertEqual(1, states[1].heading)
+
     def test_get_state_at_progress_expect_throw(self) -> None:
         """Check if assertion is raised for invalid calls"""
         self.assertRaises(AssertionError, self.interpolated_path.get_state_at_progress, 100)

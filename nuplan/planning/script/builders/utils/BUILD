@@ -15,6 +15,8 @@ py_library(
     deps = [
         "//nuplan/planning/script/builders/utils:utils_type",
         "//nuplan/planning/simulation/callback:timing_callback",
+        "//nuplan/planning/utils/multithreading:worker_utils",
+        requirement("omegaconf"),
         requirement_torch("torch"),
         requirement_torch("tensorboard"),
         requirement_torch("pytorch-lightning"),

@@ -5,7 +5,7 @@ import unittest
 import guppy
 
 from nuplan.database.nuplan_db_orm.nuplandb_wrapper import NuPlanDBWrapper
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_db_wrapper_nocache
+from nuplan.database.tests.test_utils_nuplan_db import get_test_nuplan_db_wrapper_nocache
 
 
 class TestNuPlanDBWrapper(unittest.TestCase):

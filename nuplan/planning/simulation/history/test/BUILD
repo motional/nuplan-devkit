@@ -10,6 +10,7 @@ py_test(
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/maps:abstract_map",
         "//nuplan/planning/simulation/history:simulation_history",
+        "//nuplan/planning/simulation/simulation_time_controller:simulation_iteration",
     ],
 )
 

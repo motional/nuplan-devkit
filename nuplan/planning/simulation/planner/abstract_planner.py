@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import time
 from abc import abstractmethod
@@ -45,14 +47,14 @@ class AbstractPlanner(abc.ABC):
     # This can be set to true only for oracle planners and cannot be used for submissions.
     requires_scenario: bool = False
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> Type['AbstractPlanner']:  # type: ignore
+    def __new__(cls, *args: Any, **kwargs: Any) -> AbstractPlanner:
         """
         Define attributes needed by all planners, take care when overriding.
         :param cls: class being constructed.
         :param args: arguments to constructor.
         :param kwargs: keyword arguments to constructor.
         """
-        instance: Type['AbstractPlanner'] = super().__new__(cls)  # type: ignore
+        instance: AbstractPlanner = super().__new__(cls)
         instance._compute_trajectory_runtimes = []
         return instance
 

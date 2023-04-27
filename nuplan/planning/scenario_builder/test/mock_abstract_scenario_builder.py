@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from typing import List, Type, cast
 
+from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
-from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder
+from nuplan.planning.scenario_builder.abstract_scenario_builder import AbstractScenarioBuilder, RepartitionStrategy
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilter
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario, MockMapFactory
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
@@ -26,6 +29,11 @@ class MockAbstractScenarioBuilder(AbstractScenarioBuilder):
         """Implemented. See interface."""
         return [MockAbstractScenario() for _ in range(self.num_scenarios)]
 
-    def get_map_factory(self) -> MockMapFactory:
+    def get_map_factory(self) -> AbstractMapFactory:
         """Implemented. See interface."""
         return MockMapFactory()
+
+    @property
+    def repartition_strategy(self) -> RepartitionStrategy:
+        """Implemented. See interface."""
+        return RepartitionStrategy.INLINE

@@ -25,6 +25,5 @@ py_library(
         "//nuplan/database/utils/boxes:box3d",
         "//nuplan/planning/simulation/observation/idm:utils",
         "//nuplan/planning/simulation/occupancy_map:abstract_occupancy_map",
-        requirement("shapely"),
     ],
 )

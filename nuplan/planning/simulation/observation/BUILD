@@ -61,8 +61,9 @@ py_library(
     srcs = ["observation_type.py"],
     deps = [
         "//nuplan/common/actor_state:tracked_objects",
-        "//nuplan/common/maps:maps_datatypes",
+        "//nuplan/database/utils:image",
         "//nuplan/database/utils/boxes:box3d",
+        "//nuplan/database/utils/pointclouds:lidar",
     ],
 )
 

@@ -1,12 +1,18 @@
 from functools import cached_property
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from shapely.geometry import Polygon
 
+import nuplan.common.maps.nuplan_map.intersection as intersection
 import nuplan.common.maps.nuplan_map.roadblock as roadblock
 from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.maps.abstract_map_objects import LaneGraphEdgeMapObject, RoadBlockGraphEdgeMapObject, StopLine
+from nuplan.common.maps.abstract_map_objects import (
+    Intersection,
+    LaneGraphEdgeMapObject,
+    RoadBlockGraphEdgeMapObject,
+    StopLine,
+)
 from nuplan.common.maps.maps_datatypes import VectorLayer
 from nuplan.common.maps.nuplan_map.lane_connector import NuPlanLaneConnector
 from nuplan.common.maps.nuplan_map.utils import get_all_rows_with_value, get_row_with_value
@@ -27,6 +33,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         roadblocks_df: VectorLayer,
         roadblock_connectors_df: VectorLayer,
         stop_lines_df: VectorLayer,
+        intersections_df: VectorLayer,
         lane_connector_polygon_df: VectorLayer,
         map_data: AbstractMap,
     ):
@@ -52,13 +59,13 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         self._roadblock_connectors_df = roadblock_connectors_df
         self._stop_lines_df = stop_lines_df
         self._lane_connector_polygon_df = lane_connector_polygon_df
-        self._roadblock_connector = None
+        self._intersections_df = intersections_df
         self._map_data = map_data
 
     @cached_property
     def incoming_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
         """Inherited from superclass."""
-        incoming_roadblock_id = self._get_roadblock_connector()["from_lane_group_fid"]
+        incoming_roadblock_id = self._roadblock_connector["from_lane_group_fid"]
 
         return [
             roadblock.NuPlanRoadBlock(
@@ -70,6 +77,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._roadblocks_df,
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
+                self._intersections_df,
                 self._lane_connector_polygon_df,
                 self._map_data,
             )
@@ -78,7 +86,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
     @cached_property
     def outgoing_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
         """Inherited from superclass."""
-        outgoing_roadblock_id = self._get_roadblock_connector()["to_lane_group_fid"]
+        outgoing_roadblock_id = self._roadblock_connector["to_lane_group_fid"]
 
         return [
             roadblock.NuPlanRoadBlock(
@@ -90,6 +98,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
                 self._roadblocks_df,
                 self._roadblock_connectors_df,
                 self._stop_lines_df,
+                self._intersections_df,
                 self._lane_connector_polygon_df,
                 self._map_data,
             )
@@ -119,7 +128,7 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
     @cached_property
     def polygon(self) -> Polygon:
         """Inherited from superclass."""
-        return self._get_roadblock_connector().geometry
+        return self._roadblock_connector.geometry
 
     @cached_property
     def children_stop_lines(self) -> List[StopLine]:
@@ -131,12 +140,16 @@ class NuPlanRoadBlockConnector(RoadBlockGraphEdgeMapObject):
         """Inherited from superclass."""
         raise NotImplementedError
 
-    def _get_roadblock_connector(self) -> pd.Series:
+    @cached_property
+    def _roadblock_connector(self) -> pd.Series:
         """
         Gets the series from the roadblock connector dataframe containing roadblock connector's id.
         :return: the respective series from the roadblock connectors dataframe.
         """
-        if self._roadblock_connector is None:
-            self._roadblock_connector = get_row_with_value(self._roadblock_connectors_df, "fid", self.id)
+        return get_row_with_value(self._roadblock_connectors_df, "fid", self.id)
 
-        return self._roadblock_connector
+    @property
+    def intersection(self) -> Optional[Intersection]:
+        """Inherited from superclass."""
+        intersection_id = str(self._roadblock_connector['intersection_fid'])
+        return intersection.NuPlanIntersection(intersection_id, self._intersections_df)

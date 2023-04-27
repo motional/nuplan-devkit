@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import hydra
+import nest_asyncio
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
@@ -29,6 +30,9 @@ if os.path.basename(CONFIG_PATH) != 'nuboard':
 CONFIG_NAME = 'default_nuboard'
 
 
+nest_asyncio.apply()
+
+
 def initialize_nuboard(cfg: DictConfig) -> NuBoard:
     """
     Sets up dependencies and instantiates a NuBoard object.
@@ -53,6 +57,8 @@ def initialize_nuboard(cfg: DictConfig) -> NuBoard:
         port_number=cfg.port_number,
         resource_prefix=cfg.resource_prefix,
         vehicle_parameters=vehicle_parameters,
+        async_scenario_rendering=cfg.async_scenario_rendering,
+        scenario_rendering_frame_rate_cap_hz=cfg.scenario_rendering_frame_rate_cap_hz,
     )
 
     return nuboard

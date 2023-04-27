@@ -4,8 +4,32 @@ load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "sensor_data_table_row",
+    srcs = ["sensor_data_table_row.py"],
+)
+
+py_library(
     name = "lidar_pc",
     srcs = ["lidar_pc.py"],
+    deps = [
+        ":sensor_data_table_row",
+    ],
+)
+
+py_library(
+    name = "image",
+    srcs = ["image.py"],
+    deps = [
+        ":sensor_data_table_row",
+    ],
+)
+
+py_library(
+    name = "camera",
+    srcs = ["camera.py"],
+    deps = [
+        ":sensor_data_table_row",
+    ],
 )
 
 py_library(
@@ -19,8 +43,12 @@ py_library(
     name = "nuplan_scenario_queries",
     srcs = ["nuplan_scenario_queries.py"],
     deps = [
+        ":camera",
+        ":image",
         ":lidar_pc",
+        ":nuplan_db_utils",
         ":query_session",
+        ":sensor_data_table_row",
         "//nuplan/common/actor_state:agent",
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:oriented_box",
@@ -51,4 +79,9 @@ py_library(
         ":db_description_types",
         ":query_session",
     ],
+)
+
+py_library(
+    name = "nuplan_db_utils",
+    srcs = ["nuplan_db_utils.py"],
 )

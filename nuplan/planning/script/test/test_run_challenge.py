@@ -18,7 +18,8 @@ class TestRunChallenge(SkeletonTestSimulation):
                 config_name=CONFIG_NAME,
                 overrides=[
                     *self.default_overrides,
-                    'worker.debug_mode=true',
+                    'worker=single_machine_thread_pool',
+                    'worker.use_process_pool=true',
                     '+simulation=open_loop_boxes',
                 ],
             )

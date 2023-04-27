@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import Dict, List, Optional, Tuple
 
 from shapely.ops import nearest_points
@@ -9,8 +8,6 @@ from shapely.strtree import STRtree
 from nuplan.common.actor_state.scene_object import SceneObject
 from nuplan.planning.simulation.occupancy_map.abstract_occupancy_map import Geometry, OccupancyMap
 
-# ignoring shapely RuntimeWarning: invalid value encountered in line_locate_point
-warnings.filterwarnings(action='ignore', message="(.|\n)*invalid value encountered in line_locate_point(.|\n)*")
 GeometryMap = Dict[str, Geometry]
 
 

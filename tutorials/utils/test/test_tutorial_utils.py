@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 
 from bokeh.io import output_notebook
@@ -5,11 +6,12 @@ from bokeh.io.state import curstate
 from tutorials.utils.tutorial_utils import (
     get_default_scenario_from_token,
     get_scenario_type_token_map,
+    start_event_loop_if_needed,
     visualize_nuplan_scenarios,
     visualize_scenario,
 )
 
-from nuplan.database.tests.nuplan_db_test_utils import (
+from nuplan.database.tests.test_utils_nuplan_db import (
     NUPLAN_DATA_ROOT,
     NUPLAN_DB_FILES,
     NUPLAN_MAP_VERSION,
@@ -48,6 +50,30 @@ class TestTutorialUtils(unittest.TestCase):
         # Check that any servers bokeh started are assigned to `bokeh_port`
         for server in curstate().uuid_to_server.values():
             self.assertEqual(bokeh_port, server.port)
+
+    def test_start_event_loop_if_needed(self) -> None:
+        """Tests if start_event_loop_if_needed works."""
+
+        async def test_fn() -> int:
+            """Minimal async function"""
+            return 1
+
+        # Event loop is auto-started
+        start_event_loop_if_needed()
+        _ = asyncio.get_event_loop()
+
+        # Gets running event loop
+        start_event_loop_if_needed()
+        _ = asyncio.get_event_loop()
+
+        # Stops event loop
+        asyncio.run(test_fn())
+
+        with self.assertRaises(RuntimeError):
+            _ = asyncio.get_event_loop()
+
+        start_event_loop_if_needed()
+        _ = asyncio.get_event_loop()
 
 
 if __name__ == '__main__':

@@ -7,8 +7,8 @@ from nuplan.common.maps.abstract_map import AbstractMap, SemanticMapLayer
 from nuplan.common.maps.abstract_map_objects import Lane, PolylineMapObject
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.common.maps.test_utils import add_map_objects_to_scene, add_polyline_to_scene
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 
 maps_db = get_test_maps_db()
 map_factory = NuPlanMapFactory(maps_db)
@@ -238,6 +238,22 @@ def test_get_lane_adjacent_lanes(scene: Dict[str, Any]) -> None:
         if right_lane:
             assert right_lane.is_right_of(lane)
             assert right_lane.is_adjacent_to(lane)
+
+
+@nuplan_test(path='json/lanes/lane_index.json')
+def test_get_lane_index(scene: Dict[str, Any]) -> None:
+    """
+    Test if getting correct lane index
+    """
+    nuplan_map = map_factory.build_map_from_name(scene["map"]["area"])
+
+    # markers contains "pose": [float, float, float] which denotes marker location in the scene and expected_lane_index contains index of the lane at the location
+    for marker, expected_index in zip(scene["markers"], scene["xtr"]["expected_lane_index"]):
+        pose = marker["pose"]
+
+        lane: Lane = nuplan_map.get_one_map_object(Point2D(pose[0], pose[1]), SemanticMapLayer.LANE)
+        assert lane is not None
+        assert lane.index == expected_index
 
 
 if __name__ == "__main__":

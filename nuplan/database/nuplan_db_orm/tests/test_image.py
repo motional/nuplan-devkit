@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.axes import Axes
 
 from nuplan.database.nuplan_db_orm.lidar_pc import LidarPc
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_db, get_test_nuplan_image
+from nuplan.database.tests.test_utils_nuplan_db import get_test_nuplan_db, get_test_nuplan_image
 from nuplan.database.utils.boxes.box3d import Box3D
 
 

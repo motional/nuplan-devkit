@@ -39,6 +39,7 @@ simulation_tile_style: Dict[str, Any] = {
     "figure_margins": [5, 40, 0, 30],
     "figure_title_text_font_size": "10pt",
     "video_button_margins": [5, 40, 5, 35],  # Top, right, bottom, left
+    "frame_control_button_margins": [5, 19, 5, 35],  # Top, right, bottom, left
     "slider_margins": [5, 40, 0, 30],
     "background_color": "#000000",
     "mission_goal_color": "#00FF00",

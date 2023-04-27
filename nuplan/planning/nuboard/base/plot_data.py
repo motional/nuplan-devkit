@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import abc
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 import numpy as np
+from bokeh.document import Document
 from bokeh.models import Button, ColumnDataSource, GlyphRenderer, HoverTool, LayoutDOM, Legend, Slider, Title
 from bokeh.plotting.figure import Figure
 
@@ -101,44 +103,66 @@ class TrafficLightMapLine(MapPoint):
 
 
 @dataclass
-class TrafficLightPlot:
+class BaseScenarioPlot(abc.ABC):
+    """Base class for scenario plot classes."""
+
+    # Threading condition to synchronize data source production & consumption:
+    data_source_condition: Optional[threading.Condition] = field(default=None, init=False)
+
+    # Threading event that will be set when rendering starts and cleared when rendering ends.
+    render_event: Optional[threading.Event] = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        """Initialize threading properties."""
+        if not self.data_source_condition:
+            self.data_source_condition = threading.Condition(threading.Lock())
+        if not self.render_event:
+            self.render_event = threading.Event()
+
+
+@dataclass
+class TrafficLightPlot(BaseScenarioPlot):
     """A dataclass for traffic light plot."""
 
     data_sources: Dict[int, ColumnDataSource] = field(default_factory=dict)  # A dict of data sources for each frame
     plot: Optional[GlyphRenderer] = None  # A bokeh glyph element
-    condition: Optional[threading.Condition] = None  # Threading condition
 
-    def __post_init__(self) -> None:
-        """Initialize threading condition."""
-        if not self.condition:
-            self.condition = threading.Condition(threading.Lock())
-
-    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int, doc: Document) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
         :param frame_index: Frame index.
+        :param doc: The Bokeh document that the plot lives in.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
-            while self.data_sources.get(frame_index, None) is None:
-                self.condition.wait()
+        self.render_event.set()  # type: ignore
 
-            data_sources = dict(self.data_sources[frame_index].data)
-            if self.plot is None:
-                self.plot = main_figure.multi_line(
-                    xs="xs",
-                    ys="ys",
-                    line_color="line_colors",
-                    line_alpha="line_color_alphas",
-                    line_width=3.0,
-                    line_dash="dashed",
-                    source=data_sources,
-                )
-            else:
-                self.plot.data_source.data = data_sources
+        with self.data_source_condition:
+            while self.data_sources.get(frame_index, None) is None:
+                self.data_source_condition.wait()
+
+            def update_main_figure() -> None:
+                """Wrapper for the main_figure update logic to support multi-threading."""
+                data_sources = dict(self.data_sources[frame_index].data)
+                if self.plot is None:
+                    self.plot = main_figure.multi_line(
+                        xs="xs",
+                        ys="ys",
+                        line_color="line_colors",
+                        line_alpha="line_color_alphas",
+                        line_width=3.0,
+                        line_dash="dashed",
+                        source=data_sources,
+                    )
+                else:
+                    self.plot.data_source.data = data_sources
+
+                self.render_event.clear()  # type: ignore
+
+            # Defer updating the main_figure to the next tick to be compatible with multi-threading approach
+            doc.add_next_tick_callback(lambda: update_main_figure())
 
     def update_data_sources(
         self, scenario: AbstractScenario, history: SimulationHistory, lane_connectors: Dict[str, LaneConnector]
@@ -149,10 +173,10 @@ class TrafficLightPlot:
         :param history: SimulationHistory time-series data.
         :param lane_connectors: Lane connectors.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        with self.data_source_condition:
             for frame_index in range(len(history.data)):
                 traffic_light_status = history.data[frame_index].traffic_light_status
 
@@ -177,96 +201,101 @@ class TrafficLightPlot:
                     )
                 )
                 self.data_sources[frame_index] = line_source
-                self.condition.notify()
+                self.data_source_condition.notify()
 
 
 @dataclass
-class EgoStatePlot:
+class EgoStatePlot(BaseScenarioPlot):
     """A dataclass for ego state plot."""
 
     vehicle_parameters: VehicleParameters  # Ego vehicle parameters
     data_sources: Dict[int, ColumnDataSource] = field(default_factory=dict)  # A dict of data sources for each frame
     init_state: bool = True  # True to indicate it is in init state
     plot: Optional[GlyphRenderer] = None  # A bokeh glyph element
-    condition: Optional[threading.Condition] = None  # Threading condition
 
-    def __post_init__(self) -> None:
-        """Initialize threading condition."""
-        if not self.condition:
-            self.condition = threading.Condition(threading.Lock())
-
-    def update_plot(self, main_figure: Figure, radius: float, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, radius: float, frame_index: int, doc: Document) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
         :param radius: Figure radius.
         :param frame_index: Frame index.
+        :param doc: Bokeh document that the plot lives in.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        self.render_event.set()  # type: ignore
+
+        with self.data_source_condition:
             while self.data_sources.get(frame_index, None) is None:
-                self.condition.wait()
+                self.data_source_condition.wait()
 
             data_sources = dict(self.data_sources[frame_index].data)
             center_x = data_sources["center_x"][0]
             center_y = data_sources["center_y"][0]
 
-            if self.plot is None:
-                self.plot = main_figure.multi_polygons(
-                    xs="xs",
-                    ys="ys",
-                    fill_color=simulation_tile_agent_style["ego"]["fill_color"],
-                    fill_alpha=simulation_tile_agent_style["ego"]["fill_alpha"],
-                    line_color=simulation_tile_agent_style["ego"]["line_color"],
-                    line_width=simulation_tile_agent_style["ego"]["line_width"],
-                    source=data_sources,
-                )
-                ego_hover = HoverTool(
-                    renderers=[self.plot],
-                    tooltips=[
-                        ("center_x [m]", "@center_x{0.2f}"),
-                        ("center_y [m]", "@center_y{0.2f}"),
-                        ("velocity_x [m/s]", "@velocity_x{0.2f}"),
-                        ("velocity_y [m/s]", "@velocity_y{0.2f}"),
-                        ("speed [m/s", "@speed{0.2f}"),
-                        ("acceleration_x [m/s^2]", "@acceleration_x{0.2f}"),
-                        ("acceleration_y [m/s^2]", "@acceleration_y{0.2f}"),
-                        ("acceleration [m/s^2]", "@acceleration{0.2f}"),
-                        ("heading [rad]", "@heading{0.2f}"),
-                        ("steering_angle [rad]", "@steering_angle{0.2f}"),
-                        ("yaw_rate [rad/s]", "@yaw_rate{0.2f}"),
-                        ("type", "Ego"),
-                    ],
-                )
-                main_figure.add_tools(ego_hover)
-            else:
-                self.plot.data_source.data = data_sources
+            def update_main_figure() -> None:
+                """Wrapper for the main_figure update logic to support multi-threading."""
+                if self.plot is None:
+                    self.plot = main_figure.multi_polygons(
+                        xs="xs",
+                        ys="ys",
+                        fill_color=simulation_tile_agent_style["ego"]["fill_color"],
+                        fill_alpha=simulation_tile_agent_style["ego"]["fill_alpha"],
+                        line_color=simulation_tile_agent_style["ego"]["line_color"],
+                        line_width=simulation_tile_agent_style["ego"]["line_width"],
+                        source=data_sources,
+                    )
+                    ego_hover = HoverTool(
+                        renderers=[self.plot],
+                        tooltips=[
+                            ("center_x [m]", "@center_x{0.2f}"),
+                            ("center_y [m]", "@center_y{0.2f}"),
+                            ("velocity_x [m/s]", "@velocity_x{0.2f}"),
+                            ("velocity_y [m/s]", "@velocity_y{0.2f}"),
+                            ("speed [m/s", "@speed{0.2f}"),
+                            ("acceleration_x [m/s^2]", "@acceleration_x{0.2f}"),
+                            ("acceleration_y [m/s^2]", "@acceleration_y{0.2f}"),
+                            ("acceleration [m/s^2]", "@acceleration{0.2f}"),
+                            ("heading [rad]", "@heading{0.2f}"),
+                            ("steering_angle [rad]", "@steering_angle{0.2f}"),
+                            ("yaw_rate [rad/s]", "@yaw_rate{0.2f}"),
+                            ("type", "Ego"),
+                        ],
+                    )
+                    main_figure.add_tools(ego_hover)
+                else:
+                    self.plot.data_source.data = data_sources
 
-            if self.init_state:
-                main_figure.x_range.start = center_x - radius / 2
-                main_figure.x_range.end = center_x + radius / 2
-                main_figure.y_range.start = center_y - radius / 2
-                main_figure.y_range.end = center_y + radius / 2
-                self.init_state = False
-            else:
-                x_radius = main_figure.x_range.end - main_figure.x_range.start
-                y_radius = main_figure.y_range.end - main_figure.y_range.start
-                main_figure.x_range.start = center_x - x_radius / 2
-                main_figure.x_range.end = center_x + x_radius / 2
-                main_figure.y_range.start = center_y - y_radius / 2
-                main_figure.y_range.end = center_y + y_radius / 2
+                # This will (re)center the view around the ego, actually making the plot visible
+                if self.init_state:
+                    main_figure.x_range.start = center_x - radius / 2
+                    main_figure.x_range.end = center_x + radius / 2
+                    main_figure.y_range.start = center_y - radius / 2
+                    main_figure.y_range.end = center_y + radius / 2
+                    self.init_state = False
+                else:
+                    x_radius = main_figure.x_range.end - main_figure.x_range.start
+                    y_radius = main_figure.y_range.end - main_figure.y_range.start
+                    main_figure.x_range.start = center_x - x_radius / 2
+                    main_figure.x_range.end = center_x + x_radius / 2
+                    main_figure.y_range.start = center_y - y_radius / 2
+                    main_figure.y_range.end = center_y + y_radius / 2
+
+                self.render_event.clear()  # type: ignore
+
+            # Defer updating the main_figure to the next tick to be compatible with multi-threading approach
+            doc.add_next_tick_callback(lambda: update_main_figure())
 
     def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update ego_pose state data sources.
         :param history: SimulationHistory time-series data.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        with self.data_source_condition:
             for frame_index, sample in enumerate(history.data):
                 ego_pose = sample.ego_state.car_footprint
                 dynamic_car_state = sample.ego_state.dynamic_car_state
@@ -296,57 +325,62 @@ class EgoStatePlot:
                     )
                 )
                 self.data_sources[frame_index] = source
-                self.condition.notify()
+                self.data_source_condition.notify()
 
 
 @dataclass
-class EgoStateTrajectoryPlot:
+class EgoStateTrajectoryPlot(BaseScenarioPlot):
     """A dataclass for ego state trajectory plot."""
 
     data_sources: Dict[int, ColumnDataSource] = field(default_factory=dict)  # A dict of data sources for each frame
     plot: Optional[GlyphRenderer] = None  # A bokeh glyph element
-    condition: Optional[threading.Condition] = None  # Threading condition
 
-    def __post_init__(self) -> None:
-        """Initialize threading condition."""
-        if not self.condition:
-            self.condition = threading.Condition(threading.Lock())
-
-    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int, doc: Document) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
         :param frame_index: Frame index.
+        :param doc: Bokeh document that the plot lives in.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        self.render_event.set()  # type: ignore
+
+        with self.data_source_condition:
             while self.data_sources.get(frame_index, None) is None:
-                self.condition.wait()
+                self.data_source_condition.wait()
 
             data_sources = dict(self.data_sources[frame_index].data)
-            if self.plot is None:
-                self.plot = main_figure.line(
-                    x="xs",
-                    y="ys",
-                    line_color=simulation_tile_trajectory_style["ego"]["line_color"],
-                    line_width=simulation_tile_trajectory_style["ego"]["line_width"],
-                    line_alpha=simulation_tile_trajectory_style["ego"]["line_alpha"],
-                    source=data_sources,
-                )
-            else:
-                self.plot.data_source.data = data_sources
+
+            def update_main_figure() -> None:
+                """Wrapper for the main_figure update logic to support multi-threading."""
+                if self.plot is None:
+                    self.plot = main_figure.line(
+                        x="xs",
+                        y="ys",
+                        line_color=simulation_tile_trajectory_style["ego"]["line_color"],
+                        line_width=simulation_tile_trajectory_style["ego"]["line_width"],
+                        line_alpha=simulation_tile_trajectory_style["ego"]["line_alpha"],
+                        source=data_sources,
+                    )
+                else:
+                    self.plot.data_source.data = data_sources
+
+                self.render_event.clear()  # type: ignore
+
+            # Defer updating the main_figure to the next tick to be compatible with multi-threading approach
+            doc.add_next_tick_callback(lambda: update_main_figure())
 
     def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update ego_pose trajectory data sources.
         :param history: SimulationHistory time-series data.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        with self.data_source_condition:
             for frame_index, sample in enumerate(history.data):
                 trajectory = sample.trajectory.get_sampled_trajectory()
 
@@ -358,22 +392,20 @@ class EgoStateTrajectoryPlot:
 
                 source = ColumnDataSource(dict(xs=x_coords, ys=y_coords))
                 self.data_sources[frame_index] = source
-                self.condition.notify()
+                self.data_source_condition.notify()
 
 
 @dataclass
-class AgentStatePlot:
+class AgentStatePlot(BaseScenarioPlot):
     """A dataclass for agent state plot."""
 
     data_sources: Dict[int, Dict[str, ColumnDataSource]] = field(default_factory=dict)  # A dict of data for each frame
     plots: Dict[str, GlyphRenderer] = field(default_factory=dict)  # A dict of plots for each type
     track_id_history: Optional[Dict[str, int]] = None  # Track id history
-    condition: Optional[threading.Condition] = None  # Threading condition
 
     def __post_init__(self) -> None:
-        """Initialize threading condition."""
-        if not self.condition:
-            self.condition = threading.Condition(threading.Lock())
+        """Initialize track id history."""
+        super().__post_init__()
 
         if not self.track_id_history:
             self.track_id_history = {}
@@ -394,62 +426,73 @@ class AgentStatePlot:
 
         return number_track_id
 
-    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int, doc: Document) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
         :param frame_index: Frame index.
+        :param doc: Bokeh document that the plot lives in.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
-            while self.data_sources.get(frame_index, None) is None:
-                self.condition.wait()
-            data_sources = self.data_sources.get(frame_index, None)
-            if not data_sources:
-                return
+        self.render_event.set()  # type: ignore
 
-            for category, data_source in data_sources.items():
-                plot = self.plots.get(category, None)
-                data = dict(data_source.data)
-                if plot is None:
-                    agent_color = simulation_tile_agent_style.get(category)
-                    self.plots[category] = main_figure.multi_polygons(
-                        xs="xs",
-                        ys="ys",
-                        fill_color=agent_color["fill_color"],
-                        fill_alpha=agent_color["fill_alpha"],
-                        line_color=agent_color["line_color"],
-                        line_width=agent_color["line_width"],
-                        source=data,
-                    )
-                    agent_hover = HoverTool(
-                        renderers=[self.plots[category]],
-                        tooltips=[
-                            ("center_x [m]", "@center_xs{0.2f}"),
-                            ("center_y [m]", "@center_ys{0.2f}"),
-                            ("velocity_x [m/s]", "@velocity_xs{0.2f}"),
-                            ("velocity_y [m/s]", "@velocity_ys{0.2f}"),
-                            ("speed [m/s]", "@speeds{0.2f}"),
-                            ("heading [rad]", "@headings{0.2f}"),
-                            ("type", "@agent_type"),
-                            ("track token", "@track_token"),
-                        ],
-                    )
-                    main_figure.add_tools(agent_hover)
-                else:
-                    self.plots[category].data_source.data = data
+        with self.data_source_condition:
+            while self.data_sources.get(frame_index, None) is None:
+                self.data_source_condition.wait()
+
+            def update_main_figure() -> None:
+                """Wrapper for the main_figure update logic to support multi-threading."""
+                data_sources = self.data_sources.get(frame_index, None)
+                if not data_sources:
+                    return
+
+                for category, data_source in data_sources.items():
+                    plot = self.plots.get(category, None)
+                    data = dict(data_source.data)
+                    if plot is None:
+                        agent_color = simulation_tile_agent_style.get(category)
+                        self.plots[category] = main_figure.multi_polygons(
+                            xs="xs",
+                            ys="ys",
+                            fill_color=agent_color["fill_color"],
+                            fill_alpha=agent_color["fill_alpha"],
+                            line_color=agent_color["line_color"],
+                            line_width=agent_color["line_width"],
+                            source=data,
+                        )
+                        agent_hover = HoverTool(
+                            renderers=[self.plots[category]],
+                            tooltips=[
+                                ("center_x [m]", "@center_xs{0.2f}"),
+                                ("center_y [m]", "@center_ys{0.2f}"),
+                                ("velocity_x [m/s]", "@velocity_xs{0.2f}"),
+                                ("velocity_y [m/s]", "@velocity_ys{0.2f}"),
+                                ("speed [m/s]", "@speeds{0.2f}"),
+                                ("heading [rad]", "@headings{0.2f}"),
+                                ("type", "@agent_type"),
+                                ("track token", "@track_token"),
+                            ],
+                        )
+                        main_figure.add_tools(agent_hover)
+                    else:
+                        self.plots[category].data_source.data = data
+
+                self.render_event.clear()  # type: ignore
+
+            # Defer updating the main_figure to the next tick to be compatible with multi-threading approach
+            doc.add_next_tick_callback(lambda: update_main_figure())
 
     def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update agents data sources.
         :param history: SimulationHistory time-series data.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        with self.data_source_condition:
             for frame_index, sample in enumerate(history.data):
                 if not isinstance(sample.observation, DetectionsTracks):
                     continue
@@ -504,63 +547,66 @@ class AgentStatePlot:
                     frame_dict[tracked_object_type_name] = ColumnDataSource(agent_states._asdict())
 
                 self.data_sources[frame_index] = frame_dict
-                self.condition.notify()
+                self.data_source_condition.notify()
 
 
 @dataclass
-class AgentStateHeadingPlot:
+class AgentStateHeadingPlot(BaseScenarioPlot):
     """A dataclass for agent state heading plot."""
 
     data_sources: Dict[int, Dict[str, ColumnDataSource]] = field(default_factory=dict)  # A dict of data for each frame
     plots: Dict[str, GlyphRenderer] = field(default_factory=dict)  # A dict of plots for each type
-    condition: Optional[threading.Condition] = None  # Threading condition
 
-    def __post_init__(self) -> None:
-        """Initialize threading condition."""
-        if not self.condition:
-            self.condition = threading.Condition(threading.Lock())
-
-    def update_plot(self, main_figure: Figure, frame_index: int) -> None:
+    def update_plot(self, main_figure: Figure, frame_index: int, doc: Document) -> None:
         """
         Update the plot.
         :param main_figure: The plotting figure.
         :param frame_index: Frame index.
+        :param doc: Bokeh document that the plot lives in.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        self.render_event.set()  # type: ignore
+
+        with self.data_source_condition:
             while self.data_sources.get(frame_index, None) is None:
-                self.condition.wait()
+                self.data_source_condition.wait()
 
-            data_sources = self.data_sources.get(frame_index, None)
-            if not data_sources:
-                return
+            def update_main_figure() -> None:
+                """Wrapper for the main_figure update logic to support multi-threading."""
+                data_sources = self.data_sources.get(frame_index, None)
+                if not data_sources:
+                    return
 
-            for category, data_source in data_sources.items():
-                plot = self.plots.get(category, None)
-                data = dict(data_source.data)
-                if plot is None:
-                    agent_color = simulation_tile_agent_style.get(category)
-                    self.plots[category] = main_figure.multi_line(
-                        xs="trajectory_x",
-                        ys="trajectory_y",
-                        line_color=agent_color["line_color"],
-                        line_width=agent_color["line_width"],
-                        source=data,
-                    )
-                else:
-                    self.plots[category].data_source.data = data
+                for category, data_source in data_sources.items():
+                    plot = self.plots.get(category, None)
+                    data = dict(data_source.data)
+                    if plot is None:
+                        agent_color = simulation_tile_agent_style.get(category)
+                        self.plots[category] = main_figure.multi_line(
+                            xs="trajectory_x",
+                            ys="trajectory_y",
+                            line_color=agent_color["line_color"],
+                            line_width=agent_color["line_width"],
+                            source=data,
+                        )
+                    else:
+                        self.plots[category].data_source.data = data
+
+                self.render_event.clear()  # type: ignore
+
+            doc.add_next_tick_callback(lambda: update_main_figure())
 
     def update_data_sources(self, history: SimulationHistory) -> None:
         """
         Update agent heading data sources.
         :param history: SimulationHistory time-series data.
         """
-        if not self.condition:
+        if not self.data_source_condition:
             return
 
-        with self.condition:
+        with self.data_source_condition:
             for frame_index, sample in enumerate(history.data):
                 if not isinstance(sample.observation, DetectionsTracks):
                     continue
@@ -587,7 +633,7 @@ class AgentStateHeadingPlot:
                     frame_dict[tracked_object_type_name] = trajectories
 
                 self.data_sources[frame_index] = frame_dict
-                self.condition.notify()
+                self.data_source_condition.notify()
 
 
 @dataclass
@@ -605,6 +651,11 @@ class SimulationFigure:
     file_path_index: int  # Experiment file index
     slider: Slider  # Bokeh slider to this figure
     video_button: Button  # Bokeh video button to this figure
+    first_button: Button  # Bokeh button to go to the first frame
+    prev_button: Button  # Bokeh button to go back one frame
+    play_button: Button  # Bokeh button to automatically advance frames
+    next_button: Button  # Bokeh button to advance one frame
+    last_button: Button  # Bokeh button to go to the last frame
     figure_title_name: str  # Figure title name
     x_y_coordinate_title: Title  # Title renderer for x and y coordinate
     time_us: Optional[List[int]] = None  # Timestamp in microsecond
@@ -648,6 +699,17 @@ class SimulationFigure:
         if self.agent_state_heading_plot is None:
             self.agent_state_heading_plot = AgentStateHeadingPlot()
 
+    def is_rendering(self) -> bool:
+        """:return: true if at least one plot is currently rendering a frame request."""
+        plots = [
+            self.traffic_light_plot,
+            self.ego_state_plot,
+            self.ego_state_trajectory_plot,
+            self.agent_state_plot,
+            self.agent_state_heading_plot,
+        ]
+        return any(plot.render_event.is_set() if plot.render_event else False for plot in plots if plot)
+
     def figure_title_name_with_timestamp(self, frame_index: int) -> str:
         """
         Return figure title with a timestamp.
@@ -678,7 +740,8 @@ class SimulationFigure:
         Update data sources in a multi-threading manner to speed up loading and initialization in
         scenario rendering.
         """
-        assert self.simulation_history.data, "SimulationHistory cannot be empty!"
+        if len(self.simulation_history.data) == 0:
+            raise ValueError("SimulationHistory cannot be empty!")
 
         # Update slider steps
         self.slider.end = len(self.simulation_history.data) - 1
@@ -686,50 +749,39 @@ class SimulationFigure:
         # Update time_us
         self.time_us = [sample.ego_state.time_us for sample in self.simulation_history.data]
 
-        # Update ego pose states
-        if not self.ego_state_plot:
-            return
+        # Update plot data sources
+        for plot in [
+            self.ego_state_plot,
+            self.ego_state_trajectory_plot,
+            self.agent_state_plot,
+            self.agent_state_heading_plot,
+        ]:
+            if plot:
+                t = threading.Thread(target=plot.update_data_sources, args=(self.simulation_history,), daemon=True)
+                t.start()
 
-        t1 = threading.Thread(target=self.ego_state_plot.update_data_sources, args=(self.simulation_history,))
-        t1.start()
+    def update_map_dependent_data_sources(self) -> None:
+        """
+        Update data sources in a multi-threading manner to speed up loading and initialization in
+        scenario rendering.
+        """
+        if len(self.simulation_history.data) == 0:
+            raise ValueError("SimulationHistory cannot be empty!")
 
-        # Update ego pose trajectories
-        if not self.ego_state_trajectory_plot:
-            return
-
-        t2 = threading.Thread(
-            target=self.ego_state_trajectory_plot.update_data_sources, args=(self.simulation_history,)
-        )
-        t2.start()
-
-        # Update traffic light status
         if self.lane_connectors is not None and len(self.lane_connectors):
             if not self.traffic_light_plot:
                 return
 
-            t3 = threading.Thread(
+            thread = threading.Thread(
                 target=self.traffic_light_plot.update_data_sources,
                 args=(
                     self.scenario,
                     self.simulation_history,
                     self.lane_connectors,
                 ),
+                daemon=True,
             )
-            t3.start()
-
-        # Update agent states
-        if not self.agent_state_plot:
-            return
-
-        t4 = threading.Thread(target=self.agent_state_plot.update_data_sources, args=(self.simulation_history,))
-        t4.start()
-
-        # Update agent heading states
-        if not self.agent_state_heading_plot:
-            return
-
-        t5 = threading.Thread(target=self.agent_state_heading_plot.update_data_sources, args=(self.simulation_history,))
-        t5.start()
+            thread.start()
 
     def render_mission_goal(self, mission_goal_state: StateSE2) -> None:
         """

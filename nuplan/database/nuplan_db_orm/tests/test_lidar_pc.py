@@ -5,7 +5,7 @@ from unittest.mock import Mock, PropertyMock, patch
 from matplotlib.axes import Axes
 
 from nuplan.database.nuplan_db_orm.log import Log
-from nuplan.database.tests.nuplan_db_test_utils import (
+from nuplan.database.tests.test_utils_nuplan_db import (
     get_test_nuplan_db,
     get_test_nuplan_lidarpc,
     get_test_nuplan_lidarpc_with_blob,

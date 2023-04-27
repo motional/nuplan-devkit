@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,5 +18,6 @@ py_test(
         "//nuplan/planning/nuboard",
         "//nuplan/planning/nuboard/base:data_class",
         "//nuplan/planning/scenario_builder/test:mock_abstract_scenario_builder",
+        requirement("hypothesis"),
     ],
 )

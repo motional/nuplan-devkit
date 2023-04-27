@@ -28,7 +28,7 @@ NUM_INSTANCES_PER_CHALLENGE = 8
 CHALLENGES = ['open_loop_boxes', 'closed_loop_nonreactive_agents', 'closed_loop_reactive_agents']
 
 
-def _is_submission_successful(challenges: List[str], simulation_results_dir: Path) -> bool:
+def is_submission_successful(challenges: List[str], simulation_results_dir: Path) -> bool:
     """
     Checks if evaluation of one submission was successful, by checking that all instances for all challenges
     were completed.
@@ -43,7 +43,7 @@ def _is_submission_successful(challenges: List[str], simulation_results_dir: Pat
     return successful
 
 
-def _list_subdirs_filtered(root_dir: Path, regex_pattern: re.Pattern[str]) -> List[str]:
+def list_subdirs_filtered(root_dir: Path, regex_pattern: re.Pattern[str]) -> List[str]:
     """
     Lists the path of files present in a directory. Results are filtered by ending pattern.
     :param root_dir: The path to start the search.
@@ -78,11 +78,11 @@ def main(cfg: DictConfig) -> None:
     )
 
     # Check if simulation was successful
-    simulation_successful = _is_submission_successful(cfg.challenges, local_output_dir)
+    simulation_successful = is_submission_successful(cfg.challenges, local_output_dir)
 
     # Set up configuration
     cfg.output_dir = str(local_output_dir)
-    cfg.scenario_metric_paths = _list_subdirs_filtered(local_output_dir, re.compile(f'/{cfg.metric_folder_name}$'))
+    cfg.scenario_metric_paths = list_subdirs_filtered(local_output_dir, re.compile(f'/{cfg.metric_folder_name}$'))
     logger.info("Found metric paths %s" % cfg.scenario_metric_paths)
 
     aggregated_metric_save_path = local_output_dir / cfg.aggregated_metric_folder_name

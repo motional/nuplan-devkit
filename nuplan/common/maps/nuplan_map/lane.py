@@ -93,6 +93,11 @@ class NuPlanLane(Lane):
         ]
 
     @cached_property
+    def parallel_edges(self) -> List[LaneGraphEdgeMapObject]:
+        """Inherited from superclass"""
+        raise NotImplementedError
+
+    @cached_property
     def baseline_path(self) -> PolylineMapObject:
         """Inherited from superclass."""
         return NuPlanPolylineMapObject(get_row_with_value(self._baseline_paths_df, "lane_fid", self.id))
@@ -209,3 +214,8 @@ class NuPlanLane(Lane):
             self._lane = get_row_with_value(self._lanes_df, "fid", self.id)
 
         return self._lane
+
+    @cached_property
+    def index(self) -> int:
+        """Inherited from superclass"""
+        return int(self._get_lane()["lane_index"])

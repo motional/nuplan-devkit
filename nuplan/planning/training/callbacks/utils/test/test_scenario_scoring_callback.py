@@ -68,8 +68,8 @@ class TestScenarioScoringCallback(unittest.TestCase):
             MockAbstractScenario(mission_goal=StateSE2(x=1.0, y=0.0, heading=0.0)),
             MockAbstractScenario(mission_goal=StateSE2(x=0.0, y=0.0, heading=0.0)),
         ]
+        # Will be the same for both scenarios
         self.scenario_time_stamp = self.mock_scenarios[0]._initial_time_us
-        self.scenario_token = self.mock_scenarios[0].token
 
         mock_scenario_dataset = ScenarioDataset(scenarios=self.mock_scenarios, feature_preprocessor=preprocessor)
 
@@ -133,6 +133,9 @@ class TestScenarioScoringCallback(unittest.TestCase):
         """
         Test on validation callback.
         """
+        BEST_INDEX = 1
+        WORST_INDEX = 0
+
         self.callback._initialize_dataloaders(self.trainer.datamodule)
         self.callback.on_validation_epoch_end(self.trainer, self.pl_module)
 
@@ -140,23 +143,21 @@ class TestScenarioScoringCallback(unittest.TestCase):
         best_score_path = pathlib.Path(
             self.output_dir.name
             + f"/scenes/epoch={self.trainer.current_epoch}"
-            + f"/best/{self.scenario_token}/{self.scenario_time_stamp.time_us}.json"
+            + f"/best/{self.mock_scenarios[BEST_INDEX].token}/{self.scenario_time_stamp.time_us}.json"
         )
         self.assertTrue(best_score_path.exists())
 
         worst_score_path = pathlib.Path(
             self.output_dir.name
             + f"/scenes/epoch={self.trainer.current_epoch}"
-            + f"/worst/{self.scenario_token}/{self.scenario_time_stamp.time_us}.json"
+            + f"/worst/{self.mock_scenarios[WORST_INDEX].token}/{self.scenario_time_stamp.time_us}.json"
         )
         self.assertTrue(worst_score_path.exists())
 
-        random_score_path = pathlib.Path(
-            self.output_dir.name
-            + f"/scenes/epoch={self.trainer.current_epoch}"
-            + f"/random/{self.scenario_token}/{self.scenario_time_stamp.time_us}.json"
-        )
-        self.assertTrue(random_score_path.exists())
+        # We don't know what the random scenario index will be, so we fuzzy match scenario token
+        random_score_dir = pathlib.Path(self.output_dir.name + f"/scenes/epoch={self.trainer.current_epoch}/random/")
+        random_score_paths = list(random_score_dir.glob(f"*/{self.scenario_time_stamp.time_us}.json"))
+        self.assertEqual(len(random_score_paths), 1)
 
         # Make sure the right json files are generated
         with open(str(best_score_path), "r") as f:
@@ -165,8 +166,8 @@ class TestScenarioScoringCallback(unittest.TestCase):
         with open(str(worst_score_path), "r") as f:
             worst_data = json.load(f)
 
-        self.assertEqual(worst_data["goal"]["pose"][0], self.mock_scenarios[0].get_mission_goal().x)
-        self.assertEqual(best_data["goal"]["pose"][0], self.mock_scenarios[1].get_mission_goal().x)
+        self.assertEqual(worst_data["goal"]["pose"][0], self.mock_scenarios[WORST_INDEX].get_mission_goal().x)
+        self.assertEqual(best_data["goal"]["pose"][0], self.mock_scenarios[BEST_INDEX].get_mission_goal().x)
 
 
 if __name__ == '__main__':

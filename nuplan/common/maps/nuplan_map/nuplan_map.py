@@ -396,6 +396,7 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK),
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
+                self._get_vector_map_layer(SemanticMapLayer.INTERSECTION),
                 self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
                 self,
             )
@@ -419,6 +420,7 @@ class NuPlanMap(AbstractMap):
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK),
                 self._get_vector_map_layer(SemanticMapLayer.ROADBLOCK_CONNECTOR),
                 self._get_vector_map_layer(SemanticMapLayer.STOP_LINE),
+                self._get_vector_map_layer(SemanticMapLayer.INTERSECTION),
                 self._load_vector_map_layer(self._LANE_CONNECTOR_POLYGON_LAYER),
                 self,
             )

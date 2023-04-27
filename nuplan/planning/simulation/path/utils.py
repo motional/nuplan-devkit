@@ -75,8 +75,7 @@ def trim_path(path: AbstractPath, start: float, end: float) -> List[ProgressStat
     assert start_progress <= start, f"Start progress exceeds path! {start_progress} <= {start}"
     assert end <= end_progress, f"End progress exceeds path! {end} <= {end_progress}"
 
-    start_state = [path.get_state_at_progress(start)]  # interpolated state at start point
-    end_state = [path.get_state_at_progress(end)]  # interpolated state at end point
+    start_state, end_state = path.get_state_at_progresses([start, end])  # interpolated state at start point
 
     progress_list: npt.NDArray[np.float_] = np.array([point.progress for point in path.get_sampled_path()])
     trim_front_indices = np.argwhere(progress_list > start)
@@ -93,4 +92,4 @@ def trim_path(path: AbstractPath, start: float, end: float) -> List[ProgressStat
         # Account for the case that the queried end progress == start_progress
         return path.get_sampled_path()[:2]  # type: ignore
 
-    return start_state + path.get_sampled_path()[trim_front_index : trim_end_index + 1] + end_state  # type: ignore
+    return [start_state] + path.get_sampled_path()[trim_front_index : trim_end_index + 1] + [end_state]  # type: ignore

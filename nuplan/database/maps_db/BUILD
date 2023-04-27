@@ -26,7 +26,6 @@ py_library(
     srcs = ["imapsdb.py"],
     deps = [
         "//nuplan/database/maps_db:layer",
-        requirement("geopandas"),
     ],
 )
 
@@ -78,6 +77,5 @@ py_library(
     srcs = ["map_explorer.py"],
     deps = [
         "//nuplan/database/maps_db:map_api",
-        requirement("descartes"),
     ],
 )

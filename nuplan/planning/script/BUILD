@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 load("@pip_torch_deps//:requirements.bzl", requirement_torch = "requirement")
 
 package(default_visibility = ["//visibility:public"])
@@ -22,6 +23,8 @@ py_binary(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
+        "//nuplan/common/utils:file_backed_barrier",
+        "//nuplan/common/utils:io_utils",
         "//nuplan/planning/script/builders:folder_builder",
         "//nuplan/planning/script/builders:logging_builder",
         "//nuplan/planning/script/builders:main_callback_builder",
@@ -33,6 +36,7 @@ py_binary(
         "//nuplan/planning/simulation/runner:runner_report",
         "//nuplan/planning/training/callbacks:profile_callback",
         "//nuplan/planning/utils/multithreading:worker_pool",
+        requirement("s3fs"),
     ],
 )
 
@@ -46,7 +50,6 @@ py_binary(
     deps = [
         "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/script:utils",
-        "//nuplan/planning/script/builders:scenario_building_builder",
         "//nuplan/planning/script/builders:simulation_builder",
         "//nuplan/planning/script/builders:simulation_callback_builder",
         "//nuplan/planning/simulation/planner:abstract_planner",
@@ -119,6 +122,7 @@ py_binary(
         "//nuplan/planning/script:utils",
         "//nuplan/planning/script/builders:scenario_building_builder",
         "//nuplan/planning/script/builders/utils:utils_config",
+        requirement("nest_asyncio"),
     ],
 )
 

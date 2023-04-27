@@ -27,7 +27,7 @@ def interpolate_points(coords: torch.Tensor, max_points: int, interpolation: str
 
 def convert_feature_layer_to_fixed_size(
     feature_coords: List[torch.Tensor],
-    feature_tl_data: Optional[List[torch.Tensor]],
+    feature_tl_data_over_time: Optional[List[List[torch.Tensor]]],
     max_elements: int,
     max_points: int,
     traffic_light_encoding_dim: int,
@@ -38,8 +38,8 @@ def convert_feature_layer_to_fixed_size(
         Points per feature are interpolated to maintain max_points size.
     :param feature_coords: Vector set of coordinates for collection of elements in map layer.
         [num_elements, num_points_in_element (variable size), 2]
-    :param feature_tl_data: Optional traffic light status corresponding to map elements at given index in coords.
-        [num_elements, traffic_light_encoding_dim (4)]
+    :param feature_tl_data_over_time: Optional traffic light status corresponding to map elements at given index in coords.
+        [num_frames, num_elements, traffic_light_encoding_dim (4)]
     :param max_elements: Number of elements to pad/trim to.
     :param max_points: Number of points to interpolate or pad/trim to.
     :param traffic_light_encoding_dim: Dimensionality of traffic light data.
@@ -52,19 +52,17 @@ def convert_feature_layer_to_fixed_size(
         avails_tensor: Availabilities tensor identifying real vs zero-padded data in coords_tensor and tl_data_tensor.
     :raise ValueError: If coordinates and traffic light data size do not match.
     """
-    if feature_tl_data is not None and len(feature_coords) != len(feature_tl_data):
-        raise ValueError(
-            f"Size between feature coords and traffic light data inconsistent: {len(feature_coords)}, {len(feature_tl_data)}"
-        )
-
     # trim or zero-pad elements to maintain fixed size
     coords_tensor = torch.zeros((max_elements, max_points, 2), dtype=torch.float64)
     avails_tensor = torch.zeros((max_elements, max_points), dtype=torch.bool)
     tl_data_tensor = (
-        torch.zeros((max_elements, max_points, traffic_light_encoding_dim), dtype=torch.float32)
-        if feature_tl_data is not None
+        torch.zeros(
+            (len(feature_tl_data_over_time), max_elements, max_points, traffic_light_encoding_dim), dtype=torch.float32
+        )
+        if feature_tl_data_over_time is not None
         else None
     )
+    # tl_data_tensor: Tensor<num_frames, max_elements, max_points, traffic_light_encoding_dim>
 
     for element_idx in range(min(len(feature_coords), max_elements)):
         element_coords = feature_coords[element_idx]
@@ -81,7 +79,12 @@ def convert_feature_layer_to_fixed_size(
         coords_tensor[element_idx, :num_points] = element_coords
         avails_tensor[element_idx, :num_points] = True  # specify real vs zero-padded data
 
-        if tl_data_tensor is not None and feature_tl_data is not None:
-            tl_data_tensor[element_idx, :num_points] = feature_tl_data[element_idx]
+        if (feature_tl_data_over_time is not None) and (tl_data_tensor is not None):
+            for time_ind in range(len(feature_tl_data_over_time)):
+                if len(feature_coords) != len(feature_tl_data_over_time[time_ind]):
+                    raise ValueError(
+                        f"num_elements between feature_coords and feature_tl_data_over_time inconsistent: {len(feature_coords)}, {len(feature_tl_data_over_time[time_ind])}"
+                    )
+                tl_data_tensor[time_ind, element_idx, :num_points] = feature_tl_data_over_time[time_ind][element_idx]
 
     return coords_tensor, tl_data_tensor, avails_tensor

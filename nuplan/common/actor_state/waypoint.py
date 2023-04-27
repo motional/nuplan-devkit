@@ -52,6 +52,12 @@ class Waypoint(InterpolatableState):
             and other.velocity == self._velocity
         )
 
+    def __repr__(self) -> str:
+        """
+        :return: A string describing the object.
+        """
+        return self.__class__.__qualname__ + "(" + ', '.join([f"{f}={v}" for f, v in self.__dict__.items()]) + ")"
+
     @property
     def center(self) -> StateSE2:
         """

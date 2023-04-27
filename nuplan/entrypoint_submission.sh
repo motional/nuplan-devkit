@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -uox pipefail
+
 [ -d "/mnt/data" ] && cp -r /mnt/data/nuplan-v1.1/maps/* $NUPLAN_MAPS_ROOT
 
 # Modify `planner=simple_planner` to submit your planner instead.

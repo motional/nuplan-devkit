@@ -86,7 +86,7 @@ class TestBaseTab(unittest.TestCase):
         )
 
         # Set up a dummy metric engine and save the results to a metric file.
-        metric_engine = MetricsEngine(main_save_path=metric_path, timestamp=0)
+        metric_engine = MetricsEngine(main_save_path=metric_path)
 
         metric_files = {"ego_acceleration": [MetricFile(key=key, metric_statistics=[result])]}
 

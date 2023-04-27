@@ -358,25 +358,19 @@ def get_interpolated_reference_trajectory_poses(
     end_time_point = trajectory.end_time
 
     delta_time_point = TimePoint(int(discretization_time * 1e6))
-    current_time_point = start_time_point
 
-    times_s = []
-    poses_interp = []
+    interpolation_times_us = np.arange(start_time_point.time_us, end_time_point.time_us, delta_time_point.time_us)
 
-    while current_time_point <= end_time_point:
-
-        state = trajectory.get_state_at_time(current_time_point)
-
-        times_s.append(current_time_point.time_s)
-
-        poses_interp.append(
-            [
-                state.rear_axle.x,
-                state.rear_axle.y,
-                state.rear_axle.heading,
-            ]
+    # Adds extra state if it aligns with discretization time
+    if interpolation_times_us[-1] + delta_time_point.time_us <= end_time_point.time_us:
+        interpolation_times_us = np.append(
+            interpolation_times_us, interpolation_times_us[-1] + delta_time_point.time_us
         )
 
-        current_time_point += delta_time_point
+    interpolation_time_points = [TimePoint(t_us) for t_us in interpolation_times_us]
 
-    return np.array(times_s), np.array(poses_interp)
+    states = trajectory.get_state_at_times(interpolation_time_points)
+
+    poses_interp = [[*state.rear_axle] for state in states]
+
+    return interpolation_times_us / 1e6, np.array(poses_interp)

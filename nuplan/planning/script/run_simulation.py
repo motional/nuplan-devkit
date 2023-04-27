@@ -1,12 +1,14 @@
 import logging
 import os
+from pathlib import Path
+from shutil import rmtree
 from typing import List, Optional, Union
 
 import hydra
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 
-from nuplan.planning.script.builders.scenario_building_builder import build_scenario_builder
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.script.builders.simulation_builder import build_simulations
 from nuplan.planning.script.builders.simulation_callback_builder import (
     build_callbacks_worker,
@@ -46,9 +48,6 @@ def run_simulation(cfg: DictConfig, planners: Optional[Union[AbstractPlanner, Li
     profiler_name = 'building_simulation'
     common_builder = set_up_common_builder(cfg=cfg, profiler_name=profiler_name)
 
-    # Build scenario builder
-    scenario_builder = build_scenario_builder(cfg=cfg)
-
     # Build simulation callbacks
     callbacks_worker_pool = build_callbacks_worker(cfg)
     callbacks = build_simulation_callbacks(cfg=cfg, output_dir=common_builder.output_dir, worker=callbacks_worker_pool)
@@ -67,7 +66,6 @@ def run_simulation(cfg: DictConfig, planners: Optional[Union[AbstractPlanner, Li
     runners = build_simulations(
         cfg=cfg,
         callbacks=callbacks,
-        scenario_builder=scenario_builder,
         worker=common_builder.worker,
         pre_built_planners=planners,
         callbacks_worker=callbacks_worker_pool,
@@ -82,6 +80,22 @@ def run_simulation(cfg: DictConfig, planners: Optional[Union[AbstractPlanner, Li
     logger.info('Finished running simulation!')
 
 
+def clean_up_s3_artifacts() -> None:
+    """
+    Cleanup lingering s3 artifacts that are written locally.
+    This happens because some minor write-to-s3 functionality isn't yet implemented.
+    """
+    # Lingering artifacts get written locally to a 's3:' directory. Hydra changes
+    # the working directory to a subdirectory of this, so we serach the working
+    # path for it.
+    working_path = os.getcwd()
+    s3_dirname = "s3:"
+    s3_ind = working_path.find(s3_dirname)
+    if s3_ind != -1:
+        local_s3_path = working_path[: working_path.find(s3_dirname) + len(s3_dirname)]
+        rmtree(local_s3_path)
+
+
 @hydra.main(config_path=CONFIG_PATH, config_name=CONFIG_NAME)
 def main(cfg: DictConfig) -> None:
     """
@@ -94,6 +108,9 @@ def main(cfg: DictConfig) -> None:
 
     # Execute simulation with preconfigured planner(s).
     run_simulation(cfg=cfg)
+
+    if is_s3_path(Path(cfg.output_dir)):
+        clean_up_s3_artifacts()
 
 
 if __name__ == '__main__':

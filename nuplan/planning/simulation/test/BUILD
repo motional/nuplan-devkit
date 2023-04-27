@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
+load("@pip_nuplan_devkit_deps//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,5 +18,6 @@ py_test(
         "//nuplan/planning/simulation/observation:tracks_observation",
         "//nuplan/planning/simulation/runner:simulations_runner",
         "//nuplan/planning/simulation/simulation_time_controller:step_simulation_time_controller",
+        requirement("hypothesis"),
     ],
 )

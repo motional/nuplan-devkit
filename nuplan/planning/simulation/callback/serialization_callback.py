@@ -12,6 +12,7 @@ from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2
 from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData
+from nuplan.common.utils.io_utils import save_buffer, save_text
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.simulation.callback.abstract_callback import AbstractCallback
 from nuplan.planning.simulation.history.simulation_history import SimulationHistory, SimulationHistorySample
@@ -33,20 +34,20 @@ logger = logging.getLogger(__name__)
 
 def _dump_to_json(file: pathlib.Path, scene_to_save: Any) -> None:
     """Dump file into json"""
-    with open(str(file.with_suffix(".json")), 'w') as f:
-        json.dump(scene_to_save, f)
+    scene_json = json.dumps(scene_to_save)
+    save_text(file.with_suffix(".json"), scene_json)
 
 
 def _dump_to_pickle(file: pathlib.Path, scene_to_save: Any) -> None:
     """Dump file into compressed pickle"""
-    with lzma.open(file.with_suffix(".pkl.xz"), "wb", preset=0) as f:
-        pickle.dump(scene_to_save, f)
+    pickle_object = pickle.dumps(scene_to_save, protocol=pickle.HIGHEST_PROTOCOL)
+    save_buffer(file.with_suffix(".pkl.xz"), lzma.compress(pickle_object, preset=0))
 
 
 def _dump_to_msgpack(file: pathlib.Path, scene_to_save: Any) -> None:
     """Dump file into compressed msgpack"""
-    with lzma.open(file.with_suffix(".msgpack.xz"), "wb", preset=0) as f:
-        f.write(msgpack.packb(scene_to_save))
+    msg_packed_bytes = msgpack.packb(scene_to_save)
+    save_buffer(file.with_suffix(".msgpack.xz"), lzma.compress(msg_packed_bytes, preset=0))
 
 
 def _dump_to_file(file: pathlib.Path, scene_to_save: Any, serialization_type: str) -> None:

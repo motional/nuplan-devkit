@@ -26,9 +26,9 @@ py_test(
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -46,9 +46,9 @@ py_test(
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/common/maps/nuplan_map:polyline_map_object",
         "//nuplan/common/maps/nuplan_map:utils",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -64,9 +64,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -82,9 +82,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -100,9 +100,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -118,9 +118,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -136,9 +136,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -154,9 +154,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -172,9 +172,9 @@ py_test(
         "//nuplan/common/maps:abstract_map_objects",
         "//nuplan/common/maps:test_utils",
         "//nuplan/common/maps/nuplan_map:map_factory",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/database/maps_db:gpkg_mapsdb",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )
 
@@ -192,7 +192,7 @@ py_test(
         "//nuplan/common/maps:maps_datatypes",
         "//nuplan/common/maps/nuplan_map:map_factory",
         "//nuplan/common/maps/nuplan_map:utils",
-        "//nuplan/common/utils/testing:nuplan_test",
-        "//nuplan/database/tests:nuplan_db_test_utils",
+        "//nuplan/common/utils/test_utils:nuplan_test",
+        "//nuplan/database/tests:test_utils_nuplan_db",
     ],
 )

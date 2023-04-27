@@ -8,8 +8,8 @@ from nuplan.common.maps.abstract_map import SemanticMapLayer
 from nuplan.common.maps.abstract_map_objects import Lane
 from nuplan.common.maps.nuplan_map.map_factory import NuPlanMapFactory
 from nuplan.common.maps.test_utils import add_map_objects_to_scene
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
-from nuplan.database.tests.nuplan_db_test_utils import get_test_maps_db
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.database.tests.test_utils_nuplan_db import get_test_maps_db
 
 
 @pytest.fixture()
@@ -142,10 +142,6 @@ def test_get_nearest_lane_connector(scene: Dict[str, Any], map_factory: NuPlanMa
         lane_connector_id, distance = nuplan_map.get_distance_to_nearest_map_object(
             Point2D(pose[0], pose[1]), SemanticMapLayer.LANE_CONNECTOR
         )
-        # TODO: restore checks
-        # assert lane_connector_id != -1
-        # assert distance != np.NaN
-
         lane_connector = nuplan_map.get_map_object(str(lane_connector_id), SemanticMapLayer.LANE_CONNECTOR)
 
         add_map_objects_to_scene(scene, [lane_connector])

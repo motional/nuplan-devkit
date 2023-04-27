@@ -5,7 +5,7 @@ import numpy as np
 from nuplan.common.actor_state.ego_state import EgoState
 from nuplan.common.actor_state.state_representation import StateSE2, StateVector2D, TimePoint
 from nuplan.common.maps.nuplan_map.map_factory import get_maps_api
-from nuplan.database.tests.nuplan_db_test_utils import NUPLAN_MAP_VERSION, NUPLAN_MAPS_ROOT
+from nuplan.database.tests.test_utils_nuplan_db import NUPLAN_MAP_VERSION, NUPLAN_MAPS_ROOT
 from nuplan.planning.metrics.abstract_metric import AbstractMetricBuilder
 from nuplan.planning.metrics.metric_result import MetricStatistics, TimeSeries
 from nuplan.planning.scenario_builder.test.mock_abstract_scenario import MockAbstractScenario

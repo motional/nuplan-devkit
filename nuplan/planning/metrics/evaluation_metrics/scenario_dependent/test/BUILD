@@ -22,7 +22,7 @@ py_test(
     tags = ["integration"],
     deps = [
         "//nuplan/common/maps:abstract_map",
-        "//nuplan/common/utils/testing:nuplan_test",
+        "//nuplan/common/utils/test_utils:nuplan_test",
         "//nuplan/planning/metrics:metric_result",
         "//nuplan/planning/metrics/evaluation_metrics/scenario_dependent:ego_stop_at_stop_line",
         "//nuplan/planning/metrics/utils:testing_utils",

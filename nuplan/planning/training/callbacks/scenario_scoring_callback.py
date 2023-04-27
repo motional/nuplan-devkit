@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 import torch
 import torch.utils.data
 
+from nuplan.common.utils.s3_utils import is_s3_path
 from nuplan.planning.training.callbacks.utils.scene_converter import SceneConverter
 from nuplan.planning.training.data_loader.scenario_dataset import ScenarioDataset
 from nuplan.planning.training.modeling.types import FeaturesType, TargetsType, move_features_type_to_device
@@ -99,7 +100,8 @@ def _eval_model_and_write_to_scene(
             scenes = scene_converter(scenario, features, targets, predictions[idx])
 
             file_dir = output_dir / score_type / scenario.token
-            file_dir.mkdir(parents=True, exist_ok=True)
+            if not is_s3_path(file_dir):
+                file_dir.mkdir(parents=True, exist_ok=True)
 
             # dump scenes
             _dump_scenes(scenes, file_dir)

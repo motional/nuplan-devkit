@@ -1,6 +1,6 @@
 import pickle
 import sqlite3
-from typing import Generator, List, Optional, Set, Tuple, Union
+from typing import Generator, List, Optional, Set, Tuple, Type, Union
 
 import numpy as np
 from pyquaternion import Quaternion
@@ -17,8 +17,12 @@ from nuplan.common.actor_state.vehicle_parameters import get_pacifica_parameters
 from nuplan.common.actor_state.waypoint import Waypoint
 from nuplan.common.maps.maps_datatypes import TrafficLightStatusData, TrafficLightStatusType, Transform
 from nuplan.common.utils.helpers import get_unique_incremental_track_id
+from nuplan.database.nuplan_db.camera import Camera
+from nuplan.database.nuplan_db.image import Image
 from nuplan.database.nuplan_db.lidar_pc import LidarPc
+from nuplan.database.nuplan_db.nuplan_db_utils import SensorDataSource
 from nuplan.database.nuplan_db.query_session import execute_many, execute_one
+from nuplan.database.nuplan_db.sensor_data_table_row import SensorDataTableRow
 from nuplan.database.utils.label.utils import local2agent_type, raw_mapping
 
 
@@ -65,94 +69,102 @@ def _parse_tracked_object_row(row: sqlite3.Row) -> TrackedObject:
         )
 
 
-def get_lidarpc_token_by_index_from_db(log_file: str, index: int) -> Optional[str]:
+def get_sensor_token_by_index_from_db(log_file: str, sensor_source: SensorDataSource, index: int) -> Optional[str]:
     """
-    Get the N-th lidarpc token ordered chronologically by timestamp.
+    Get the N-th sensor token ordered chronologically by timestamp from a particular channel.
     This is primarily used for unit testing.
     If the index does not exist (e.g. index = 10,000 in a log file with 1000 entries),
         then the result will be None.
     Only non-negative integer indexes are supported.
     :param log_file: The db file to query.
+    :param sensor_source: Parameters for querying the correct table.
     :param index: The 0-indexed integer index of the lidarpc token to retrieve.
     :return: The token, if it exists.
     """
     if index < 0:
         raise ValueError(f"Index of {index} was supplied to get_lidarpc_token_by_index_from_db(), which is negative.")
+    sensor_token = get_sensor_token(log_file, sensor_source.sensor_table, sensor_source.channel)
 
-    query = """
+    query = f"""
     WITH ordered AS
     (
         SELECT  token,
+                lidar_token,
                 ROW_NUMBER() OVER (ORDER BY timestamp ASC) AS row_num
-        FROM lidar_pc
+        FROM {sensor_source.table}
     )
     SELECT token
     FROM ordered
     WHERE (row_num - 1) = ?
+        AND {sensor_source.sensor_token_column} = ?;
     """
 
-    result = execute_one(query, [index], log_file)
+    result = execute_one(query, [index, bytearray.fromhex(sensor_token)], log_file)
     return None if result is None else str(result["token"].hex())
 
 
-def get_end_lidarpc_time_from_db(log_file: str) -> int:
+def get_end_sensor_time_from_db(log_file: str, sensor_source: SensorDataSource) -> int:
     """
-    Get the timestamp of the last lidar pc recorded in the log file.
+    Get the timestamp of the last sensor data recorded in the log file.
     :param log_file: The db file to query.
-    :return: The timestamp of the last lidar pc.
+    :param sensor_source: Parameters for querying the correct table.
+    :return: The timestamp of the last sensor data.
     """
-    query = """
+    query = f"""
     SELECT MAX(timestamp) AS max_time
-    FROM lidar_pc;
+    FROM {sensor_source.table};
     """
 
     result = execute_one(query, [], log_file)
     return int(result["max_time"])
 
 
-def get_lidarpc_token_timestamp_from_db(log_file: str, token: str) -> Optional[int]:
+def get_sensor_data_token_timestamp_from_db(
+    log_file: str, sensor_source: SensorDataSource, token: str
+) -> Optional[int]:
     """
     Get the timestamp associated with an individual lidar_pc token.
     :param log_file: The db file to query.
+    :param sensor_source: Parameters for querying the correct table.
     :param token: The token for which to grab the timestamp.
     :return: The timestamp associated with the token, if found.
     """
-    query = """
+    query = f"""
     SELECT timestamp
-    FROM lidar_pc
-    WHERE token = ?
+    FROM {sensor_source.table}
+    WHERE token = ?;
     """
-
     result = execute_one(query, (bytearray.fromhex(token),), log_file)
     return None if result is None else int(result["timestamp"])
 
 
-def get_lidarpc_token_map_name_from_db(log_file: str, token: str) -> Optional[str]:
+def get_sensor_token_map_name_from_db(log_file: str, sensor_source: SensorDataSource, token: str) -> Optional[str]:
     """
-    Get the map name for a provided lidar_pc token.
+    Get the map name for a provided sensor token.
     :param log_file: The db file to query.
+    :param sensor_source: Parameters for querying the correct table.
     :param token: The token for which to get the map name.
     :return: The map name for the token, if found.
     """
-    query = """
+    query = f"""
     SELECT map_version
     FROM log AS l
-    INNER JOIN lidar AS ld
-        ON ld.log_token = l.token
-    INNER JOIN lidar_pc AS lp
-        ON lp.lidar_token = ld.token
-    WHERE lp.token = ?
+    INNER JOIN {sensor_source.sensor_table} AS sensor
+        ON sensor.log_token = l.token
+    INNER JOIN {sensor_source.table} AS sensor_data
+        ON sensor_data.{sensor_source.sensor_token_column} = sensor.token
+    WHERE sensor_data.token = ?;
     """
 
     result = execute_one(query, (bytearray.fromhex(token),), log_file)
     return None if result is None else result["map_version"]
 
 
-def get_sampled_lidarpc_tokens_in_time_window_from_db(
-    log_file: str, start_timestamp: int, end_timestamp: int, subsample_interval: int
+def get_sampled_sensor_tokens_in_time_window_from_db(
+    log_file: str, sensor_source: SensorDataSource, start_timestamp: int, end_timestamp: int, subsample_interval: int
 ) -> Generator[str, None, None]:
     """
-    For every token in a window defined by [start_timestamp, end_timestamp], retrieve every `subsample_interval`-th lidar_pc token, ordered in increasing order by timestamp.
+    For every token in a window defined by [start_timestamp, end_timestamp], retrieve every `subsample_interval`-th sensor token, ordered in increasing order by timestamp.
 
     E.g. for this table
     ```
@@ -167,74 +179,86 @@ def get_sampled_lidarpc_tokens_in_time_window_from_db(
     7     | 6
     ```
 
-    query with start_timestamp=1, end_timestamp=5, subsample_interval=2 will return tokens
+    query with start_timestamp=1, end_timestamp=5, subsample_interval=2, table=lidar_pc, will return tokens
     [1, 3, 5].
 
     :param log_file: The db file to query.
+    :param sensor_source: Parameters for querying the correct table.
     :param start_timestamp: The start of the window to sample, inclusive.
     :param end_timestamp: The end of the window to sample, inclusive.
     :param subsample_interval: The interval at which to sample.
     :return: A generator of lidar_pc tokens that fit the provided parameters.
     """
-    query = """
+    sensor_token = get_sensor_token(log_file, sensor_source.sensor_table, sensor_source.channel)
+
+    query = f"""
     WITH numbered AS
     (
         SELECT token, timestamp, ROW_NUMBER() OVER (ORDER BY timestamp ASC) AS row_num
-        FROM lidar_pc
+        FROM {sensor_source.table}
         WHERE timestamp >= ?
         AND timestamp <= ?
+        AND {sensor_source.sensor_token_column} == ?
     )
     SELECT token
     FROM numbered
     WHERE ((row_num - 1) % ?) = 0
     ORDER BY timestamp ASC;
     """
-
-    for row in execute_many(query, (start_timestamp, end_timestamp, subsample_interval), log_file):
+    for row in execute_many(
+        query, (start_timestamp, end_timestamp, bytearray.fromhex(sensor_token), subsample_interval), log_file
+    ):
         yield row["token"].hex()
 
 
-def get_lidar_pcs_from_lidarpc_tokens_from_db(
-    log_file: str, tokens: Union[Generator[str, None, None], List[str]]
-) -> Generator[LidarPc, None, None]:
+def get_sensor_data_from_sensor_data_tokens_from_db(
+    log_file: str,
+    sensor_source: SensorDataSource,
+    sensor_class: Type[SensorDataTableRow],
+    tokens: Union[Generator[str, None, None], List[str]],
+) -> Generator[SensorDataTableRow, None, None]:
     """
-    Given a collection of lidar_pc tokens, retrieve the corresponding LidarPC objects.
+    Given a collection of sensor tokens, builds the corresponding sensor_class objects.
     This function makes no restrictions on the ordering of returned values.
-
+    :param sensor_source: Parameters for querying the correct table.
+    :param sensor_class: Class holding a row of the SensorData table.
     :param log_file: The db file to query.
-    :param tokens: The tokens for which to grab the LidarPc objects.
-    :return: The LidarPc objects.
+    :param tokens: The tokens for which to build the sensor_class objects.
+    :return: A generator yielding sensor_class objects.
     """
     if not isinstance(tokens, list):
         tokens = list(tokens)
 
     query = f"""
         SELECT *
-        FROM lidar_pc
-        WHERE token IN ({('?,'*len(tokens))[:-1]})
+        FROM {sensor_source.table}
+        WHERE token IN ({('?,'*len(tokens))[:-1]});
     """
 
     for row in execute_many(query, [bytearray.fromhex(t) for t in tokens], log_file):
-        yield LidarPc.from_db_row(row)
+        yield sensor_class.from_db_row(row)
 
 
-def get_lidar_transform_matrix_for_lidarpc_token_from_db(log_file: str, lidarpc_token: str) -> Optional[Transform]:
+def get_sensor_transform_matrix_for_sensor_data_token_from_db(
+    log_file: str, sensor_source: SensorDataSource, sensor_data_token: str
+) -> Optional[Transform]:
     """
     Get the associated lidar transform matrix from the DB for the given lidarpc_token.
     :param log_file: The log file to query.
-    :param lidarpc_token: The LidarPC token to query.
+    :param sensor_source: Parameters for querying the correct table.
+    :param sensor_data_token: The sensor data token to query.
     :return: The transform matrix. Reuturns None if the matrix does not exist in the DB (e.g. for a token that does not exist).
     """
-    query = """
-        SELECT  l.translation,
-                l.rotation
-        FROM lidar AS l
-        INNER JOIN lidar_pc AS lp
-            ON lp.lidar_token = l.token
-        WHERE lp.token = ?;
+    query = f"""
+        SELECT  sensor.translation,
+                sensor.rotation
+        FROM {sensor_source.sensor_table} AS sensor
+        INNER JOIN {sensor_source.table} AS sensor_data
+            ON sensor_data.{sensor_source.sensor_token_column} = sensor.token
+        WHERE sensor_data.token = ?;
     """
 
-    row = execute_one(query, (bytearray.fromhex(lidarpc_token),), log_file)
+    row = execute_one(query, (bytearray.fromhex(sensor_data_token),), log_file)
     if row is None:
         return None
 
@@ -247,14 +271,17 @@ def get_lidar_transform_matrix_for_lidarpc_token_from_db(log_file: str, lidarpc_
     return output
 
 
-def get_mission_goal_for_lidarpc_token_from_db(log_file: str, token: str) -> Optional[StateSE2]:
+def get_mission_goal_for_sensor_data_token_from_db(
+    log_file: str, sensor_source: SensorDataSource, token: str
+) -> Optional[StateSE2]:
     """
     Get the goal pose for a given lidar_pc token.
     :param log_file: The db file to query.
+    :param sensor_source: Parameters for querying the correct table.
     :param token: The token for which to query the goal state.
     :return: The goal state.
     """
-    query = """
+    query = f"""
         SELECT  ep.x,
                 ep.y,
                 ep.qw,
@@ -264,9 +291,9 @@ def get_mission_goal_for_lidarpc_token_from_db(log_file: str, token: str) -> Opt
         FROM ego_pose AS ep
         INNER JOIN scene AS s
             ON s.goal_ego_pose_token = ep.token
-        INNER JOIN lidar_pc AS lp
-            ON lp.scene_token = s.token
-        WHERE lp.token = ?
+        INNER JOIN {sensor_source.table} AS sensor_data
+            ON sensor_data.scene_token = s.token
+        WHERE sensor_data.token = ?
     """
 
     row = execute_one(query, (bytearray.fromhex(token),), log_file)
@@ -302,7 +329,7 @@ def get_statese2_for_lidarpc_token_from_db(log_file: str, token: str) -> Optiona
     """
     Get the ego pose as a StateSE2 from the db for a given lidar_pc token.
     :param log_file: The db file to query.
-    :param lidarpc_token: The token for which to query the current state.
+    :param token: The token for which to query the current state.
     :return: The current ego state, as a StateSE2 object.
     """
     query = """
@@ -327,7 +354,11 @@ def get_statese2_for_lidarpc_token_from_db(log_file: str, token: str) -> Optiona
 
 
 def get_sampled_lidarpcs_from_db(
-    log_file: str, initial_token: str, sample_indexes: Union[Generator[int, None, None], List[int]], future: bool
+    log_file: str,
+    initial_token: str,
+    sensor_source: SensorDataSource,
+    sample_indexes: Union[Generator[int, None, None], List[int]],
+    future: bool,
 ) -> Generator[LidarPc, None, None]:
     """
     Given an anchor token, return the tokens of either the previous or future tokens, sampled by the provided indexes.
@@ -359,12 +390,15 @@ def get_sampled_lidarpcs_from_db(
 
     :param log_file: The db file to query.
     :param initial_token: The token on which to base the query.
+    :param sensor_source: Parameters for querying the correct table.
     :param sample_indexes: The indexes for which to sample.
     :param future: If true, the indexes represent future times. If false, they represent previous times.
     :return: A generator of LidarPC objects representing the requested indexes
     """
     if not isinstance(sample_indexes, list):
         sample_indexes = list(sample_indexes)
+
+    sensor_token = get_sensor_token(log_file, sensor_source.sensor_table, sensor_source.channel)
 
     order_direction = "ASC" if future else "DESC"
     order_cmp = ">=" if future else "<="
@@ -390,6 +424,7 @@ def get_sampled_lidarpcs_from_db(
             FROM lidar_pc AS lp
             CROSS JOIN initial_lidarpc AS il
             WHERE   lp.timestamp {order_cmp} il.timestamp
+            AND lp.lidar_token = ?
         )
         SELECT  token,
                 next_token,
@@ -407,13 +442,17 @@ def get_sampled_lidarpcs_from_db(
         ORDER BY timestamp ASC;
     """
 
-    args = [bytearray.fromhex(initial_token)] + sample_indexes  # type: ignore
+    args = [bytearray.fromhex(initial_token), bytearray.fromhex(sensor_token)] + sample_indexes  # type: ignore
     for row in execute_many(query, args, log_file):
         yield LidarPc.from_db_row(row)
 
 
 def get_sampled_ego_states_from_db(
-    log_file: str, initial_token: str, sample_indexes: Union[Generator[int, None, None], List[int]], future: bool
+    log_file: str,
+    initial_token: str,
+    sensor_source: SensorDataSource,
+    sample_indexes: Union[Generator[int, None, None], List[int]],
+    future: bool,
 ) -> Generator[EgoState, None, None]:
     """
     Given an anchor token, retrieve the ego states associated with tokens order by time, sampled by the provided indexes.
@@ -452,9 +491,12 @@ def get_sampled_ego_states_from_db(
     if not isinstance(sample_indexes, list):
         sample_indexes = list(sample_indexes)
 
+    sensor_token = get_sensor_token(log_file, sensor_source.sensor_table, sensor_source.channel)
+
     order_direction = "ASC" if future else "DESC"
     order_cmp = ">=" if future else "<="
 
+    # TODO: We can remove dependency from lidar_pc if instead of accessing lp.scene_token we do a join on ego_pose
     query = f"""
         WITH initial_lidarpc AS
         (
@@ -476,6 +518,7 @@ def get_sampled_ego_states_from_db(
             FROM lidar_pc AS lp
             CROSS JOIN initial_lidarpc AS il
             WHERE   lp.timestamp {order_cmp} il.timestamp
+            AND lidar_token = ?
         )
         SELECT  ep.x,
                 ep.y,
@@ -500,7 +543,7 @@ def get_sampled_ego_states_from_db(
         ORDER BY o.timestamp ASC;
     """
 
-    args = [bytearray.fromhex(initial_token)] + sample_indexes  # type: ignore
+    args = [bytearray.fromhex(initial_token), bytearray.fromhex(sensor_token)] + sample_indexes  # type: ignore
     for row in execute_many(query, args, log_file):
         q = Quaternion(row["qw"], row["qx"], row["qy"], row["qz"])
         yield EgoState.build_from_rear_axle(
@@ -741,6 +784,7 @@ def get_scenarios_from_db(
     filter_types: Optional[List[str]],
     filter_map_names: Optional[List[str]],
     include_invalid_mission_goals: bool = True,
+    include_cameras: bool = False,
 ) -> Generator[sqlite3.Row, None, None]:
     """
     Get the scenarios present in the db file that match the specified filter criteria.
@@ -749,10 +793,12 @@ def get_scenarios_from_db(
     :param log_file: The log file to query.
     :param filter_tokens: If provided, the set of allowable tokens to return.
     :param filter_types: If provided, the set of allowable scenario types to return.
-    :param map_names: If provided, the set of allowable map names to return.
+    :param filter_map_names: If provided, the set of allowable map names to return.
+    :param include_cameras: If true, filter for lidar_pcs that has corresponding images.
     :param include_invalid_mission_goals: If true, then scenarios without a valid mission goal will be included
-        (i.e. get_mission_goal_for_lidarpc_token_from_db(token) returns None)
+        (i.e. get_mission_goal_for_sensor_data_token_from_db(token) returns None)
         If False, then these scenarios will be filtered.
+    :sensor_data_source: Table specification for data sourcing.
     :return: A sqlite3.Row object with the following fields:
         * token: The initial lidar_pc token of the scenario.
         * timestamp: The timestamp of the initial lidar_pc of the scenario.
@@ -803,6 +849,14 @@ def get_scenarios_from_db(
             ON invalid_goal_scene.goal_ego_pose_token = invalid_goal_ego_pose.token
         """
 
+    if include_cameras:
+        matching_camera_clause = """
+        INNER JOIN image AS img
+            ON img.ego_pose_token = lp.ego_pose_token
+        """
+    else:
+        matching_camera_clause = ""
+
     query = f"""
         WITH ordered_scenes AS
         (
@@ -841,6 +895,7 @@ def get_scenarios_from_db(
             ON ld.log_token = l.token
         INNER JOIN valid_scenes AS vs
             ON lp.scene_token = vs.token
+        {matching_camera_clause}
         {invalid_goals_joins}
         {filter_clause}
         GROUP BY    lp.token,
@@ -871,3 +926,100 @@ def get_lidarpc_tokens_with_scenario_tag_from_db(log_file: str) -> Generator[Tup
 
     for row in execute_many(query, (), log_file):
         yield (str(row["type"]), row["token"].hex())
+
+
+def get_sensor_token(log_file: str, table: str, channel: str) -> str:
+    """
+    Get the sensor token of a particular channel for the given table.
+    :param log_file: The DB file.
+    :param table: The sensor table to query.
+    :param channel: The channel to select.
+    :return: The token of the sensor with the given channel.
+    """
+    q1 = f"""
+        SELECT token
+        FROM {table}
+        WHERE channel == '{channel}';
+    """
+    row = execute_one(q1, (), log_file)
+
+    if row is None:
+        raise RuntimeError(f"Channel {channel} not found in table {table}!")
+
+    return str(row['token'].hex())
+
+
+def get_images_from_lidar_tokens(
+    log_file: str,
+    tokens: List[str],
+    channels: List[str],
+    lookahead_window_us: int = 50000,
+    lookback_window_us: int = 50000,
+) -> Generator[Image, None, None]:
+    """
+    Get the images from the given channels for the given lidar_pc_tokens.
+    Note: Both lookahead_window_us and lookback_window_us is defaulted to 50000us (0.05s). This means the search window
+          is 0.1s centered around the queried lidar_pc timestamp. This is because lidar_pc are stored at 20hz and images
+          are at 10hz for NuPlanDB. Hence, we can search the entire duration between lidar_pcs.
+          Consider the example below where we want to query for images from the lidar_pc '4'. '|' represents a sample.
+
+          iteration: 0    1    2    3   [4]   5    6
+          timestamp: 0   0.05 0.1  0.15 0.2  0.25 0.3
+          lidar_pc:  |    |    |    |    |    |    |
+          Images:    |         |         |         |
+          search window:            [---------]
+
+          We set the search window to lookahead_window_us + lookback_window_us = 0.1s centered around lidar_pc '4'.
+          This should guarantee that we retrieve the correct images associated with the queried lidar_pc.
+
+    :param log_file: The log file to query.
+    :param tokens: corresponding lidar_pc.
+    :param channels: The channel to select.
+    :param lookahead_window_us: [us] The time duration to look ahead relative to the lidar_pc for matching images.
+    :param lookback_window_us: [us] The time duration to look back relative to the lidar_pc for matching images.
+    :return: Images as a SensorDataTableRow.
+    """
+    query = f"""
+            SELECT
+                img.token,
+                img.next_token,
+                img.prev_token,
+                img.ego_pose_token,
+                img.camera_token,
+                img.filename_jpg,
+                img.timestamp,
+                cam.channel
+            FROM image AS img
+              INNER JOIN lidar_pc AS lpc
+                ON  img.timestamp <= lpc.timestamp + ?
+                AND img.timestamp >= lpc.timestamp - ?
+              INNER JOIN camera AS cam
+                ON cam.token = img.camera_token
+            WHERE cam.channel IN ({('?,'*len(channels))[:-1]}) AND lpc.token IN ({('?,'*len(tokens))[:-1]})
+            ORDER BY lpc.timestamp ASC;
+    """
+    args = [lookahead_window_us, lookback_window_us]
+    args += channels  # type: ignore
+    args += [bytearray.fromhex(t) for t in tokens]  # type: ignore
+
+    for row in execute_many(query, args, log_file):
+        yield Image.from_db_row(row)
+
+
+def get_cameras(
+    log_file: str,
+    channels: List[str],
+) -> Generator[Camera, None, None]:
+    """
+    Get the cameras for the given channels.
+    :param log_file: The log file to query.
+    :param channels: The channel to select.
+    :return: Cameras as a SensorDataTableRow.
+    """
+    query = f"""
+            SELECT *
+            FROM camera AS cam
+            WHERE cam.channel IN ({('?,'*len(channels))[:-1]})
+    """
+    for row in execute_many(query, channels, log_file):
+        yield Camera.from_db_row(row)

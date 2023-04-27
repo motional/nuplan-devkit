@@ -4,6 +4,8 @@ import pathlib
 import pytorch_lightning as pl
 from pyinstrument import Profiler
 
+from nuplan.common.utils.s3_utils import is_s3_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +20,8 @@ class ProfileCallback(pl.Callback):
         """
         # Set directory
         self._output_dir = output_dir / "profiling"
-        self._output_dir.mkdir(parents=True, exist_ok=True)
+        if not is_s3_path(self._output_dir):
+            self._output_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Profiler will report into folder: {str(self._output_dir)}")
 
         # Create Profiler

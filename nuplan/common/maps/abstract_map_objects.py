@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from shapely.geometry import LineString, Point, Polygon
 
 from nuplan.common.actor_state.state_representation import Point2D, StateSE2
-from nuplan.common.maps.maps_datatypes import IntersectionType, StopLineType
+from nuplan.common.maps.maps_datatypes import IntersectionType, LaneConnectorType, StopLineType
 
 
 class AbstractMapObject(abc.ABC):
@@ -64,6 +64,15 @@ class GraphEdgeMapObject(PolygonMapObject):
         """
         Returns outgoing edges from this edge.
         :return: a list of GraphEdgeMapObject.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def parallel_edges(self) -> List[GraphEdgeMapObject]:
+        """
+        Returns edges parallel to this edge including itself.
+        :return: a list of GraphEdgeMapObjects.
         """
         pass
 
@@ -250,6 +259,14 @@ class Lane(LaneGraphEdgeMapObject):
         """Inherited from superclass."""
         return []
 
+    @abc.abstractmethod
+    def index(self) -> int:
+        """
+        Gets the 1-index position of the lane within the parent roadblock.
+        :return: The index of lane.
+        """
+        pass
+
 
 class LaneConnector(LaneGraphEdgeMapObject):
     """
@@ -268,6 +285,15 @@ class LaneConnector(LaneGraphEdgeMapObject):
         """Inherited from superclass."""
         # Returns None for both elements since we currently don't have a way of telling if two lane connectors are adjacent
         return None, None
+
+    @property
+    @abc.abstractmethod
+    def turn_type(self) -> LaneConnectorType:
+        """
+        Gets the turn type of the lane connector
+        :return: LaneConnectorType of lane connector if lane connector has a type else None
+        """
+        pass
 
 
 class PolylineMapObject(AbstractMapObject):
@@ -387,12 +413,9 @@ class RoadBlockGraphEdgeMapObject(GraphEdgeMapObject):
         """
         pass
 
-    @property
-    @abc.abstractmethod
-    def parallel_edges(self) -> List[RoadBlockGraphEdgeMapObject]:
+    def intersection(self) -> Optional[Intersection]:
         """
-        Returns adjacent parallel RoadBlockGraphEdgeMapObjects.
-        :return: a list of parallel RoadBlockGraphEdgeMapObjects.
+        :return: The intersection parent to the RoadBlockGraphEdgeMapObject, if available.
         """
         pass
 
@@ -426,6 +449,15 @@ class StopLine(PolygonMapObject):
         """
         Gets StopLineType for Stopline subtype.
         :return: StopLineType subtype.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def parent(self) -> RoadBlockGraphEdgeMapObject:
+        """
+        Getter function for obtaining the parent RoadBlockGraphEdgeMapObject containing the StopLine.
+        :return: RoadblockBlockGraphEdgeMapObject containing the StopLine.
         """
         pass
 

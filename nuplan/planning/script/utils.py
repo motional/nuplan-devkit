@@ -7,6 +7,8 @@ from typing import List
 import pandas as pd
 from omegaconf import DictConfig
 
+from nuplan.common.utils.file_backed_barrier import distributed_sync
+from nuplan.common.utils.io_utils import safe_path_to_string
 from nuplan.planning.script.builders.folder_builder import build_simulation_experiment_folder
 from nuplan.planning.script.builders.logging_builder import build_logger
 from nuplan.planning.script.builders.main_callback_builder import build_main_multi_callback
@@ -52,6 +54,7 @@ def set_default_path() -> None:
 def save_runner_reports(reports: List[RunnerReport], output_dir: Path, report_name: str) -> None:
     """
     Save runner reports to a parquet file in the output directory.
+    Output directory can be local or s3.
     :param reports: Runner reports returned from each simulation.
     :param output_dir: Output directory to save the report.
     :param report_name: Report name.
@@ -67,7 +70,7 @@ def save_runner_reports(reports: List[RunnerReport], output_dir: Path, report_na
     df['duration'] = df['end_time'] - df['start_time']
 
     save_path = output_dir / report_name
-    df.to_parquet(save_path)
+    df.to_parquet(safe_path_to_string(save_path))
     logger.info(f'Saved runner reports to {save_path}')
 
 
@@ -146,8 +149,12 @@ def run_runners(
     # Save RunnerReports as parquet file
     save_runner_reports(reports, common_builder.output_dir, cfg.runner_report_file)
 
-    # Before run_simulation ends
-    common_builder.multi_main_callback.on_run_simulation_end()
+    # Sync up nodes when running distributed simulation
+    distributed_sync(Path(cfg.output_dir / Path("barrier")), cfg.distributed_timeout_seconds)
+
+    # Only run on_run_simulation_end callbacks on master node
+    if int(os.environ.get('NODE_RANK', 0)) == 0:
+        common_builder.multi_main_callback.on_run_simulation_end()
 
     # Save profiler
     if common_builder.profiler:

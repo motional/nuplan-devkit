@@ -4,7 +4,7 @@ import pytest
 from shapely.geometry import LineString
 
 from nuplan.common.maps.abstract_map import AbstractMap
-from nuplan.common.utils.testing.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
+from nuplan.common.utils.test_utils.nuplan_test import NUPLAN_TEST_PLUGIN, nuplan_test
 from nuplan.planning.metrics.evaluation_metrics.scenario_dependent.ego_stop_at_stop_line import (
     EgoStopAtStopLineStatistics,
 )

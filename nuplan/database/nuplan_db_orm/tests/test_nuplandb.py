@@ -6,7 +6,7 @@ import guppy
 
 from nuplan.database.common.db import Table
 from nuplan.database.nuplan_db_orm.nuplandb import NuPlanDB
-from nuplan.database.tests.nuplan_db_test_utils import get_test_nuplan_db, get_test_nuplan_db_nocache
+from nuplan.database.tests.test_utils_nuplan_db import get_test_nuplan_db, get_test_nuplan_db_nocache
 
 
 class TestNuPlanDB(unittest.TestCase):

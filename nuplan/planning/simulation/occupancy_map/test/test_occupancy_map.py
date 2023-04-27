@@ -83,7 +83,7 @@ class OccupancyMapTests(unittest.TestCase):
     def test_get_nearest_entry(self):  # type: ignore
         """Tests expected behavior of get_nearest_entry"""
         gp_occupancy_map = GeoPandasOccupancyMapFactory.get_from_geometry([self.p2, self.p3, self.p4])  # index 0, 1, 2
-        strtree_occupancy_map = STRTreeOccupancyMapFactory.get_from_geometry(
+        strtree_occupancy_map = GeoPandasOccupancyMapFactory.get_from_geometry(
             [self.p2, self.p3, self.p4]
         )  # index 0, 1, 2
 
@@ -99,7 +99,7 @@ class OccupancyMapTests(unittest.TestCase):
     def test_get_all(self):  # type: ignore
         """Tests the expected behavior of get_all_ids"""
         gp_occupancy_map = GeoPandasOccupancyMapFactory.get_from_geometry([self.p2, self.p3, self.p4])  # index 0, 1, 2
-        strtree_occupancy_map = STRTreeOccupancyMapFactory.get_from_geometry(
+        strtree_occupancy_map = GeoPandasOccupancyMapFactory.get_from_geometry(
             [self.p2, self.p3, self.p4]
         )  # index 0, 1, 2
 

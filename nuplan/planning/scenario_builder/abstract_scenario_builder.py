@@ -1,10 +1,20 @@
+from __future__ import annotations
+
 import abc
+from enum import Enum
 from typing import List, Type
 
 from nuplan.common.maps.abstract_map_factory import AbstractMapFactory
 from nuplan.planning.scenario_builder.abstract_scenario import AbstractScenario
 from nuplan.planning.scenario_builder.scenario_filter import ScenarioFilter
 from nuplan.planning.utils.multithreading.worker_pool import WorkerPool
+
+
+class RepartitionStrategy(Enum):
+    """Repartition strategy used when caching scenarios in a distributed setting."""
+
+    REPARTITION_FILE_DISK = 1  # Loading scenarios from files, then redistribute to balance
+    INLINE = 2  # Build all scenarios on each worker, then distribute evenly
 
 
 class AbstractScenarioBuilder(abc.ABC):
@@ -30,5 +40,12 @@ class AbstractScenarioBuilder(abc.ABC):
     def get_map_factory(self) -> AbstractMapFactory:
         """
         Get a map factory instance.
+        """
+        pass
+
+    @property
+    def repartition_strategy(self) -> RepartitionStrategy:
+        """
+        Gets the repartition strategy used for caching in a distributed setting.
         """
         pass

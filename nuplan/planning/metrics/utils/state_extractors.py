@@ -174,13 +174,13 @@ def extract_ego_heading(ego_states: List[EgoState]) -> npt.NDArray[np.float32]:
     return heading
 
 
-def extract_ego_velocity(history: SimulationHistory) -> npt.NDArray[np.float32]:
+def extract_ego_velocity(ego_states: List[EgoState]) -> npt.NDArray[np.float32]:
     """
-    Extract velocity of ego pose in simulation history
-    :param history: Simulation history
+    Extract velocity of ego pose from list of ego states
+    :param ego_states: A list of ego states
     :return An array of ego pose velocity.
     """
-    velocity: npt.NDArray[np.float32] = np.array([sample.ego_state.dynamic_car_state.speed for sample in history.data])
+    velocity: npt.NDArray[np.float32] = np.array([ego_state.dynamic_car_state.speed for ego_state in ego_states])
     return velocity
 
 

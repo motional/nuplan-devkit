@@ -52,6 +52,19 @@ class InterpolatedPath(AbstractPath):
 
         return ProgressStateSE2.deserialize(linear_states + angular_states)
 
+    def get_state_at_progresses(self, progresses: List[float]) -> List[ProgressStateSE2]:
+        """Inherited, see superclass."""
+        self._assert_progress(min(progresses))
+        self._assert_progress(max(progresses))
+
+        linear_states_batch = self._function_interp_linear(progresses)
+        angular_states_batch = self._angular_interpolator.interpolate(progresses)
+
+        return [
+            ProgressStateSE2.deserialize(list(linear_states) + list(angular_states))
+            for linear_states, angular_states in zip(linear_states_batch, angular_states_batch)
+        ]
+
     def get_sampled_path(self) -> List[ProgressStateSE2]:
         """Inherited, see superclass."""
         return self._path

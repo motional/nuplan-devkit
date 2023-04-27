@@ -78,7 +78,9 @@ def state_se2_tensor_to_transform_matrix(
     cosine: float = math.cos(h)
     sine: float = math.sin(h)
 
-    return torch.tensor([[cosine, -sine, x], [sine, cosine, y], [0.0, 0.0, 1.0]], dtype=precision)
+    return torch.tensor(
+        [[cosine, -sine, x], [sine, cosine, y], [0.0, 0.0, 1.0]], dtype=precision, device=input_data.device
+    )
 
 
 def state_se2_tensor_to_transform_matrix_batch(
@@ -121,6 +123,7 @@ def state_se2_tensor_to_transform_matrix_batch(
             [0, 0, 0, 0, 0, 0, 0, 0, 1],
         ],
         dtype=precision,
+        device=input_data.device,
     )
     # Builds the transform matrix
     # First computes the components of each transform as rows of a Nx9 tensor, and then reshapes to a Nx3x3 tensor

@@ -2,7 +2,7 @@ from typing import Any, Generator
 
 import pytest
 
-from nuplan.common.utils.testing import instances
+from nuplan.common.utils.test_utils import instances
 
 
 def pytest_configure(config: Any) -> None:

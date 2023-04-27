@@ -35,6 +35,7 @@ py_library(
         "//nuplan/common/actor_state:ego_state",
         "//nuplan/common/actor_state:state_representation",
         "//nuplan/common/actor_state:vehicle_parameters",
+        "//nuplan/common/utils:io_utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation:simulation_setup",
         "//nuplan/planning/simulation/callback:abstract_callback",
@@ -88,6 +89,7 @@ py_library(
     name = "simulation_log_callback",
     srcs = ["simulation_log_callback.py"],
     deps = [
+        "//nuplan/common/utils:s3_utils",
         "//nuplan/planning/scenario_builder:abstract_scenario",
         "//nuplan/planning/simulation:simulation_log",
         "//nuplan/planning/simulation:simulation_setup",

@@ -33,20 +33,20 @@ NUPLAN_MAP_VERSION = os.environ["NUPLAN_MAP_VERSION"]
 # Use a subset of the mini split for testing purposes
 NUPLAN_DB_FILES = [
     # Mini train
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.07.16.20.45.29_veh-35_01095_01486.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.10.06.17.43.07_veh-28_00508_00877.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.08.17.18.54.02_veh-45_00665_01065.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.10.11.02.57.41_veh-50_01522_02088.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.07.16.20.45.29_veh-35_01095_01486.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.10.06.17.43.07_veh-28_00508_00877.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.08.17.18.54.02_veh-45_00665_01065.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.10.11.02.57.41_veh-50_01522_02088.db",
     # Mini val
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.06.08.16.31.33_veh-38_01589_02072.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.08.09.17.55.59_veh-28_00021_00307.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.06.07.18.53.26_veh-26_00005_00427.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.10.05.07.10.04_veh-52_01442_01802.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.06.08.16.31.33_veh-38_01589_02072.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.08.09.17.55.59_veh-28_00021_00307.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.06.07.18.53.26_veh-26_00005_00427.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.10.05.07.10.04_veh-52_01442_01802.db",
     # Mini test
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.06.28.16.57.59_veh-26_00016_00484.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.08.30.14.54.34_veh-40_00439_00835.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.09.16.15.12.03_veh-42_01037_01434.db",
-    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/mini/2021.10.06.07.26.10_veh-52_00006_00398.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.06.28.16.57.59_veh-26_00016_00484.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.08.30.14.54.34_veh-40_00439_00835.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.09.16.15.12.03_veh-42_01037_01434.db",
+    f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini/2021.10.06.07.26.10_veh-52_00006_00398.db",
 ]
 
 
