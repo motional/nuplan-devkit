@@ -12,8 +12,7 @@ The main focus of the nuPlan planning challenge is to evaluate a motion planning
 ### Competition Timeline
 
 *   January 30th, 2023 - Warm-up phase and Test phase opens for submission
-*   May 19th, 2023 - Competition closes
-*   May 26th, 2023 - Finalists are announced and invited to share their code with us for verification
+*   May 26th, 2023 - Competition closes - Finalists are announced and invited to share their code with us for verification
 *   June 2th, 2023 - Winners are announced
 *   June 18th, 2023 - The competition results are presented at the [End-to-End Autonomous Driving](https://opendrivelab.com/event/cvpr23_ADworkshop) workshop at CVPR 2023
 
@@ -76,7 +75,7 @@ and the data is not taken from the test split. The metrics and the overall score
 
 Start: January 30th, 2023
 
-End: May 19th, 2023
+End: May 26th, 2023
 
 #### Test Phase
 The results from the test phase will be used to determine the winners of each challenge. All submissions will be evaluated on a 
@@ -87,7 +86,7 @@ submit a maximum of three submissions.
 
 Start: January 30th, 2023
 
-End: May 19th, 2023
+End: May 26th, 2023
 
 ### Challenges
 
