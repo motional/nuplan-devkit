@@ -3,7 +3,7 @@ Welcome to the nuplan-devkit's documentation!
 
 .. note::
 
-   The nuPlan Planning Competition is live!
+   The nuPlan Planning Competition is live! Submission Deadline extended to May 26th, 2023.
 
 .. toctree::
    :hidden:
