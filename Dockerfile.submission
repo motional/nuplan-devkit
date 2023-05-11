@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM nvidia/cuda:11.0.3-runtime-ubuntu20.04
 
 RUN apt-get update \
     && apt-get install -y curl gnupg2 software-properties-common default-jdk
@@ -50,8 +50,5 @@ ENV NUPLAN_MAPS_ROOT=/data/sets/nuplan/maps \
     NUPLAN_EXP_ROOT=/data/exp/nuplan
 
 RUN bash -c 'mkdir -p {$NUPLAN_MAPS_ROOT,$NUPLAN_DATA_ROOT,$NUPLAN_EXP_ROOT}'
-RUN apt-get update \
-    && apt-get install -y \
-    awscli \
-    && rm -rf /var/lib/apt/lists/*
+
 CMD ["/nuplan_devkit/nuplan/entrypoint_submission.sh"]
