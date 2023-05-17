@@ -36,6 +36,7 @@ The main focus of the nuPlan planning challenge is to evaluate a motion planning
 - Method name
 - Authors
 - Affiliations
+- Country (Of the individual or team's institution)
 - Method description (5+ sentences)
 - Project URL (If applicable)
 - Paper URL (If applicable)
