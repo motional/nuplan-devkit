@@ -447,6 +447,66 @@ def get_sampled_lidarpcs_from_db(
         yield LidarPc.from_db_row(row)
 
 
+def get_sampled_lidarpcs_from_db_batch(
+    log_file: str,
+    initial_token: str,
+    sensor_source: SensorDataSource,
+    sample_indexes: List[int],
+    future: bool
+) -> List[LidarPc]:
+    if not sample_indexes:
+        return []
+
+    sensor_token = get_sensor_token(log_file, sensor_source.sensor_table, sensor_source.channel)
+
+    order_direction = "ASC" if future else "DESC"
+    order_cmp = ">=" if future else "<="
+
+    query = f"""
+        WITH initial_lidarpc AS
+        (
+            SELECT token, timestamp
+            FROM lidar_pc
+            WHERE token = ?
+        ),
+        ordered AS
+        (
+            SELECT  lp.token,
+                    lp.next_token,
+                    lp.prev_token,
+                    lp.ego_pose_token,
+                    lp.lidar_token,
+                    lp.scene_token,
+                    lp.filename,
+                    lp.timestamp,
+                    ROW_NUMBER() OVER (ORDER BY lp.timestamp {order_direction}) AS row_num
+            FROM lidar_pc AS lp
+            CROSS JOIN initial_lidarpc AS il
+            WHERE   lp.timestamp {order_cmp} il.timestamp
+            AND lp.lidar_token = ?
+        )
+        SELECT  token,
+                next_token,
+                prev_token,
+                ego_pose_token,
+                lidar_token,
+                scene_token,
+                filename,
+                timestamp
+        FROM ordered
+
+        -- ROW_NUMBER() starts at 1, where consumers will expect sample_indexes to be 0-indexed
+        WHERE (row_num - 1) IN ({('?,'*len(sample_indexes))[:-1]})
+
+        ORDER BY timestamp ASC;
+    """
+
+    args = [bytearray.fromhex(initial_token), bytearray.fromhex(sensor_token)] + sample_indexes  # type: ignore
+    rows = execute_many(query, args, log_file)
+    return [LidarPc.from_db_row(row) for row in rows]
+
+
+
 def get_sampled_ego_states_from_db(
     log_file: str,
     initial_token: str,

@@ -24,6 +24,7 @@ from nuplan.database.nuplan_db.nuplan_scenario_queries import (
     get_roadblock_ids_for_lidarpc_token_from_db,
     get_sampled_ego_states_from_db,
     get_sampled_lidarpcs_from_db,
+    get_sampled_lidarpcs_from_db_batch,
     get_sensor_data_from_sensor_data_tokens_from_db,
     get_sensor_data_token_timestamp_from_db,
     get_sensor_transform_matrix_for_sensor_data_token_from_db,
@@ -361,11 +362,14 @@ class NuPlanScenario(AbstractScenario):
         time_horizon: float,
         num_samples: Optional[int] = None,
         future_trajectory_sampling: Optional[TrajectorySampling] = None,
-    ) -> Generator[DetectionsTracks, None, None]:
+    ) -> List[DetectionsTracks]:
         """Inherited, see superclass."""
-        # TODO: This can be made even more efficient with a batch query
-        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True):
-            yield DetectionsTracks(extract_tracked_objects(lidar_pc.token, self._log_file, future_trajectory_sampling))
+        lidar_pcs = self._find_matching_lidar_pcs_batch(iteration, num_samples, time_horizon, True)
+        return [
+            DetectionsTracks(extract_tracked_objects(lidar_pc.token, self._log_file, future_trajectory_sampling))
+            for lidar_pc in lidar_pcs
+        ]
+
 
     def get_past_sensors(
         self,
@@ -446,6 +450,19 @@ class NuPlanScenario(AbstractScenario):
                 self._log_file, self._lidarpc_tokens[iteration], get_lidarpc_sensor_data(), indices, look_into_future
             ),
         )
+    
+    def _find_matching_lidar_pcs_batch(
+        self, iteration: int, num_samples: Optional[int], time_horizon: float, look_into_future: bool
+    ) -> List[LidarPc]:
+        num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._database_row_interval)
+
+        # 将生成器转换为批量查询
+        lidarpcs = get_sampled_lidarpcs_from_db_batch(
+            self._log_file, self._lidarpc_tokens[iteration], get_lidarpc_sensor_data(), indices, look_into_future
+        )
+        return list(lidarpcs)  # 确保返回一个列表
+
 
     def _extract_expert_trajectory(self, max_future_seconds: int = 60) -> Generator[EgoState, None, None]:
         """
