@@ -24,6 +24,7 @@ from nuplan.database.nuplan_db.nuplan_db_utils import SensorDataSource
 from nuplan.database.nuplan_db.query_session import execute_many, execute_one
 from nuplan.database.nuplan_db.sensor_data_table_row import SensorDataTableRow
 from nuplan.database.utils.label.utils import local2agent_type, raw_mapping
+from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 
 
 def _parse_tracked_object_row(row: sqlite3.Row) -> TrackedObject:
@@ -836,6 +837,56 @@ def get_future_waypoints_for_agents_from_db(
         velocity = StateVector2D(row["vx"], row["vy"])
 
         yield (row["track_token"].hex(), Waypoint(TimePoint(row["timestamp"]), oriented_box, velocity))
+
+
+def get_future_waypoints_for_agents_from_db_optimized(
+    log_file: str, track_tokens: List[str], start_timestamp: int, future_trajectory_sampling: TrajectorySampling
+) -> Generator[Tuple[str, Waypoint], None, None]:
+    """
+    Obtain the future waypoints for the selected agents from the DB in the provided time window,
+    taking into account the sampling interval for future waypoints.
+
+    :param log_file: The log file to query.
+    :param track_tokens: The track_tokens for which to query.
+    :param start_timestamp: The starting timestamp for which to query.
+    :param future_trajectory_sampling: The trajectory sampling strategy.
+    :return: A generator of tuples of (track_token, Waypoint), sorted by track_token, then by timestamp in ascending order.
+    """
+    interval_microseconds = int(1e6 * future_trajectory_sampling.interval_length)
+    end_timestamp = start_timestamp + int(1e6 * future_trajectory_sampling.time_horizon)
+
+    # Adjust the query to return waypoints based on the specified interval.
+    # The following SQL is an example and might need adjustments based on the actual schema.
+    query = f"""
+        WITH RECURSIVE sampled_timestamps(ts) AS (
+            SELECT ? UNION ALL
+            SELECT ts + ? FROM sampled_timestamps
+            WHERE ts + ? <= ?
+        )
+        SELECT
+            lb.x, lb.y, lb.z, lb.yaw, lb.width, lb.length, lb.height, lb.vx, lb.vy, lb.track_token, lp.timestamp
+        FROM
+            lidar_box AS lb
+        INNER JOIN
+            lidar_pc AS lp ON lp.token = lb.lidar_pc_token
+        INNER JOIN
+            sampled_timestamps st ON lp.timestamp >= st.ts AND lp.timestamp < st.ts + ?
+        WHERE
+            lp.timestamp >= ? AND lp.timestamp <= ? AND lb.track_token IN ({('?,' * len(track_tokens))[:-1]})
+        ORDER BY
+            lb.track_token ASC, lp.timestamp ASC;
+    """
+    args = [start_timestamp, interval_microseconds, interval_microseconds, end_timestamp, interval_microseconds, start_timestamp, end_timestamp] + [bytearray.fromhex(t) for t in track_tokens]
+
+    for row in execute_many(query, args, log_file):
+        # 直接在这里解析行数据，创建Waypoint对象
+        pose = StateSE2(row["x"], row["y"], row["yaw"])
+        oriented_box = OrientedBox(pose, width=row["width"], length=row["length"], height=row["height"])
+        velocity = StateVector2D(row["vx"], row["vy"])
+        waypoint = Waypoint(TimePoint(row["timestamp"]), oriented_box, velocity)
+
+        # 产生(track_token, Waypoint)对
+        yield (row["track_token"].hex(), waypoint)
 
 
 def get_scenarios_from_db(

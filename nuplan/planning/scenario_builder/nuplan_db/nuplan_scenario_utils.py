@@ -19,6 +19,7 @@ from nuplan.database.nuplan_db.lidar_pc import LidarPc
 from nuplan.database.nuplan_db.nuplan_db_utils import SensorDataSource, get_lidarpc_sensor_data
 from nuplan.database.nuplan_db.nuplan_scenario_queries import (
     get_future_waypoints_for_agents_from_db,
+    get_future_waypoints_for_agents_from_db_optimized,
     get_sampled_sensor_tokens_in_time_window_from_db,
     get_sensor_data_token_timestamp_from_db,
     get_tracked_objects_for_lidarpc_token_from_db,
@@ -336,49 +337,53 @@ def extract_tracked_objects(
     future_trajectory_sampling: Optional[TrajectorySampling] = None,
 ) -> TrackedObjects:
     """
-    Extracts all boxes from a lidarpc.
-    :param lidar_pc: Input lidarpc.
-    :param future_trajectory_sampling: If provided, the future trajectory sampling to use for future waypoints.
-    :return: Tracked objects contained in the lidarpc.
+    Extracts all boxes from a lidarpc, considering future trajectory sampling if provided.
     """
     tracked_objects: List[TrackedObject] = []
     agent_indexes: Dict[str, int] = {}
-    agent_future_trajectories: Dict[str, List[Waypoint]] = {}
 
+    # 获取当前lidar点云对应的所有追踪对象
     for idx, tracked_object in enumerate(get_tracked_objects_for_lidarpc_token_from_db(log_file, token)):
         if future_trajectory_sampling and isinstance(tracked_object, Agent):
             agent_indexes[tracked_object.metadata.track_token] = idx
-            agent_future_trajectories[tracked_object.metadata.track_token] = []
         tracked_objects.append(tracked_object)
 
-    if future_trajectory_sampling and len(tracked_objects) > 0:
+    if future_trajectory_sampling:
         timestamp_time = get_sensor_data_token_timestamp_from_db(log_file, get_lidarpc_sensor_data(), token)
+        if timestamp_time is None:
+            return TrackedObjects(tracked_objects=tracked_objects)
+            
         end_time = timestamp_time + int(
             1e6 * (future_trajectory_sampling.time_horizon + future_trajectory_sampling.interval_length)
         )
 
-        # TODO: This is somewhat inefficient because the resampling should happen in SQL layer
-        for track_token, waypoint in get_future_waypoints_for_agents_from_db(
-            log_file, list(agent_indexes.keys()), timestamp_time, end_time
-        ):
+        # 使用优化后的方式获取未来轨迹点
+        future_waypoints = get_future_waypoints_for_agents_from_db_optimized(
+            log_file, list(agent_indexes.keys()), timestamp_time, future_trajectory_sampling
+        )
+
+        # 重新组织未来轨迹点数据，按照追踪对象的token组织
+        agent_future_trajectories = {track_token: [] for track_token in agent_indexes}
+        for track_token, waypoint in future_waypoints:
             agent_future_trajectories[track_token].append(waypoint)
 
-        for key in agent_future_trajectories:
-            # We can only interpolate waypoints if there is more than one in the future.
-            if len(agent_future_trajectories[key]) == 1:
-                tracked_objects[agent_indexes[key]]._predictions = [
-                    PredictedTrajectory(1.0, agent_future_trajectories[key])
-                ]
-            elif len(agent_future_trajectories[key]) > 1:
-                tracked_objects[agent_indexes[key]]._predictions = [
+        # 根据获取到的未来轨迹点更新追踪对象的预测轨迹
+        for track_token, waypoints in agent_future_trajectories.items():
+            idx = agent_indexes[track_token]
+            if len(waypoints) > 1:  # 只有当存在多个未来轨迹点时才进行插值
+                tracked_objects[idx]._predictions = [
                     PredictedTrajectory(
-                        1.0,
+                        1.0,  # 假设置信度为1.0
                         interpolate_future_waypoints(
-                            agent_future_trajectories[key],
+                            waypoints,
                             future_trajectory_sampling.time_horizon,
                             future_trajectory_sampling.interval_length,
                         ),
                     )
+                ]
+            elif len(waypoints) == 1:
+                tracked_objects[idx]._predictions = [
+                    PredictedTrajectory(1.0, waypoints)
                 ]
 
     return TrackedObjects(tracked_objects=tracked_objects)
