@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from functools import cached_property
 from pathlib import Path
+import time
 from typing import Any, Generator, List, Optional, Set, Tuple, Type, cast
 
 from nuplan.common.actor_state.ego_state import EgoState
@@ -24,6 +25,7 @@ from nuplan.database.nuplan_db.nuplan_scenario_queries import (
     get_roadblock_ids_for_lidarpc_token_from_db,
     get_sampled_ego_states_from_db,
     get_sampled_lidarpcs_from_db,
+    get_sampled_lidarpcs_from_db_batch,
     get_sensor_data_from_sensor_data_tokens_from_db,
     get_sensor_data_token_timestamp_from_db,
     get_sensor_transform_matrix_for_sensor_data_token_from_db,
@@ -361,11 +363,22 @@ class NuPlanScenario(AbstractScenario):
         time_horizon: float,
         num_samples: Optional[int] = None,
         future_trajectory_sampling: Optional[TrajectorySampling] = None,
-    ) -> Generator[DetectionsTracks, None, None]:
+    ) -> List[DetectionsTracks]:
+        start_time = time.time()
         """Inherited, see superclass."""
-        # TODO: This can be made even more efficient with a batch query
-        for lidar_pc in self._find_matching_lidar_pcs(iteration, num_samples, time_horizon, True):
-            yield DetectionsTracks(extract_tracked_objects(lidar_pc.token, self._log_file, future_trajectory_sampling))
+        lidar_pcs = self._find_matching_lidar_pcs_batch(iteration, num_samples, time_horizon, True)
+        mid_time = time.time()
+        print(f'执行 _find_matching_lidar_pcs_batch 用时: {(mid_time - start_time) * 1000} 毫秒')
+        detections_tracks = []
+        detections_tracks = [
+            DetectionsTracks(extract_tracked_objects(lidar_pc.token, self._log_file, future_trajectory_sampling))
+            for lidar_pc in lidar_pcs
+        ]
+        end_time = time.time()
+        print(f'生成所有 DetectionsTracks 对象用时: {(end_time - mid_time) * 1000} 毫秒')
+        print(f'总函数执行用时: {(end_time - start_time) * 1000} 毫秒')
+        return detections_tracks
+
 
     def get_past_sensors(
         self,
@@ -446,6 +459,19 @@ class NuPlanScenario(AbstractScenario):
                 self._log_file, self._lidarpc_tokens[iteration], get_lidarpc_sensor_data(), indices, look_into_future
             ),
         )
+    
+    def _find_matching_lidar_pcs_batch(
+        self, iteration: int, num_samples: Optional[int], time_horizon: float, look_into_future: bool
+    ) -> List[LidarPc]:
+        num_samples = num_samples if num_samples else int(time_horizon / self.database_interval)
+        indices = sample_indices_with_time_horizon(num_samples, time_horizon, self._database_row_interval)
+
+        # 将生成器转换为批量查询
+        lidarpcs = get_sampled_lidarpcs_from_db_batch(
+            self._log_file, self._lidarpc_tokens[iteration], get_lidarpc_sensor_data(), indices, look_into_future
+        )
+        return list(lidarpcs)  # 确保返回一个列表
+
 
     def _extract_expert_trajectory(self, max_future_seconds: int = 60) -> Generator[EgoState, None, None]:
         """
