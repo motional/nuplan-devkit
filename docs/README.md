@@ -90,7 +90,7 @@ ______________________________________________________________________
 
 ## Getting started
 <p align="center"><img src="https://cdn.cookielaw.org/logos/8c60fe9e-585e-46b1-8f92-eba17239401e/d3e43cda-e0a4-42f2-9c04-0e1900c3f68f/808c47fb-8484-44eb-b369-d90d6bb4733e/motional_logo_stack_colorrev_rgb_black.png" width="350px"></p>
-For those interested in participating in the Motional<sup>TM</sup> nuPlan Planning Competition, please refer to the competition landing [page](https://nuplan-devkit.readthedocs.io/en/latest/).
+For those interested in participating in the Motional<sup>TM</sup> nuPlan<sup>TM</sup> Planning Competition, please refer to the competition landing [page](https://nuplan-devkit.readthedocs.io/en/latest/).
 
 Please follow these steps to make yourself familiar with the nuPlan dataset:
 - Familiarize yourself with the main [features of nuPlan](https://www.nuplan.org) and the [dataset description](https://www.nuplan.org/nuplan).
