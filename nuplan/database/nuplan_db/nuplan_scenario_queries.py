@@ -609,9 +609,9 @@ def get_traffic_light_status_for_lidarpc_token_from_db(
     :return: The traffic light status data associated with the given lidar_pc.
     """
     query = """
-        SELECT  CASE WHEN tl.status == "green" THEN 0
-                     WHEN tl.status == "yellow" THEN 1
-                     WHEN tl.status == "red" THEN 2
+        SELECT  CASE WHEN tl.status == 'green' THEN 0
+                     WHEN tl.status == 'yellow' THEN 1
+                     WHEN tl.status == 'red' THEN 2
                      ELSE 3
                 END AS status,
                 tl.lane_connector_id,
