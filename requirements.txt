@@ -24,7 +24,7 @@ nest_asyncio  # Used to nest event loops when running nuBoard/jupyter
 numpy==1.23.4
 opencv-python<=4.5.1.48  # Used widely
 pandas    # Used widely
-Pillow    # Used widely to render images
+Pillow==9.5.0    # Used widely to render images, pinned due to https://stackoverflow.com/questions/76616042/attributeerror-module-pil-image-has-no-attribute-antialias
 pre-commit  # Used in pre-commit hooks
 psutil  # Used widely to get the number of CPUs
 pyarrow # For parquet
